@@ -37,7 +37,8 @@ internal extension AppDelegate {
         }
 
         let windowSize = LayoutMetrics.RecordingWindow.size
-        let window = NSWindow(
+        // Use ChromelessWindow to allow borderless window to become key
+        let window = ChromelessWindow(
             contentRect: NSRect(origin: .zero, size: windowSize),
             styleMask: [.borderless],
             backing: .buffered,

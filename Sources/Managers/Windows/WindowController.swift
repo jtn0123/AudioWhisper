@@ -127,11 +127,17 @@ internal class WindowController {
                 
                 // Show window in current space with maximum priority
                 window.orderFrontRegardless()
-                window.makeKeyAndOrderFront(nil)
-                
+                if window.canBecomeKey {
+                    window.makeKeyAndOrderFront(nil)
+                } else {
+                    window.orderFront(nil)
+                }
+
                 // Step 3: Ensure proper focus
                 self?.performWindowOperation(after: 0.05) {
-                    window.makeKey()
+                    if window.canBecomeKey {
+                        window.makeKey()
+                    }
                     window.makeFirstResponder(window.contentView)
                     completion?()
                 }

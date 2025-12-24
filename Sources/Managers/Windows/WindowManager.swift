@@ -145,9 +145,13 @@ internal class WindowManager: ObservableObject {
         }
         
         NSApp?.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
-        window.makeKey()
+        if window.canBecomeKey {
+            window.makeKeyAndOrderFront(nil)
+            window.makeKey()
+        } else {
+            window.orderFront(nil)
+        }
     }
     
     func hideRecordingWindow() {

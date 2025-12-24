@@ -184,9 +184,9 @@ private extension DashboardHomeView {
             }
             
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
-                // Day labels
+                // Day labels (use index as ID to avoid duplicate "S" and "T" warnings)
                 HStack(spacing: 6) {
-                    ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                    ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, day in
                         Text(day)
                             .font(DashboardTheme.Fonts.sans(10, weight: .medium))
                             .foregroundStyle(DashboardTheme.inkFaint)
