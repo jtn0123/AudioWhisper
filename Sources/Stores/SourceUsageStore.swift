@@ -102,6 +102,9 @@ internal final class SourceUsageStore {
             if let decoded = try? decoder.decode([String: SourceUsageStats].self, from: data) {
                 statsByBundle = decoded
                 orderedStats = decoded.values.sorted(by: defaultSort)
+                // Re-persist immediately to strip out any legacy iconData from old format
+                // This is a one-time migration that reduces UserDefaults size
+                persist()
                 return
             }
         }
