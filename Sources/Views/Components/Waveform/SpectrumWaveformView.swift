@@ -6,19 +6,20 @@ struct SpectrumWaveformView: View {
     let frequencyBands: [Float]
     let isActive: Bool
 
-    // Band colors (warm to cool: bass to treble)
+    // Band colors (voice-optimized frequency ranges)
     private let bandColors: [Color] = [
-        Color(red: 1.0, green: 0.2, blue: 0.3),   // Sub-bass - Red
-        Color(red: 1.0, green: 0.5, blue: 0.2),   // Bass - Orange
-        Color(red: 1.0, green: 0.8, blue: 0.2),   // Low-mid - Yellow
-        Color(red: 0.4, green: 0.9, blue: 0.3),   // Mid - Green
-        Color(red: 0.2, green: 0.9, blue: 0.8),   // Upper-mid - Cyan
+        Color(red: 1.0, green: 0.3, blue: 0.3),   // Male fundamental - Red
+        Color(red: 1.0, green: 0.5, blue: 0.2),   // Female fundamental - Orange
+        Color(red: 1.0, green: 0.8, blue: 0.2),   // First formant - Yellow
+        Color(red: 0.4, green: 0.9, blue: 0.3),   // Second formant - Green
+        Color(red: 0.2, green: 0.9, blue: 0.8),   // Third formant - Cyan
         Color(red: 0.3, green: 0.5, blue: 1.0),   // Presence - Blue
-        Color(red: 0.6, green: 0.3, blue: 1.0),   // Brilliance - Purple
-        Color(red: 1.0, green: 0.4, blue: 0.8),   // Air - Pink
+        Color(red: 0.6, green: 0.3, blue: 1.0),   // Sibilants - Purple
+        Color(red: 1.0, green: 0.4, blue: 0.8),   // Brilliance - Pink
     ]
 
-    private let bandLabels = ["SUB", "BASS", "LOW", "MID", "HI", "PRES", "BRIL", "AIR"]
+    // Voice-optimized labels: 80Hz-10kHz focused on human speech
+    private let bandLabels = ["M♂", "F♀", "F1", "F2", "F3", "PRES", "SIB", "AIR"]
 
     @State private var peakLevels: [Float] = Array(repeating: 0, count: 8)
     @State private var animatedLevels: [Float] = Array(repeating: 0, count: 8)

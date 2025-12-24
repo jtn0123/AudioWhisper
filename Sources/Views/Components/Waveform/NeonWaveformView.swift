@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Neon-style waveform visualization with glowing bezier curves and color gradients.
-/// Uses real audio samples for accurate waveform representation.
+/// Features layered waveform trails for motion blur effect.
 struct NeonWaveformView: View {
     let waveformSamples: [Float]
     let audioLevel: Float
@@ -13,6 +13,9 @@ struct NeonWaveformView: View {
     private let yellowGlow = Color(red: 1.0, green: 0.85, blue: 0.0)
     private let bgColor = Color(red: 0.02, green: 0.02, blue: 0.04)
 
+    // Trail history (stores previous waveform frames)
+    private let trailCount = 3
+    @State private var waveformHistory: [[Float]] = []
     @State private var phase: CGFloat = 0
     @State private var colorPhase: CGFloat = 0
 
@@ -24,6 +27,15 @@ struct NeonWaveformView: View {
                     backgroundGlow(in: geometry.size)
                 }
 
+                // Trail waveforms (oldest to newest, behind main)
+                ForEach(0..<waveformHistory.count, id: \.self) { index in
+                    let opacity = 0.15 + Double(index) * 0.1 // 0.15, 0.25, 0.35
+                    let offset = CGFloat(waveformHistory.count - 1 - index) * 2 // slight vertical offset
+                    trailWaveform(samples: waveformHistory[index], in: geometry.size)
+                        .opacity(opacity)
+                        .offset(y: offset)
+                }
+
                 // Main waveform with glow layers
                 waveformStack(in: geometry.size)
 
@@ -31,10 +43,25 @@ struct NeonWaveformView: View {
                 waveformReflection(in: geometry.size)
             }
         }
-        .onReceive(Timer.publish(every: 0.016, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
             phase += 0.05
             colorPhase += 0.02
+            updateHistory()
         }
+    }
+
+    private func updateHistory() {
+        let current = effectiveSamples
+        waveformHistory.append(current)
+        if waveformHistory.count > trailCount {
+            waveformHistory.removeFirst()
+        }
+    }
+
+    private func trailWaveform(samples: [Float], in size: CGSize) -> some View {
+        waveformPathFrom(samples: samples, in: size)
+            .stroke(currentColor.opacity(0.6), lineWidth: 3)
+            .blur(radius: 4)
     }
 
     // MARK: - Waveform Components
@@ -101,9 +128,12 @@ struct NeonWaveformView: View {
     // MARK: - Path Generation
 
     private func waveformPath(in size: CGSize) -> Path {
+        waveformPathFrom(samples: effectiveSamples, in: size)
+    }
+
+    private func waveformPathFrom(samples: [Float], in size: CGSize) -> Path {
         Path { path in
             let centerY = size.height / 2
-            let samples = effectiveSamples
             let stepX = size.width / CGFloat(max(1, samples.count - 1))
             let maxAmplitude = size.height * 0.4
 

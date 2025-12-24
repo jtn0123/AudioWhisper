@@ -14,22 +14,31 @@ final class WaveformStyleTests: XCTestCase {
 
     func testAllCasesExist() {
         let allCases = WaveformStyle.allCases
-        XCTAssertEqual(allCases.count, 3)
+        XCTAssertEqual(allCases.count, 6)
         XCTAssertTrue(allCases.contains(.classic))
         XCTAssertTrue(allCases.contains(.neon))
         XCTAssertTrue(allCases.contains(.spectrum))
+        XCTAssertTrue(allCases.contains(.circular))
+        XCTAssertTrue(allCases.contains(.pulseRings))
+        XCTAssertTrue(allCases.contains(.particles))
     }
 
     func testRawValues() {
         XCTAssertEqual(WaveformStyle.classic.rawValue, "Classic")
         XCTAssertEqual(WaveformStyle.neon.rawValue, "Neon")
         XCTAssertEqual(WaveformStyle.spectrum.rawValue, "Spectrum")
+        XCTAssertEqual(WaveformStyle.circular.rawValue, "Circular")
+        XCTAssertEqual(WaveformStyle.pulseRings.rawValue, "Pulse Rings")
+        XCTAssertEqual(WaveformStyle.particles.rawValue, "Particles")
     }
 
     func testIdentifiable() {
         XCTAssertEqual(WaveformStyle.classic.id, "Classic")
         XCTAssertEqual(WaveformStyle.neon.id, "Neon")
         XCTAssertEqual(WaveformStyle.spectrum.id, "Spectrum")
+        XCTAssertEqual(WaveformStyle.circular.id, "Circular")
+        XCTAssertEqual(WaveformStyle.pulseRings.id, "Pulse Rings")
+        XCTAssertEqual(WaveformStyle.particles.id, "Particles")
     }
 
     func testCodable() throws {
@@ -68,6 +77,19 @@ final class WaveformStyleTests: XCTestCase {
 
     func testSpectrumRequiresEnhancedAudio() {
         XCTAssertTrue(WaveformStyle.spectrum.requiresEnhancedAudio)
+    }
+
+    func testCircularRequiresEnhancedAudio() {
+        XCTAssertTrue(WaveformStyle.circular.requiresEnhancedAudio)
+    }
+
+    func testPulseRingsDoesNotRequireEnhancedAudio() {
+        // PulseRings only needs audioLevel, not FFT data
+        XCTAssertFalse(WaveformStyle.pulseRings.requiresEnhancedAudio)
+    }
+
+    func testParticlesRequiresEnhancedAudio() {
+        XCTAssertTrue(WaveformStyle.particles.requiresEnhancedAudio)
     }
 
     // MARK: - UserDefaults Extension Tests
@@ -119,6 +141,9 @@ final class WaveformStyleTests: XCTestCase {
         XCTAssertEqual(WaveformStyle(rawValue: "Classic"), .classic)
         XCTAssertEqual(WaveformStyle(rawValue: "Neon"), .neon)
         XCTAssertEqual(WaveformStyle(rawValue: "Spectrum"), .spectrum)
+        XCTAssertEqual(WaveformStyle(rawValue: "Circular"), .circular)
+        XCTAssertEqual(WaveformStyle(rawValue: "Pulse Rings"), .pulseRings)
+        XCTAssertEqual(WaveformStyle(rawValue: "Particles"), .particles)
     }
 
     func testInitFromInvalidRawValue() {
@@ -147,11 +172,17 @@ final class WaveformStyleTests: XCTestCase {
         set.insert(.classic)
         set.insert(.neon)
         set.insert(.spectrum)
+        set.insert(.circular)
+        set.insert(.pulseRings)
+        set.insert(.particles)
 
-        XCTAssertEqual(set.count, 3)
+        XCTAssertEqual(set.count, 6)
         XCTAssertTrue(set.contains(.classic))
         XCTAssertTrue(set.contains(.neon))
         XCTAssertTrue(set.contains(.spectrum))
+        XCTAssertTrue(set.contains(.circular))
+        XCTAssertTrue(set.contains(.pulseRings))
+        XCTAssertTrue(set.contains(.particles))
     }
 
     func testHashableNoDuplicates() {

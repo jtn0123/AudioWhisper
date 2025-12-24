@@ -258,6 +258,12 @@ internal struct DashboardRecordingView: View {
             return "sparkles"
         case .spectrum:
             return "chart.bar.fill"
+        case .circular:
+            return "sun.max.fill"
+        case .pulseRings:
+            return "dot.radiowaves.left.and.right"
+        case .particles:
+            return "sparkle"
         }
     }
 

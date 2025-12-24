@@ -91,6 +91,25 @@ struct WaveformContainer: View {
                 frequencyBands: frequencyBands,
                 isActive: isRecording
             )
+
+        case .circular:
+            CircularSpectrumView(
+                frequencyBands: frequencyBands,
+                isActive: isRecording
+            )
+
+        case .pulseRings:
+            PulseRingsView(
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
+
+        case .particles:
+            ParticleFieldView(
+                audioLevel: audioLevel,
+                frequencyBands: frequencyBands,
+                isActive: isRecording
+            )
         }
     }
 

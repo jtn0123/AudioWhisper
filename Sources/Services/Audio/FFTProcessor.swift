@@ -26,16 +26,16 @@ final class FFTProcessor: @unchecked Sendable {
     // MARK: - Frequency Band Boundaries (Hz)
 
     /// Frequency ranges for each band (in Hz)
-    /// Sub-bass, Bass, Low-mid, Mid, Upper-mid, Presence, Brilliance, Air
+    /// Voice-optimized: concentrates on human speech frequencies (80Hz-10kHz)
     private let bandRanges: [(low: Float, high: Float)] = [
-        (20, 60),      // Sub-bass
-        (60, 250),     // Bass
-        (250, 500),    // Low-mid
-        (500, 2000),   // Mid
-        (2000, 4000),  // Upper-mid
-        (4000, 6000),  // Presence
-        (6000, 12000), // Brilliance
-        (12000, 20000) // Air
+        (80, 150),     // Male fundamental
+        (150, 300),    // Female fundamental
+        (300, 600),    // First formant (vowel body)
+        (600, 1200),   // Second formant (vowel color)
+        (1200, 2400),  // Third formant (clarity)
+        (2400, 4000),  // Presence (intelligibility)
+        (4000, 6000),  // Sibilants (S, T, F sounds)
+        (6000, 10000)  // Brilliance (air)
     ]
 
     // MARK: - Initialization

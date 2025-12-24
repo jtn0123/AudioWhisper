@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Classic level-based waveform visualization with 48 animated bars.
-/// This is the original visualization style, driven by audio level (not raw samples).
+/// Features gravity-based physics: bars rise quickly, fall with acceleration, and bounce.
 struct ClassicWaveformView: View {
     let audioLevel: Float
     let isActive: Bool
@@ -13,7 +13,13 @@ struct ClassicWaveformView: View {
     private let minHeight: CGFloat = 2
     private let maxHeight: CGFloat = 60
 
-    @State private var animatedLevels: [CGFloat] = []
+    // Physics constants
+    private let gravity: CGFloat = 2.5        // Downward acceleration per frame
+    private let bounceFactor: CGFloat = 0.3   // Energy retained after bounce
+    private let riseSpeed: CGFloat = 0.8      // How quickly bars rise to target (0-1)
+
+    @State private var barHeights: [CGFloat] = []
+    @State private var velocities: [CGFloat] = []
     @State private var idlePhase: CGFloat = 0
 
     var body: some View {
@@ -25,52 +31,77 @@ struct ClassicWaveformView: View {
             }
         }
         .onAppear {
-            animatedLevels = Array(repeating: minHeight, count: barCount)
+            barHeights = Array(repeating: minHeight, count: barCount)
+            velocities = Array(repeating: 0, count: barCount)
         }
-        .onReceive(Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()) { _ in
-            updateLevels()
+        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
+            updatePhysics()
         }
     }
 
     private func barHeight(for index: Int) -> CGFloat {
-        guard index < animatedLevels.count else { return minHeight }
-        return animatedLevels[index]
+        guard index < barHeights.count else { return minHeight }
+        return barHeights[index]
     }
 
-    private func updateLevels() {
-        idlePhase += 0.08
+    private func updatePhysics() {
+        guard !barHeights.isEmpty else { return }
 
-        var newLevels: [CGFloat] = []
+        idlePhase += 0.06
         let centerIndex = barCount / 2
 
         for i in 0..<barCount {
             let distanceFromCenter = abs(i - centerIndex)
             let normalizedDistance = CGFloat(distanceFromCenter) / CGFloat(centerIndex)
-
-            // Base wave shape - higher in center, tapering to edges
             let baseShape = 1.0 - pow(normalizedDistance, 1.5)
 
+            var targetHeight: CGFloat
+
             if isActive && audioLevel > 0.01 {
-                // Active recording - respond to audio
+                // Active - calculate target based on audio level
                 let level = CGFloat(audioLevel)
-
-                // Add some randomness for organic feel
-                let noise = CGFloat.random(in: -0.15...0.15)
-                let variation = sin(CGFloat(i) * 0.5 + idlePhase * 2) * 0.2
-
-                let height = minHeight + (maxHeight - minHeight) * baseShape * level * (1 + noise + variation)
-                newLevels.append(max(minHeight, min(maxHeight, height)))
+                let noise = CGFloat.random(in: -0.1...0.1)
+                let variation = sin(CGFloat(i) * 0.5 + idlePhase * 2) * 0.15
+                targetHeight = minHeight + (maxHeight - minHeight) * baseShape * level * (1 + noise + variation)
+                targetHeight = max(minHeight, min(maxHeight, targetHeight))
             } else {
-                // Idle state - subtle breathing wave
+                // Idle - subtle breathing
                 let breathe = sin(idlePhase + CGFloat(i) * 0.15) * 0.5 + 0.5
-                let idleHeight = minHeight + (maxHeight * 0.08) * baseShape * breathe
-                newLevels.append(idleHeight)
+                targetHeight = minHeight + (maxHeight * 0.08) * baseShape * breathe
             }
-        }
 
-        // Smooth transition
-        withAnimation(.linear(duration: 0.05)) {
-            animatedLevels = newLevels
+            // Physics update
+            if targetHeight > barHeights[i] {
+                // Rising: move quickly toward target (no gravity)
+                barHeights[i] += (targetHeight - barHeights[i]) * riseSpeed
+                velocities[i] = 0 // Reset velocity when rising
+            } else {
+                // Falling: apply gravity
+                velocities[i] += gravity
+
+                // Apply velocity
+                barHeights[i] -= velocities[i]
+
+                // Bounce off minimum height
+                if barHeights[i] < minHeight {
+                    barHeights[i] = minHeight
+                    if velocities[i] > 1 {
+                        // Bounce with energy loss
+                        velocities[i] = -velocities[i] * bounceFactor
+                    } else {
+                        velocities[i] = 0
+                    }
+                }
+
+                // Damping when near rest
+                if abs(velocities[i]) < 0.5 && abs(barHeights[i] - targetHeight) < 2 {
+                    velocities[i] = 0
+                    barHeights[i] = targetHeight
+                }
+            }
+
+            // Clamp height
+            barHeights[i] = max(minHeight, min(maxHeight, barHeights[i]))
         }
     }
 }

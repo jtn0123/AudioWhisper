@@ -5,6 +5,9 @@ enum WaveformStyle: String, CaseIterable, Identifiable, Codable {
     case classic = "Classic"
     case neon = "Neon"
     case spectrum = "Spectrum"
+    case circular = "Circular"
+    case pulseRings = "Pulse Rings"
+    case particles = "Particles"
 
     var id: String { rawValue }
 
@@ -12,17 +15,23 @@ enum WaveformStyle: String, CaseIterable, Identifiable, Codable {
     var description: String {
         switch self {
         case .classic:
-            return "Simple animated bars"
+            return "Bouncing bars with gravity"
         case .neon:
-            return "Glowing waveform with particles"
+            return "Glowing waveform with trails"
         case .spectrum:
-            return "Frequency spectrum analyzer"
+            return "Voice frequency analyzer"
+        case .circular:
+            return "Radial sunburst pattern"
+        case .pulseRings:
+            return "Expanding ripple rings"
+        case .particles:
+            return "Floating particle field"
         }
     }
 
     /// Whether this style requires enhanced audio data (raw samples, FFT)
     var requiresEnhancedAudio: Bool {
-        self != .classic
+        self != .classic && self != .pulseRings
     }
 }
 
