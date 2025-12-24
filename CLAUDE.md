@@ -1,123 +1,101 @@
-# AudioWhisper — LLM Assistant Guidelines
+# CLAUDE.md
 
-This document provides instructions for AI assistants (e.g., ChatGPT, Claude) on how to work effectively with the AudioWhisper codebase. Follow these guidelines when analyzing, proposing changes, or implementing features.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 1. Purpose and Scope
-
-- **Primary Role**: Assist developers by reading existing code, suggesting idiomatic Swift implementations, writing tests, and fixing bugs.
-- **Focus Areas**:
-  - Adherence to Swift and SwiftUI best practices
-  - Memory safety and thread correctness
-  - Consistent use of existing libraries and patterns
-  - Comprehensive test coverage
-
-## 2. Libraries and Frameworks
-
-AudioWhisper relies on:
-- **SwiftUI** + **AppKit** for UI and macOS menu bar integration
-- **AVFoundation** for audio recording
-- **Alamofire** for HTTP requests and model downloads
-- **WhisperKit** (CoreML) for local transcription
-- **HotKey** for global keyboard shortcuts
-- **Combine** / Swift Concurrency for asynchronous logic
-- **KeychainAccess** for secure API key storage
-
-When extending functionality, prefer these existing dependencies over introducing new ones.
-
-## 3. Code Style and Best Practices
-
-- **Swift 5.7+** targeting **macOS 14+** (use modern APIs).
-- Avoid force unwrapping (`!`); prefer `guard let` and optional chaining.
-- Use value types (`struct`/`enum`) by default; reserve `class` for reference semantics or bridging.
-- Prevent retain cycles with `[weak self]` or `unowned self` in closures.
-- Dispatch UI updates on the main actor or `DispatchQueue.main`.
-- Keep functions small (≤ 40 lines) and single-purpose.
-- Write concise comments only for non-obvious logic; favor self-documenting code.
-- Follow existing naming conventions, file structure, and grouping.
-
-## 4. Testing
-
-- Write **XCTest** unit tests for all new or modified logic.
-- Cover edge cases, error paths, and concurrency scenarios.
-- Ensure `swift test --parallel --enable-code-coverage` passes without failures.
-- Keep tests deterministic and isolate external dependencies with mocks.
-
-## 5. Memory Safety and Concurrency
-
-- Use Swift Concurrency (`async`/`await`) or Combine for asynchronous flows.
-- Prevent data races: confine shared state to actors or serial queues.
-- Clean up observers, timers, and resources in `deinit` or task cancellation.
-- Annotate UI components with `@MainActor` when required.
-
-## 6. Pull Request Guidelines for AI Outputs
-
-- Provide minimal, focused patches for the requested change.
-- Run `swift build`, `swift test`, and any linting checks before submitting.
-- Do not introduce unrelated changes or fix pre-existing warnings.
-- Include a brief rationale and testing steps in the PR description.
-
-## 7. Building and Deploying
-
-### Quick Build & Deploy
+## Build Commands
 
 ```bash
-# 1. Build the app bundle
+# Build release app bundle
 make build
 
-# 2. If make build fails after "Build succeeded", run manually:
-cd /Users/yesh/Documents/personal/reference/AudioWhisper
-swift build -c release --arch arm64 --arch x86_64
+# Run in development mode
+swift run
 
-# Create app bundle manually if needed:
-rm -rf AudioWhisper.app
-mkdir -p AudioWhisper.app/Contents/{MacOS,Resources,Resources/bin}
-cp .build/apple/Products/Release/AudioWhisper AudioWhisper.app/Contents/MacOS/
-chmod +x AudioWhisper.app/Contents/MacOS/AudioWhisper
+# Build for release (without app bundle)
+swift build -c release
 
-# Copy Python scripts and ml/ package
-cp Sources/*.py AudioWhisper.app/Contents/Resources/ 2>/dev/null || true
-cp -R Sources/ml AudioWhisper.app/Contents/Resources/ 2>/dev/null || true
-find AudioWhisper.app/Contents/Resources/ml -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+# Run tests
+make test
 
-# Copy uv binary
-cp "$(command -v uv)" AudioWhisper.app/Contents/Resources/bin/uv 2>/dev/null || true
+# Run all tests with coverage
+swift test --parallel --enable-code-coverage
 
-# Generate Info.plist (see scripts/build.sh for full template)
-# Generate icons
-./scripts/generate-icons.sh
-iconutil -c icns AudioWhisper.iconset -o AudioWhisper.app/Contents/Resources/AppIcon.icns
+# Run a single test file
+swift test --filter "DataManagerTests"
 
-# 3. Sign with stable identifier
-codesign --force --deep --sign - --identifier "com.audiowhisper.app" AudioWhisper.app
+# Run a specific test
+swift test --filter "DataManagerTests/testSaveAndLoadHistory"
 
-# 4. Deploy
+# Clean build artifacts
+make clean
+```
+
+## Deployment
+
+After building, deploy to Applications:
+```bash
 pkill -x AudioWhisper 2>/dev/null || true
-sleep 1
 rm -rf /Applications/AudioWhisper.app
 cp -R AudioWhisper.app /Applications/
-
-# 5. Launch
 open /Applications/AudioWhisper.app
 ```
 
-### Accessibility Permission (SmartPaste)
+**Accessibility Permission Note**: After deploying a new build, SmartPaste may break because macOS invalidates Accessibility permissions when the code signature changes. Users must remove and re-add AudioWhisper in System Settings → Privacy & Security → Accessibility.
 
-**Critical**: The app uses adhoc code signing. When replacing the app bundle, macOS invalidates existing Accessibility permissions because the code signature hash changes.
+## Architecture
 
-After deploying a new build, the user must:
-1. Open **System Settings → Privacy & Security → Accessibility**
-2. **Remove** AudioWhisper from the list (select it, click `-`)
-3. **Re-add** it (click `+`, navigate to `/Applications/AudioWhisper.app`)
-4. Ensure the toggle is **ON**
+### App Entry Point
+- `Sources/App/AudioWhisperApp.swift` - SwiftUI app entry, menu bar app with no main window
+- `Sources/App/AppDelegate.swift` - Core app delegate split across extensions:
+  - `AppDelegate+Hotkeys.swift` - Global hotkey handling
+  - `AppDelegate+Lifecycle.swift` - App lifecycle events
+  - `AppDelegate+Menu.swift` - Menu bar setup
+  - `AppDelegate+Notifications.swift` - System notifications
+  - `AppDelegate+RecordingWindow.swift` - Recording UI management
 
-Without this, SmartPaste will silently fail (paste won't work).
+### Transcription Services (`Sources/Services/`)
+- `SpeechToTextService.swift` - Main transcription orchestrator, routes to appropriate provider
+- `LocalWhisperService.swift` - WhisperKit CoreML transcription (offline)
+- `ParakeetService.swift` - Parakeet-MLX transcription (Apple Silicon, offline)
+- `SemanticCorrectionService.swift` - Post-processing cleanup (typos, punctuation)
+- `MLXCorrectionService.swift` - Local MLX-based semantic correction
 
-### Troubleshooting
+### State Management (`Sources/Stores/`)
+- `DataManager.swift` - SwiftData persistence for transcription history
+- `UsageMetricsStore.swift` - Session stats (words, WPM, time saved)
+- `CategoryStore.swift` - App-aware category definitions
+- `SourceUsageStore.swift` - Provider usage tracking
 
-- **"Build succeeded" then "Build failed"**: The Swift build works but post-build steps fail. Check if `.build/apple/Products/Release/AudioWhisper` exists and run bundle creation manually.
-- **SmartPaste broken after deploy**: Re-grant Accessibility permission (see above).
-- **App won't launch**: Check `codesign -dvvv /Applications/AudioWhisper.app` for signing issues.
+### Managers (`Sources/Managers/`)
+- `HotKeyManager.swift` - Global keyboard shortcuts via HotKey library
+- `PasteManager.swift` - Clipboard and SmartPaste functionality
+- `PressAndHoldKeyMonitor.swift` - Push-to-talk modifier key handling
+- `PermissionManager.swift` - Microphone/Accessibility permission checks
+- `MLDaemonManager.swift` - Background Python process for MLX models
 
----
+### Python Integration
+The app embeds Python scripts for MLX-based features:
+- `Sources/parakeet_transcribe_pcm.py` - Parakeet transcription
+- `Sources/mlx_semantic_correct.py` - MLX semantic correction
+- `Sources/ml/` - Python ML package
+- `Sources/verify_parakeet.py`, `Sources/verify_mlx.py` - Model verification
 
-*This file is intended solely for guiding AI assistants. Do not expose it in end-user documentation.*
+Python dependencies are managed via bundled `uv` binary. `UvBootstrap.swift` handles environment setup.
+
+## Key Dependencies
+
+- **SwiftUI + AppKit** - UI and menu bar integration
+- **AVFoundation** - Audio recording
+- **Alamofire** - HTTP requests and model downloads
+- **WhisperKit** - CoreML-based local transcription
+- **HotKey** - Global keyboard shortcuts
+- **KeychainAccess** - Secure API key storage (via Keychain)
+
+## Code Patterns
+
+- Swift 5.9+ targeting macOS 14+
+- Use `@MainActor` for UI components
+- Prefer `guard let` over force unwrapping
+- Use `[weak self]` in closures to prevent retain cycles
+- Swift Concurrency (`async`/`await`) for async flows
+- Keep functions ≤ 40 lines
