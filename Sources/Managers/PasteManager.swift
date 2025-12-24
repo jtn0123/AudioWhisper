@@ -158,24 +158,15 @@ internal class PasteManager {
     /// Performs paste with immediate user interaction context
     /// This should work better than automatic pasting
     func pasteWithUserInteraction(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
-        // Check permission first - if denied, show proper explanation and request
+        // Check permission first - if denied, fail gracefully
+        // Text is already in clipboard so user can paste manually
+        // Don't open System Settings here - it's disruptive and loses focus
         guard accessibilityManager.checkPermission() else {
-            // Show permission request with explanation - this includes user education
-            accessibilityManager.requestPermissionWithExplanation { [weak self] granted in
-                guard let self = self else { return }
-                
-                if granted {
-                    // Permission was granted - attempt paste operation
-                    self.performCGEventPaste(completion: completion)
-                } else {
-                    // User declined permission - fail gracefully (modal already handled user choice)
-                    self.handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
-                    completion?(.failure(PasteError.accessibilityPermissionDenied))
-                }
-            }
+            handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
+            completion?(.failure(PasteError.accessibilityPermissionDenied))
             return
         }
-        
+
         // Permission is available - proceed with paste
         performCGEventPaste(completion: completion)
     }
