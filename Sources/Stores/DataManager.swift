@@ -128,8 +128,6 @@ internal final class DataManager: DataManagerProtocol {
                 configurations: [modelConfiguration]
             )
             
-            Logger.dataManager.info("DataManager initialized successfully")
-            
             // Perform initial cleanup of expired records
             Task {
                 await cleanupExpiredRecordsQuietly()

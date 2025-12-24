@@ -55,6 +55,10 @@ internal struct DashboardHomeView: View {
         .background(DashboardTheme.pageBg)
         .onAppear {
             loadDashboardData()
+        }
+        .task {
+            // Delay animation to avoid layout recursion during initial layout pass
+            try? await Task.sleep(for: .milliseconds(50))
             withAnimation {
                 isLoaded = true
             }
