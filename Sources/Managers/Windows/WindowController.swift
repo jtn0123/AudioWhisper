@@ -85,63 +85,36 @@ internal class WindowController {
             completion?()
             return
         }
-        
+
         // Remember the currently active app before showing our window
         storePreviousApp()
-        
-        // Configure window for proper keyboard handling and space management
+
+        // Configure window for overlay display without stealing focus or switching spaces
         window.canHide = false
         window.acceptsMouseMovedEvents = true
         window.isOpaque = false
         window.hasShadow = true
-        
-        // Force window to appear in current space by resetting collection behavior
-        window.orderOut(nil)
-        window.collectionBehavior = []
-        
-        // Step 1: Reset and reconfigure window
-        performWindowOperation(after: 0.02) { [weak self] in
-            guard self != nil else {
-                completion?()
-                return
-            }
-            
-            // Reset window level and behavior to force space redetection
-            window.level = .normal
-            
-            // Use more aggressive collection behavior for fullscreen spaces
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
-            
-            // Step 2: Set final level and show window
-            self?.performWindowOperation(after: 0.01) { [weak self] in
-                guard self != nil else {
-                    completion?()
-                    return
-                }
-                
-                // Use floating window level to ensure it appears over other apps
-                window.level = .floating
-                
-                // Activate app to ensure we're in right space context
-                NSApp.activate(ignoringOtherApps: true)
-                
-                // Show window in current space with maximum priority
-                window.orderFrontRegardless()
-                if window.canBecomeKey {
-                    window.makeKeyAndOrderFront(nil)
-                } else {
-                    window.orderFront(nil)
-                }
 
-                // Step 3: Ensure proper focus
-                self?.performWindowOperation(after: 0.05) {
-                    if window.canBecomeKey {
-                        window.makeKey()
-                    }
-                    window.makeFirstResponder(window.contentView)
-                    completion?()
-                }
+        // Set collection behavior to appear on all spaces including fullscreen
+        // This allows the window to overlay fullscreen apps without space switching
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+
+        // Use screenSaver level to appear above fullscreen apps
+        window.level = .screenSaver
+
+        // Show window without activating the app (prevents space switching)
+        window.orderFrontRegardless()
+
+        // Small delay then set proper level and focus
+        performWindowOperation(after: 0.02) {
+            // Lower to floating level for normal interaction
+            window.level = .floating
+
+            if window.canBecomeKey {
+                window.makeKey()
             }
+            window.makeFirstResponder(window.contentView)
+            completion?()
         }
     }
     

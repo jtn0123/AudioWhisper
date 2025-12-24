@@ -8,10 +8,18 @@ internal extension AppDelegate {
         if recordingWindow == nil {
             createRecordingWindow()
         }
+
+        // Hide dashboard if visible to avoid visual confusion
+        if let dashboardWindow = NSApp.windows.first(where: { $0.title == "AudioWhisper Dashboard" }),
+           dashboardWindow.isVisible {
+            dashboardWindow.orderOut(nil)
+        }
+
         windowController.toggleRecordWindow(recordingWindow)
     }
 
     func showRecordingWindowForProcessing(completion: (() -> Void)? = nil) {
+        // Ensure we always have a fresh recording window
         if recordingWindow == nil {
             createRecordingWindow()
         }
@@ -19,6 +27,12 @@ internal extension AppDelegate {
         guard let window = recordingWindow else {
             completion?()
             return
+        }
+
+        // Hide dashboard if visible to avoid confusion
+        if let dashboardWindow = NSApp.windows.first(where: { $0.title == "AudioWhisper Dashboard" }),
+           dashboardWindow.isVisible {
+            dashboardWindow.orderOut(nil)
         }
 
         if window.isVisible {
