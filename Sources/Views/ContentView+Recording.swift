@@ -264,9 +264,12 @@ internal extension ContentView {
                 }
             }
         } else {
+            // Note: ContentView is a struct, so no weak self needed.
+            // SwiftUI captures a copy of the struct, and @State properties
+            // are backed by heap storage that remains valid.
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 let recordWindow = NSApp.windows.first { window in
-                    window.title == "AudioWhisper Recording"
+                    window.title == WindowTitles.recording
                 }
 
                 let onFadeComplete = {
@@ -337,6 +340,8 @@ internal extension ContentView {
                     let capturedBundleId: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
                     Task.detached { [text, transcriptionProvider, capturedBundleId] in
                         let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId)
+                        let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
+                        let characterCount = corrected.count
                         let shouldSave2: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
                         if shouldSave2 {
                             let modelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? self.selectedWhisperModel.rawValue : nil }
@@ -346,6 +351,8 @@ internal extension ContentView {
                                 provider: transcriptionProvider,
                                 duration: nil,
                                 modelUsed: modelUsed,
+                                wordCount: wordCount,
+                                characterCount: characterCount,
                                 sourceAppBundleId: sourceInfo.bundleIdentifier,
                                 sourceAppName: sourceInfo.displayName,
                                 sourceAppIconData: sourceInfo.iconData
@@ -365,30 +372,37 @@ internal extension ContentView {
                         }
                     }
                 } else {
+                    // Wait for semantic correction before showing confirmation to ensure
+                    // pasteboard content matches displayed text (Bug #3 fix)
+                    let capturedBundleId2: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
+                    let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId2)
+                    let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
+                    let characterCount = corrected.count
+
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(corrected, forType: .string)
+
+                    let shouldSave3: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
+                    if shouldSave3 {
+                        let modelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? self.selectedWhisperModel.rawValue : nil }
+                        let sourceInfo: SourceAppInfo = await MainActor.run { self.currentSourceAppInfo() }
+                        let record = TranscriptionRecord(
+                            text: corrected,
+                            provider: transcriptionProvider,
+                            duration: nil,
+                            modelUsed: modelUsed,
+                            wordCount: wordCount,
+                            characterCount: characterCount,
+                            sourceAppBundleId: sourceInfo.bundleIdentifier,
+                            sourceAppName: sourceInfo.displayName,
+                            sourceAppIconData: sourceInfo.iconData
+                        )
+                        await DataManager.shared.saveTranscriptionQuietly(record)
+                    }
+
                     await MainActor.run {
                         transcriptionStartTime = nil
-                        showConfirmationAndPaste(text: text)
-                    }
-                    let capturedBundleId2: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
-                    Task.detached { [text, transcriptionProvider, capturedBundleId2] in
-                        let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId2)
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(corrected, forType: .string)
-                        let shouldSave3: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
-                        if shouldSave3 {
-                            let modelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? self.selectedWhisperModel.rawValue : nil }
-                            let sourceInfo: SourceAppInfo = await MainActor.run { self.currentSourceAppInfo() }
-                            let record = TranscriptionRecord(
-                                text: corrected,
-                                provider: transcriptionProvider,
-                                duration: nil,
-                                modelUsed: modelUsed,
-                                sourceAppBundleId: sourceInfo.bundleIdentifier,
-                                sourceAppName: sourceInfo.displayName,
-                                sourceAppIconData: sourceInfo.iconData
-                            )
-                            await DataManager.shared.saveTranscriptionQuietly(record)
-                        }
+                        showConfirmationAndPaste(text: corrected)
                     }
                 }
             } catch is CancellationError {

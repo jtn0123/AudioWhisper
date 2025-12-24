@@ -226,11 +226,32 @@ final class WindowControllerTests: XCTestCase {
     func testDefaultWelcomeState() {
         // When hasCompletedWelcome is not set, should default to false
         UserDefaults.standard.removeObject(forKey: "hasCompletedWelcome")
-        
+
         let hasCompleted = UserDefaults.standard.bool(forKey: "hasCompletedWelcome")
         XCTAssertFalse(hasCompleted)
-        
+
         // Should block window toggle
         XCTAssertNoThrow(windowController.toggleRecordWindow())
+    }
+
+    // MARK: - Window Title Constant Tests (Bug #5 regression prevention)
+
+    func testRecordingWindowTitleConstant() {
+        // Verify the constant exists and has expected value
+        XCTAssertEqual(WindowTitles.recording, "AudioWhisper Recording")
+    }
+
+    func testWindowTitleConstantIsNotEmpty() {
+        // Verify the constant is not empty
+        XCTAssertFalse(WindowTitles.recording.isEmpty)
+    }
+
+    func testWindowLookupWithConstant() {
+        // Create a window with the constant title
+        let window = NSWindow()
+        window.title = WindowTitles.recording
+
+        // Verify the title was set correctly
+        XCTAssertEqual(window.title, "AudioWhisper Recording")
     }
 }

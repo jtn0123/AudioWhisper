@@ -4,7 +4,7 @@ import AppKit
 private final class ObserverBox: @unchecked Sendable {
     private let lock = NSLock()
     private var _observer: NSObjectProtocol?
-    
+
     var observer: NSObjectProtocol? {
         get {
             lock.lock()
@@ -16,6 +16,21 @@ private final class ObserverBox: @unchecked Sendable {
             defer { lock.unlock() }
             _observer = newValue
         }
+    }
+}
+
+/// Thread-safe flag to ensure continuation is resumed exactly once
+internal final class ResumedFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _resumed = false
+
+    /// Attempts to resume. Returns true if this is the first call, false otherwise.
+    func tryResume() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if _resumed { return false }
+        _resumed = true
+        return true
     }
 }
 
@@ -64,7 +79,7 @@ internal extension ContentView {
 
     func hideRecordingWindow() {
         let recordWindow = NSApp.windows.first { window in
-            window.title == "AudioWhisper Recording"
+            window.title == WindowTitles.recording
         }
         if let window = recordWindow {
             fadeOutWindow(window)
@@ -124,18 +139,21 @@ internal extension ContentView {
     
     func waitForApplicationActivation(_ target: NSRunningApplication) async {
         if target.isActive { return }
-        
+
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let observerBox = ObserverBox()
-            
+            let resumedFlag = ResumedFlag()
+
             let timeoutTask = Task {
                 try? await Task.sleep(for: .milliseconds(500))
                 if let observer = observerBox.observer {
                     NotificationCenter.default.removeObserver(observer)
                 }
-                continuation.resume()
+                if resumedFlag.tryResume() {
+                    continuation.resume()
+                }
             }
-            
+
             observerBox.observer = NotificationCenter.default.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification,
                 object: nil,
@@ -147,7 +165,9 @@ internal extension ContentView {
                     if let observer = observerBox.observer {
                         NotificationCenter.default.removeObserver(observer)
                     }
-                    continuation.resume()
+                    if resumedFlag.tryResume() {
+                        continuation.resume()
+                    }
                 }
             }
         }

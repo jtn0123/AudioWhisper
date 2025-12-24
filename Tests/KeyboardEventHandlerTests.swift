@@ -16,7 +16,7 @@ final class KeyboardEventHandlerTests: XCTestCase {
             backing: .buffered,
             defer: true
         )
-        window.title = "AudioWhisper Recording"
+        window.title = WindowTitles.recording
     }
 
     override func tearDown() {

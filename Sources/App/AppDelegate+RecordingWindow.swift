@@ -44,7 +44,7 @@ internal extension AppDelegate {
             defer: false
         )
 
-        window.title = "AudioWhisper Recording"
+        window.title = WindowTitles.recording
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true

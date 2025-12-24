@@ -176,4 +176,84 @@ final class TranscriptionRecordTests: XCTestCase {
         )
         XCTAssertNil(noModelRecord.whisperModel)
     }
+
+    // MARK: - Word/Character Count Tests (Bug #2 regression prevention)
+
+    func testTranscriptionRecordWithMetrics() {
+        let text = "Hello world test"
+        let record = TranscriptionRecord(
+            text: text,
+            provider: .openai,
+            duration: 5.0,
+            modelUsed: nil,
+            wordCount: 3,
+            characterCount: 16
+        )
+
+        XCTAssertEqual(record.wordCount, 3)
+        XCTAssertEqual(record.characterCount, 16)
+    }
+
+    func testTranscriptionRecordDefaultMetricsAreZero() {
+        let record = TranscriptionRecord(
+            text: "Test",
+            provider: .openai
+        )
+
+        // Verify defaults are 0 (not nil)
+        XCTAssertEqual(record.wordCount, 0)
+        XCTAssertEqual(record.characterCount, 0)
+    }
+
+    func testWordsPerMinuteCalculation() {
+        let record = TranscriptionRecord(
+            text: "Test",
+            provider: .openai,
+            duration: 60.0,  // 1 minute
+            wordCount: 120,
+            characterCount: 600
+        )
+
+        // 120 words / 1 minute = 120 WPM
+        XCTAssertEqual(record.wordsPerMinute, 120.0)
+    }
+
+    func testWordsPerMinuteWithZeroWordCount() {
+        let record = TranscriptionRecord(
+            text: "",
+            provider: .openai,
+            duration: 60.0,
+            wordCount: 0,
+            characterCount: 0
+        )
+
+        // Should return nil when wordCount is 0
+        XCTAssertNil(record.wordsPerMinute)
+    }
+
+    func testWordsPerMinuteWithZeroDuration() {
+        let record = TranscriptionRecord(
+            text: "Test",
+            provider: .openai,
+            duration: 0.0,
+            wordCount: 10,
+            characterCount: 50
+        )
+
+        // Should return nil when duration is 0
+        XCTAssertNil(record.wordsPerMinute)
+    }
+
+    func testWordsPerMinuteWithNilDuration() {
+        let record = TranscriptionRecord(
+            text: "Test",
+            provider: .openai,
+            duration: nil,
+            wordCount: 10,
+            characterCount: 50
+        )
+
+        // Should return nil when duration is nil
+        XCTAssertNil(record.wordsPerMinute)
+    }
 }

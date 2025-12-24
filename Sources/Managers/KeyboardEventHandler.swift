@@ -19,7 +19,7 @@ internal class KeyboardEventHandler {
         // Use global monitor that works regardless of focus
         globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
             // Check if recording window is visible
-            if let window = NSApp.windows.first(where: { $0.title == "AudioWhisper Recording" }), window.isVisible {
+            if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }), window.isVisible {
                 _ = self.handleKeyEvent(event, for: window)
             }
         }
@@ -27,7 +27,7 @@ internal class KeyboardEventHandler {
         // Also add local monitor with proper filtering
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // Check if recording window is visible
-            if let window = NSApp.windows.first(where: { $0.title == "AudioWhisper Recording" }), window.isVisible {
+            if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }), window.isVisible {
                 // Always consume events when recording window is visible to prevent passthrough
                 _ = self.handleKeyEvent(event, for: window)
                 return nil // Consume the event to prevent it from reaching other apps

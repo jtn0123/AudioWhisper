@@ -54,7 +54,7 @@ internal class WindowManager: ObservableObject {
         window.backgroundColor = .clear
         window.level = .modalPanel
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
-        window.title = "AudioWhisper Recording"
+        window.title = WindowTitles.recording
         window.hasShadow = true
         window.isOpaque = false
         
@@ -125,7 +125,7 @@ internal class WindowManager: ObservableObject {
             window.backgroundColor = .clear
             window.level = .screenSaver
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary]
-            window.title = "AudioWhisper Recording"
+            window.title = WindowTitles.recording
             recordWindow = window
         }
     }
