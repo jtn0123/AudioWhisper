@@ -158,7 +158,8 @@ else
 fi
 
 # Bundle uv (Python package manager required for MLX/Parakeet features)
-UV_VERSION="0.5.11"
+# Must be >= 0.8.5 to match UvBootstrap.minUvVersion
+UV_VERSION="0.8.5"
 UV_BUNDLED="Sources/Resources/bin/uv"
 
 # Download uv if not present

@@ -53,13 +53,20 @@ internal struct UvBootstrap {
                 foundButOld = (url, ver)
             }
         }
-        // Bundled at bin/uv
+        // Bundled uv - check multiple locations for different build methods
+        // Release build (build.sh): Contents/Resources/bin/uv
+        // SPM/Xcode build: Contents/Resources/Resources/bin/uv
         if let resURL = Bundle.main.resourceURL {
-            let url = resURL.appendingPathComponent("bin/uv")
-            if FileManager.default.isExecutableFile(atPath: url.path) {
-                if let ver = try? uvVersion(at: url) {
-                    if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
-                    foundButOld = foundButOld ?? (url, ver)
+            let candidates = [
+                resURL.appendingPathComponent("bin/uv"),
+                resURL.appendingPathComponent("Resources/bin/uv")
+            ]
+            for url in candidates {
+                if FileManager.default.isExecutableFile(atPath: url.path) {
+                    if let ver = try? uvVersion(at: url) {
+                        if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
+                        foundButOld = foundButOld ?? (url, ver)
+                    }
                 }
             }
         }
