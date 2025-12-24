@@ -158,7 +158,7 @@ internal class SpeechToTextService {
                 multipartFormData: { multipartFormData in
                     multipartFormData.append(audioURL, withName: "file")
                     // Azure deployments already specify the model, but it doesn't hurt to include
-                    multipartFormData.append("whisper-1".data(using: .utf8)!, withName: "model")
+                    multipartFormData.append(Data("whisper-1".utf8), withName: "model")
                 },
                 to: transcriptionURL,
                 headers: headers

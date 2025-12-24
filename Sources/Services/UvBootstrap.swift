@@ -91,7 +91,7 @@ internal struct UvBootstrap {
         // Ensure .venv exists using specified Python (or default)
         let venvDir = proj.appendingPathComponent(".venv", isDirectory: true)
         if !fm.fileExists(atPath: venvDir.path) {
-            let pythonSpecifier: String = (userPython?.isEmpty == false) ? userPython! : defaultPythonVersion
+            let pythonSpecifier = userPython.flatMap { $0.isEmpty ? nil : $0 } ?? defaultPythonVersion
             log?("Creating project .venv with Python \(pythonSpecifier)…")
             let (out, err, status) = runInDir(uv.path, ["venv", "--python", pythonSpecifier], cwd: proj)
             if status != 0 { throw UvError.venvCreationFailed(err.isEmpty ? out : err) }

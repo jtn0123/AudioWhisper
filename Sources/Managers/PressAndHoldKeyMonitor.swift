@@ -150,7 +150,21 @@ internal final class PressAndHoldKeyMonitor {
     private var keyUpMonitor: Any?
     private let monitorQueue = DispatchQueue(label: "com.audiowhisper.pressAndHoldMonitor")
 
-    private var isPressed = false
+    // Thread-safe isPressed state (Bug #18 fix: data race prevention)
+    private let isPressedLock = NSLock()
+    private var _isPressed = false
+    private var isPressed: Bool {
+        get {
+            isPressedLock.lock()
+            defer { isPressedLock.unlock() }
+            return _isPressed
+        }
+        set {
+            isPressedLock.lock()
+            defer { isPressedLock.unlock() }
+            _isPressed = newValue
+        }
+    }
 
     init(
         configuration: PressAndHoldConfiguration,

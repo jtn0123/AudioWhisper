@@ -344,13 +344,15 @@ internal extension ContentView {
                         progressMessage = "Semantic correction..."
                     }
                     // Bug #17 fix: Capture all values before Task.detached to avoid implicit self capture
+                    // Bug #20 fix: Also capture semanticCorrectionService explicitly
                     let capturedBundleId: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
                     let capturedModelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? selectedWhisperModel.rawValue : nil }
                     let capturedSourceInfo: SourceAppInfo = await MainActor.run { currentSourceAppInfo() }
                     let shouldSave2: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
+                    let capturedSemanticService = semanticCorrectionService
 
-                    Task.detached { [text, transcriptionProvider, capturedBundleId, capturedModelUsed, capturedSourceInfo, shouldSave2] in
-                        let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId)
+                    Task.detached { [text, transcriptionProvider, capturedBundleId, capturedModelUsed, capturedSourceInfo, shouldSave2, capturedSemanticService] in
+                        let corrected = await capturedSemanticService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId)
                         let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
                         let characterCount = corrected.count
                         if shouldSave2 {

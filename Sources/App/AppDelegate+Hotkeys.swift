@@ -162,20 +162,22 @@ internal extension AppDelegate {
 
         button.image = redOutlineImage
 
-        var isRedState = true
+        // Bug #23 fix: Use reference type instead of mutable value capture
+        final class AnimationState { var isRedState = true }
+        let animState = AnimationState()
 
         let queue = DispatchQueue(label: "com.audiowhisper.animation", qos: .background)
         let timer = DispatchSource.makeTimerSource(queue: queue)
 
         timer.schedule(deadline: .now(), repeating: 0.5)
 
-        timer.setEventHandler { [weak button] in
+        timer.setEventHandler { [weak button, animState] in
             guard let button = button else { return }
 
-            isRedState.toggle()
+            animState.isRedState.toggle()
 
             Task { @MainActor in
-                button.image = isRedState ? redOutlineImage : blackImage
+                button.image = animState.isRedState ? redOutlineImage : blackImage
             }
         }
 

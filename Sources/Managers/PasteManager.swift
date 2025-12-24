@@ -10,7 +10,7 @@ import Observation
 private final class ObserverBox: @unchecked Sendable {
     private let lock = NSLock()
     private var _observer: NSObjectProtocol?
-    
+
     var observer: NSObjectProtocol? {
         get {
             lock.lock()
@@ -23,6 +23,12 @@ private final class ObserverBox: @unchecked Sendable {
             _observer = newValue
         }
     }
+}
+
+// Helper class to safely capture cancellation state (Bug #19 fix)
+// Avoids capture-by-value issue where timeoutCancelled var was captured by value
+private final class CancelledFlag {
+    var value = false
 }
 
 /// Errors that can occur during paste operations
@@ -266,29 +272,29 @@ internal class PasteManager {
             completion()
             return
         }
-        
+
         let observerBox = ObserverBox()
-        var timeoutCancelled = false
-        
+        let cancelledFlag = CancelledFlag()  // Bug #19 fix: use reference type instead of capture-by-value
+
         // Set up timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak observerBox] in
-            guard !timeoutCancelled else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak observerBox, cancelledFlag] in
+            guard !cancelledFlag.value else { return }
             if let observer = observerBox?.observer {
                 NotificationCenter.default.removeObserver(observer)
             }
             // Execute completion even on timeout to avoid hanging
             completion()
         }
-        
+
         // Observe app activation
         observerBox.observer = NotificationCenter.default.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
-        ) { [weak observerBox] notification in
+        ) { [weak observerBox, cancelledFlag] notification in
             if let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                activatedApp.processIdentifier == target.processIdentifier {
-                timeoutCancelled = true
+                cancelledFlag.value = true
                 if let observer = observerBox?.observer {
                     NotificationCenter.default.removeObserver(observer)
                 }
