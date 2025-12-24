@@ -270,15 +270,15 @@ internal extension ContentView {
                 let recordWindow = NSApp.windows.first { window in
                     window.title == "AudioWhisper Recording"
                 }
-                
+
                 if let window = recordWindow {
-                    window.orderOut(nil)
-                } else {
-                    NSApplication.shared.keyWindow?.orderOut(nil)
+                    self.fadeOutWindow(window)
+                } else if let keyWindow = NSApplication.shared.keyWindow {
+                    self.fadeOutWindow(keyWindow)
                 }
-                
+
                 NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-                showSuccess = false
+                self.showSuccess = false
             }
         }
     }

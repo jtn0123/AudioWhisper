@@ -62,8 +62,21 @@ internal class WindowController {
     }
     
     private func hideWindow(_ window: NSWindow, completion: (() -> Void)? = nil) {
-        window.orderOut(nil)
-        restoreFocusToPreviousApp(completion: completion)
+        fadeOutWindow(window) { [weak self] in
+            self?.restoreFocusToPreviousApp(completion: completion)
+        }
+    }
+
+    private func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3, completion: (() -> Void)? = nil) {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            window.animator().alphaValue = 0.0
+        }, completionHandler: {
+            window.orderOut(nil)
+            window.alphaValue = 1.0  // Reset for next show
+            completion?()
+        })
     }
     
     private func showWindow(_ window: NSWindow, completion: (() -> Void)? = nil) {
@@ -106,8 +119,8 @@ internal class WindowController {
                     return
                 }
                 
-                // Use higher window level to ensure it appears over fullscreen apps
-                window.level = .modalPanel
+                // Use floating window level to ensure it appears over other apps
+                window.level = .floating
                 
                 // Activate app to ensure we're in right space context
                 NSApp.activate(ignoringOtherApps: true)

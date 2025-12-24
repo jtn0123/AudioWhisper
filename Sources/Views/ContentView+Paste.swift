@@ -67,10 +67,21 @@ internal extension ContentView {
             window.title == "AudioWhisper Recording"
         }
         if let window = recordWindow {
-            window.orderOut(nil)
-        } else {
-            NSApplication.shared.keyWindow?.orderOut(nil)
+            fadeOutWindow(window)
+        } else if let keyWindow = NSApplication.shared.keyWindow {
+            fadeOutWindow(keyWindow)
         }
+    }
+
+    func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3) {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = duration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            window.animator().alphaValue = 0.0
+        }, completionHandler: {
+            window.orderOut(nil)
+            window.alphaValue = 1.0  // Reset for next show
+        })
     }
     
     func activateTargetAppAndPaste(_ target: NSRunningApplication) {
