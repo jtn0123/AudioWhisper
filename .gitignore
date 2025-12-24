@@ -122,6 +122,9 @@ notarization.log
 *.xcodeproj/
 __pycache__
 
+# Generated build files
+Sources/Utilities/VersionInfo.swift
+
 # Downloaded uv binary (auto-downloaded during build)
 Sources/Resources/bin/uv
 
