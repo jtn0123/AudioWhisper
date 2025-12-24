@@ -142,8 +142,72 @@ final class AudioRecorderTests: XCTestCase {
         XCTAssertNil(recorder.currentSessionStart)
     }
     
+    // MARK: - Volume Restoration Tests (Bug #10/15 regression prevention)
+
+    func testCleanupRecordingDoesNotRestoreVolume() async {
+        // Bug #10/15: cleanupRecording was restoring volume, causing double restoration
+        // when called from cancelRecording which also restores volume.
+        // After fix, cleanupRecording should NOT restore volume.
+
+        let mockVolumeManager = MockMicrophoneVolumeManager()
+        let recorder = AudioRecorder(
+            volumeManager: mockVolumeManager,
+            recorderFactory: { _, _ in MockAVAudioRecorder() },
+            dateProvider: { Date() }
+        )
+        PermissionManager.shared.microphonePermissionState = .granted
+        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+
+        // Start recording - this should boost volume
+        XCTAssertTrue(recorder.startRecording())
+        // Wait for async boost
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(mockVolumeManager.boostCount, 1, "Volume should be boosted once on start")
+
+        // Reset restore count before testing cleanup
+        mockVolumeManager.restoreCount = 0
+
+        // Call cleanupRecording directly (not through cancelRecording)
+        recorder.cleanupRecording()
+
+        // Wait for any async operations
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        // After fix, cleanupRecording should NOT restore volume
+        XCTAssertEqual(mockVolumeManager.restoreCount, 0, "cleanupRecording should not restore volume (Bug #10/15 fix)")
+    }
+
+    func testCancelRecordingRestoresVolumeExactlyOnce() async {
+        // Verify that cancelRecording restores volume exactly once (not twice via cleanupRecording)
+
+        let mockVolumeManager = MockMicrophoneVolumeManager()
+        let recorder = AudioRecorder(
+            volumeManager: mockVolumeManager,
+            recorderFactory: { _, _ in MockAVAudioRecorder() },
+            dateProvider: { Date() }
+        )
+        PermissionManager.shared.microphonePermissionState = .granted
+        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+
+        // Start recording
+        XCTAssertTrue(recorder.startRecording())
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        // Reset counts before cancel
+        mockVolumeManager.restoreCount = 0
+
+        // Cancel recording
+        recorder.cancelRecording()
+
+        // Wait for async operations
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        // Should restore exactly once (in cancelRecording, not again in cleanupRecording)
+        XCTAssertEqual(mockVolumeManager.restoreCount, 1, "Volume should be restored exactly once during cancel")
+    }
+
     // MARK: - Helpers
-    
+
     private func makeRecorder(
         dates: [Date],
         recorderFactory: @escaping (URL, [String: Any]) throws -> AVAudioRecorder
@@ -158,15 +222,35 @@ final class AudioRecorderTests: XCTestCase {
 
 private final class StubDateProvider {
     private var dates: [Date]
-    
+
     init(dates: [Date]) {
         self.dates = dates
     }
-    
+
     func nextDate() -> Date {
         guard !dates.isEmpty else {
             return Date()
         }
         return dates.removeFirst()
+    }
+}
+
+// MARK: - Mock Volume Manager for Bug #10/15 testing
+
+private final class MockMicrophoneVolumeManager: MicrophoneVolumeManaging {
+    var boostCount = 0
+    var restoreCount = 0
+
+    func boostMicrophoneVolume() async -> Bool {
+        boostCount += 1
+        return true
+    }
+
+    func restoreMicrophoneVolume() async {
+        restoreCount += 1
+    }
+
+    func isVolumeControlAvailable() async -> Bool {
+        return true
     }
 }

@@ -20,13 +20,15 @@ internal extension ContentView {
     func stopAndProcess() {
         processingTask?.cancel()
         NotificationCenter.default.post(name: .recordingStopped, object: nil)
-        
+
         let shouldHintThisRun = !hasShownFirstModelUseHint && isLocalModelInvocationPlanned()
         if shouldHintThisRun { showFirstModelUseHint = true }
 
+        // Bug #12 fix: Set isProcessing before creating Task to prevent race condition
+        isProcessing = true
+        transcriptionStartTime = Date()
+
         processingTask = Task {
-            isProcessing = true
-            transcriptionStartTime = Date()
             progressMessage = "Preparing audio..."
             
             do {
@@ -143,9 +145,11 @@ internal extension ContentView {
         let shouldHintThisRun = !hasShownFirstModelUseHint && isLocalModelInvocationPlanned()
         if shouldHintThisRun { showFirstModelUseHint = true }
 
+        // Bug #12 fix: Set isProcessing before creating Task to prevent race condition
+        isProcessing = true
+        transcriptionStartTime = Date()
+
         processingTask = Task {
-            isProcessing = true
-            transcriptionStartTime = Date()
             progressMessage = "Transcribing file..."
 
             do {
@@ -306,10 +310,12 @@ internal extension ContentView {
         }
         
         processingTask?.cancel()
-        
+
+        // Bug #12 fix: Set isProcessing before creating Task to prevent race condition
+        isProcessing = true
+        transcriptionStartTime = Date()
+
         processingTask = Task {
-            isProcessing = true
-            transcriptionStartTime = Date()
             progressMessage = "Retrying transcription..."
             
             do {
@@ -337,25 +343,27 @@ internal extension ContentView {
                         awaitingSemanticPaste = true
                         progressMessage = "Semantic correction..."
                     }
+                    // Bug #17 fix: Capture all values before Task.detached to avoid implicit self capture
                     let capturedBundleId: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
-                    Task.detached { [text, transcriptionProvider, capturedBundleId] in
+                    let capturedModelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? selectedWhisperModel.rawValue : nil }
+                    let capturedSourceInfo: SourceAppInfo = await MainActor.run { currentSourceAppInfo() }
+                    let shouldSave2: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
+
+                    Task.detached { [text, transcriptionProvider, capturedBundleId, capturedModelUsed, capturedSourceInfo, shouldSave2] in
                         let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId)
                         let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
                         let characterCount = corrected.count
-                        let shouldSave2: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
                         if shouldSave2 {
-                            let modelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? self.selectedWhisperModel.rawValue : nil }
-                            let sourceInfo: SourceAppInfo = await MainActor.run { self.currentSourceAppInfo() }
                             let record = TranscriptionRecord(
                                 text: corrected,
                                 provider: transcriptionProvider,
                                 duration: nil,
-                                modelUsed: modelUsed,
+                                modelUsed: capturedModelUsed,
                                 wordCount: wordCount,
                                 characterCount: characterCount,
-                                sourceAppBundleId: sourceInfo.bundleIdentifier,
-                                sourceAppName: sourceInfo.displayName,
-                                sourceAppIconData: sourceInfo.iconData
+                                sourceAppBundleId: capturedSourceInfo.bundleIdentifier,
+                                sourceAppName: capturedSourceInfo.displayName,
+                                sourceAppIconData: capturedSourceInfo.iconData
                             )
                             await DataManager.shared.saveTranscriptionQuietly(record)
                         }
@@ -409,6 +417,7 @@ internal extension ContentView {
                 await MainActor.run {
                     isProcessing = false
                     transcriptionStartTime = nil
+                    awaitingSemanticPaste = false  // Bug #13 fix: reset on cancellation
                 }
             } catch {
                 await MainActor.run {

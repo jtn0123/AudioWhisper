@@ -7,16 +7,16 @@ import os.log
 internal class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0.0
-    
+
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
     private var levelUpdateTimer: Timer?
-    private let volumeManager: MicrophoneVolumeManager
+    private let volumeManager: MicrophoneVolumeManaging
     private let recorderFactory: (URL, [String: Any]) throws -> AVAudioRecorder
     private let dateProvider: () -> Date
     private(set) var currentSessionStart: Date?
     private(set) var lastRecordingDuration: TimeInterval?
-    
+
     override init() {
         self.volumeManager = MicrophoneVolumeManager.shared
         self.recorderFactory = { url, settings in try AVAudioRecorder(url: url, settings: settings) }
@@ -26,7 +26,7 @@ internal class AudioRecorder: NSObject, ObservableObject {
     }
 
     init(
-        volumeManager: MicrophoneVolumeManager = .shared,
+        volumeManager: MicrophoneVolumeManaging = MicrophoneVolumeManager.shared,
         recorderFactory: @escaping (URL, [String: Any]) throws -> AVAudioRecorder,
         dateProvider: @escaping () -> Date = { Date() }
     ) {
@@ -126,13 +126,9 @@ internal class AudioRecorder: NSObject, ObservableObject {
     
     func cleanupRecording() {
         guard let url = recordingURL else { return }
-        
-        // Restore microphone volume if it was boosted (in case of cancellation/cleanup)
-        if UserDefaults.standard.autoBoostMicrophoneVolume {
-            Task {
-                await volumeManager.restoreMicrophoneVolume()
-            }
-        }
+
+        // Note: Volume restoration is handled by the caller (cancelRecording/stopRecording)
+        // to avoid double restoration (Bug #10/15 fix)
 
         currentSessionStart = nil
         lastRecordingDuration = nil

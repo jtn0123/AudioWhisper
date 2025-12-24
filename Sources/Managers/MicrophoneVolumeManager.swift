@@ -5,8 +5,15 @@ import AudioToolbox
 import os.log
 import Observation
 
+// Protocol for testing (Bug #10/15 regression tests)
+internal protocol MicrophoneVolumeManaging {
+    func boostMicrophoneVolume() async -> Bool
+    func restoreMicrophoneVolume() async
+    func isVolumeControlAvailable() async -> Bool
+}
+
 @Observable
-internal class MicrophoneVolumeManager {
+internal class MicrophoneVolumeManager: MicrophoneVolumeManaging {
     static let shared = MicrophoneVolumeManager()
     
     private var originalVolume: Float32?
