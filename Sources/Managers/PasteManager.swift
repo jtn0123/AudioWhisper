@@ -217,7 +217,7 @@ internal class PasteManager {
             completion?(.success(()))
         } catch let error as PasteError {
             // Handle known paste errors
-            Logger.paste.error("performCGEventPaste: PasteError: \(error.localizedDescription ?? "unknown", privacy: .public)")
+            Logger.paste.error("performCGEventPaste: PasteError: \(error.localizedDescription, privacy: .public)")
             handlePasteResult(.failure(error))
             completion?(.failure(error))
         } catch {
