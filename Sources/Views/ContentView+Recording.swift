@@ -3,7 +3,7 @@ import AppKit
 
 internal extension ContentView {
     func startRecording() {
-        if !audioRecorder.hasPermission {
+        if permissionManager.microphonePermissionState != .granted {
             permissionManager.requestPermissionWithEducation()
             return
         }

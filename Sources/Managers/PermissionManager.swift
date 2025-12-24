@@ -32,6 +32,8 @@ internal enum PermissionState {
 @MainActor
 @Observable
 internal class PermissionManager {
+    static let shared = PermissionManager()
+
     var microphonePermissionState: PermissionState = .unknown
     var accessibilityPermissionState: PermissionState = .unknown
     var showEducationalModal = false
@@ -67,6 +69,9 @@ internal class PermissionManager {
     }
     
     private func checkMicrophonePermission() {
+        // Don't overwrite if we're already requesting permission
+        guard microphonePermissionState != .requesting else { return }
+
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
 
         switch status {

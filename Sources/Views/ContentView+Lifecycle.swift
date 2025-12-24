@@ -3,7 +3,6 @@ import AppKit
 
 internal extension ContentView {
     func handleOnAppear() {
-        audioRecorder.checkMicrophonePermission()
         setupNotificationObservers()
         permissionManager.checkPermissionState()
         loadStoredTranscriptionProvider()
@@ -41,9 +40,9 @@ internal extension ContentView {
                 
                 if audioRecorder.isRecording {
                     stopAndProcess()
-                } else if !isProcessing && audioRecorder.hasPermission && !showSuccess {
+                } else if !isProcessing && permissionManager.microphonePermissionState == .granted && !showSuccess {
                     startRecording()
-                } else if !audioRecorder.hasPermission {
+                } else if permissionManager.microphonePermissionState != .granted {
                     permissionManager.requestPermissionWithEducation()
                 }
                 

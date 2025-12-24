@@ -4,8 +4,15 @@ import AVFoundation
 
 @MainActor
 final class AudioRecorderTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        // Reset permission state for each test
+        PermissionManager.shared.microphonePermissionState = .unknown
+    }
+
     override func tearDown() {
         UserDefaults.standard.removeObject(forKey: "autoBoostMicrophoneVolume")
+        PermissionManager.shared.microphonePermissionState = .unknown
         super.tearDown()
     }
     
@@ -16,8 +23,8 @@ final class AudioRecorderTests: XCTestCase {
             dates: [startDate, sessionDate],
             recorderFactory: { _, _ in MockAVAudioRecorder() }
         )
-        recorder.hasPermission = true
-        
+        PermissionManager.shared.microphonePermissionState = .granted
+
         let didStart = recorder.startRecording()
         
         XCTAssertTrue(didStart)
@@ -35,10 +42,10 @@ final class AudioRecorderTests: XCTestCase {
                 return MockAVAudioRecorder()
             }
         )
-        recorder.hasPermission = false
-        
+        PermissionManager.shared.microphonePermissionState = .denied
+
         let didStart = recorder.startRecording()
-        
+
         XCTAssertFalse(didStart)
         XCTAssertFalse(factoryCalled, "Recorder factory should not be used without permission")
         XCTAssertFalse(recorder.isRecording)
@@ -54,8 +61,8 @@ final class AudioRecorderTests: XCTestCase {
             ],
             recorderFactory: { _, _ in MockAVAudioRecorder() }
         )
-        recorder.hasPermission = true
-        
+        PermissionManager.shared.microphonePermissionState = .granted
+
         // Start recording first
         let firstStart = recorder.startRecording()
         XCTAssertTrue(firstStart, "First start should succeed")
@@ -76,7 +83,7 @@ final class AudioRecorderTests: XCTestCase {
             dates: [startDate, sessionDate, endDate],
             recorderFactory: { _, _ in MockAVAudioRecorder() }
         )
-        recorder.hasPermission = true
+        PermissionManager.shared.microphonePermissionState = .granted
         XCTAssertTrue(recorder.startRecording())
         
         let url = recorder.stopRecording()
@@ -109,7 +116,7 @@ final class AudioRecorderTests: XCTestCase {
             ],
             recorderFactory: { _, _ in MockAVAudioRecorder() }
         )
-        recorder.hasPermission = true
+        PermissionManager.shared.microphonePermissionState = .granted
         XCTAssertTrue(recorder.startRecording())
         
         recorder.cancelRecording()
@@ -121,13 +128,13 @@ final class AudioRecorderTests: XCTestCase {
     
     func testStartRecordingReturnsFalseWhenRecorderFactoryThrows() {
         enum TestError: Error { case failed }
-        
+
         let recorder = makeRecorder(
             dates: [Date(), Date()],
             recorderFactory: { _, _ in throw TestError.failed }
         )
-        recorder.hasPermission = true
-        
+        PermissionManager.shared.microphonePermissionState = .granted
+
         let didStart = recorder.startRecording()
         
         XCTAssertFalse(didStart)

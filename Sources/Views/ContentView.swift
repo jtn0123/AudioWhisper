@@ -9,7 +9,7 @@ internal struct ContentView: View {
     @State var speechService: SpeechToTextService
     @State var pasteManager = PasteManager()
     @State var statusViewModel = StatusViewModel()
-    @State var permissionManager = PermissionManager()
+    var permissionManager: PermissionManager { PermissionManager.shared }
     @StateObject var soundManager = SoundManager()
     let semanticCorrectionService = SemanticCorrectionService()
     @State var isProcessing = false
@@ -62,14 +62,17 @@ internal struct ContentView: View {
                     } else {
                         showSuccess = false
                     }
-                } else if !audioRecorder.hasPermission {
+                } else if permissionManager.microphonePermissionState != .granted {
                     permissionManager.requestPermissionWithEducation()
                 } else {
                     startRecording()
                 }
             }
         )
-        .sheet(isPresented: $permissionManager.showEducationalModal) {
+        .sheet(isPresented: Binding(
+            get: { permissionManager.showEducationalModal },
+            set: { permissionManager.showEducationalModal = $0 }
+        )) {
             PermissionEducationModal(
                 onProceed: {
                     permissionManager.showEducationalModal = false
@@ -80,7 +83,10 @@ internal struct ContentView: View {
                 }
             )
         }
-        .sheet(isPresented: $permissionManager.showRecoveryModal) {
+        .sheet(isPresented: Binding(
+            get: { permissionManager.showRecoveryModal },
+            set: { permissionManager.showRecoveryModal = $0 }
+        )) {
             PermissionRecoveryModal(
                 onOpenSettings: {
                     permissionManager.showRecoveryModal = false
@@ -103,7 +109,7 @@ internal struct ContentView: View {
         .onChange(of: progressMessage) { _, _ in
             updateStatus()
         }
-        .onChange(of: audioRecorder.hasPermission) { _, _ in
+        .onChange(of: permissionManager.microphonePermissionState) { _, _ in
             updateStatus()
         }
         .onChange(of: showSuccess) { _, _ in
@@ -116,7 +122,6 @@ internal struct ContentView: View {
             }
         }
         .onChange(of: permissionManager.allPermissionsGranted) { _, _ in
-            audioRecorder.hasPermission = (permissionManager.microphonePermissionState == .granted)
             updateStatus()
         }
     }

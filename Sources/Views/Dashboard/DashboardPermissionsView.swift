@@ -4,7 +4,7 @@ import ApplicationServices
 import AppKit
 
 internal struct DashboardPermissionsView: View {
-    @State private var microphoneStatus: AVAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+    private var permissionManager: PermissionManager { PermissionManager.shared }
     @State private var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @AppStorage("enableSmartPaste") private var enableSmartPaste = false
     
@@ -47,20 +47,20 @@ internal struct DashboardPermissionsView: View {
             
             VStack(alignment: .leading, spacing: 0) {
                 permissionStatusRow(
-                    status: microphoneStatus == .authorized ? .granted : .required,
+                    status: permissionManager.microphonePermissionState == .granted ? .granted : .required,
                     title: microphoneStatusTitle,
                     description: "Required to capture audio for transcription"
                 )
-                
+
                 Divider()
                     .background(DashboardTheme.rule)
-                
+
                 HStack(spacing: DashboardTheme.Spacing.sm) {
                     Button("Request Access") {
-                        requestMicrophonePermission()
+                        permissionManager.proceedWithPermissionRequest()
                     }
                     .buttonStyle(PaperAccentButtonStyle())
-                    .disabled(microphoneStatus == .authorized)
+                    .disabled(permissionManager.microphonePermissionState == .granted)
                     
                     Button("Open Settings") {
                         openSystemSettings(path: "Privacy_Microphone")
@@ -159,35 +159,28 @@ internal struct DashboardPermissionsView: View {
     }
     
     private var microphoneStatusTitle: String {
-        switch microphoneStatus {
-        case .authorized:
+        switch permissionManager.microphonePermissionState {
+        case .granted:
             return "Access granted"
         case .denied:
             return "Permission denied"
         case .restricted:
             return "Access restricted"
-        case .notDetermined:
+        case .notRequested:
             return "Not yet requested"
-        @unknown default:
+        case .requesting:
+            return "Requesting..."
+        case .unknown:
             return "Unknown status"
         }
     }
     
     // MARK: - Actions
     private func refreshStatuses() {
-        microphoneStatus = AVCaptureDevice.authorizationStatus(for: .audio)
+        permissionManager.checkPermissionState()
         isAccessibilityTrusted = AXIsProcessTrusted()
     }
-    
-    private func requestMicrophonePermission() {
-        guard !AppEnvironment.isRunningTests else { return }
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            Task { @MainActor in
-                microphoneStatus = granted ? .authorized : .denied
-            }
-        }
-    }
-    
+
     private func openSystemSettings(path: String) {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(path)") else {
             return

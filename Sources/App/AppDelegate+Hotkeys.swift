@@ -50,7 +50,7 @@ internal extension AppDelegate {
             return
         }
 
-        if !recorder.hasPermission {
+        if PermissionManager.shared.microphonePermissionState != .granted {
             showRecordingWindowForProcessing()
             return
         }
@@ -113,7 +113,7 @@ internal extension AppDelegate {
                     NotificationCenter.default.post(name: .spaceKeyPressed, object: nil)
                 }
             } else {
-                if !recorder.hasPermission {
+                if PermissionManager.shared.microphonePermissionState != .granted {
                     toggleRecordWindow()
                     return
                 }

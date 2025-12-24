@@ -7,7 +7,6 @@ import os.log
 internal class AudioRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0.0
-    @Published var hasPermission = false
     
     private var audioRecorder: AVAudioRecorder?
     private var recordingURL: URL?
@@ -24,7 +23,6 @@ internal class AudioRecorder: NSObject, ObservableObject {
         self.dateProvider = { Date() }
         super.init()
         setupRecorder()
-        checkMicrophonePermission()
     }
 
     init(
@@ -37,53 +35,15 @@ internal class AudioRecorder: NSObject, ObservableObject {
         self.dateProvider = dateProvider
         super.init()
         setupRecorder()
-        checkMicrophonePermission()
     }
     
     private func setupRecorder() {
         // AVAudioSession is not needed on macOS
     }
     
-    func checkMicrophonePermission() {
-        let permissionStatus = AVCaptureDevice.authorizationStatus(for: .audio)
-        
-        switch permissionStatus {
-        case .authorized:
-            self.hasPermission = true
-        case .denied, .restricted:
-            self.hasPermission = false
-        case .notDetermined:
-            // Never trigger a real system permission prompt in unit tests.
-            guard !AppEnvironment.isRunningTests else {
-                self.hasPermission = false
-                return
-            }
-            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-                Task { @MainActor [weak self] in
-                    self?.hasPermission = granted
-                }
-            }
-        @unknown default:
-            self.hasPermission = false
-        }
-    }
-    
-    func requestMicrophonePermission() {
-        // Never trigger a real system permission prompt in unit tests.
-        guard !AppEnvironment.isRunningTests else {
-            hasPermission = false
-            return
-        }
-        AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
-            Task { @MainActor [weak self] in
-                self?.hasPermission = granted
-            }
-        }
-    }
-    
     func startRecording() -> Bool {
-        // Check permission first
-        guard hasPermission else {
+        // Check permission via PermissionManager (single source of truth)
+        guard PermissionManager.shared.microphonePermissionState == .granted else {
             return false
         }
         
@@ -136,7 +96,7 @@ internal class AudioRecorder: NSObject, ObservableObject {
                 }
             }
             // Recheck permissions if recording failed
-            checkMicrophonePermission()
+            PermissionManager.shared.checkPermissionState()
             return false
         }
     }

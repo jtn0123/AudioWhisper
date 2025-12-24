@@ -10,7 +10,7 @@ internal extension ContentView {
             isRecording: audioRecorder.isRecording,
             isProcessing: isProcessing,
             progressMessage: progressMessage,
-            hasPermission: audioRecorder.hasPermission,
+            hasPermission: permissionManager.microphonePermissionState == .granted,
             showSuccess: showSuccess,
             errorMessage: showError ? errorMessage : nil
         )
