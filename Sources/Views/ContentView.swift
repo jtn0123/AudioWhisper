@@ -5,7 +5,7 @@ internal struct ContentView: View {
     @State var audioRecorder: AudioRecorder
     @AppStorage("transcriptionProvider") var transcriptionProvider = TranscriptionProvider.openai
     @AppStorage("selectedWhisperModel") var selectedWhisperModel = WhisperModel.base
-    @AppStorage("immediateRecording") var immediateRecording = false
+    @AppStorage("immediateRecording") var immediateRecording = true
     @State var speechService: SpeechToTextService
     @State var pasteManager = PasteManager()
     @State var statusViewModel = StatusViewModel()

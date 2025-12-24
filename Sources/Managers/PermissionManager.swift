@@ -43,7 +43,7 @@ internal class PermissionManager {
     private let accessibilityManager = AccessibilityPermissionManager()
     
     var allPermissionsGranted: Bool {
-        let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+        let enableSmartPaste = (UserDefaults.standard.object(forKey: "enableSmartPaste") as? Bool ?? true)
         if enableSmartPaste {
             return microphonePermissionState == .granted && accessibilityPermissionState == .granted
         } else {
@@ -92,7 +92,7 @@ internal class PermissionManager {
     }
     
     func requestPermissionWithEducation() {
-        let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+        let enableSmartPaste = (UserDefaults.standard.object(forKey: "enableSmartPaste") as? Bool ?? true)
         
         let needsMicrophone = microphonePermissionState.needsRequest
         let needsAccessibility = enableSmartPaste && accessibilityPermissionState.needsRequest
@@ -114,7 +114,7 @@ internal class PermissionManager {
                 try? await Task.sleep(for: .milliseconds(100))
                 // Simulate denied for consistent test behavior
                 self.microphonePermissionState = .denied
-                let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+                let enableSmartPaste = (UserDefaults.standard.object(forKey: "enableSmartPaste") as? Bool ?? true)
                 if enableSmartPaste {
                     self.accessibilityPermissionState = .denied
                 }
@@ -124,7 +124,7 @@ internal class PermissionManager {
             requestMicrophonePermission()
 
             // Show accessibility modal if SmartPaste is enabled and permission not granted
-            let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+            let enableSmartPaste = (UserDefaults.standard.object(forKey: "enableSmartPaste") as? Bool ?? true)
             if enableSmartPaste && accessibilityPermissionState != .granted {
                 // Delay slightly to let microphone dialog appear first
                 Task { @MainActor in

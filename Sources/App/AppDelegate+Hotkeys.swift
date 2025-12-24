@@ -92,6 +92,11 @@ internal extension AppDelegate {
     }
 
     func handleHotkey(source: HotkeyTriggerSource) {
+        // When press-and-hold is enabled, disable standard hotkey to avoid double-triggering
+        if source == .standardHotkey && pressAndHoldConfiguration.enabled {
+            return
+        }
+
         let immediateRecording = UserDefaults.standard.bool(forKey: "immediateRecording")
 
         if immediateRecording {

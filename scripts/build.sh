@@ -239,6 +239,8 @@ cat >AudioWhisper.app/Contents/Info.plist <<EOF
     <string>14.0</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>AudioWhisper needs access to your microphone to record audio for transcription.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>AudioWhisper needs accessibility access to monitor global keyboard shortcuts for quick recording.</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSAppTransportSecurity</key>
@@ -298,6 +300,8 @@ cat >AudioWhisper.entitlements <<'EOF'
     <true/>
     <key>com.apple.security.network.client</key>
     <true/>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
 </dict>
 </plist>
 EOF
@@ -337,14 +341,21 @@ SIGNING_NAME=""
 if [ -n "$CODE_SIGN_IDENTITY" ]; then
   SIGNING_IDENTITY="$CODE_SIGN_IDENTITY"
 else
-  # Try to auto-detect Developer ID (use the first one found)
-  DETECTED_HASH=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk '{print $2}')
-  DETECTED_NAME=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk '{print $3}' | tr -d '"')
-  if [ -n "$DETECTED_HASH" ]; then
-    echo "🔍 Auto-detected signing identity: $DETECTED_NAME"
-    SIGNING_IDENTITY="$DETECTED_HASH"
-    SIGNING_NAME="$DETECTED_NAME"
-  fi
+  # Try to auto-detect signing identity in order of preference:
+  # 1. Developer ID Application (paid account, best for distribution)
+  # 2. Apple Development (free account, good for local development)
+  # 3. Mac Developer (older certificate type)
+
+  for CERT_TYPE in "Developer ID Application" "Apple Development" "Mac Developer"; do
+    DETECTED_HASH=$(security find-identity -v -p codesigning | grep "$CERT_TYPE" | head -1 | awk '{print $2}')
+    DETECTED_NAME=$(security find-identity -v -p codesigning | grep "$CERT_TYPE" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+    if [ -n "$DETECTED_HASH" ]; then
+      echo "🔍 Auto-detected signing identity: $DETECTED_NAME"
+      SIGNING_IDENTITY="$DETECTED_HASH"
+      SIGNING_NAME="$DETECTED_NAME"
+      break
+    fi
+  done
 fi
 
 if [ -n "$SIGNING_IDENTITY" ]; then
