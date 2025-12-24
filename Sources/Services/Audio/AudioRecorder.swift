@@ -4,7 +4,7 @@ import Combine
 import os.log
 
 @MainActor
-internal class AudioRecorder: NSObject, ObservableObject {
+internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
     @Published var isRecording = false
     @Published var audioLevel: Float = 0.0
 

@@ -49,9 +49,11 @@ internal struct ContentView: View {
     }
     
     var body: some View {
-        WaveformRecordingView(
+        WaveformContainer(
             status: statusViewModel.currentStatus,
             audioLevel: audioRecorder.audioLevel,
+            waveformSamples: audioRecorder.waveformSamples,
+            frequencyBands: audioRecorder.frequencyBands,
             onTap: {
                 if audioRecorder.isRecording {
                     stopAndProcess()

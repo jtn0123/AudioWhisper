@@ -1,0 +1,262 @@
+import SwiftUI
+
+/// Container view that switches between waveform visualization styles.
+/// Reads the style preference from UserDefaults and displays the appropriate visualization.
+struct WaveformContainer: View {
+    let status: AppStatus
+    let audioLevel: Float
+    let waveformSamples: [Float]
+    let frequencyBands: [Float]
+    let onTap: () -> Void
+
+    @AppStorage("waveformStyle") private var styleRaw = WaveformStyle.classic.rawValue
+
+    // Colors
+    private let bgColor = Color(red: 0.04, green: 0.04, blue: 0.04)
+    private let barColor = Color(red: 0.85, green: 0.83, blue: 0.80)
+    private let mutedColor = Color(red: 0.35, green: 0.34, blue: 0.33)
+    private let successColor = Color(red: 0.45, green: 0.75, blue: 0.55)
+    private let accentColor = Color(red: 0.85, green: 0.45, blue: 0.40)
+
+    private var style: WaveformStyle {
+        WaveformStyle(rawValue: styleRaw) ?? .classic
+    }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 0) {
+                // Waveform area
+                ZStack {
+                    bgColor
+
+                    waveformView
+                        .padding(.horizontal, 24)
+
+                    // Particle overlay for neon style
+                    if style == .neon && isRecording {
+                        ParticleOverlay(audioLevel: audioLevel, isActive: true)
+                    }
+                }
+                .frame(height: 120)
+
+                // Status bar
+                HStack(spacing: 8) {
+                    if shouldShowDot {
+                        Circle()
+                            .fill(dotColor)
+                            .frame(width: 6, height: 6)
+                            .modifier(PulseModifier(isActive: isRecording || isProcessing))
+                    }
+
+                    Text(statusText)
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .tracking(0.5)
+                        .foregroundStyle(mutedColor)
+                }
+                .frame(height: 44)
+                .frame(maxWidth: .infinity)
+                .background(bgColor)
+            }
+        }
+        .buttonStyle(.plain)
+        .background(bgColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Waveform View
+
+    @ViewBuilder
+    private var waveformView: some View {
+        switch style {
+        case .classic:
+            ClassicWaveformView(
+                audioLevel: audioLevel,
+                isActive: isRecording,
+                barColor: currentBarColor
+            )
+
+        case .neon:
+            NeonWaveformView(
+                waveformSamples: waveformSamples,
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
+
+        case .spectrum:
+            SpectrumWaveformView(
+                frequencyBands: frequencyBands,
+                isActive: isRecording
+            )
+        }
+    }
+
+    // MARK: - State Helpers
+
+    private var isRecording: Bool {
+        if case .recording = status { return true }
+        return false
+    }
+
+    private var isProcessing: Bool {
+        if case .processing = status { return true }
+        return false
+    }
+
+    private var isSuccess: Bool {
+        if case .success = status { return true }
+        return false
+    }
+
+    private var isError: Bool {
+        if case .error = status { return true }
+        return false
+    }
+
+    private var shouldShowDot: Bool {
+        switch status {
+        case .recording, .processing, .success, .error:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var dotColor: Color {
+        switch status {
+        case .recording:
+            return accentColor
+        case .processing:
+            return barColor
+        case .success:
+            return successColor
+        case .error:
+            return accentColor
+        default:
+            return mutedColor
+        }
+    }
+
+    private var currentBarColor: Color {
+        switch status {
+        case .recording:
+            return barColor
+        case .processing:
+            return mutedColor
+        case .success:
+            return successColor
+        case .error:
+            return accentColor
+        default:
+            return mutedColor.opacity(0.5)
+        }
+    }
+
+    private var statusText: String {
+        switch status {
+        case .recording:
+            return "LISTENING"
+        case .processing(let message):
+            return message.uppercased()
+        case .success:
+            return "COPIED"
+        case .ready:
+            return "TAP TO RECORD"
+        case .permissionRequired:
+            return "PERMISSION NEEDED"
+        case .error(let message):
+            return message.uppercased()
+        }
+    }
+}
+
+// MARK: - Pulse Animation Modifier
+
+private struct PulseModifier: ViewModifier {
+    let isActive: Bool
+    @State private var isPulsing = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isActive ? (isPulsing ? 0.4 : 1.0) : 1.0)
+            .onAppear {
+                if isActive {
+                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                        isPulsing = true
+                    }
+                }
+            }
+            .onChange(of: isActive) { _, active in
+                if active {
+                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                        isPulsing = true
+                    }
+                } else {
+                    isPulsing = false
+                }
+            }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Container - Classic Recording") {
+    WaveformContainer(
+        status: .recording,
+        audioLevel: 0.6,
+        waveformSamples: [],
+        frequencyBands: Array(repeating: 0.5, count: 8),
+        onTap: {}
+    )
+    .frame(width: 280)
+    .padding(40)
+    .background(Color.black)
+}
+
+#Preview("Container - Neon Recording") {
+    WaveformContainer(
+        status: .recording,
+        audioLevel: 0.6,
+        waveformSamples: (0..<64).map { _ in Float.random(in: -0.5...0.5) },
+        frequencyBands: Array(repeating: 0.5, count: 8),
+        onTap: {}
+    )
+    .frame(width: 280)
+    .padding(40)
+    .background(Color.black)
+    .onAppear {
+        UserDefaults.standard.set(WaveformStyle.neon.rawValue, forKey: "waveformStyle")
+    }
+}
+
+#Preview("Container - Spectrum Recording") {
+    WaveformContainer(
+        status: .recording,
+        audioLevel: 0.6,
+        waveformSamples: [],
+        frequencyBands: [0.8, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15],
+        onTap: {}
+    )
+    .frame(width: 280)
+    .padding(40)
+    .background(Color.black)
+    .onAppear {
+        UserDefaults.standard.set(WaveformStyle.spectrum.rawValue, forKey: "waveformStyle")
+    }
+}
+
+#Preview("Container - Ready") {
+    WaveformContainer(
+        status: .ready,
+        audioLevel: 0,
+        waveformSamples: [],
+        frequencyBands: Array(repeating: 0, count: 8),
+        onTap: {}
+    )
+    .frame(width: 280)
+    .padding(40)
+    .background(Color.black)
+}

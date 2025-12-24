@@ -6,6 +6,7 @@ import Foundation
 internal extension Notification.Name {
     // MARK: - Settings and Configuration
     static let updateGlobalHotkey = Notification.Name("UpdateGlobalHotkey")
+    static let waveformStyleChanged = Notification.Name("WaveformStyleChanged")
     
     // MARK: - Welcome Flow
     static let welcomeCompleted = Notification.Name("WelcomeCompleted")

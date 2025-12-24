@@ -9,7 +9,8 @@ internal struct DashboardRecordingView: View {
     @AppStorage("pressAndHoldEnabled") private var pressAndHoldEnabled = PressAndHoldConfiguration.defaults.enabled
     @AppStorage("pressAndHoldKeyIdentifier") private var pressAndHoldKeyIdentifier = PressAndHoldConfiguration.defaults.key.rawValue
     @AppStorage("pressAndHoldMode") private var pressAndHoldModeRaw = PressAndHoldConfiguration.defaults.mode.rawValue
-    
+    @AppStorage("waveformStyle") private var waveformStyleRaw = WaveformStyle.classic.rawValue
+
     @State private var availableMicrophones: [AVCaptureDevice] = []
     @State private var isRecordingHotkey = false
     @State private var recordedModifiers: NSEvent.ModifierFlags = []
@@ -22,6 +23,7 @@ internal struct DashboardRecordingView: View {
                 microphoneSection
                 hotkeySection
                 pressAndHoldSection
+                visualizationSection
             }
             .padding(DashboardTheme.Spacing.xl)
         }
@@ -198,6 +200,67 @@ internal struct DashboardRecordingView: View {
         }
     }
     
+    // MARK: - Visualization
+    private var visualizationSection: some View {
+        VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
+            sectionHeader("Visualization")
+
+            VStack(alignment: .leading, spacing: 0) {
+                settingsRow(title: "Waveform Style", subtitle: "Choose your recording visualization") {
+                    Picker("", selection: $waveformStyleRaw) {
+                        ForEach(WaveformStyle.allCases) { style in
+                            Text(style.rawValue).tag(style.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
+                .onChange(of: waveformStyleRaw) { _, newValue in
+                    // Post notification so the app can switch recorder if needed
+                    NotificationCenter.default.post(
+                        name: .waveformStyleChanged,
+                        object: WaveformStyle(rawValue: newValue) ?? .classic
+                    )
+                }
+
+                Divider()
+                    .background(DashboardTheme.rule)
+
+                // Style description
+                HStack(spacing: DashboardTheme.Spacing.sm) {
+                    Image(systemName: styleIcon)
+                        .font(.system(size: 12))
+                        .foregroundStyle(DashboardTheme.accent)
+
+                    Text(currentStyleDescription)
+                        .font(DashboardTheme.Fonts.sans(12, weight: .regular))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+                }
+                .padding(DashboardTheme.Spacing.md)
+            }
+            .cardStyle()
+        }
+    }
+
+    private var currentStyle: WaveformStyle {
+        WaveformStyle(rawValue: waveformStyleRaw) ?? .classic
+    }
+
+    private var currentStyleDescription: String {
+        currentStyle.description
+    }
+
+    private var styleIcon: String {
+        switch currentStyle {
+        case .classic:
+            return "waveform"
+        case .neon:
+            return "sparkles"
+        case .spectrum:
+            return "chart.bar.fill"
+        }
+    }
+
     // MARK: - Helpers
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
