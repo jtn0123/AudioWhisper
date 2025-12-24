@@ -1,68 +1,107 @@
 import SwiftUI
 
+/// Modal for microphone permission education (accessibility handled separately)
 internal struct PermissionEducationModal: View {
     let onProceed: () -> Void
     let onCancel: () -> Void
-    
-    private var enableSmartPaste: Bool {
-        UserDefaults.standard.bool(forKey: "enableSmartPaste")
-    }
-    
+
     var body: some View {
         VStack(spacing: 20) {
-            HStack(spacing: 16) {
-                Image(systemName: "mic.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.blue)
-                if enableSmartPaste {
-                    Image(systemName: "hand.raised.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(.green)
-                }
-            }
-            .accessibilityLabel("Permissions required")
-            
+            Image(systemName: "mic.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.blue)
+                .accessibilityLabel("Microphone permission required")
+
             VStack(spacing: 12) {
-                Text(enableSmartPaste ? "Permissions Required" : "Microphone Permission Required")
+                Text("Microphone Permission Required")
                     .font(.title2)
                     .fontWeight(.semibold)
-                
-                Text(enableSmartPaste ? 
-                     "AudioWhisper needs permissions to work properly:" :
-                     "AudioWhisper needs microphone access to record audio:")
+
+                Text("AudioWhisper needs microphone access to record audio for transcription.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
-                
+
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Microphone access to record audio", systemImage: "mic.circle.fill")
+                    Label("Record audio for transcription", systemImage: "waveform")
                         .foregroundStyle(.blue)
-                    if enableSmartPaste {
-                        Label("Accessibility access to paste transcribed text", systemImage: "hand.raised.circle.fill")
-                            .foregroundStyle(.green)
-                    }
-                    Label("Your audio is never stored permanently", systemImage: "lock.circle.fill")
+                    Label("Audio is never stored permanently", systemImage: "lock.circle.fill")
                         .foregroundStyle(.secondary)
                 }
                 .font(.callout)
                 .foregroundStyle(.primary)
             }
-            
+
             HStack(spacing: 12) {
                 Button("Not Now") {
                     onCancel()
                 }
                 .buttonStyle(.bordered)
-                .accessibilityHint("Dismiss this dialog without granting permissions")
-                
-                Button(enableSmartPaste ? "Allow Permissions" : "Allow Microphone Access") {
+                .accessibilityHint("Dismiss this dialog without granting permission")
+
+                Button("Allow Microphone") {
                     onProceed()
                 }
                 .buttonStyle(.borderedProminent)
-                .accessibilityHint(enableSmartPaste ? "Grant microphone and accessibility permissions" : "Grant microphone permission")
+                .accessibilityHint("Grant microphone permission")
             }
         }
         .padding(24)
-        .frame(width: enableSmartPaste ? 420 : 400)
+        .frame(width: 380)
+        .background(Color(NSColor.windowBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .shadow(radius: 20)
+    }
+}
+
+/// Modal for accessibility permission (SmartPaste feature)
+internal struct AccessibilityPermissionModal: View {
+    let onAllow: () -> Void
+    let onDontAllow: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "hand.raised.circle.fill")
+                .font(.system(size: 48))
+                .foregroundStyle(.blue)
+                .accessibilityLabel("Accessibility permission required")
+
+            VStack(spacing: 12) {
+                Text("Enable SmartPaste?")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text("SmartPaste automatically pastes transcribed text into your apps. This requires Accessibility permission.")
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Auto-paste into any app", systemImage: "doc.on.clipboard")
+                        .foregroundStyle(.blue)
+                    Label("Only sends paste commands", systemImage: "keyboard")
+                        .foregroundStyle(.secondary)
+                    Label("Never reads other apps' content", systemImage: "lock.shield")
+                        .foregroundStyle(.secondary)
+                }
+                .font(.callout)
+                .foregroundStyle(.primary)
+            }
+
+            HStack(spacing: 12) {
+                Button("Don't Allow") {
+                    onDontAllow()
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint("Disable SmartPaste and paste manually with Cmd+V")
+
+                Button("Allow") {
+                    onAllow()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityHint("Open System Settings to grant Accessibility permission")
+            }
+        }
+        .padding(24)
+        .frame(width: 380)
         .background(Color(NSColor.windowBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(radius: 20)

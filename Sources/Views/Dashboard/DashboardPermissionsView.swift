@@ -5,8 +5,12 @@ import AppKit
 
 internal struct DashboardPermissionsView: View {
     private var permissionManager: PermissionManager { PermissionManager.shared }
-    @State private var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
     @AppStorage("enableSmartPaste") private var enableSmartPaste = false
+
+    /// Computed from PermissionManager for accurate status display
+    private var isAccessibilityGranted: Bool {
+        permissionManager.accessibilityPermissionState == .granted
+    }
     
     var body: some View {
         ScrollView {
@@ -80,8 +84,8 @@ internal struct DashboardPermissionsView: View {
             
             VStack(alignment: .leading, spacing: 0) {
                 permissionStatusRow(
-                    status: isAccessibilityTrusted ? .granted : .required,
-                    title: isAccessibilityTrusted ? "Access granted" : "Permission required",
+                    status: isAccessibilityGranted ? .granted : .required,
+                    title: isAccessibilityGranted ? "Access granted" : "Permission required",
                     description: "Required for Smart Paste to type transcribed text"
                 )
                 
@@ -178,7 +182,6 @@ internal struct DashboardPermissionsView: View {
     // MARK: - Actions
     private func refreshStatuses() {
         permissionManager.checkPermissionState()
-        isAccessibilityTrusted = AXIsProcessTrusted()
     }
 
     private func openSystemSettings(path: String) {

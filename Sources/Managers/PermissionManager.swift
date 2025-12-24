@@ -38,6 +38,7 @@ internal class PermissionManager {
     var accessibilityPermissionState: PermissionState = .unknown
     var showEducationalModal = false
     var showRecoveryModal = false
+    var showAccessibilityModal = false
     private let isTestEnvironment: Bool
     private let accessibilityManager = AccessibilityPermissionManager()
     
@@ -59,15 +60,8 @@ internal class PermissionManager {
     
     func checkPermissionState() {
         checkMicrophonePermission()
-        
-        // Only check Accessibility if SmartPaste is enabled
-        let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
-        if enableSmartPaste {
-            checkAccessibilityPermission()
-        } else {
-            // Reset accessibility state if SmartPaste is disabled
-            accessibilityPermissionState = .granted // Consider it "granted" since it's not needed
-        }
+        // Always check accessibility permission for accurate status display
+        checkAccessibilityPermission()
     }
     
     private func checkMicrophonePermission() {
@@ -128,12 +122,35 @@ internal class PermissionManager {
             }
         } else {
             requestMicrophonePermission()
-            
-            // Only request Accessibility if SmartPaste is enabled
+
+            // Show accessibility modal if SmartPaste is enabled and permission not granted
             let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
-            if enableSmartPaste {
-                requestAccessibilityPermission()
+            if enableSmartPaste && accessibilityPermissionState != .granted {
+                // Delay slightly to let microphone dialog appear first
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    self.showAccessibilityModal = true
+                }
             }
+        }
+    }
+
+    /// Handle response from AccessibilityPermissionModal
+    func handleAccessibilityModalResponse(allowed: Bool) {
+        showAccessibilityModal = false
+
+        if allowed {
+            // User wants to grant permission - open System Settings
+            accessibilityPermissionState = .requesting
+            accessibilityManager.requestPermissionDirect { [weak self] granted in
+                Task { @MainActor [weak self] in
+                    self?.accessibilityPermissionState = granted ? .granted : .denied
+                }
+            }
+        } else {
+            // User chose "Don't Allow" - permanently disable SmartPaste
+            UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+            // No longer need accessibility permission since SmartPaste is disabled
         }
     }
     

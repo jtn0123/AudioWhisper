@@ -168,8 +168,7 @@ internal class PasteManager {
                     // Permission was granted - attempt paste operation
                     self.performCGEventPaste(completion: completion)
                 } else {
-                    // User declined permission - show appropriate message and fail gracefully
-                    self.accessibilityManager.showPermissionDeniedMessage()
+                    // User declined permission - fail gracefully (modal already handled user choice)
                     self.handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
                     completion?(.failure(PasteError.accessibilityPermissionDenied))
                 }

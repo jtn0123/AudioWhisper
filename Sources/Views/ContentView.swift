@@ -97,6 +97,19 @@ internal struct ContentView: View {
                 }
             )
         }
+        .sheet(isPresented: Binding(
+            get: { permissionManager.showAccessibilityModal },
+            set: { permissionManager.showAccessibilityModal = $0 }
+        )) {
+            AccessibilityPermissionModal(
+                onAllow: {
+                    permissionManager.handleAccessibilityModalResponse(allowed: true)
+                },
+                onDontAllow: {
+                    permissionManager.handleAccessibilityModalResponse(allowed: false)
+                }
+            )
+        }
         .focusable(false)
         .onAppear { handleOnAppear() }
         .onDisappear { handleOnDisappear() }
