@@ -200,9 +200,6 @@ final class FFTProcessorTests: XCTestCase {
 
         // First band (sub-bass: 20-60Hz) should have significant energy
         // This is a soft test since FFT resolution at low frequencies is limited
-        let lowBandSum = bands[0] + bands[1]
-        let highBandSum = bands[6] + bands[7]
-
         // Low bands should generally have more energy for a 50Hz tone
         // (allowing some flexibility due to windowing and FFT limitations)
         XCTAssertGreaterThanOrEqual(bands.count, 8)
