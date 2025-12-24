@@ -64,7 +64,9 @@ internal extension AppDelegate {
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
         window.backgroundColor = .clear
-        window.level = .screenSaver
+        // Use floating level - fullscreen visibility is handled by .fullScreenAuxiliary collectionBehavior,
+        // not window level. .screenSaver is unnecessarily high and may interfere with input/focus.
+        window.level = .floating
         window.hidesOnDeactivate = false
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
         window.hasShadow = true

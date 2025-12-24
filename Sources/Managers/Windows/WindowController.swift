@@ -102,8 +102,9 @@ internal class WindowController {
         // .fullScreenAuxiliary - appear on fullscreen spaces (secondary displays)
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
 
-        // Use screenSaver level to appear above fullscreen apps
-        window.level = .screenSaver
+        // Use floating level - fullscreen visibility is handled by .fullScreenAuxiliary collectionBehavior,
+        // not window level. .screenSaver is unnecessarily high and may interfere with input/focus.
+        window.level = .floating
 
         // Show window without activating the app (prevents space switching)
         window.orderFrontRegardless()

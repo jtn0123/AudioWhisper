@@ -123,7 +123,9 @@ internal class WindowManager: ObservableObject {
             window.styleMask = [.borderless, .fullSizeContentView]
             window.isMovableByWindowBackground = true
             window.backgroundColor = .clear
-            window.level = .screenSaver
+            // Use floating level - fullscreen visibility is handled by .fullScreenAuxiliary collectionBehavior,
+            // not window level. .screenSaver is unnecessarily high and may interfere with input/focus.
+            window.level = .floating
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary]
             window.title = WindowTitles.recording
             recordWindow = window
