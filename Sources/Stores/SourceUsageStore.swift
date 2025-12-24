@@ -48,9 +48,18 @@ internal struct SourceUsageStats: Codable, Identifiable, Equatable {
     var totalCharacters: Int
     var sessionCount: Int
     var lastUsed: Date
-    var iconData: Data?
     var fallbackSymbolName: String?
-    
+
+    // iconData is NOT stored in UserDefaults (excluded from Codable) to avoid 4MB+ storage limit
+    // Icons are loaded dynamically from bundle when needed
+    var iconData: Data?
+
+    // Exclude iconData from encoding to prevent UserDefaults overflow
+    private enum CodingKeys: String, CodingKey {
+        case bundleIdentifier, displayName, totalWords, totalCharacters
+        case sessionCount, lastUsed, fallbackSymbolName
+    }
+
     var initials: String {
         let components = displayName.split(separator: " ")
         let chars: [Character] = components.prefix(2).compactMap { $0.first }
@@ -59,10 +68,17 @@ internal struct SourceUsageStats: Codable, Identifiable, Equatable {
         }
         return String(chars)
     }
-    
+
     func nsImage() -> NSImage? {
-        guard let iconData = iconData else { return nil }
-        return NSImage(data: iconData)
+        // First try cached iconData
+        if let iconData = iconData {
+            return NSImage(data: iconData)
+        }
+        // Fallback: load from bundle
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
+            return nil
+        }
+        return NSWorkspace.shared.icon(forFile: url.path)
     }
 }
 
@@ -102,8 +118,8 @@ internal final class SourceUsageStore {
             totalCharacters: 0,
             sessionCount: 0,
             lastUsed: Date(),
-            iconData: info.iconData,
-            fallbackSymbolName: info.fallbackSymbolName
+            fallbackSymbolName: info.fallbackSymbolName,
+            iconData: info.iconData
         )
         existing.totalWords += words
         existing.totalCharacters += characters
