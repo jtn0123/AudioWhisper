@@ -165,8 +165,8 @@ final class FFTProcessor: @unchecked Sendable {
         var rms: Float = 0
         vDSP_rmsqv(samples, 1, &rms, vDSP_Length(samples.count))
 
-        // Convert RMS to normalized level with some headroom
-        let level = min(1.0, rms * 3.0)
+        // Convert RMS to normalized level with gain for responsive visualization
+        let level = min(1.0, rms * 8.0)
         return level
     }
 }

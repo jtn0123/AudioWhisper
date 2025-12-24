@@ -30,7 +30,7 @@ internal extension AppDelegate {
 
         AppSetupHelper.setupApp()
 
-        audioRecorder = AudioRecorder()
+        audioRecorder = AudioEngineRecorder()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {

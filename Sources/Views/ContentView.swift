@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 
 internal struct ContentView: View {
-    @State var audioRecorder: AudioRecorder
+    @State var audioRecorder: AudioEngineRecorder
     @AppStorage("transcriptionProvider") var transcriptionProvider = TranscriptionProvider.openai
     @AppStorage("selectedWhisperModel") var selectedWhisperModel = WhisperModel.base
     @AppStorage("immediateRecording") var immediateRecording = true
@@ -38,7 +38,7 @@ internal struct ContentView: View {
     @AppStorage("hasShownFirstModelUseHint") var hasShownFirstModelUseHint = false
     @State var showFirstModelUseHint = false
     
-    init(speechService: SpeechToTextService = SpeechToTextService(), audioRecorder: AudioRecorder) {
+    init(speechService: SpeechToTextService = SpeechToTextService(), audioRecorder: AudioEngineRecorder) {
         self._speechService = State(initialValue: speechService)
         self._audioRecorder = State(initialValue: audioRecorder)
     }
