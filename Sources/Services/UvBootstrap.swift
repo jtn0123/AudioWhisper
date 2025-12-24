@@ -23,9 +23,29 @@ internal enum UvError: Error, LocalizedError {
     }
 }
 
+private class BundleFinder {}
+
 internal struct UvBootstrap {
     static let minUvVersion = "0.8.5"
     static let defaultPythonVersion = "3.11"
+
+    /// Safe accessor for the SPM module bundle that returns nil instead of crashing
+    /// when the bundle is not found (e.g., when built with build.sh instead of SPM)
+    private static var moduleBundle: Bundle? {
+        let bundleName = "AudioWhisper_AudioWhisper"
+        let candidates = [
+            Bundle.main.resourceURL,
+            Bundle(for: BundleFinder.self).resourceURL,
+            Bundle.main.bundleURL,
+        ]
+        for candidate in candidates {
+            let bundlePath = candidate?.appendingPathComponent(bundleName + ".bundle")
+            if let bundle = bundlePath.flatMap(Bundle.init(url:)) {
+                return bundle
+            }
+        }
+        return nil
+    }
 
     // Where we keep the app-managed project (contains pyproject + .venv)
     static func projectDir() throws -> URL {
@@ -55,9 +75,10 @@ internal struct UvBootstrap {
         }
         // Bundled uv - check multiple locations for different build methods
         // Release build (build.sh): Contents/Resources/bin/uv
-        // Note: Bundle.module is not used as it causes fatalError when SPM bundle is missing
+        // Xcode/SPM build: AudioWhisper_AudioWhisper.bundle/Contents/Resources/Resources/bin/uv
         let bundleCandidates: [URL] = [
-            Bundle.main.resourceURL
+            Bundle.main.resourceURL,
+            moduleBundle?.resourceURL
         ].compactMap { $0 }
 
         for resURL in bundleCandidates {
@@ -126,8 +147,8 @@ internal struct UvBootstrap {
     // Copy pyproject.toml and uv.lock from bundle to per-user project dir
     private static func copyProjectFilesIfNeeded(to proj: URL) throws {
         let fm = FileManager.default
-        // Note: Only using Bundle.main as Bundle.module causes fatalError when SPM bundle is missing
-        let resourceURLs = [Bundle.main.resourceURL].compactMap { $0 }
+        // Check both Bundle.main (build.sh) and SPM module bundle (Xcode builds)
+        let resourceURLs = [Bundle.main.resourceURL, moduleBundle?.resourceURL].compactMap { $0 }
 
         // Support both flattened and nested resource layouts for pyproject.toml only.
         // We intentionally do NOT copy a bundled uv.lock to avoid mismatches.
