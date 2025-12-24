@@ -215,8 +215,8 @@ internal extension TranscriptionHistoryView {
             fatalError("Failed to create preview container: \(error)")
         }
     }()
-    
-    return TranscriptionHistoryView()
+
+    TranscriptionHistoryView()
         .modelContainer(previewContainer)
         .frame(
             width: LayoutMetrics.TranscriptionHistory.previewSize.width,
@@ -232,8 +232,8 @@ internal extension TranscriptionHistoryView {
             fatalError("Failed to create preview container: \(error)")
         }
     }()
-    
-    return TranscriptionHistoryView()
+
+    TranscriptionHistoryView()
         .modelContainer(previewContainer)
         .frame(
             width: LayoutMetrics.TranscriptionHistory.previewSize.width,
