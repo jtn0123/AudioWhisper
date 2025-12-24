@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import os.log
 
 /// Manages window display and focus restoration for AudioWhisper
 /// 
@@ -130,16 +131,20 @@ internal class WindowController {
     
     private func storePreviousApp() {
         let workspace = NSWorkspace.shared
+        Logger.paste.debug("storePreviousApp called")
         if let frontmostApp = workspace.frontmostApplication,
            frontmostApp.bundleIdentifier != Bundle.main.bundleIdentifier {
             previousApp = frontmostApp
             WindowController.storedTargetApp = frontmostApp
-            
+            Logger.paste.debug("storePreviousApp: stored \(frontmostApp.localizedName ?? "unknown", privacy: .public)")
+
             // Also notify via NotificationCenter as backup
             NotificationCenter.default.post(
                 name: .targetAppStored,
                 object: frontmostApp
             )
+        } else {
+            Logger.paste.debug("storePreviousApp: no suitable frontmost app found")
         }
     }
     

@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import os.log
 
 internal extension ContentView {
     func startRecording() {
@@ -256,16 +257,23 @@ internal extension ContentView {
     }
 
     func showConfirmationAndPaste(text: String) {
+        Logger.paste.debug("showConfirmationAndPaste called with text length: \(text.count)")
         showSuccess = true
         isProcessing = false
         soundManager.playCompletionSound()
-        
+
         let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+        Logger.paste.debug("showConfirmationAndPaste: enableSmartPaste = \(enableSmartPaste)")
         if enableSmartPaste {
+            Logger.paste.debug("showConfirmationAndPaste: awaitingSemanticPaste = \(awaitingSemanticPaste)")
             if !awaitingSemanticPaste {
+                Logger.paste.debug("showConfirmationAndPaste: scheduling performUserTriggeredPaste")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Logger.paste.debug("showConfirmationAndPaste: executing performUserTriggeredPaste")
                     performUserTriggeredPaste()
                 }
+            } else {
+                Logger.paste.debug("showConfirmationAndPaste: skipping paste due to awaitingSemanticPaste")
             }
         } else {
             // Note: ContentView is a struct, so no weak self needed.

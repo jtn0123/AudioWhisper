@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import os.log
 
 private final class ObserverBox: @unchecked Sendable {
     private let lock = NSLock()
@@ -36,12 +37,15 @@ internal final class ResumedFlag: @unchecked Sendable {
 
 internal extension ContentView {
     func performUserTriggeredPaste() {
+        Logger.paste.debug("performUserTriggeredPaste called")
         guard let targetApp = findValidTargetApp() else {
+            Logger.paste.warning("No valid target app found for paste")
             showSuccess = false
             hideRecordingWindow()
             return
         }
-        
+
+        Logger.paste.debug("Target app found: \(targetApp.localizedName ?? "unknown", privacy: .public)")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.hideRecordingWindow()
             self.activateTargetAppAndPaste(targetApp)
@@ -49,19 +53,37 @@ internal extension ContentView {
     }
     
     func findValidTargetApp() -> NSRunningApplication? {
+        Logger.paste.debug("findValidTargetApp: checking WindowController.storedTargetApp")
         var targetApp = WindowController.storedTargetApp
-        if targetApp == nil {
-            targetApp = targetAppForPaste
+        if let app = targetApp {
+            Logger.paste.debug("findValidTargetApp: storedTargetApp = \(app.localizedName ?? "unknown", privacy: .public)")
+        } else {
+            Logger.paste.debug("findValidTargetApp: storedTargetApp is nil")
         }
-        
+
+        if targetApp == nil {
+            Logger.paste.debug("findValidTargetApp: checking targetAppForPaste")
+            targetApp = targetAppForPaste
+            if let app = targetApp {
+                Logger.paste.debug("findValidTargetApp: targetAppForPaste = \(app.localizedName ?? "unknown", privacy: .public)")
+            }
+        }
+
         if let stored = targetApp, stored.isTerminated {
+            Logger.paste.debug("findValidTargetApp: target app is terminated, clearing")
             targetApp = nil
         }
-        
+
         if targetApp == nil {
+            Logger.paste.debug("findValidTargetApp: falling back to findFallbackTargetApp")
             targetApp = findFallbackTargetApp()
+            if let app = targetApp {
+                Logger.paste.debug("findValidTargetApp: fallback found \(app.localizedName ?? "unknown", privacy: .public)")
+            } else {
+                Logger.paste.warning("findValidTargetApp: no fallback app found")
+            }
         }
-        
+
         return targetApp
     }
     
@@ -101,12 +123,16 @@ internal extension ContentView {
     }
     
     func activateTargetAppAndPaste(_ target: NSRunningApplication) {
+        Logger.paste.debug("activateTargetAppAndPaste: activating \(target.localizedName ?? "unknown", privacy: .public)")
         Task { @MainActor in
             do {
                 try await activateApplication(target)
+                Logger.paste.debug("activateTargetAppAndPaste: app activated, calling pasteWithCompletionHandler")
                 await pasteManager.pasteWithCompletionHandler()
+                Logger.paste.debug("activateTargetAppAndPaste: paste completed")
                 self.showSuccess = false
             } catch {
+                Logger.paste.error("activateTargetAppAndPaste: failed with error: \(error.localizedDescription, privacy: .public)")
                 self.showSuccess = false
             }
         }

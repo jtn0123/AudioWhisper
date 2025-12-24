@@ -3,6 +3,14 @@ import os.log
 
 internal extension AppDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Register UserDefaults defaults - these are used when keys haven't been explicitly set
+        UserDefaults.standard.register(defaults: [
+            "enableSmartPaste": true,
+            "immediateRecording": true,
+            "startAtLogin": true,
+            "playCompletionSound": true
+        ])
+
         // Skip UI initialization in test environment
         let isTestEnvironment = NSClassFromString("XCTestCase") != nil
         if isTestEnvironment {

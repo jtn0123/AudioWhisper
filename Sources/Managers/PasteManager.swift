@@ -3,6 +3,7 @@ import AppKit
 import ApplicationServices
 import Carbon
 import Observation
+import os.log
 
 // Helper class to safely capture observer in closure
 // Uses a lock to ensure thread-safe access to the mutable observer property
@@ -148,8 +149,15 @@ internal class PasteManager {
     /// Performs paste with completion handler for proper coordination
     @MainActor
     func pasteWithCompletionHandler() async {
+        Logger.paste.debug("pasteWithCompletionHandler called")
         await withCheckedContinuation { continuation in
-            pasteWithUserInteraction { _ in
+            pasteWithUserInteraction { result in
+                switch result {
+                case .success:
+                    Logger.paste.debug("pasteWithCompletionHandler: paste succeeded")
+                case .failure(let error):
+                    Logger.paste.error("pasteWithCompletionHandler: paste failed: \(error.localizedDescription, privacy: .public)")
+                }
                 continuation.resume()
             }
         }
@@ -158,51 +166,63 @@ internal class PasteManager {
     /// Performs paste with immediate user interaction context
     /// This should work better than automatic pasting
     func pasteWithUserInteraction(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
+        Logger.paste.debug("pasteWithUserInteraction called")
         // Check permission first - if denied, fail gracefully
         // Text is already in clipboard so user can paste manually
         // Don't open System Settings here - it's disruptive and loses focus
-        guard accessibilityManager.checkPermission() else {
+        let hasPermission = accessibilityManager.checkPermission()
+        Logger.paste.debug("pasteWithUserInteraction: accessibility permission = \(hasPermission)")
+        guard hasPermission else {
+            Logger.paste.warning("pasteWithUserInteraction: accessibility permission denied")
             handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
             completion?(.failure(PasteError.accessibilityPermissionDenied))
             return
         }
 
         // Permission is available - proceed with paste
+        Logger.paste.debug("pasteWithUserInteraction: calling performCGEventPaste")
         performCGEventPaste(completion: completion)
     }
     
     // MARK: - CGEvent Paste
     
     private func performCGEventPaste(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
+        Logger.paste.debug("performCGEventPaste called")
         // CRITICAL: Prevent any paste operations during tests
         if NSClassFromString("XCTestCase") != nil {
+            Logger.paste.debug("performCGEventPaste: skipping in test environment")
             handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
             completion?(.failure(PasteError.accessibilityPermissionDenied))
             return
         }
-        
+
         // CRITICAL SECURITY CHECK: Always verify accessibility permission before any CGEvent operations
         // This method should NEVER execute without proper permission - no exceptions
         guard accessibilityManager.checkPermission() else {
             // Permission is not granted - STOP IMMEDIATELY and report error
             // We must never attempt CGEvent operations without permission
+            Logger.paste.warning("performCGEventPaste: accessibility permission check failed")
             handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
             completion?(.failure(PasteError.accessibilityPermissionDenied))
             return
         }
-        
+
         // Permission is verified - proceed with paste operation
+        Logger.paste.debug("performCGEventPaste: calling simulateCmdVPaste")
         do {
             try simulateCmdVPaste()
             // Paste operation completed successfully
+            Logger.paste.debug("performCGEventPaste: simulateCmdVPaste succeeded")
             handlePasteResult(.success(()))
             completion?(.success(()))
         } catch let error as PasteError {
             // Handle known paste errors
+            Logger.paste.error("performCGEventPaste: PasteError: \(error.localizedDescription ?? "unknown", privacy: .public)")
             handlePasteResult(.failure(error))
             completion?(.failure(error))
         } catch {
             // Handle unexpected errors during paste operation
+            Logger.paste.error("performCGEventPaste: unexpected error: \(error.localizedDescription, privacy: .public)")
             handlePasteResult(.failure(PasteError.keyboardEventCreationFailed))
             completion?(.failure(PasteError.keyboardEventCreationFailed))
         }

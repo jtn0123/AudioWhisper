@@ -13,4 +13,5 @@ internal extension Logger {
     static let app = Logger(subsystem: subsystem, category: "App")
     static let settings = Logger(subsystem: subsystem, category: "Settings")
     static let dataManager = Logger(subsystem: subsystem, category: "DataManager")
+    static let paste = Logger(subsystem: subsystem, category: "Paste")
 }
