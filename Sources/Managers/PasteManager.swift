@@ -27,8 +27,23 @@ private final class ObserverBox: @unchecked Sendable {
 
 // Helper class to safely capture cancellation state (Bug #19 fix)
 // Avoids capture-by-value issue where timeoutCancelled var was captured by value
-private final class CancelledFlag {
-    var value = false
+// Marked @unchecked Sendable with lock for thread-safe cross-isolation access
+private final class CancelledFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value = false
+
+    var value: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _value
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _value = newValue
+        }
+    }
 }
 
 /// Errors that can occur during paste operations

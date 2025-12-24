@@ -230,7 +230,8 @@ internal final class UsageMetricsStore {
         defaults.set(snapshot.dailyActivity, forKey: Keys.dailyActivity)
     }
 
-    static func estimatedWordCount(for text: String) -> Int {
+    /// Pure function to count words - nonisolated since it doesn't access actor state
+    nonisolated static func estimatedWordCount(for text: String) -> Int {
         let words = text.split { character in
             if character.isLetter || character.isNumber {
                 return false
