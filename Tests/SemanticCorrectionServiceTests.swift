@@ -195,4 +195,115 @@ final class SemanticCorrectionServiceTests: XCTestCase {
         )
         XCTAssertEqual(result, "completely different") // All changes accepted
     }
+
+    // MARK: - MaxChangeRatio Configuration Tests
+
+    func testMLXMaxChangeRatioIsMorePermissive() {
+        // MLX uses 0.6 maxChangeRatio (more permissive for local correction)
+        let mlxRatio = 0.6
+
+        // A significant but reasonable correction should be accepted at 0.6
+        let original = "so um I was like thinking about this"
+        let corrected = "So I was thinking about this"
+
+        let result = SemanticCorrectionService.safeMerge(
+            original: original,
+            corrected: corrected,
+            maxChangeRatio: mlxRatio
+        )
+        XCTAssertEqual(result, corrected, "MLX ratio should accept reasonable corrections")
+    }
+
+    func testCloudMaxChangeRatioIsMoreConservative() {
+        // Cloud uses 0.25 maxChangeRatio (more conservative)
+        let cloudRatio = 0.25
+
+        // A modest correction should be accepted at 0.25
+        let original = "hello how are you doing"
+        let corrected = "Hello, how are you doing?"
+
+        let result = SemanticCorrectionService.safeMerge(
+            original: original,
+            corrected: corrected,
+            maxChangeRatio: cloudRatio
+        )
+        XCTAssertEqual(result, corrected, "Cloud ratio should accept small corrections")
+    }
+
+    func testMLXAcceptsCorrectionThatCloudRejects() {
+        // Test a correction that exceeds cloud threshold but is under MLX threshold
+        let original = "um so like I was uh thinking about it you know"
+        let corrected = "I was thinking about it"
+
+        // Calculate expected ratio
+        let ratio = SemanticCorrectionService.normalizedEditDistance(a: original, b: corrected)
+
+        // This should be between 0.25 and 0.6
+        if ratio > 0.25 && ratio <= 0.6 {
+            let mlxResult = SemanticCorrectionService.safeMerge(
+                original: original,
+                corrected: corrected,
+                maxChangeRatio: 0.6
+            )
+            let cloudResult = SemanticCorrectionService.safeMerge(
+                original: original,
+                corrected: corrected,
+                maxChangeRatio: 0.25
+            )
+
+            XCTAssertEqual(mlxResult, corrected, "MLX should accept this correction")
+            XCTAssertEqual(cloudResult, original, "Cloud should reject this correction")
+        }
+    }
+
+    // MARK: - Semantic Correction Mode Tests
+
+    func testSemanticCorrectionModeRawValues() {
+        XCTAssertEqual(SemanticCorrectionMode.off.rawValue, "off")
+        XCTAssertEqual(SemanticCorrectionMode.localMLX.rawValue, "localMLX")
+        XCTAssertEqual(SemanticCorrectionMode.cloud.rawValue, "cloud")
+    }
+
+    func testSemanticCorrectionModeFromRawValue() {
+        XCTAssertEqual(SemanticCorrectionMode(rawValue: "off"), .off)
+        XCTAssertEqual(SemanticCorrectionMode(rawValue: "localMLX"), .localMLX)
+        XCTAssertEqual(SemanticCorrectionMode(rawValue: "cloud"), .cloud)
+        XCTAssertNil(SemanticCorrectionMode(rawValue: "invalid"))
+    }
+
+    // MARK: - OpenAI Chat Response Tests
+
+    func testOpenAIChatResponseDecoding() {
+        let json = """
+        {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": "Corrected text here"
+                    }
+                }
+            ]
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let response = try? JSONDecoder().decode(OpenAIChatResponse.self, from: data)
+
+        XCTAssertNotNil(response)
+        XCTAssertEqual(response?.choices.first?.message.content, "Corrected text here")
+        XCTAssertEqual(response?.choices.first?.message.role, "assistant")
+    }
+
+    func testOpenAIChatResponseEmptyChoices() {
+        let json = """
+        {
+            "choices": []
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let response = try? JSONDecoder().decode(OpenAIChatResponse.self, from: data)
+
+        XCTAssertNotNil(response)
+        XCTAssertTrue(response?.choices.isEmpty ?? false)
+    }
 }

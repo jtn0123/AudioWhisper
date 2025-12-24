@@ -77,9 +77,95 @@ class LocalWhisperErrorTests: XCTestCase {
     }
 }
 
+// MARK: - WhisperModel Tests
+class WhisperModelTests: XCTestCase {
+
+    func testWhisperModelDisplayNames() {
+        // Display names include the file size
+        XCTAssertTrue(WhisperModel.tiny.displayName.hasPrefix("Tiny"))
+        XCTAssertTrue(WhisperModel.base.displayName.hasPrefix("Base"))
+        XCTAssertTrue(WhisperModel.small.displayName.hasPrefix("Small"))
+        XCTAssertTrue(WhisperModel.largeTurbo.displayName.hasPrefix("Large Turbo"))
+
+        // All display names should include size info
+        for model in [WhisperModel.tiny, .base, .small, .largeTurbo] {
+            XCTAssertTrue(model.displayName.contains("MB") || model.displayName.contains("GB"),
+                          "\(model) displayName should contain size")
+        }
+    }
+
+    func testWhisperModelWhisperKitNames() {
+        // Verify all models have valid WhisperKit model names
+        for model in [WhisperModel.tiny, .base, .small, .largeTurbo] {
+            XCTAssertTrue(model.whisperKitModelName.hasPrefix("openai_whisper-"))
+            XCTAssertFalse(model.whisperKitModelName.isEmpty)
+        }
+    }
+
+    func testWhisperModelEstimatedSizesAreReasonable() {
+        // Verify sizes are in reasonable range (1MB to 2GB)
+        let minSize: Int64 = 1 * 1024 * 1024  // 1 MB
+        let maxSize: Int64 = 2 * 1024 * 1024 * 1024  // 2 GB
+
+        for model in [WhisperModel.tiny, .base, .small, .largeTurbo] {
+            XCTAssertGreaterThan(model.estimatedSize, minSize, "\(model.displayName) size too small")
+            XCTAssertLessThan(model.estimatedSize, maxSize, "\(model.displayName) size too large")
+        }
+    }
+
+    func testWhisperModelSizesAreOrdered() {
+        // Tiny < Base < Small < Large Turbo
+        XCTAssertLessThan(WhisperModel.tiny.estimatedSize, WhisperModel.base.estimatedSize)
+        XCTAssertLessThan(WhisperModel.base.estimatedSize, WhisperModel.small.estimatedSize)
+        XCTAssertLessThan(WhisperModel.small.estimatedSize, WhisperModel.largeTurbo.estimatedSize)
+    }
+}
+
+// MARK: - Cache Management Tests
+class LocalWhisperServiceCacheTests: XCTestCase {
+    var service: LocalWhisperService!
+
+    override func setUp() {
+        super.setUp()
+        service = LocalWhisperService()
+    }
+
+    override func tearDown() async throws {
+        await service.clearCache()
+        service = nil
+        try await super.tearDownWithError()
+    }
+
+    func testClearCacheDoesNotThrow() async {
+        // Clearing an empty cache should not throw
+        await service.clearCache()
+
+        // Clearing again should also be fine
+        await service.clearCache()
+    }
+
+    func testMultipleClearCacheCalls() async {
+        // Multiple sequential clears should work
+        for _ in 0..<5 {
+            await service.clearCache()
+        }
+    }
+
+    func testConcurrentCacheClear() async {
+        // Concurrent cache clears should be handled safely
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<10 {
+                group.addTask {
+                    await self.service.clearCache()
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Performance Tests
 class LocalWhisperServicePerformanceTests: XCTestCase {
-    
+
     func testServiceCreationPerformance() {
         measure {
             let service = LocalWhisperService()
