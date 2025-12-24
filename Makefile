@@ -33,6 +33,7 @@ clean:
 	rm -rf AudioWhisper.app
 	rm -f AudioWhisper.zip
 	rm -f Sources/AudioProcessorCLI
+	rm -f Sources/Resources/bin/uv
 
 # Update the Homebrew cask formula with latest GitHub release
 update-brew-cask:

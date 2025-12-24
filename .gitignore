@@ -122,6 +122,9 @@ notarization.log
 *.xcodeproj/
 __pycache__
 
+# Downloaded uv binary (auto-downloaded during build)
+Sources/Resources/bin/uv
+
 # Environment
 .env
 .env.local

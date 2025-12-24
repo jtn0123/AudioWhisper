@@ -157,20 +157,48 @@ else
   echo "⚠️ Sources/ml package not found, ML daemon will not work"
 fi
 
-# Bundle uv (Apple Silicon). Prefer repo copy; else fall back to system uv if available
-if [ -f "Sources/Resources/bin/uv" ]; then
-  cp Sources/Resources/bin/uv AudioWhisper.app/Contents/Resources/bin/uv
-  chmod +x AudioWhisper.app/Contents/Resources/bin/uv
-  echo "Bundled uv binary (from repo)"
-else
-  if command -v uv >/dev/null 2>&1; then
-    UV_PATH=$(command -v uv)
-    cp "$UV_PATH" AudioWhisper.app/Contents/Resources/bin/uv
-    chmod +x AudioWhisper.app/Contents/Resources/bin/uv
-    echo "Bundled uv binary (from system: $UV_PATH)"
+# Bundle uv (Python package manager required for MLX/Parakeet features)
+UV_VERSION="0.5.11"
+UV_BUNDLED="Sources/Resources/bin/uv"
+
+# Download uv if not present
+if [ ! -f "$UV_BUNDLED" ]; then
+  echo "📥 Downloading uv v${UV_VERSION}..."
+  mkdir -p Sources/Resources/bin
+
+  # Detect architecture
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "arm64" ]; then
+    UV_ARCH="aarch64"
   else
-    echo "ℹ️ No bundled uv found and no system uv available; runtime will try PATH"
+    UV_ARCH="x86_64"
   fi
+
+  UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}-apple-darwin.tar.gz"
+
+  # Download and extract
+  curl -sL "$UV_URL" | tar -xz -C Sources/Resources/bin --strip-components=1 uv-${UV_ARCH}-apple-darwin/uv
+
+  if [ -f "$UV_BUNDLED" ]; then
+    chmod +x "$UV_BUNDLED"
+    echo "✅ Downloaded uv v${UV_VERSION} for ${UV_ARCH}"
+  else
+    echo "⚠️ Failed to download uv, MLX features may not work"
+  fi
+fi
+
+# Copy uv to app bundle
+if [ -f "$UV_BUNDLED" ]; then
+  cp "$UV_BUNDLED" AudioWhisper.app/Contents/Resources/bin/uv
+  chmod +x AudioWhisper.app/Contents/Resources/bin/uv
+  echo "Bundled uv binary"
+elif command -v uv >/dev/null 2>&1; then
+  UV_PATH=$(command -v uv)
+  cp "$UV_PATH" AudioWhisper.app/Contents/Resources/bin/uv
+  chmod +x AudioWhisper.app/Contents/Resources/bin/uv
+  echo "Bundled uv binary (from system: $UV_PATH)"
+else
+  echo "⚠️ No uv available; MLX/Parakeet features will not work"
 fi
 
 # Bundle pyproject.toml and uv.lock if present
