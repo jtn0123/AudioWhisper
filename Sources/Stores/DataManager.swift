@@ -213,7 +213,7 @@ internal final class DataManager: DataManagerProtocol {
                 let predicate = #Predicate<TranscriptionRecord> { record in
                     record.text.localizedStandardContains(lowercaseQuery) ||
                     record.provider.localizedStandardContains(lowercaseQuery) ||
-                    (record.modelUsed != nil && record.modelUsed!.localizedStandardContains(lowercaseQuery))
+                    (record.modelUsed?.localizedStandardContains(lowercaseQuery) ?? false)
                 }
                 
                 descriptor = FetchDescriptor<TranscriptionRecord>(

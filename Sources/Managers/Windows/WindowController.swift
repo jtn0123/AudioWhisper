@@ -21,7 +21,7 @@ internal class WindowController {
             }
         }
         set {
-            storedTargetAppQueue.async(flags: .barrier) {
+            storedTargetAppQueue.sync(flags: .barrier) {
                 _storedTargetApp = newValue
             }
         }
