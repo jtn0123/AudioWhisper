@@ -1,9 +1,29 @@
 import Foundation
 
+private class BundleFinder {}
+
 internal enum ResourceLocator {
+    /// Safe accessor for the SPM module bundle that returns nil instead of crashing
+    /// when the bundle is not found (e.g., when built with build.sh instead of SPM)
+    private static var moduleBundle: Bundle? {
+        let bundleName = "AudioWhisper_AudioWhisper"
+        let candidates = [
+            Bundle.main.resourceURL,
+            Bundle(for: BundleFinder.self).resourceURL,
+            Bundle.main.bundleURL,
+        ]
+        for candidate in candidates {
+            let bundlePath = candidate?.appendingPathComponent(bundleName + ".bundle")
+            if let bundle = bundlePath.flatMap(Bundle.init(url:)) {
+                return bundle
+            }
+        }
+        return nil
+    }
+
     /// Locates a bundled resource across common packaging modes:
     /// - `.app` bundle (copied into `Bundle.main`)
-    /// - SwiftPM resources (`Bundle.module`)
+    /// - SwiftPM resources (`Bundle.module` via safe accessor)
     /// - SwiftPM resource bundle (historical fallback for `swift run`)
     /// - Dev fallback path (relative to current directory)
     static func url(forResource name: String, withExtension ext: String, devRelativePath: String? = nil) -> URL? {
@@ -11,7 +31,7 @@ internal enum ResourceLocator {
             return url
         }
 
-        if let url = Bundle.module.url(forResource: name, withExtension: ext) {
+        if let bundle = moduleBundle, let url = bundle.url(forResource: name, withExtension: ext) {
             return url
         }
 

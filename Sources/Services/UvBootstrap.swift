@@ -55,10 +55,9 @@ internal struct UvBootstrap {
         }
         // Bundled uv - check multiple locations for different build methods
         // Release build (build.sh): Contents/Resources/bin/uv
-        // SPM/Xcode build: Bundle.module -> Resources/bin/uv
+        // Note: Bundle.module is not used as it causes fatalError when SPM bundle is missing
         let bundleCandidates: [URL] = [
-            Bundle.main.resourceURL,
-            Bundle.module.resourceURL
+            Bundle.main.resourceURL
         ].compactMap { $0 }
 
         for resURL in bundleCandidates {
@@ -127,8 +126,8 @@ internal struct UvBootstrap {
     // Copy pyproject.toml and uv.lock from bundle to per-user project dir
     private static func copyProjectFilesIfNeeded(to proj: URL) throws {
         let fm = FileManager.default
-        // Support both Bundle.main and Bundle.module for different build methods
-        let resourceURLs = [Bundle.main.resourceURL, Bundle.module.resourceURL].compactMap { $0 }
+        // Note: Only using Bundle.main as Bundle.module causes fatalError when SPM bundle is missing
+        let resourceURLs = [Bundle.main.resourceURL].compactMap { $0 }
 
         // Support both flattened and nested resource layouts for pyproject.toml only.
         // We intentionally do NOT copy a bundled uv.lock to avoid mismatches.
