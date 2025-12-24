@@ -257,20 +257,20 @@ final class HotKeyManagerTests: XCTestCase {
     // MARK: - Memory Management Tests
     
     func testDeinitCleanup() {
-        weak var weakManager = hotKeyManager
-        
+        weak var weakManager: HotKeyManager? = hotKeyManager
+
         hotKeyManager = nil
-        
+
         // Force a runloop to allow cleanup
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        
+
         XCTAssertNil(weakManager, "HotKeyManager should be deallocated")
     }
-    
+
     func testNotificationObserverCleanup() {
         let manager = HotKeyManager { }
-        weak var weakManager = manager
-        
+        weak var weakManager: HotKeyManager? = manager
+
         // Create a reference and then nil it
         var strongManager: HotKeyManager? = manager
         strongManager = nil

@@ -112,14 +112,20 @@ final class SmartPasteIntegrationTests: XCTestCase {
     func testPasteSuccessNotificationPosted() async {
         // Given
         let expectation = XCTestExpectation(description: "Notification received")
-        var receivedNotification: Notification?
+        // Use actor to safely capture notification in @Sendable closure
+        actor NotificationCapture {
+            var notification: Notification?
+            func set(_ n: Notification) { notification = n }
+            func get() -> Notification? { notification }
+        }
+        let capture = NotificationCapture()
 
         let observer = NotificationCenter.default.addObserver(
             forName: .pasteOperationSucceeded,
             object: nil,
             queue: .main
         ) { notification in
-            receivedNotification = notification
+            Task { await capture.set(notification) }
             expectation.fulfill()
         }
         defer { NotificationCenter.default.removeObserver(observer) }
@@ -129,6 +135,7 @@ final class SmartPasteIntegrationTests: XCTestCase {
 
         // Then
         await fulfillment(of: [expectation], timeout: 1.0)
+        let receivedNotification = await capture.get()
         XCTAssertNotNil(receivedNotification)
         XCTAssertEqual(receivedNotification?.name, .pasteOperationSucceeded)
     }
@@ -136,14 +143,20 @@ final class SmartPasteIntegrationTests: XCTestCase {
     func testPasteFailureNotificationPosted() async {
         // Given
         let expectation = XCTestExpectation(description: "Failure notification received")
-        var receivedNotification: Notification?
+        // Use actor to safely capture notification in @Sendable closure
+        actor NotificationCapture {
+            var notification: Notification?
+            func set(_ n: Notification) { notification = n }
+            func get() -> Notification? { notification }
+        }
+        let capture = NotificationCapture()
 
         let observer = NotificationCenter.default.addObserver(
             forName: .pasteOperationFailed,
             object: nil,
             queue: .main
         ) { notification in
-            receivedNotification = notification
+            Task { await capture.set(notification) }
             expectation.fulfill()
         }
         defer { NotificationCenter.default.removeObserver(observer) }
@@ -158,6 +171,7 @@ final class SmartPasteIntegrationTests: XCTestCase {
 
         // Then
         await fulfillment(of: [expectation], timeout: 1.0)
+        let receivedNotification = await capture.get()
         XCTAssertNotNil(receivedNotification)
         XCTAssertEqual(receivedNotification?.name, .pasteOperationFailed)
         XCTAssertNotNil(receivedNotification?.userInfo)

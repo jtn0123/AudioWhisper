@@ -20,8 +20,13 @@ final class ContentViewPasteTests: XCTestCase {
 
     func testResumedFlagThreadSafety() async {
         let flag = ResumedFlag()
-        var resumeCount = 0
-        let lock = NSLock()
+        // Use actor for thread-safe counting in async context
+        actor Counter {
+            var value = 0
+            func increment() { value += 1 }
+            func get() -> Int { value }
+        }
+        let counter = Counter()
 
         await withTaskGroup(of: Bool.self) { group in
             // Launch 100 concurrent tasks trying to resume
@@ -33,15 +38,14 @@ final class ContentViewPasteTests: XCTestCase {
 
             for await result in group {
                 if result {
-                    lock.lock()
-                    resumeCount += 1
-                    lock.unlock()
+                    await counter.increment()
                 }
             }
         }
 
         // Exactly one should succeed
-        XCTAssertEqual(resumeCount, 1, "Only one resume should succeed even with concurrent calls")
+        let finalCount = await counter.get()
+        XCTAssertEqual(finalCount, 1, "Only one resume should succeed even with concurrent calls")
     }
 
     func testResumedFlagMultipleInstances() {

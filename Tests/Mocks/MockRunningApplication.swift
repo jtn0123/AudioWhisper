@@ -1,7 +1,7 @@
 import AppKit
 
 // Lightweight mock of NSRunningApplication used by PasteManager tests
-final class MockRunningApplication: NSRunningApplication {
+final class MockRunningApplication: NSRunningApplication, @unchecked Sendable {
     var mockIsTerminated: Bool = false
     var mockActivationCount: Int = 0
 

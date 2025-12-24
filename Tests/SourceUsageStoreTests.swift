@@ -127,7 +127,9 @@ final class SourceUsageStoreTests: XCTestCase {
         XCTAssertEqual(restored.count, 2)
         XCTAssertEqual(restored.first?.bundleIdentifier, "com.persist.b", "Higher word count should be ordered first on load")
         XCTAssertEqual(restored.first?.fallbackSymbolName, "tray")
-        XCTAssertEqual(restored.last?.iconData, Data([0x0A]))
+        // Note: iconData is intentionally excluded from Codable (see SourceUsageStats.CodingKeys)
+        // to prevent UserDefaults overflow. Icons are loaded dynamically from bundle when needed.
+        XCTAssertNil(restored.last?.iconData, "iconData is not persisted to avoid UserDefaults overflow")
     }
 
     private func makeInfo(bundleId: String, name: String, iconByte: UInt8? = nil, fallbackSymbol: String? = nil) -> SourceAppInfo {

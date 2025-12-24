@@ -159,8 +159,8 @@ final class WindowControllerTests: XCTestCase {
     // MARK: - Memory Management Tests
     
     func testWindowControllerDeallocation() {
-        weak var weakController = windowController
-        
+        weak var weakController: WindowController? = windowController
+
         windowController = nil
         
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))

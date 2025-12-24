@@ -17,14 +17,14 @@ final class AccessibilityPermissionManagerTests: XCTestCase {
         let grantedManager = makeManager(granted: true, counter: grantedCounter)
         XCTAssertEqual(
             grantedManager.permissionStatusMessage,
-            "✅ Accessibility permission granted - SmartPaste is enabled"
+            "Accessibility permission granted - SmartPaste is enabled"
         )
 
         let deniedCounter = Counter()
         let deniedManager = makeManager(granted: false, counter: deniedCounter)
         XCTAssertEqual(
             deniedManager.permissionStatusMessage,
-            "⚠️ Accessibility permission required for SmartPaste functionality"
+            "Accessibility permission required for SmartPaste functionality"
         )
     }
 
