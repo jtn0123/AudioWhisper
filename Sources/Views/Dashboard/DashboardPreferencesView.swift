@@ -5,7 +5,7 @@ import os.log
 
 internal struct DashboardPreferencesView: View {
     @AppStorage("startAtLogin") private var startAtLogin = true
-    @AppStorage("immediateRecording") private var immediateRecording = false
+    @AppStorage("immediateRecording") private var immediateRecording = true
     @AppStorage("autoBoostMicrophoneVolume") private var autoBoostMicrophoneVolume = false
     @AppStorage("enableSmartPaste") private var enableSmartPaste = false
     @AppStorage("playCompletionSound") private var playCompletionSound = true
@@ -89,6 +89,14 @@ internal struct DashboardPreferencesView: View {
                     subtitle: "Automatically paste finished transcripts",
                     isOn: $enableSmartPaste
                 )
+                .onChange(of: enableSmartPaste) { _, newValue in
+                    if newValue {
+                        // Check if accessibility is granted, if not show modal
+                        if PermissionManager.shared.accessibilityPermissionState != .granted {
+                            PermissionManager.shared.showAccessibilityModal = true
+                        }
+                    }
+                }
 
                 Divider().background(DashboardTheme.rule)
 
