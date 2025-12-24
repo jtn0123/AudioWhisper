@@ -133,7 +133,7 @@ class LocalWhisperServiceCacheTests: XCTestCase {
     override func tearDown() async throws {
         await service.clearCache()
         service = nil
-        try await super.tearDownWithError()
+        try super.tearDownWithError()
     }
 
     func testClearCacheDoesNotThrow() async {

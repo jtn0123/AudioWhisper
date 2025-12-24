@@ -257,7 +257,7 @@ final class HotKeyManagerTests: XCTestCase {
     // MARK: - Memory Management Tests
     
     func testDeinitCleanup() {
-        weak var weakManager: HotKeyManager? = hotKeyManager
+        weak let weakManager: HotKeyManager? = hotKeyManager
 
         hotKeyManager = nil
 
@@ -269,15 +269,15 @@ final class HotKeyManagerTests: XCTestCase {
 
     func testNotificationObserverCleanup() {
         let manager = HotKeyManager { }
-        weak var weakManager: HotKeyManager? = manager
+        weak let weakManager: HotKeyManager? = manager
 
         // Create a reference and then nil it
         var strongManager: HotKeyManager? = manager
         strongManager = nil
         _ = strongManager // Explicitly ignore to avoid unused variable warning
-        
+
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-        
+
         // The manager should still exist due to notification center retention
         // but should be properly cleaned up on deallocation
         XCTAssertNotNil(weakManager)

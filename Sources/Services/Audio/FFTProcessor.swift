@@ -98,21 +98,27 @@ final class FFTProcessor: @unchecked Sendable {
         var windowedSamples = [Float](repeating: 0, count: bufferSize)
         vDSP_vmul(samples, 1, window, 1, &windowedSamples, 1, vDSP_Length(bufferSize))
 
-        // Pack into split complex format
-        var splitComplex = DSPSplitComplex(realp: &realPart, imagp: &imagPart)
+        // Calculate magnitudes using stable pointers for DSPSplitComplex
+        var magnitudes = [Float](repeating: 0, count: bufferSize / 2)
 
-        windowedSamples.withUnsafeBufferPointer { ptr in
-            ptr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: bufferSize / 2) { complexPtr in
-                vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(bufferSize / 2))
+        realPart.withUnsafeMutableBufferPointer { realPtr in
+            imagPart.withUnsafeMutableBufferPointer { imagPtr in
+                var splitComplex = DSPSplitComplex(realp: realPtr.baseAddress!, imagp: imagPtr.baseAddress!)
+
+                // Pack into split complex format
+                windowedSamples.withUnsafeBufferPointer { ptr in
+                    ptr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: bufferSize / 2) { complexPtr in
+                        vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(bufferSize / 2))
+                    }
+                }
+
+                // Perform FFT
+                vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
+
+                // Calculate magnitudes
+                vDSP_zvabs(&splitComplex, 1, &magnitudes, 1, vDSP_Length(bufferSize / 2))
             }
         }
-
-        // Perform FFT
-        vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
-
-        // Calculate magnitudes
-        var magnitudes = [Float](repeating: 0, count: bufferSize / 2)
-        vDSP_zvabs(&splitComplex, 1, &magnitudes, 1, vDSP_Length(bufferSize / 2))
 
         // Scale magnitudes
         var scaleFactor = Float(2.0 / Float(bufferSize))
