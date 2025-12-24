@@ -264,8 +264,6 @@ internal extension ContentView {
                 }
             }
         } else {
-            NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 let recordWindow = NSApp.windows.first { window in
                     window.title == "AudioWhisper Recording"
