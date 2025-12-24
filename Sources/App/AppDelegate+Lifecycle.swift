@@ -47,6 +47,23 @@ internal extension AppDelegate {
 
         setupNotificationObservers()
 
+        // Proactively request microphone permission at first launch
+        if PermissionManager.shared.microphonePermissionState.needsRequest {
+            PermissionManager.shared.proceedWithPermissionRequest()
+        }
+
+        // Validate local model is ready before allowing use
+        let providerRaw = UserDefaults.standard.string(forKey: "transcriptionProvider") ?? "local"
+        if providerRaw == "local" {
+            let modelRaw = UserDefaults.standard.string(forKey: "selectedWhisperModel") ?? "base"
+            if let model = WhisperModel(rawValue: modelRaw),
+               !WhisperKitStorage.isModelDownloaded(model) {
+                // Model not downloaded - show dashboard for download
+                DashboardWindowManager.shared.showDashboardWindow()
+                return
+            }
+        }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             if AppSetupHelper.checkFirstRun() {
                 self.showWelcomeAndSettings()

@@ -101,8 +101,8 @@ final class SourceUsageStoreTests: XCTestCase {
                 totalCharacters: 25,
                 sessionCount: 1,
                 lastUsed: older,
-                iconData: Data([0x0A]),
-                fallbackSymbolName: nil
+                fallbackSymbolName: nil,
+                iconData: Data([0x0A])
             ),
             "com.persist.b": SourceUsageStats(
                 bundleIdentifier: "com.persist.b",
@@ -111,8 +111,8 @@ final class SourceUsageStoreTests: XCTestCase {
                 totalCharacters: 50,
                 sessionCount: 2,
                 lastUsed: now,
-                iconData: nil,
-                fallbackSymbolName: "tray"
+                fallbackSymbolName: "tray",
+                iconData: nil
             )
         ]
 

@@ -203,7 +203,7 @@ final class HotkeyIntegrationTests: XCTestCase {
 
     func testConfigurationDefaultsEquality() {
         let defaults = PressAndHoldConfiguration.defaults
-        let manual = PressAndHoldConfiguration(enabled: false, key: .rightCommand, mode: .hold)
+        let manual = PressAndHoldConfiguration(enabled: true, key: .rightCommand, mode: .hold)
 
         XCTAssertEqual(defaults, manual)
     }

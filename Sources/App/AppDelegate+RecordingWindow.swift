@@ -64,7 +64,7 @@ internal extension AppDelegate {
         window.titleVisibility = .hidden
         window.isMovableByWindowBackground = true
         window.backgroundColor = .clear
-        window.level = .floating
+        window.level = .screenSaver
         window.hidesOnDeactivate = false
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
         window.hasShadow = true
