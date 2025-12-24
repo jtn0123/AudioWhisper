@@ -412,6 +412,7 @@ internal extension ContentView {
 
                     await MainActor.run {
                         transcriptionStartTime = nil
+                        isProcessing = false  // Bug fix: Reset flag when smart paste disabled
                         showConfirmationAndPaste(text: corrected)
                     }
                 }
