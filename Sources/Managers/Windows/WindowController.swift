@@ -96,20 +96,19 @@ internal class WindowController {
         window.hasShadow = true
 
         // Set collection behavior to appear on all spaces including fullscreen
-        // This allows the window to overlay fullscreen apps without space switching
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        // .canJoinAllSpaces - appear on any space
+        // .fullScreenPrimary - appear on fullscreen spaces (primary display)
+        // .fullScreenAuxiliary - appear on fullscreen spaces (secondary displays)
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
 
-        // Use screenSaver level to appear above fullscreen apps
-        window.level = .screenSaver
+        // Use floating level to appear above other windows but allow fullscreen overlay
+        window.level = .floating
 
         // Show window without activating the app (prevents space switching)
         window.orderFrontRegardless()
 
-        // Small delay then set proper level and focus
+        // Small delay then ensure proper focus
         performWindowOperation(after: 0.02) {
-            // Lower to floating level for normal interaction
-            window.level = .floating
-
             if window.canBecomeKey {
                 window.makeKey()
             }
