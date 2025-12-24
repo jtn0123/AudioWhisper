@@ -55,13 +55,18 @@ internal struct UvBootstrap {
         }
         // Bundled uv - check multiple locations for different build methods
         // Release build (build.sh): Contents/Resources/bin/uv
-        // SPM/Xcode build: Contents/Resources/Resources/bin/uv
-        if let resURL = Bundle.main.resourceURL {
-            let candidates = [
+        // SPM/Xcode build: Bundle.module -> Resources/bin/uv
+        let bundleCandidates: [URL] = [
+            Bundle.main.resourceURL,
+            Bundle.module.resourceURL
+        ].compactMap { $0 }
+
+        for resURL in bundleCandidates {
+            let paths = [
                 resURL.appendingPathComponent("bin/uv"),
                 resURL.appendingPathComponent("Resources/bin/uv")
             ]
-            for url in candidates {
+            for url in paths {
                 if FileManager.default.isExecutableFile(atPath: url.path) {
                     if let ver = try? uvVersion(at: url) {
                         if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
@@ -121,11 +126,18 @@ internal struct UvBootstrap {
 
     // Copy pyproject.toml and uv.lock from bundle to per-user project dir
     private static func copyProjectFilesIfNeeded(to proj: URL) throws {
-        guard let res = Bundle.main.resourceURL else { return }
         let fm = FileManager.default
+        // Support both Bundle.main and Bundle.module for different build methods
+        let resourceURLs = [Bundle.main.resourceURL, Bundle.module.resourceURL].compactMap { $0 }
+
         // Support both flattened and nested resource layouts for pyproject.toml only.
         // We intentionally do NOT copy a bundled uv.lock to avoid mismatches.
-        let pyCandidates = [res.appendingPathComponent("pyproject.toml"), res.appendingPathComponent("Resources/pyproject.toml")]
+        var pyCandidates: [URL] = []
+        for res in resourceURLs {
+            pyCandidates.append(res.appendingPathComponent("pyproject.toml"))
+            pyCandidates.append(res.appendingPathComponent("Resources/pyproject.toml"))
+        }
+
         if let src = pyCandidates.first(where: { fm.fileExists(atPath: $0.path) }) {
             let dest = proj.appendingPathComponent("pyproject.toml")
             try copyIfDifferent(src: src, dst: dest)
