@@ -15,7 +15,7 @@ internal struct PermissionEducationModal: View {
                     .font(.title)
                     .foregroundStyle(.blue)
                 if enableSmartPaste {
-                    Image(systemName: "accessibility.circle.fill")
+                    Image(systemName: "hand.raised.circle.fill")
                         .font(.title)
                         .foregroundStyle(.green)
                 }
@@ -37,7 +37,7 @@ internal struct PermissionEducationModal: View {
                     Label("Microphone access to record audio", systemImage: "mic.circle.fill")
                         .foregroundStyle(.blue)
                     if enableSmartPaste {
-                        Label("Accessibility access to paste transcribed text", systemImage: "accessibility.circle.fill")
+                        Label("Accessibility access to paste transcribed text", systemImage: "hand.raised.circle.fill")
                             .foregroundStyle(.green)
                     }
                     Label("Your audio is never stored permanently", systemImage: "lock.circle.fill")
