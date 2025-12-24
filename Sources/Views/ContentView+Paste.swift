@@ -73,7 +73,7 @@ internal extension ContentView {
         }
     }
 
-    func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3) {
+    func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3, completion: (() -> Void)? = nil) {
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = duration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
@@ -81,6 +81,7 @@ internal extension ContentView {
         }, completionHandler: {
             window.orderOut(nil)
             window.alphaValue = 1.0  // Reset for next show
+            completion?()
         })
     }
     

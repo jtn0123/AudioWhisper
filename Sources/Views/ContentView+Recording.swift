@@ -265,20 +265,25 @@ internal extension ContentView {
             }
         } else {
             NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-            
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 let recordWindow = NSApp.windows.first { window in
                     window.title == "AudioWhisper Recording"
                 }
 
-                if let window = recordWindow {
-                    self.fadeOutWindow(window)
-                } else if let keyWindow = NSApplication.shared.keyWindow {
-                    self.fadeOutWindow(keyWindow)
+                let onFadeComplete = {
+                    NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
+                    self.showSuccess = false
                 }
 
-                NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-                self.showSuccess = false
+                if let window = recordWindow {
+                    self.fadeOutWindow(window, completion: onFadeComplete)
+                } else if let keyWindow = NSApplication.shared.keyWindow {
+                    self.fadeOutWindow(keyWindow, completion: onFadeComplete)
+                } else {
+                    // No window to fade, execute immediately
+                    onFadeComplete()
+                }
             }
         }
     }
