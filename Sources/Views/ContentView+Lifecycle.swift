@@ -64,18 +64,12 @@ internal extension ContentView {
                     processingTask?.cancel()
                     isProcessing = false
                 } else {
-                    let recordWindow = NSApp.windows.first { window in
-                        window.title == WindowTitles.recording
+                    // Only close the recording window, not any other window
+                    if let recordWindow = NSApp.windows.first(where: { $0.title == WindowTitles.recording }) {
+                        recordWindow.orderOut(nil)
+                        NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
                     }
-                    
-                    if let window = recordWindow {
-                        window.orderOut(nil)
-                    } else {
-                        NSApplication.shared.keyWindow?.orderOut(nil)
-                    }
-                    
-                    NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-                    
+
                     showSuccess = false
                 }
             }
