@@ -70,8 +70,8 @@ struct NeonWaveformView: View {
         ZStack {
             // Outer glow (largest, most diffuse)
             waveformPath(in: size)
-                .stroke(currentColor.opacity(0.3), lineWidth: 8)
-                .blur(radius: 12)
+                .stroke(currentColor.opacity(0.3), lineWidth: 10)
+                .blur(radius: 15)
 
             // Middle glow
             waveformPath(in: size)
@@ -135,7 +135,7 @@ struct NeonWaveformView: View {
         Path { path in
             let centerY = size.height / 2
             let stepX = size.width / CGFloat(max(1, samples.count - 1))
-            let maxAmplitude = size.height * 0.4
+            let maxAmplitude = size.height * 0.55
 
             guard !samples.isEmpty else {
                 // Flat line when no samples
@@ -172,12 +172,19 @@ struct NeonWaveformView: View {
 
     private var effectiveSamples: [Float] {
         if isActive && !waveformSamples.isEmpty {
-            return waveformSamples
+            // Boost samples so waveform fills out more - especially quiet signals
+            return waveformSamples.map { sample in
+                let sign: Float = sample >= 0 ? 1 : -1
+                let magnitude = abs(sample)
+                // Boost quieter samples more aggressively, loud samples less
+                let boosted = magnitude + 0.08 + magnitude * 0.4
+                return sign * min(boosted, 1.0)
+            }
         } else {
             // Generate idle breathing wave
             return (0..<64).map { i in
                 let t = Float(i) / 64.0
-                let breathe = sin(Float(phase) + t * .pi * 4) * 0.05
+                let breathe = sin(Float(phase) + t * .pi * 4) * 0.08
                 return breathe
             }
         }
