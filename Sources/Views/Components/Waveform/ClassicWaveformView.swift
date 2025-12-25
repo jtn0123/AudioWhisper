@@ -67,8 +67,8 @@ struct ClassicWaveformView: View {
             var targetHeight: CGFloat
 
             if isActive && audioLevel > 0.01 {
-                // Active - calculate target based on audio level
-                let level = CGFloat(audioLevel)
+                // Active - calculate target based on audio level (+10% gain)
+                let level = CGFloat(audioLevel) * 1.1
                 let noise = CGFloat.random(in: -0.1...0.1)
                 let variation = sin(CGFloat(i) * 0.5 + idlePhase * 2) * 0.15
                 targetHeight = minHeight + (physicsMaxHeight - minHeight) * baseShape * level * (1 + noise + variation)
