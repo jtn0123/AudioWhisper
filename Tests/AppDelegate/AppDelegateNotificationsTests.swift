@@ -89,7 +89,7 @@ final class AppDelegateNotificationsTests: XCTestCase {
         appDelegate.setupNotificationObservers()
 
         // Get initial monitor state
-        let initialMonitor = appDelegate.pressAndHoldMonitor
+        _ = appDelegate.pressAndHoldMonitor
 
         // Post settings changed notification
         let newConfig = PressAndHoldConfiguration(enabled: true, key: .leftOption, mode: .toggle)
