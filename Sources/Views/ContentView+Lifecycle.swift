@@ -68,6 +68,11 @@ internal extension ContentView {
                     if let recordWindow = NSApp.windows.first(where: { $0.title == WindowTitles.recording }) {
                         recordWindow.orderOut(nil)
                         NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
+                    } else if let keyWindow = NSApp.keyWindow, keyWindow.isVisible {
+                        // Fallback: close key window if it's our app's window (handles edge cases
+                        // like window title mismatches or registration failures)
+                        keyWindow.orderOut(nil)
+                        NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
                     }
 
                     showSuccess = false
