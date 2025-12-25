@@ -50,12 +50,28 @@ struct NeonWaveformView: View {
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
             phase += 0.05
             colorPhase += 0.02
+            updateSmoothedSamples()
             updateHistory()
         }
     }
 
+    private func updateSmoothedSamples() {
+        let targetSamples = rawEffectiveSamples
+
+        // Initialize if needed
+        if smoothedSamples.count != targetSamples.count {
+            smoothedSamples = targetSamples
+            return
+        }
+
+        // Interpolate toward target with decay for slower response
+        for i in 0..<targetSamples.count {
+            smoothedSamples[i] = smoothedSamples[i] * decayFactor + targetSamples[i] * (1 - decayFactor)
+        }
+    }
+
     private func updateHistory() {
-        let current = effectiveSamples
+        let current = smoothedSamples.isEmpty ? rawEffectiveSamples : smoothedSamples
         waveformHistory.append(current)
         if waveformHistory.count > trailCount {
             waveformHistory.removeFirst()
@@ -174,7 +190,13 @@ struct NeonWaveformView: View {
 
     // MARK: - Computed Properties
 
+    /// Smoothed samples for display (slower response)
     private var effectiveSamples: [Float] {
+        smoothedSamples.isEmpty ? rawEffectiveSamples : smoothedSamples
+    }
+
+    /// Raw target samples before smoothing
+    private var rawEffectiveSamples: [Float] {
         if isActive && !waveformSamples.isEmpty {
             // Boost samples so waveform fills out more - especially quiet signals
             return waveformSamples.map { sample in
