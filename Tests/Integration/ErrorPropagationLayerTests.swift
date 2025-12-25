@@ -136,7 +136,7 @@ final class ErrorPropagationLayerTests: XCTestCase {
         // The sanitization should redact sensitive data
 
         // Then - Verify sensitive data patterns
-        XCTAssertTrue(sensitiveMessage.contains("FAKE_TEST_KEY"))  // Original has sensitive data
+        XCTAssertTrue(sensitiveMessage.contains("FAKE_TEST_KEY"))  // Original has sensitive data pattern
         XCTAssertTrue(sensitiveMessage.contains("@"))  // Original has email
         XCTAssertTrue(sensitiveMessage.contains("192.168"))  // Original has IP
 
