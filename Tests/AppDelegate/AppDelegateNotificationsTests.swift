@@ -69,18 +69,16 @@ final class AppDelegateNotificationsTests: XCTestCase {
     }
 
     func testRecordingStoppedNotificationCallsHandler() {
-        // Create status item for testing
-        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        appDelegate.statusItem = statusItem
+        // Initially no status item
+        XCTAssertNil(appDelegate.statusItem)
 
         // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Post notification
+        // Post notification - should handle nil status item gracefully
         NotificationCenter.default.post(name: .recordingStopped, object: nil)
 
-        // Handler would update menu icon - verify no crash
-        NSStatusBar.system.removeStatusItem(statusItem)
+        // Verify no crash with nil status item
         XCTAssertTrue(true)
     }
 

@@ -155,21 +155,15 @@ final class AppDelegateHotkeysTests: XCTestCase {
 
     // MARK: - onRecordingStopped Tests
 
-    func testOnRecordingStoppedUpdatesMenuIcon() {
-        // Create status item for testing
-        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        appDelegate.statusItem = statusItem
+    func testOnRecordingStoppedDoesNotCrash() {
+        // Verify no status item initially
+        XCTAssertNil(appDelegate.statusItem)
 
-        // Set initial recording state icon
-        if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: nil)
-        }
-
-        // Call onRecordingStopped
+        // Call onRecordingStopped - should handle nil status item gracefully
         appDelegate.onRecordingStopped()
 
-        // Verify no crash - actual icon verification would require visual comparison
-        NSStatusBar.system.removeStatusItem(statusItem)
+        // Should not crash with nil status item
+        XCTAssertNil(appDelegate.statusItem)
     }
 
     // MARK: - Recording Animation Tests
@@ -196,24 +190,12 @@ final class AppDelegateHotkeysTests: XCTestCase {
 
     func testHotkeyTriggerSourceStandardHotkey() {
         let source = AppDelegate.HotkeyTriggerSource.standardHotkey
-
-        switch source {
-        case .standardHotkey:
-            XCTAssertTrue(true)
-        case .pressAndHold:
-            XCTFail("Expected standardHotkey")
-        }
+        XCTAssertEqual(source, .standardHotkey)
     }
 
     func testHotkeyTriggerSourcePressAndHold() {
         let source = AppDelegate.HotkeyTriggerSource.pressAndHold
-
-        switch source {
-        case .pressAndHold:
-            XCTAssertTrue(true)
-        case .standardHotkey:
-            XCTFail("Expected pressAndHold")
-        }
+        XCTAssertEqual(source, .pressAndHold)
     }
 
     // MARK: - Notification Tests

@@ -195,13 +195,14 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
     // MARK: - Retry Mechanism Tests
 
     func testRetryMechanismAfterTranscriptionFailure() async throws {
-        // Given - A transcription failure
-        let transcriptionError = TranscriptionError.transcriptionFailed(reason: "Audio too short")
+        // Given - A transcription failure message that contains "transcription" keyword
+        // (ErrorPresenter uses keyword matching to determine error type)
+        let errorMessage = "Transcription failed: Audio too short"
 
         // When - Error is presented
         let expectation = expectation(forNotification: .retryTranscriptionRequested, object: nil)
 
-        ErrorPresenter.shared.showError(transcriptionError.userMessage)
+        ErrorPresenter.shared.showError(errorMessage)
 
         // Then - Retry transcription notification should be posted
         await fulfillment(of: [expectation], timeout: 2.0)

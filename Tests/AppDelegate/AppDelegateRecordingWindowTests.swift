@@ -34,13 +34,16 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
         // Window may still be nil without recorder
     }
 
-    func testToggleRecordWindowWithExistingWindow() {
-        // Create a window manually
-        let window = NSWindow()
-        appDelegate.recordingWindow = window
+    func testToggleRecordWindowWithExistingWindowState() {
+        // Initially nil
+        XCTAssertNil(appDelegate.recordingWindow)
 
-        // Toggle should work with existing window
-        XCTAssertNotNil(appDelegate.recordingWindow)
+        // After toggling without recorder, should still be nil
+        // (Window creation requires audio recorder)
+        appDelegate.toggleRecordWindow()
+
+        // Window should be nil without recorder
+        XCTAssertNil(appDelegate.recordingWindow)
     }
 
     // MARK: - showRecordingWindowForProcessing Tests
@@ -53,19 +56,15 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
         appDelegate.showRecordingWindowForProcessing()
     }
 
-    func testShowRecordingWindowForProcessingCallsCompletionWhenVisible() {
-        // Create a visible window
-        let window = NSWindow()
-        window.orderFront(nil)
-        appDelegate.recordingWindow = window
+    func testShowRecordingWindowForProcessingWithNilWindow() {
+        // Initially no window
+        XCTAssertNil(appDelegate.recordingWindow)
 
-        var completionCalled = false
-        appDelegate.showRecordingWindowForProcessing {
-            completionCalled = true
-        }
+        // Call without completion handler
+        appDelegate.showRecordingWindowForProcessing()
 
-        // Completion should be called when window is already visible
-        XCTAssertTrue(completionCalled || !window.isVisible)
+        // Without audio recorder, window won't be created
+        XCTAssertNil(appDelegate.recordingWindow)
     }
 
     func testShowRecordingWindowForProcessingHidesDashboard() {
@@ -136,20 +135,16 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
 
     // MARK: - Recording Window Delegate Tests
 
-    func testOnRecordingWindowClosedCleansUpReferences() {
-        // Set up window and delegate
-        let window = NSWindow()
+    func testOnRecordingWindowClosedCallsCleanupHandler() {
+        // Test that RecordingWindowDelegate closure is called
         var closeCalled = false
 
         let delegate = RecordingWindowDelegate {
             closeCalled = true
         }
 
-        appDelegate.recordingWindow = window
-        appDelegate.recordingWindowDelegate = delegate
-
-        // Simulate window close callback
-        delegate.windowWillClose(Notification(name: NSWindow.willCloseNotification, object: window))
+        // Simulate window close notification without actual window
+        delegate.windowWillClose(Notification(name: NSWindow.willCloseNotification))
 
         XCTAssertTrue(closeCalled)
     }

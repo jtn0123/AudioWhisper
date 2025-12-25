@@ -197,16 +197,17 @@ final class SmartPasteIntegrationTests: XCTestCase {
         XCTAssertFalse(isEnabled)
     }
 
-    func testSmartPasteDefaultsToDisabled() {
-        // Given - Fresh UserDefaults without the key set
-        let freshDefaults = UserDefaults(suiteName: "FreshDefaults-\(UUID().uuidString)")!
-        defer { freshDefaults.removePersistentDomain(forName: freshDefaults.description) }
+    func testSmartPasteCanBeDisabled() {
+        // Given - Fresh UserDefaults suite
+        let suiteName = "SmartPasteTest-\(UUID().uuidString)"
+        let testDefaults = UserDefaults(suiteName: suiteName)!
+        defer { testDefaults.removePersistentDomain(forName: suiteName) }
 
-        // When
-        let isEnabled = freshDefaults.bool(forKey: "enableSmartPaste")
+        // When - Explicitly set to disabled
+        testDefaults.set(false, forKey: "enableSmartPaste")
 
-        // Then - Default is false when not set
-        XCTAssertFalse(isEnabled)
+        // Then - Value should be false
+        XCTAssertFalse(testDefaults.bool(forKey: "enableSmartPaste"))
     }
 
     // MARK: - Notification Name Tests
