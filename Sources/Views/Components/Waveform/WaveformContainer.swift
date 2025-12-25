@@ -24,38 +24,37 @@ struct WaveformContainer: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 0) {
-                // Waveform area
-                ZStack {
-                    bgColor
+            ZStack {
+                // Background
+                bgColor
 
-                    waveformView
-                        .padding(.horizontal, 24)
+                // Waveform fills entire container edge-to-edge
+                waveformView
 
-                    // Particle overlay for neon style
-                    if style == .neon && isRecording {
-                        ParticleOverlay(audioLevel: audioLevel, isActive: true)
-                    }
+                // Particle overlay for neon style
+                if style == .neon && isRecording {
+                    ParticleOverlay(audioLevel: audioLevel, isActive: true)
                 }
-                .frame(height: 120)
 
-                // Status bar
-                HStack(spacing: 8) {
-                    if shouldShowDot {
-                        Circle()
-                            .fill(dotColor)
-                            .frame(width: 6, height: 6)
-                            .modifier(PulseModifier(isActive: isRecording || isProcessing))
+                // Status text overlay at bottom
+                VStack {
+                    Spacer()
+                    HStack(spacing: 8) {
+                        if shouldShowDot {
+                            Circle()
+                                .fill(dotColor)
+                                .frame(width: 6, height: 6)
+                                .modifier(PulseModifier(isActive: isRecording || isProcessing))
+                        }
+
+                        Text(statusText)
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .tracking(0.5)
+                            .foregroundStyle(statusTextColor)
                     }
-
-                    Text(statusText)
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .tracking(0.5)
-                        .foregroundStyle(mutedColor)
+                    .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 1)
+                    .padding(.bottom, 12)
                 }
-                .frame(height: 44)
-                .frame(maxWidth: .infinity)
-                .background(bgColor)
             }
         }
         .buttonStyle(.plain)
@@ -171,6 +170,21 @@ struct WaveformContainer: View {
             return accentColor
         default:
             return mutedColor.opacity(0.5)
+        }
+    }
+
+    private var statusTextColor: Color {
+        switch status {
+        case .recording:
+            return .white.opacity(0.85)
+        case .processing:
+            return .white.opacity(0.7)
+        case .success:
+            return successColor
+        case .error:
+            return accentColor
+        default:
+            return .white.opacity(0.5)
         }
     }
 

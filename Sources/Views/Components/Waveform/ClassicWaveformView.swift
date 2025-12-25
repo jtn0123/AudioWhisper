@@ -1,17 +1,15 @@
 import SwiftUI
 
-/// Classic level-based waveform visualization with 48 animated bars.
+/// Classic level-based waveform visualization with animated bars.
 /// Features gravity-based physics: bars rise quickly, fall with acceleration, and bounce.
 struct ClassicWaveformView: View {
     let audioLevel: Float
     let isActive: Bool
     let barColor: Color
 
-    private let barCount = 48
-    private let barWidth: CGFloat = 2
+    private let barCount = 64
     private let barSpacing: CGFloat = 2
     private let minHeight: CGFloat = 2
-    private let maxHeight: CGFloat = 60
 
     // Physics constants
     private let gravity: CGFloat = 2.5        // Downward acceleration per frame
@@ -23,12 +21,19 @@ struct ClassicWaveformView: View {
     @State private var idlePhase: CGFloat = 0
 
     var body: some View {
-        HStack(spacing: barSpacing) {
-            ForEach(0..<barCount, id: \.self) { index in
-                RoundedRectangle(cornerRadius: barWidth / 2)
-                    .fill(barColor)
-                    .frame(width: barWidth, height: barHeight(for: index))
+        GeometryReader { geometry in
+            let totalSpacing = barSpacing * CGFloat(barCount - 1)
+            let barWidth = max(2, (geometry.size.width - totalSpacing) / CGFloat(barCount))
+            let maxHeight = geometry.size.height * 0.7
+
+            HStack(spacing: barSpacing) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: barWidth / 2)
+                        .fill(barColor)
+                        .frame(width: barWidth, height: barHeight(for: index, maxHeight: maxHeight))
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .onAppear {
             barHeights = Array(repeating: minHeight, count: barCount)
@@ -39,13 +44,17 @@ struct ClassicWaveformView: View {
         }
     }
 
-    private func barHeight(for index: Int) -> CGFloat {
+    private func barHeight(for index: Int, maxHeight: CGFloat) -> CGFloat {
         guard index < barHeights.count else { return minHeight }
-        return barHeights[index]
+        // Scale the stored height to the current maxHeight
+        return min(barHeights[index], maxHeight)
     }
 
     private func updatePhysics() {
         guard !barHeights.isEmpty else { return }
+
+        // Use a reference max height for physics calculations
+        let physicsMaxHeight: CGFloat = 100
 
         idlePhase += 0.06
         let centerIndex = barCount / 2
@@ -62,12 +71,12 @@ struct ClassicWaveformView: View {
                 let level = CGFloat(audioLevel)
                 let noise = CGFloat.random(in: -0.1...0.1)
                 let variation = sin(CGFloat(i) * 0.5 + idlePhase * 2) * 0.15
-                targetHeight = minHeight + (maxHeight - minHeight) * baseShape * level * (1 + noise + variation)
-                targetHeight = max(minHeight, min(maxHeight, targetHeight))
+                targetHeight = minHeight + (physicsMaxHeight - minHeight) * baseShape * level * (1 + noise + variation)
+                targetHeight = max(minHeight, min(physicsMaxHeight, targetHeight))
             } else {
                 // Idle - subtle breathing
                 let breathe = sin(idlePhase + CGFloat(i) * 0.15) * 0.5 + 0.5
-                targetHeight = minHeight + (maxHeight * 0.08) * baseShape * breathe
+                targetHeight = minHeight + (physicsMaxHeight * 0.08) * baseShape * breathe
             }
 
             // Physics update
@@ -101,7 +110,7 @@ struct ClassicWaveformView: View {
             }
 
             // Clamp height
-            barHeights[i] = max(minHeight, min(maxHeight, barHeights[i]))
+            barHeights[i] = max(minHeight, min(physicsMaxHeight, barHeights[i]))
         }
     }
 }
