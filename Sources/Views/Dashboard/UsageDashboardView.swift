@@ -196,11 +196,13 @@ internal struct UsageDashboardView: View {
             components.append("\(remainingSeconds) " + (remainingSeconds == 1 ? "second" : "seconds"))
         }
         if components.count == 1 {
-            return components.first!
+            return components[0]
         } else if components.count == 2 {
             return components.joined(separator: ", ")
-        } else {
+        } else if components.count >= 3 {
             return "\(components[0]), \(components[1]) and \(components[2])"
+        } else {
+            return "0 seconds"
         }
     }
 

@@ -159,6 +159,7 @@ internal final class SourceUsageStore {
         for stat in candidates.prefix(surplus) {
             statsByBundle[stat.bundleIdentifier] = nil
         }
+        refreshOrderedStats()
     }
 
     private func persist() {
