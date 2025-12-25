@@ -10,6 +10,7 @@ internal struct DashboardRecordingView: View {
     @AppStorage("pressAndHoldKeyIdentifier") private var pressAndHoldKeyIdentifier = PressAndHoldConfiguration.defaults.key.rawValue
     @AppStorage("pressAndHoldMode") private var pressAndHoldModeRaw = PressAndHoldConfiguration.defaults.mode.rawValue
     @AppStorage("waveformStyle") private var waveformStyleRaw = WaveformStyle.classic.rawValue
+    @AppStorage("visualIntensity") private var visualIntensityRaw = VisualIntensity.expressive.rawValue
 
     @State private var availableMicrophones: [AVCaptureDevice] = []
     @State private var isRecordingHotkey = false
@@ -237,9 +238,42 @@ internal struct DashboardRecordingView: View {
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
                 .padding(DashboardTheme.Spacing.md)
+
+                Divider()
+                    .background(DashboardTheme.rule)
+
+                // Visual Intensity picker
+                settingsRow(title: "Visual Intensity", subtitle: "Animation and celebration effects") {
+                    Picker("", selection: $visualIntensityRaw) {
+                        ForEach(VisualIntensity.allCases) { intensity in
+                            Text(intensity.rawValue).tag(intensity.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 140)
+                }
+
+                Divider()
+                    .background(DashboardTheme.rule)
+
+                // Intensity description
+                HStack(spacing: DashboardTheme.Spacing.sm) {
+                    Image(systemName: currentIntensity.icon)
+                        .font(.system(size: 12))
+                        .foregroundStyle(DashboardTheme.accent)
+
+                    Text(currentIntensity.description)
+                        .font(DashboardTheme.Fonts.sans(12, weight: .regular))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+                }
+                .padding(DashboardTheme.Spacing.md)
             }
             .cardStyle()
         }
+    }
+
+    private var currentIntensity: VisualIntensity {
+        VisualIntensity(rawValue: visualIntensityRaw) ?? .expressive
     }
 
     private var currentStyle: WaveformStyle {

@@ -10,6 +10,11 @@ struct WaveformContainer: View {
     let onTap: () -> Void
 
     @AppStorage("waveformStyle") private var styleRaw = WaveformStyle.classic.rawValue
+    @AppStorage("visualIntensity") private var intensityRaw = VisualIntensity.expressive.rawValue
+
+    // Track previous status for transitions
+    @State private var previousStatus: AppStatus?
+    @State private var showError = false
 
     // Colors
     private let bgColor = Color(red: 0.04, green: 0.04, blue: 0.04)
@@ -22,18 +27,44 @@ struct WaveformContainer: View {
         WaveformStyle(rawValue: styleRaw) ?? .classic
     }
 
+    private var intensity: VisualIntensity {
+        VisualIntensity(rawValue: intensityRaw) ?? .expressive
+    }
+
     var body: some View {
         Button(action: onTap) {
             ZStack {
-                // Background
-                bgColor
+                // Glass background (expressive and bold only)
+                if intensity.showGlass {
+                    GlassBackground(intensity: intensity, cornerRadius: 12)
+                }
+
+                // Solid background (with reduced opacity if glass is active)
+                bgColor.opacity(intensity.showGlass ? 0.7 : 1.0)
 
                 // Waveform fills entire container edge-to-edge
                 waveformView
 
-                // Particle overlay for neon style
+                // Particle overlay for neon style (scaled by intensity)
                 if style == .neon && isRecording {
                     ParticleOverlay(audioLevel: audioLevel, isActive: true)
+                        .opacity(intensity.particleMultiplier)
+                }
+
+                // State transition effects
+                StatusTransitionOverlay(
+                    fromStatus: previousStatus,
+                    toStatus: status,
+                    intensity: intensity
+                )
+
+                // Success celebration
+                if isSuccess {
+                    SuccessCelebration(
+                        intensity: intensity,
+                        isActive: true,
+                        successColor: successColor
+                    )
                 }
 
                 // Status text overlay at bottom
@@ -41,10 +72,11 @@ struct WaveformContainer: View {
                     Spacer()
                     HStack(spacing: 8) {
                         if shouldShowDot {
-                            Circle()
-                                .fill(dotColor)
-                                .frame(width: 6, height: 6)
-                                .modifier(PulseModifier(isActive: isRecording || isProcessing))
+                            EnhancedStatusDot(
+                                color: dotColor,
+                                intensity: intensity,
+                                isPulsing: isRecording || isProcessing
+                            )
                         }
 
                         Text(statusText)
@@ -64,6 +96,17 @@ struct WaveformContainer: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
+        .shake(when: showError, intensity: intensity)
+        .onChange(of: status) { oldStatus, newStatus in
+            previousStatus = oldStatus
+            // Trigger shake on error
+            if case .error = newStatus {
+                showError = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showError = false
+                }
+            }
+        }
     }
 
     // MARK: - Waveform View
