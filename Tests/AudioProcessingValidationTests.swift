@@ -263,7 +263,7 @@ final class AudioProcessingValidationTests: XCTestCase {
 
     func testAudioStreamBasicDescriptionConfiguration() {
         // Test the format configuration matches expected values
-        var format = AudioStreamBasicDescription(
+        let format = AudioStreamBasicDescription(
             mSampleRate: 16000,
             mFormatID: kAudioFormatLinearPCM,
             mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
