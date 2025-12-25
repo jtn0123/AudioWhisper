@@ -9,6 +9,7 @@ final class AppLifecycleIntegrationTests: XCTestCase {
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
     var testDefaults: UserDefaults!
+    var suiteName: String!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -21,7 +22,7 @@ final class AppLifecycleIntegrationTests: XCTestCase {
         modelContext = ModelContext(modelContainer)
 
         // Create isolated UserDefaults for testing
-        let suiteName = "AppLifecycleIntegrationTests-\(UUID().uuidString)"
+        suiteName = "AppLifecycleIntegrationTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
         // Enable history
@@ -38,11 +39,14 @@ final class AppLifecycleIntegrationTests: XCTestCase {
             try? modelContext.save()
         }
 
-        testDefaults?.removePersistentDomain(forName: testDefaults?.suiteName ?? "")
+        if let suiteName = suiteName {
+            testDefaults?.removePersistentDomain(forName: suiteName)
+        }
 
         modelContainer = nil
         modelContext = nil
         testDefaults = nil
+        suiteName = nil
 
         try await super.tearDown()
     }

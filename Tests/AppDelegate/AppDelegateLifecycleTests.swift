@@ -7,17 +7,22 @@ final class AppDelegateLifecycleTests: XCTestCase {
 
     var appDelegate: AppDelegate!
     var testDefaults: UserDefaults!
+    var suiteName: String!
 
     override func setUp() {
         super.setUp()
         appDelegate = AppDelegate()
-        testDefaults = UserDefaults(suiteName: "AppDelegateLifecycleTests.\(UUID().uuidString)")!
+        suiteName = "AppDelegateLifecycleTests.\(UUID().uuidString)"
+        testDefaults = UserDefaults(suiteName: suiteName)!
     }
 
     override func tearDown() {
         appDelegate = nil
-        testDefaults?.removePersistentDomain(forName: testDefaults.suiteName ?? "")
+        if let suiteName = suiteName {
+            testDefaults?.removePersistentDomain(forName: suiteName)
+        }
         testDefaults = nil
+        suiteName = nil
         super.tearDown()
     }
 

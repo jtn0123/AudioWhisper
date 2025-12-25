@@ -7,11 +7,13 @@ final class AppDelegateHotkeysTests: XCTestCase {
 
     var appDelegate: AppDelegate!
     var testDefaults: UserDefaults!
+    var suiteName: String!
 
     override func setUp() {
         super.setUp()
         appDelegate = AppDelegate()
-        testDefaults = UserDefaults(suiteName: "AppDelegateHotkeysTests.\(UUID().uuidString)")!
+        suiteName = "AppDelegateHotkeysTests.\(UUID().uuidString)"
+        testDefaults = UserDefaults(suiteName: suiteName)!
     }
 
     override func tearDown() {
@@ -20,8 +22,11 @@ final class AppDelegateHotkeysTests: XCTestCase {
         appDelegate.recordingAnimationTimer?.cancel()
         appDelegate.recordingAnimationTimer = nil
         appDelegate = nil
-        testDefaults?.removePersistentDomain(forName: testDefaults.suiteName ?? "")
+        if let suiteName = suiteName {
+            testDefaults?.removePersistentDomain(forName: suiteName)
+        }
         testDefaults = nil
+        suiteName = nil
         super.tearDown()
     }
 

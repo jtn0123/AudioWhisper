@@ -10,6 +10,7 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
     var modelContext: ModelContext!
     var mockKeychain: MockKeychainService!
     var testDefaults: UserDefaults!
+    var suiteName: String!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -22,7 +23,7 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
         modelContext = ModelContext(modelContainer)
 
         // Create isolated UserDefaults for testing
-        let suiteName = "ErrorRecoveryIntegrationTests-\(UUID().uuidString)"
+        suiteName = "ErrorRecoveryIntegrationTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
         // Set up mock keychain
@@ -43,12 +44,15 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
         }
 
         // Clean up test defaults
-        testDefaults?.removePersistentDomain(forName: testDefaults?.suiteName ?? "")
+        if let suiteName = suiteName {
+            testDefaults?.removePersistentDomain(forName: suiteName)
+        }
 
         modelContainer = nil
         modelContext = nil
         mockKeychain = nil
         testDefaults = nil
+        suiteName = nil
 
         try await super.tearDown()
     }

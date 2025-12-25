@@ -8,12 +8,13 @@ final class ErrorPropagationLayerTests: XCTestCase {
 
     var mockKeychain: MockKeychainService!
     var testDefaults: UserDefaults!
+    var suiteName: String!
 
     override func setUp() {
         super.setUp()
 
         // Create isolated UserDefaults for testing
-        let suiteName = "ErrorPropagationLayerTests-\(UUID().uuidString)"
+        suiteName = "ErrorPropagationLayerTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
         // Set up mock keychain
@@ -24,9 +25,12 @@ final class ErrorPropagationLayerTests: XCTestCase {
     }
 
     override func tearDown() {
-        testDefaults?.removePersistentDomain(forName: testDefaults?.suiteName ?? "")
+        if let suiteName = suiteName {
+            testDefaults?.removePersistentDomain(forName: suiteName)
+        }
         mockKeychain = nil
         testDefaults = nil
+        suiteName = nil
         super.tearDown()
     }
 

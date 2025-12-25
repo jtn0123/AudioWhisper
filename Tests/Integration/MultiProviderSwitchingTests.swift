@@ -10,6 +10,7 @@ final class MultiProviderSwitchingTests: XCTestCase {
     var modelContext: ModelContext!
     var testDefaults: UserDefaults!
     var mockKeychain: MockKeychainService!
+    var suiteName: String!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -22,7 +23,7 @@ final class MultiProviderSwitchingTests: XCTestCase {
         modelContext = ModelContext(modelContainer)
 
         // Create isolated UserDefaults for testing
-        let suiteName = "MultiProviderSwitchingTests-\(UUID().uuidString)"
+        suiteName = "MultiProviderSwitchingTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
         // Set up mock keychain
@@ -42,12 +43,15 @@ final class MultiProviderSwitchingTests: XCTestCase {
             try? modelContext.save()
         }
 
-        testDefaults?.removePersistentDomain(forName: testDefaults?.suiteName ?? "")
+        if let suiteName = suiteName {
+            testDefaults?.removePersistentDomain(forName: suiteName)
+        }
 
         modelContainer = nil
         modelContext = nil
         mockKeychain = nil
         testDefaults = nil
+        suiteName = nil
 
         try await super.tearDown()
     }
