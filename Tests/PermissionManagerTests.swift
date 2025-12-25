@@ -61,6 +61,9 @@ final class PermissionManagerTests: XCTestCase {
     }
 
     func testRequestPermissionWithEducationForDeniedPermission() {
+        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        defer { UserDefaults.standard.removeObject(forKey: "enableSmartPaste") }
+
         permissionManager.microphonePermissionState = .denied
 
         permissionManager.requestPermissionWithEducation()
@@ -140,6 +143,9 @@ final class PermissionManagerTests: XCTestCase {
     // MARK: - Edge Cases
 
     func testRequestPermissionInRestrictedState() {
+        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        defer { UserDefaults.standard.removeObject(forKey: "enableSmartPaste") }
+
         permissionManager.microphonePermissionState = .restricted
 
         permissionManager.requestPermissionWithEducation()
@@ -149,6 +155,9 @@ final class PermissionManagerTests: XCTestCase {
     }
 
     func testRequestPermissionWhileAlreadyRequesting() {
+        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        defer { UserDefaults.standard.removeObject(forKey: "enableSmartPaste") }
+
         permissionManager.microphonePermissionState = .requesting
 
         permissionManager.requestPermissionWithEducation()
