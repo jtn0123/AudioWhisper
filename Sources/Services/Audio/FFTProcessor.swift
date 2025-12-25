@@ -26,16 +26,16 @@ final class FFTProcessor: @unchecked Sendable {
     // MARK: - Frequency Band Boundaries (Hz)
 
     /// Frequency ranges for each band (in Hz)
-    /// Voice-optimized: concentrates on human speech frequencies (80Hz-10kHz)
+    /// Voice-optimized: concentrates on fundamental voice frequencies (80Hz-1200Hz)
     private let bandRanges: [(low: Float, high: Float)] = [
-        (80, 150),     // Male fundamental
-        (150, 300),    // Female fundamental
-        (300, 600),    // First formant (vowel body)
-        (600, 1200),   // Second formant (vowel color)
-        (1200, 2400),  // Third formant (clarity)
-        (2400, 4000),  // Presence (intelligibility)
-        (4000, 6000),  // Sibilants (S, T, F sounds)
-        (6000, 10000)  // Brilliance (air)
+        (80, 120),     // Low male fundamental
+        (120, 180),    // High male fundamental
+        (180, 260),    // Low female fundamental
+        (260, 380),    // High female / low F1
+        (380, 550),    // F1 core (vowel body)
+        (550, 750),    // F1-F2 transition
+        (750, 950),    // F2 core (vowel color)
+        (950, 1200)    // F2 upper (clarity)
     ]
 
     // MARK: - Initialization
