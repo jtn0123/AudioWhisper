@@ -73,7 +73,7 @@ struct ProcessingWave: View {
     @State private var phase: CGFloat = 0
 
     var body: some View {
-        if intensity != .subtle && isActive {
+        if isActive {
             TimelineView(.animation) { timeline in
                 Canvas { context, size in
                     let elapsed = timeline.date.timeIntervalSinceReferenceDate
@@ -123,7 +123,8 @@ struct ShakeModifier: ViewModifier {
     }
 
     private func triggerShake() {
-        let shakeAmount: CGFloat = intensity == .bold ? 8 : (intensity == .expressive ? 5 : 2)
+        // All styles use consistent expressive-level shake
+        let shakeAmount: CGFloat = 5
         let duration = 0.08
 
         // Quick shake sequence
@@ -179,7 +180,8 @@ struct ErrorFlash: View {
     }
 
     private func flash() {
-        let flashOpacity = intensity == .bold ? 0.4 : (intensity == .expressive ? 0.25 : 0.1)
+        // All styles use consistent expressive-level flash
+        let flashOpacity = 0.25
 
         withAnimation(.easeIn(duration: 0.1)) {
             opacity = flashOpacity
@@ -268,7 +270,7 @@ struct EnhancedStatusDot: View {
 
     var body: some View {
         ZStack {
-            // Glow layer (expressive and bold only)
+            // Glow layer (all styles use glow now)
             if intensity.dotGlow {
                 Circle()
                     .fill(color)
@@ -299,7 +301,7 @@ struct EnhancedStatusDot: View {
 
     private func startPulsing() {
         withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-            pulseOpacity = intensity == .subtle ? 0.5 : 0.4
+            pulseOpacity = 0.4
         }
     }
 
@@ -316,7 +318,7 @@ struct EnhancedStatusDot: View {
     ZStack {
         Color.black
         RecordingStartPulse(
-            intensity: .bold,
+            intensity: .glow,
             isActive: true,
             color: Color(red: 0.85, green: 0.45, blue: 0.40)
         )
@@ -327,7 +329,7 @@ struct EnhancedStatusDot: View {
 #Preview("Processing Wave") {
     ZStack {
         Color.black
-        ProcessingWave(intensity: .expressive, isActive: true)
+        ProcessingWave(intensity: .balanced, isActive: true)
     }
     .frame(width: 350, height: 160)
 }
@@ -337,7 +339,7 @@ struct EnhancedStatusDot: View {
         Color.black
         EnhancedStatusDot(
             color: Color(red: 0.85, green: 0.45, blue: 0.40),
-            intensity: .bold,
+            intensity: .burst,
             isPulsing: true
         )
     }

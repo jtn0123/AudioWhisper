@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 /// A frosted glass background effect using NSVisualEffectView.
-/// Intensity controls the material and blending mode.
+/// All celebration styles use glass with slight variations.
 struct GlassBackground: NSViewRepresentable {
     let intensity: VisualIntensity
     var cornerRadius: CGFloat = 12
@@ -23,25 +23,10 @@ struct GlassBackground: NSViewRepresentable {
     }
 
     private func configureEffect(_ effectView: NSVisualEffectView) {
-        switch intensity {
-        case .subtle:
-            // No glass effect - use a very subtle material
-            effectView.material = .underWindowBackground
-            effectView.blendingMode = .behindWindow
-            effectView.alphaValue = 0.3
-
-        case .expressive:
-            // Light frosted glass
-            effectView.material = .hudWindow
-            effectView.blendingMode = .behindWindow
-            effectView.alphaValue = 0.85
-
-        case .bold:
-            // Full vibrancy glass
-            effectView.material = .fullScreenUI
-            effectView.blendingMode = .behindWindow
-            effectView.alphaValue = 1.0
-        }
+        // All styles use consistent frosted glass
+        effectView.material = .hudWindow
+        effectView.blendingMode = .behindWindow
+        effectView.alphaValue = 0.85
     }
 }
 
@@ -49,7 +34,6 @@ struct GlassBackground: NSViewRepresentable {
 
 extension View {
     /// Adds a glass background effect based on visual intensity.
-    /// Only shows for expressive and bold intensities.
     @ViewBuilder
     func glassBackground(intensity: VisualIntensity, cornerRadius: CGFloat = 12) -> some View {
         if intensity.showGlass {
@@ -64,7 +48,7 @@ extension View {
 
 // MARK: - Previews
 
-#Preview("Glass - Subtle") {
+#Preview("Glass - Glow") {
     ZStack {
         LinearGradient(
             colors: [.blue, .purple, .pink],
@@ -73,17 +57,17 @@ extension View {
         )
 
         VStack {
-            Text("Subtle")
+            Text("Glow")
                 .font(.title)
                 .foregroundStyle(.white)
         }
         .frame(width: 200, height: 100)
-        .glassBackground(intensity: .subtle)
+        .glassBackground(intensity: .glow)
     }
     .frame(width: 300, height: 200)
 }
 
-#Preview("Glass - Expressive") {
+#Preview("Glass - Balanced") {
     ZStack {
         LinearGradient(
             colors: [.blue, .purple, .pink],
@@ -92,17 +76,17 @@ extension View {
         )
 
         VStack {
-            Text("Expressive")
+            Text("Balanced")
                 .font(.title)
                 .foregroundStyle(.white)
         }
         .frame(width: 200, height: 100)
-        .glassBackground(intensity: .expressive)
+        .glassBackground(intensity: .balanced)
     }
     .frame(width: 300, height: 200)
 }
 
-#Preview("Glass - Bold") {
+#Preview("Glass - Burst") {
     ZStack {
         LinearGradient(
             colors: [.blue, .purple, .pink],
@@ -111,12 +95,12 @@ extension View {
         )
 
         VStack {
-            Text("Bold")
+            Text("Burst")
                 .font(.title)
                 .foregroundStyle(.white)
         }
         .frame(width: 200, height: 100)
-        .glassBackground(intensity: .bold)
+        .glassBackground(intensity: .burst)
     }
     .frame(width: 300, height: 200)
 }

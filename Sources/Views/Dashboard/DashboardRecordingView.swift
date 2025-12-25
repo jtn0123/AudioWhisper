@@ -10,7 +10,7 @@ internal struct DashboardRecordingView: View {
     @AppStorage("pressAndHoldKeyIdentifier") private var pressAndHoldKeyIdentifier = PressAndHoldConfiguration.defaults.key.rawValue
     @AppStorage("pressAndHoldMode") private var pressAndHoldModeRaw = PressAndHoldConfiguration.defaults.mode.rawValue
     @AppStorage("waveformStyle") private var waveformStyleRaw = WaveformStyle.classic.rawValue
-    @AppStorage("visualIntensity") private var visualIntensityRaw = VisualIntensity.expressive.rawValue
+    @AppStorage("visualIntensity") private var visualIntensityRaw = VisualIntensity.balanced.rawValue
 
     @State private var availableMicrophones: [AVCaptureDevice] = []
     @State private var isRecordingHotkey = false
@@ -242,8 +242,8 @@ internal struct DashboardRecordingView: View {
                 Divider()
                     .background(DashboardTheme.rule)
 
-                // Visual Intensity picker
-                settingsRow(title: "Visual Intensity", subtitle: "Animation and celebration effects") {
+                // Celebration Style picker
+                settingsRow(title: "Celebration Style", subtitle: "Success feedback animation style") {
                     Picker("", selection: $visualIntensityRaw) {
                         ForEach(VisualIntensity.allCases) { intensity in
                             Text(intensity.rawValue).tag(intensity.rawValue)
@@ -273,7 +273,7 @@ internal struct DashboardRecordingView: View {
     }
 
     private var currentIntensity: VisualIntensity {
-        VisualIntensity(rawValue: visualIntensityRaw) ?? .expressive
+        VisualIntensity(rawValue: visualIntensityRaw) ?? .balanced
     }
 
     private var currentStyle: WaveformStyle {

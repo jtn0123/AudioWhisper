@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Main Celebration Coordinator
 
-/// Orchestrates success celebration effects based on visual intensity.
+/// Orchestrates success celebration effects based on visual intensity style.
 struct SuccessCelebration: View {
     let intensity: VisualIntensity
     let isActive: Bool
@@ -12,38 +12,41 @@ struct SuccessCelebration: View {
     @State private var showGlow = false
     @State private var showConfetti = false
     @State private var showRings = false
-    @State private var checkmarkScale: CGFloat = 0.8
-    @State private var checkmarkOpacity: Double = 0
 
     var body: some View {
         ZStack {
-            // Flash overlay (bold only)
+            // Flash overlay (burst only)
             if intensity.showFlash && showFlash {
-                FlashOverlay(isActive: $showFlash)
+                FlashOverlay(opacity: intensity.flashOpacity, isActive: $showFlash)
             }
 
-            // Expanding rings
+            // Expanding rings (glow and balanced)
             if intensity.ringCount > 0 && showRings {
                 ExpandingRingsView(
                     ringCount: intensity.ringCount,
                     color: successColor,
+                    glowIntensity: intensity.glowIntensity,
                     isActive: showRings
                 )
             }
 
-            // Glow pulse
+            // Glow pulse (all styles, but strongest for glow)
             if intensity.glowIntensity > 0 && showGlow {
                 GlowPulseView(
                     color: successColor,
                     intensity: intensity.glowIntensity,
+                    duration: intensity.glowDuration,
+                    ringCount: intensity.glowRingCount,
                     isActive: showGlow
                 )
             }
 
-            // Confetti particles
+            // Confetti particles (balanced and burst)
             if intensity.confettiCount > 0 && showConfetti {
                 ConfettiView(
                     particleCount: intensity.confettiCount,
+                    sizeRange: intensity.confettiSizeRange,
+                    speedRange: intensity.confettiBurstSpeed,
                     isActive: showConfetti
                 )
             }
@@ -63,23 +66,30 @@ struct SuccessCelebration: View {
     }
 
     private func triggerCelebration() {
-        // Stagger effects for visual impact
-        withAnimation(.easeOut(duration: 0.1)) {
-            showFlash = true
+        // Flash first (burst only)
+        if intensity.showFlash {
+            withAnimation(.easeOut(duration: 0.1)) {
+                showFlash = true
+            }
         }
 
+        // Glow pulse
         withAnimation(intensity.spring.delay(0.05)) {
             showGlow = true
-            checkmarkScale = 1.0
-            checkmarkOpacity = 1.0
         }
 
-        withAnimation(.easeOut(duration: 0.2).delay(0.1)) {
-            showRings = true
+        // Rings
+        if intensity.ringCount > 0 {
+            withAnimation(.easeOut(duration: 0.2).delay(0.1)) {
+                showRings = true
+            }
         }
 
-        withAnimation(.easeOut(duration: 0.15).delay(0.15)) {
-            showConfetti = true
+        // Confetti last
+        if intensity.confettiCount > 0 {
+            withAnimation(.easeOut(duration: 0.15).delay(0.1)) {
+                showConfetti = true
+            }
         }
     }
 
@@ -88,25 +98,25 @@ struct SuccessCelebration: View {
         showGlow = false
         showConfetti = false
         showRings = false
-        checkmarkScale = 0.8
-        checkmarkOpacity = 0
     }
 }
 
 // MARK: - Flash Overlay
 
-/// Brief white flash for bold intensity success.
+/// Brief white flash for burst style success.
 struct FlashOverlay: View {
+    let opacity: Double
     @Binding var isActive: Bool
-    @State private var opacity: Double = 0.6
+    @State private var currentOpacity: Double = 0
 
     var body: some View {
         Color.white
-            .opacity(opacity)
+            .opacity(currentOpacity)
             .allowsHitTesting(false)
             .onAppear {
+                currentOpacity = opacity
                 withAnimation(.easeOut(duration: 0.15)) {
-                    opacity = 0
+                    currentOpacity = 0
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     isActive = false
@@ -117,58 +127,67 @@ struct FlashOverlay: View {
 
 // MARK: - Glow Pulse
 
-/// Expanding glow effect from center.
+/// Expanding glow effect from center with multiple rings for glow style.
 struct GlowPulseView: View {
     let color: Color
     let intensity: Double
+    let duration: Double
+    let ringCount: Int
     let isActive: Bool
 
-    @State private var scale: CGFloat = 0.5
+    @State private var scale: CGFloat = 0.3
     @State private var opacity: Double = 0
 
     var body: some View {
-        Circle()
-            .fill(
-                RadialGradient(
-                    colors: [
-                        color.opacity(0.6 * intensity),
-                        color.opacity(0.3 * intensity),
-                        color.opacity(0)
-                    ],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: 100
-                )
-            )
-            .scaleEffect(scale)
-            .opacity(opacity)
-            .allowsHitTesting(false)
-            .onChange(of: isActive) { _, active in
-                if active {
-                    animate()
-                } else {
-                    reset()
-                }
+        ZStack {
+            // Multiple glow rings for glow style
+            ForEach(0..<max(1, ringCount), id: \.self) { index in
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                color.opacity(0.7 * intensity),
+                                color.opacity(0.4 * intensity),
+                                color.opacity(0.1 * intensity),
+                                color.opacity(0)
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 120
+                        )
+                    )
+                    .scaleEffect(scale * (1.0 + CGFloat(index) * 0.3))
+                    .opacity(opacity * (1.0 - Double(index) * 0.25))
+                    .blur(radius: CGFloat(index) * 2)
             }
-            .onAppear {
-                if isActive {
-                    animate()
-                }
+        }
+        .allowsHitTesting(false)
+        .onChange(of: isActive) { _, active in
+            if active {
+                animate()
+            } else {
+                reset()
             }
+        }
+        .onAppear {
+            if isActive {
+                animate()
+            }
+        }
     }
 
     private func animate() {
-        withAnimation(.easeOut(duration: 0.4)) {
-            scale = 2.0
+        withAnimation(.easeOut(duration: duration)) {
+            scale = 2.5
             opacity = 1.0
         }
-        withAnimation(.easeOut(duration: 0.6).delay(0.4)) {
+        withAnimation(.easeOut(duration: duration * 1.2).delay(duration)) {
             opacity = 0
         }
     }
 
     private func reset() {
-        scale = 0.5
+        scale = 0.3
         opacity = 0
     }
 }
@@ -179,23 +198,43 @@ struct GlowPulseView: View {
 struct ExpandingRingsView: View {
     let ringCount: Int
     let color: Color
+    let glowIntensity: Double
     let isActive: Bool
+
+    @State private var startTime: Date?
 
     var body: some View {
         TimelineView(.animation) { timeline in
             Canvas { context, size in
+                guard let start = startTime else { return }
+                let elapsed = timeline.date.timeIntervalSince(start)
                 let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                let maxRadius = max(size.width, size.height) * 0.8
+                let maxRadius = max(size.width, size.height) * 0.9
 
                 for i in 0..<ringCount {
-                    let delay = Double(i) * 0.1
-                    let elapsed = timeline.date.timeIntervalSinceReferenceDate
-                    let progress = min(1.0, max(0, (elapsed.truncatingRemainder(dividingBy: 2.0) - delay) / 1.0))
+                    let delay = Double(i) * 0.15
+                    let progress = min(1.0, max(0, (elapsed - delay) / 1.2))
 
-                    if progress > 0 {
-                        let radius = maxRadius * progress
-                        let opacity = 1.0 - progress
+                    if progress > 0 && progress < 1.0 {
+                        let radius = maxRadius * CGFloat(progress)
+                        let opacity = (1.0 - progress) * glowIntensity
 
+                        // Outer glow
+                        let glowRing = Path { path in
+                            path.addEllipse(in: CGRect(
+                                x: center.x - radius - 4,
+                                y: center.y - radius - 4,
+                                width: (radius + 4) * 2,
+                                height: (radius + 4) * 2
+                            ))
+                        }
+                        context.stroke(
+                            glowRing,
+                            with: .color(color.opacity(opacity * 0.3)),
+                            lineWidth: 8
+                        )
+
+                        // Core ring
                         let ring = Path { path in
                             path.addEllipse(in: CGRect(
                                 x: center.x - radius,
@@ -204,33 +243,36 @@ struct ExpandingRingsView: View {
                                 height: radius * 2
                             ))
                         }
-
                         context.stroke(
                             ring,
-                            with: .color(color.opacity(opacity * 0.8)),
-                            lineWidth: 2 + (1 - progress) * 2
+                            with: .color(color.opacity(opacity * 0.9)),
+                            lineWidth: 2 + CGFloat(1 - progress) * 2
                         )
                     }
                 }
             }
         }
         .allowsHitTesting(false)
+        .onChange(of: isActive) { _, active in
+            if active {
+                startTime = Date()
+            }
+        }
+        .onAppear {
+            if isActive {
+                startTime = Date()
+            }
+        }
     }
-}
-
-// MARK: - Ring Model (for non-Canvas approach)
-
-struct Ring: Identifiable {
-    let id = UUID()
-    var scale: CGFloat = 0.2
-    var opacity: Double = 1.0
 }
 
 // MARK: - Confetti System
 
-/// Particle-based confetti celebration.
+/// Particle-based confetti celebration with customizable size and speed.
 struct ConfettiView: View {
     let particleCount: Int
+    let sizeRange: ClosedRange<CGFloat>
+    let speedRange: ClosedRange<Double>
     let isActive: Bool
 
     @State private var particles: [ConfettiParticle] = []
@@ -243,6 +285,7 @@ struct ConfettiView: View {
         Color(red: 0.4, green: 0.9, blue: 0.5),    // Green
         Color(red: 0.45, green: 0.75, blue: 0.55), // Success green
         Color(red: 1.0, green: 0.6, blue: 0.4),    // Coral
+        Color(red: 0.6, green: 0.4, blue: 1.0),    // Purple
     ]
 
     var body: some View {
@@ -258,24 +301,25 @@ struct ConfettiView: View {
                     let progress = age / particle.lifetime
 
                     // Physics: initial burst velocity + gravity
-                    let x = center.x + particle.velocity.x * CGFloat(age) * 60
-                    let y = center.y + particle.velocity.y * CGFloat(age) * 60 + 0.5 * 200 * CGFloat(age * age)
+                    let gravity: Double = 180
+                    let x = center.x + particle.velocity.x * CGFloat(age) * 50
+                    let y = center.y + particle.velocity.y * CGFloat(age) * 50 + 0.5 * CGFloat(gravity) * CGFloat(age * age)
 
                     // Fade out and shrink
-                    let opacity = 1.0 - progress
-                    let scale = particle.size * (1.0 - progress * 0.5)
+                    let opacity = 1.0 - progress * 0.7
+                    let scale = particle.size * (1.0 - progress * 0.4)
 
                     // Rotation
-                    let rotation = Angle.degrees(particle.rotation + particle.rotationSpeed * age * 60)
+                    let rotation = Angle.degrees(particle.rotation + particle.rotationSpeed * age * 50)
 
-                    guard x >= -20, x <= size.width + 20,
-                          y >= -20, y <= size.height + 20 else { continue }
+                    guard x >= -30, x <= size.width + 30,
+                          y >= -30, y <= size.height + 30 else { continue }
 
                     context.opacity = opacity
                     context.translateBy(x: x, y: y)
                     context.rotate(by: rotation)
 
-                    // Draw confetti piece (small rectangle or circle)
+                    // Draw confetti piece
                     if particle.isCircle {
                         let circle = Path(ellipseIn: CGRect(
                             x: -scale / 2,
@@ -290,7 +334,7 @@ struct ConfettiView: View {
                             y: -scale / 4,
                             width: scale,
                             height: scale / 2
-                        ), cornerRadius: 1)
+                        ), cornerRadius: 2)
                         context.fill(rect, with: .color(particle.color))
                     }
 
@@ -316,19 +360,20 @@ struct ConfettiView: View {
     private func spawnParticles() {
         startTime = Date()
         particles = (0..<particleCount).map { i in
-            let angle = Double.random(in: -Double.pi...0) // Upward burst
-            let speed = Double.random(in: 2...5)
+            // Wider angle for more spread (-150° to -30°)
+            let angle = Double.random(in: (-Double.pi * 0.85)...(-Double.pi * 0.15))
+            let speed = Double.random(in: speedRange)
             return ConfettiParticle(
                 velocity: CGPoint(
                     x: cos(angle) * speed,
                     y: sin(angle) * speed
                 ),
                 color: colors.randomElement() ?? .white,
-                size: CGFloat.random(in: 6...12),
+                size: CGFloat.random(in: sizeRange),
                 rotation: Double.random(in: 0...360),
-                rotationSpeed: Double.random(in: -5...5),
-                lifetime: Double.random(in: 1.2...1.8),
-                delay: Double(i) * 0.02,
+                rotationSpeed: Double.random(in: -6...6),
+                lifetime: Double.random(in: 1.0...1.6),
+                delay: Double(i) * 0.015,
                 isCircle: Bool.random()
             )
         }
@@ -354,11 +399,11 @@ struct ConfettiParticle: Identifiable {
 
 // MARK: - Previews
 
-#Preview("Celebration - Subtle") {
+#Preview("Celebration - Glow") {
     ZStack {
         Color.black
         SuccessCelebration(
-            intensity: .subtle,
+            intensity: .glow,
             isActive: true,
             successColor: Color(red: 0.45, green: 0.75, blue: 0.55)
         )
@@ -366,11 +411,11 @@ struct ConfettiParticle: Identifiable {
     .frame(width: 350, height: 160)
 }
 
-#Preview("Celebration - Expressive") {
+#Preview("Celebration - Balanced") {
     ZStack {
         Color.black
         SuccessCelebration(
-            intensity: .expressive,
+            intensity: .balanced,
             isActive: true,
             successColor: Color(red: 0.45, green: 0.75, blue: 0.55)
         )
@@ -378,11 +423,11 @@ struct ConfettiParticle: Identifiable {
     .frame(width: 350, height: 160)
 }
 
-#Preview("Celebration - Bold") {
+#Preview("Celebration - Burst") {
     ZStack {
         Color.black
         SuccessCelebration(
-            intensity: .bold,
+            intensity: .burst,
             isActive: true,
             successColor: Color(red: 0.45, green: 0.75, blue: 0.55)
         )
