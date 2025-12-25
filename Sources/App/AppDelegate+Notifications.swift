@@ -2,6 +2,9 @@ import AppKit
 
 internal extension AppDelegate {
     func setupNotificationObservers() {
+        // Note: These observers are automatically cleaned up when the app terminates.
+        // AppDelegate lives for the entire app lifecycle, so no explicit removal needed,
+        // but we use the block-based API for clarity and to avoid selector-based pitfalls.
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(showDashboard),

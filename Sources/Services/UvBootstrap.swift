@@ -221,7 +221,14 @@ internal struct UvBootstrap {
         p.arguments = args
         let outPipe = Pipe(); let errPipe = Pipe()
         p.standardOutput = outPipe; p.standardError = errPipe
-        do { try p.run() } catch { return ("", String(describing: error), 1) }
+        do {
+            try p.run()
+        } catch {
+            // Close file handles to prevent resource leak
+            try? outPipe.fileHandleForReading.close()
+            try? errPipe.fileHandleForReading.close()
+            return ("", String(describing: error), 1)
+        }
         p.waitUntilExit()
         let out = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
         let err = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
@@ -236,7 +243,14 @@ internal struct UvBootstrap {
         p.arguments = args
         let outPipe = Pipe(); let errPipe = Pipe()
         p.standardOutput = outPipe; p.standardError = errPipe
-        do { try p.run() } catch { return ("", String(describing: error), 1) }
+        do {
+            try p.run()
+        } catch {
+            // Close file handles to prevent resource leak
+            try? outPipe.fileHandleForReading.close()
+            try? errPipe.fileHandleForReading.close()
+            return ("", String(describing: error), 1)
+        }
         p.waitUntilExit()
         let out = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
         let err = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""

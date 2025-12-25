@@ -138,8 +138,9 @@ internal final class SourceUsageStore {
             existing.fallbackSymbolName = info.fallbackSymbolName
         }
         statsByBundle[existing.bundleIdentifier] = existing
-        trimIfNeeded()
+        // Refresh ordered stats BEFORE trimming so we trim based on current data
         refreshOrderedStats()
+        trimIfNeeded()
         persist()
     }
     

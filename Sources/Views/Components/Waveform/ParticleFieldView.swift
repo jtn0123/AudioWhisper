@@ -9,6 +9,7 @@ struct ParticleFieldView: View {
 
     @State private var particles: [Particle] = []
     @State private var idlePhase: CGFloat = 0
+    @State private var isViewActive = false
 
     private let particleCount = 60
     private let colors: [Color] = [
@@ -67,7 +68,14 @@ struct ParticleFieldView: View {
             }
         }
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
+            guard isViewActive else { return }
             updateParticles()
+        }
+        .onAppear {
+            isViewActive = true
+        }
+        .onDisappear {
+            isViewActive = false
         }
     }
 

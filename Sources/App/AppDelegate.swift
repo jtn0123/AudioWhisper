@@ -18,4 +18,9 @@ internal class AppDelegate: NSObject, NSApplicationDelegate {
         case standardHotkey
         case pressAndHold
     }
+
+    deinit {
+        // Clean up notification observers to prevent memory leaks
+        NotificationCenter.default.removeObserver(self)
+    }
 }

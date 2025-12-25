@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftUI
+import os.log
 
 @Observable
 internal final class CategoryStore {
@@ -89,7 +90,8 @@ internal final class CategoryStore {
             try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
             try data.write(to: storageURL, options: [.atomic])
         } catch {
-            // Best effort persistence; ignore failures silently for now.
+            // Log persistence failures so they can be diagnosed
+            Logger.app.error("CategoryStore: Failed to persist categories: \(error.localizedDescription)")
         }
     }
 

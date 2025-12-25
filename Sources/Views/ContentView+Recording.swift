@@ -268,7 +268,8 @@ internal extension ContentView {
             Logger.paste.debug("showConfirmationAndPaste: awaitingSemanticPaste = \(awaitingSemanticPaste)")
             if !awaitingSemanticPaste {
                 Logger.paste.debug("showConfirmationAndPaste: scheduling performUserTriggeredPaste")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Delay to allow celebration animation to play before hiding window
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                     Logger.paste.debug("showConfirmationAndPaste: executing performUserTriggeredPaste")
                     performUserTriggeredPaste()
                 }

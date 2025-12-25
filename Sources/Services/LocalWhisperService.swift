@@ -111,28 +111,28 @@ internal final class LocalWhisperService: Sendable {
         // Create memory pressure source inline to avoid self reference
         let queue = DispatchQueue(label: "whisperkit.memorypressure")
         let source = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: queue)
-        
-        // Capture cache reference weakly to avoid retain cycle
-        let weakCache = cache
-        
-        source.setEventHandler { [weak weakCache] in
-            guard let cache = weakCache else { return }
-            
+
+        // Capture cache reference for use in the event handler
+        // The cache is an actor (reference type), so we capture it directly.
+        // Since LocalWhisperService owns the cache and source, the lifecycle is properly managed.
+        let cacheRef = cache
+
+        source.setEventHandler {
             let memoryPressure = source.mask
-            
+
             if memoryPressure.contains(.critical) {
                 // Critical memory pressure - clear all cached models
                 Task {
-                    await cache.clear()
+                    await cacheRef.clear()
                 }
             } else if memoryPressure.contains(.warning) {
                 // Warning level - remove least recently used models aggressively
                 Task {
-                    await cache.clearExceptMostRecent()
+                    await cacheRef.clearExceptMostRecent()
                 }
             }
         }
-        
+
         source.resume()
         self.memoryPressureSource = source
     }

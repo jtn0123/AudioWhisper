@@ -154,6 +154,19 @@ internal class SpeechToTextService {
         let transcriptionURL = openAITranscriptionEndpoint
 
         return try await withCheckedThrowingContinuation { continuation in
+            // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
+            var hasResumed = false
+            let resumeOnce: (Result<String, Error>) -> Void = { result in
+                guard !hasResumed else { return }
+                hasResumed = true
+                switch result {
+                case .success(let text):
+                    continuation.resume(returning: text)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+
             AF.upload(
                 multipartFormData: { multipartFormData in
                     multipartFormData.append(audioURL, withName: "file")
@@ -167,9 +180,9 @@ internal class SpeechToTextService {
                 switch response.result {
                 case .success(let whisperResponse):
                     let cleanedText = Self.cleanTranscriptionText(whisperResponse.text)
-                    continuation.resume(returning: cleanedText)
+                    resumeOnce(.success(cleanedText))
                 case .failure(let error):
-                    continuation.resume(throwing: SpeechToTextError.transcriptionFailed(error.localizedDescription))
+                    resumeOnce(.failure(SpeechToTextError.transcriptionFailed(error.localizedDescription)))
                 }
             }
         }
@@ -203,6 +216,19 @@ internal class SpeechToTextService {
         
         // Upload file using multipart form data
         let uploadedFile = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<GeminiFileResponse, Error>) in
+            // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
+            var hasResumed = false
+            let resumeOnce: (Result<GeminiFileResponse, Error>) -> Void = { result in
+                guard !hasResumed else { return }
+                hasResumed = true
+                switch result {
+                case .success(let response):
+                    continuation.resume(returning: response)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+
             AF.upload(
                 multipartFormData: { multipartFormData in
                     multipartFormData.append(audioURL, withName: "file")
@@ -217,9 +243,9 @@ internal class SpeechToTextService {
             .responseDecodable(of: GeminiFileResponse.self) { response in
                 switch response.result {
                 case .success(let fileResponse):
-                    continuation.resume(returning: fileResponse)
+                    resumeOnce(.success(fileResponse))
                 case .failure(let error):
-                    continuation.resume(throwing: SpeechToTextError.transcriptionFailed("File upload failed: \(error.localizedDescription)"))
+                    resumeOnce(.failure(SpeechToTextError.transcriptionFailed("File upload failed: \(error.localizedDescription)")))
                 }
             }
         }
@@ -246,23 +272,36 @@ internal class SpeechToTextService {
         ]
         
         return try await withCheckedThrowingContinuation { continuation in
+            // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
+            var hasResumed = false
+            let resumeOnce: (Result<String, Error>) -> Void = { result in
+                guard !hasResumed else { return }
+                hasResumed = true
+                switch result {
+                case .success(let text):
+                    continuation.resume(returning: text)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+
             AF.request(transcriptionURL, method: .post, parameters: body, encoding: JSONEncoding.default, headers: headers)
                 .responseDecodable(of: GeminiResponse.self) { response in
                     switch response.result {
                     case .success(let geminiResponse):
                         if let text = geminiResponse.candidates.first?.content.parts.first?.text {
                             let cleanedText = Self.cleanTranscriptionText(text)
-                            continuation.resume(returning: cleanedText)
+                            resumeOnce(.success(cleanedText))
                         } else {
-                            continuation.resume(throwing: SpeechToTextError.transcriptionFailed("No text in response"))
+                            resumeOnce(.failure(SpeechToTextError.transcriptionFailed("No text in response")))
                         }
                     case .failure(let error):
-                        continuation.resume(throwing: SpeechToTextError.transcriptionFailed(error.localizedDescription))
+                        resumeOnce(.failure(SpeechToTextError.transcriptionFailed(error.localizedDescription)))
                     }
                 }
         }
     }
-    
+
     private func transcribeWithGeminiInline(audioURL: URL, apiKey: String) async throws -> String {
         // For smaller files, use inline data to avoid the extra upload step
         // Double-check file size for safety
@@ -302,23 +341,36 @@ internal class SpeechToTextService {
         ]
         
         return try await withCheckedThrowingContinuation { continuation in
+            // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
+            var hasResumed = false
+            let resumeOnce: (Result<String, Error>) -> Void = { result in
+                guard !hasResumed else { return }
+                hasResumed = true
+                switch result {
+                case .success(let text):
+                    continuation.resume(returning: text)
+                case .failure(let error):
+                    continuation.resume(throwing: error)
+                }
+            }
+
             AF.request(url, method: .post, parameters: body, encoding: JSONEncoding.default, headers: headers)
                 .responseDecodable(of: GeminiResponse.self) { response in
                     switch response.result {
                     case .success(let geminiResponse):
                         if let text = geminiResponse.candidates.first?.content.parts.first?.text {
                             let cleanedText = Self.cleanTranscriptionText(text)
-                            continuation.resume(returning: cleanedText)
+                            resumeOnce(.success(cleanedText))
                         } else {
-                            continuation.resume(throwing: SpeechToTextError.transcriptionFailed("No text in response"))
+                            resumeOnce(.failure(SpeechToTextError.transcriptionFailed("No text in response")))
                         }
                     case .failure(let error):
-                        continuation.resume(throwing: SpeechToTextError.transcriptionFailed(error.localizedDescription))
+                        resumeOnce(.failure(SpeechToTextError.transcriptionFailed(error.localizedDescription)))
                     }
                 }
         }
     }
-    
+
     private func transcribeWithLocal(audioURL: URL, model: WhisperModel) async throws -> String {
         do {
             let text = try await localWhisperService.transcribe(audioFileURL: audioURL, model: model) { progress in

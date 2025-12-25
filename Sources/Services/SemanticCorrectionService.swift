@@ -83,7 +83,7 @@ internal final class SemanticCorrectionService {
             "Content-Type": "application/json"
         ]
         let body: [String: Any] = [
-            "model": "gpt-5.1-mini",
+            "model": "gpt-4o-mini",
             "messages": [
                 ["role": "system", "content": prompt],
                 ["role": "user", "content": text]
