@@ -16,8 +16,12 @@ struct NeonWaveformView: View {
     // Trail history (stores previous waveform frames)
     private let trailCount = 3
     @State private var waveformHistory: [[Float]] = []
+    @State private var smoothedSamples: [Float] = []
     @State private var phase: CGFloat = 0
     @State private var colorPhase: CGFloat = 0
+
+    // Decay factor for slower response (lower = slower)
+    private let decayFactor: Float = 0.65
 
     var body: some View {
         GeometryReader { geometry in
