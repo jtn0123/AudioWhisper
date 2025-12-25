@@ -18,20 +18,8 @@ struct SpectrumWaveformView: View {
         Color(red: 1.0, green: 0.4, blue: 0.8),   // Brilliance - Pink
     ]
 
-    // Voice-optimized labels: 80Hz-10kHz focused on human speech
-    private let bandLabels = ["M♂", "F♀", "F1", "F2", "F3", "PRES", "SIB", "AIR"]
-
-    // Bar width weights - voice fundamentals get more visual space
-    private let bandWeights: [CGFloat] = [
-        1.4,  // Male fundamental - wider
-        1.4,  // Female fundamental - wider
-        1.2,  // F1 formant
-        1.2,  // F2 formant
-        1.0,  // F3 formant
-        0.9,  // Presence
-        0.7,  // Sibilants - narrower
-        0.6   // Air/brilliance - narrowest
-    ]
+    // Voice-optimized labels: 80Hz-1200Hz frequency markers
+    private let bandLabels = ["80", "120", "180", "260", "380", "550", "750", "950"]
 
     @State private var peakLevels: [Float] = Array(repeating: 0, count: 8)
     @State private var animatedLevels: [Float] = Array(repeating: 0, count: 8)
@@ -43,13 +31,11 @@ struct SpectrumWaveformView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            let totalWeight = bandWeights.reduce(0, +)
-            let availableWidth = geometry.size.width - barSpacing * CGFloat(bandColors.count - 1)
+            let barWidth = (geometry.size.width - barSpacing * CGFloat(bandColors.count - 1)) / CGFloat(bandColors.count)
             let maxHeight = geometry.size.height - 20 // Leave room for labels
 
             HStack(spacing: barSpacing) {
                 ForEach(0..<bandColors.count, id: \.self) { index in
-                    let barWidth = availableWidth * (bandWeights[index] / totalWeight)
 
                     VStack(spacing: 4) {
                         ZStack(alignment: .bottom) {
