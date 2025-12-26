@@ -302,26 +302,31 @@ internal class PasteManager {
         let cancelledFlag = CancelledFlag()  // Bug #19 fix: use reference type instead of capture-by-value
 
         // Set up timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak observerBox, cancelledFlag] in
+        // Bug fix: Capture observerBox strongly so it survives until timeout/activation
+        // The observerBox is only deallocated after the observer is properly removed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [observerBox, cancelledFlag] in
             guard !cancelledFlag.value else { return }
-            if let observer = observerBox?.observer {
+            if let observer = observerBox.observer {
                 NotificationCenter.default.removeObserver(observer)
+                observerBox.observer = nil  // Clear reference to allow cleanup
             }
             // Execute completion even on timeout to avoid hanging
             completion()
         }
 
         // Observe app activation
+        // Bug fix: Capture observerBox strongly to ensure we can remove the observer
         observerBox.observer = NotificationCenter.default.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main
-        ) { [weak observerBox, cancelledFlag] notification in
+        ) { [observerBox, cancelledFlag] notification in
             if let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                activatedApp.processIdentifier == target.processIdentifier {
                 cancelledFlag.value = true
-                if let observer = observerBox?.observer {
+                if let observer = observerBox.observer {
                     NotificationCenter.default.removeObserver(observer)
+                    observerBox.observer = nil  // Clear reference to allow cleanup
                 }
                 completion()
             }

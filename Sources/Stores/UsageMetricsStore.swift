@@ -116,13 +116,17 @@ internal final class UsageMetricsStore {
     }
     
     private func cleanupOldDailyActivity(_ activity: [String: Int]) -> [String: Int] {
-        let cutoffDate = Calendar.current.date(
+        // Bug fix: If date calculation fails, return unchanged activity instead of
+        // defaulting to Date() which would delete all historical data
+        guard let cutoffDate = Calendar.current.date(
             byAdding: .day,
             value: -UsageMetricsConstants.maxDailyActivityDays,
             to: Date()
-        ) ?? Date()
+        ) else {
+            return activity
+        }
         let cutoffString = Self.dateFormatter.string(from: cutoffDate)
-        
+
         return activity.filter { key, _ in
             key >= cutoffString
         }

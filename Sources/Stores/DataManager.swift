@@ -256,13 +256,14 @@ internal final class DataManager: DataManagerProtocol {
             
             context.delete(recordToDelete)
             try context.save()
-            
+
             Logger.dataManager.info("Deleted transcription record with ID: \(record.id)")
-            
-            // Rebuild usage metrics from remaining records
+
+            // Rebuild usage metrics and source usage stats from remaining records
             let remainingRecords = allRecords.filter { $0.id != record.id }
             UsageMetricsStore.shared.rebuild(using: remainingRecords)
-            
+            SourceUsageStore.shared.rebuild(using: remainingRecords)
+
         } catch {
             Logger.dataManager.error("Failed to delete transcription record: \(error.localizedDescription)")
             throw DataManagerError.deleteFailed(error)
@@ -412,11 +413,12 @@ internal final class MockDataManager: DataManagerProtocol {
     
     func deleteRecord(_ record: TranscriptionRecord) async throws {
         records.removeAll { $0.id == record.id }
-        
+
         Logger.dataManager.info("Mock deleted transcription record with ID: \(record.id)")
-        
-        // Rebuild usage metrics from remaining records
+
+        // Rebuild usage metrics and source usage stats from remaining records
         UsageMetricsStore.shared.rebuild(using: records)
+        SourceUsageStore.shared.rebuild(using: records)
     }
     
     func deleteAllRecords() async throws {

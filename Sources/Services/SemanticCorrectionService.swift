@@ -93,30 +93,32 @@ internal final class SemanticCorrectionService {
         ]
 
         do {
-            let result = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
-                // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
-                var hasResumed = false
-                let resumeOnce: (Result<String, Error>) -> Void = { result in
-                    guard !hasResumed else { return }
-                    hasResumed = true
-                    switch result {
-                    case .success(let text):
-                        cont.resume(returning: text)
-                    case .failure(let error):
-                        cont.resume(throwing: error)
-                    }
-                }
-
-                AF.request(url, method: .post, parameters: body, encoding: JSONEncoding.default, headers: headers)
-                    .responseDecodable(of: OpenAIChatResponse.self) { response in
-                        switch response.result {
-                        case .success(let r):
-                            let content = r.choices.first?.message.content ?? text
-                            resumeOnce(.success(content))
-                        case .failure(let err):
-                            resumeOnce(.failure(err))
+            let result = try await withTimeout(semanticCorrectionTimeout) {
+                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+                    // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
+                    var hasResumed = false
+                    let resumeOnce: (Result<String, Error>) -> Void = { result in
+                        guard !hasResumed else { return }
+                        hasResumed = true
+                        switch result {
+                        case .success(let text):
+                            cont.resume(returning: text)
+                        case .failure(let error):
+                            cont.resume(throwing: error)
                         }
                     }
+
+                    AF.request(url, method: .post, parameters: body, encoding: JSONEncoding.default, headers: headers)
+                        .responseDecodable(of: OpenAIChatResponse.self) { response in
+                            switch response.result {
+                            case .success(let r):
+                                let content = r.choices.first?.message.content ?? text
+                                resumeOnce(.success(content))
+                            case .failure(let err):
+                                resumeOnce(.failure(err))
+                            }
+                        }
+                }
             }
             return Self.safeMerge(original: text, corrected: result, maxChangeRatio: 0.25)
         } catch {
@@ -156,30 +158,32 @@ internal final class SemanticCorrectionService {
             ]
         ]
         do {
-            let result = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
-                // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
-                var hasResumed = false
-                let resumeOnce: (Result<String, Error>) -> Void = { result in
-                    guard !hasResumed else { return }
-                    hasResumed = true
-                    switch result {
-                    case .success(let text):
-                        cont.resume(returning: text)
-                    case .failure(let error):
-                        cont.resume(throwing: error)
-                    }
-                }
-
-                AF.request(url, method: .post, parameters: body, encoding: JSONEncoding.default, headers: headers)
-                    .responseDecodable(of: GeminiResponse.self) { response in
-                        switch response.result {
-                        case .success(let r):
-                            let content = r.candidates.first?.content.parts.first?.text ?? text
-                            resumeOnce(.success(content))
-                        case .failure(let err):
-                            resumeOnce(.failure(err))
+            let result = try await withTimeout(semanticCorrectionTimeout) {
+                try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+                    // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
+                    var hasResumed = false
+                    let resumeOnce: (Result<String, Error>) -> Void = { result in
+                        guard !hasResumed else { return }
+                        hasResumed = true
+                        switch result {
+                        case .success(let text):
+                            cont.resume(returning: text)
+                        case .failure(let error):
+                            cont.resume(throwing: error)
                         }
                     }
+
+                    AF.request(url, method: .post, parameters: body, encoding: JSONEncoding.default, headers: headers)
+                        .responseDecodable(of: GeminiResponse.self) { response in
+                            switch response.result {
+                            case .success(let r):
+                                let content = r.candidates.first?.content.parts.first?.text ?? text
+                                resumeOnce(.success(content))
+                            case .failure(let err):
+                                resumeOnce(.failure(err))
+                            }
+                        }
+                }
             }
             return Self.safeMerge(original: text, corrected: result, maxChangeRatio: 0.25)
         } catch {

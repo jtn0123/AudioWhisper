@@ -190,6 +190,54 @@ internal final class SourceUsageStore {
         defaults.removeObject(forKey: storageKey)
     }
 
+    /// Rebuilds source usage stats from the given transcription records.
+    /// This is used when records are deleted to ensure stats stay in sync.
+    func rebuild(using records: [TranscriptionRecord]) {
+        statsByBundle = [:]
+
+        for record in records {
+            guard let bundleId = record.sourceAppBundleId, !bundleId.isEmpty else {
+                continue
+            }
+
+            var existing = statsByBundle[bundleId] ?? SourceUsageStats(
+                bundleIdentifier: bundleId,
+                displayName: record.sourceAppName ?? bundleId,
+                totalWords: 0,
+                totalCharacters: 0,
+                sessionCount: 0,
+                lastUsed: record.date,
+                fallbackSymbolName: nil,
+                iconData: record.sourceAppIconData
+            )
+
+            existing.totalWords += record.wordCount
+            existing.totalCharacters += record.characterCount
+            existing.sessionCount += 1
+
+            // Track the most recent usage date
+            if record.date > existing.lastUsed {
+                existing.lastUsed = record.date
+            }
+
+            // Update display name if we have a newer one
+            if let name = record.sourceAppName, !name.isEmpty {
+                existing.displayName = name
+            }
+
+            // Keep icon data from records
+            if existing.iconData == nil, let iconData = record.sourceAppIconData {
+                existing.iconData = iconData
+            }
+
+            statsByBundle[bundleId] = existing
+        }
+
+        refreshOrderedStats()
+        trimIfNeeded()
+        persist()
+    }
+
     func resetForTesting() {
         reset()
     }

@@ -132,6 +132,120 @@ final class SourceUsageStoreTests: XCTestCase {
         XCTAssertNil(restored.last?.iconData, "iconData is not persisted to avoid UserDefaults overflow")
     }
 
+    func testRebuildFromTranscriptionRecords() {
+        // First add some usage directly
+        let info = makeInfo(bundleId: "com.test.old", name: "Old App")
+        store.recordUsage(for: info, words: 100, characters: 500)
+        XCTAssertEqual(store.allSources().count, 1)
+
+        // Create transcription records
+        let records = [
+            TranscriptionRecord(
+                text: "Hello world from app A",
+                provider: .openai,
+                duration: 5.0,
+                modelUsed: nil,
+                wordCount: 50,
+                characterCount: 200,
+                sourceAppBundleId: "com.test.a",
+                sourceAppName: "App A",
+                sourceAppIconData: Data([0x01])
+            ),
+            TranscriptionRecord(
+                text: "More text from app A",
+                provider: .openai,
+                duration: 3.0,
+                modelUsed: nil,
+                wordCount: 30,
+                characterCount: 120,
+                sourceAppBundleId: "com.test.a",
+                sourceAppName: "App A",
+                sourceAppIconData: nil
+            ),
+            TranscriptionRecord(
+                text: "Text from app B",
+                provider: .gemini,
+                duration: 2.0,
+                modelUsed: nil,
+                wordCount: 20,
+                characterCount: 80,
+                sourceAppBundleId: "com.test.b",
+                sourceAppName: "App B",
+                sourceAppIconData: Data([0x02])
+            )
+        ]
+
+        // Rebuild from records
+        store.rebuild(using: records)
+
+        // Verify the old usage is gone and new stats are correct
+        let sources = store.allSources()
+        XCTAssertEqual(sources.count, 2)
+
+        // App A should have combined stats
+        let appA = sources.first { $0.bundleIdentifier == "com.test.a" }
+        XCTAssertNotNil(appA)
+        XCTAssertEqual(appA?.totalWords, 80) // 50 + 30
+        XCTAssertEqual(appA?.totalCharacters, 320) // 200 + 120
+        XCTAssertEqual(appA?.sessionCount, 2)
+        XCTAssertEqual(appA?.displayName, "App A")
+        XCTAssertEqual(appA?.iconData, Data([0x01]))
+
+        // App B should have its stats
+        let appB = sources.first { $0.bundleIdentifier == "com.test.b" }
+        XCTAssertNotNil(appB)
+        XCTAssertEqual(appB?.totalWords, 20)
+        XCTAssertEqual(appB?.totalCharacters, 80)
+        XCTAssertEqual(appB?.sessionCount, 1)
+
+        // Old app should be gone
+        XCTAssertNil(sources.first { $0.bundleIdentifier == "com.test.old" })
+    }
+
+    func testRebuildWithEmptyRecords() {
+        // First add some usage
+        let info = makeInfo(bundleId: "com.test.app", name: "Test App")
+        store.recordUsage(for: info, words: 100, characters: 500)
+        XCTAssertEqual(store.allSources().count, 1)
+
+        // Rebuild with empty array
+        store.rebuild(using: [])
+
+        // All stats should be cleared
+        XCTAssertTrue(store.allSources().isEmpty)
+    }
+
+    func testRebuildIgnoresRecordsWithoutBundleId() {
+        let records = [
+            TranscriptionRecord(
+                text: "Text without bundle",
+                provider: .openai,
+                duration: 5.0,
+                modelUsed: nil,
+                wordCount: 50,
+                characterCount: 200,
+                sourceAppBundleId: nil,
+                sourceAppName: nil,
+                sourceAppIconData: nil
+            ),
+            TranscriptionRecord(
+                text: "Text with empty bundle",
+                provider: .openai,
+                duration: 5.0,
+                modelUsed: nil,
+                wordCount: 30,
+                characterCount: 120,
+                sourceAppBundleId: "",
+                sourceAppName: "Empty Bundle",
+                sourceAppIconData: nil
+            )
+        ]
+
+        store.rebuild(using: records)
+
+        XCTAssertTrue(store.allSources().isEmpty)
+    }
+
     private func makeInfo(bundleId: String, name: String, iconByte: UInt8? = nil, fallbackSymbol: String? = nil) -> SourceAppInfo {
         let iconData = iconByte.map { Data([$0]) }
         return SourceAppInfo(
