@@ -10,6 +10,7 @@ struct ParticleFieldView: View {
     @State private var particles: [Particle] = []
     @State private var idlePhase: CGFloat = 0
     @State private var isViewActive = false
+    @State private var currentSize: CGSize = CGSize(width: 200, height: 120)
 
     private let particleCount = 60
     private let colors: [Color] = [
@@ -62,6 +63,7 @@ struct ParticleFieldView: View {
                 initializeParticles(in: geometry.size)
             }
             .onChange(of: geometry.size) { _, newSize in
+                currentSize = newSize
                 if particles.isEmpty {
                     initializeParticles(in: newSize)
                 }
@@ -80,6 +82,7 @@ struct ParticleFieldView: View {
     }
 
     private func initializeParticles(in size: CGSize) {
+        currentSize = size
         particles = (0..<particleCount).map { _ in
             Particle(
                 x: CGFloat.random(in: 0...size.width),
@@ -108,9 +111,9 @@ struct ParticleFieldView: View {
             if isActive && audioLevel > 0.05 {
                 // Audio-reactive movement
 
-                // Bass pushes particles away from center
-                let centerX: CGFloat = 100 // Approximate center
-                let centerY: CGFloat = 60
+                // Bug #29 fix: Use actual geometry size instead of hardcoded values
+                let centerX = currentSize.width / 2
+                let centerY = currentSize.height / 2
                 let dx = particle.x - centerX
                 let dy = particle.y - centerY
                 let distance = sqrt(dx * dx + dy * dy)
@@ -141,11 +144,13 @@ struct ParticleFieldView: View {
             particle.velocityX *= 0.95
             particle.velocityY *= 0.95
 
-            // Wrap around edges
-            if particle.x < -10 { particle.x = 210 }
-            if particle.x > 210 { particle.x = -10 }
-            if particle.y < -10 { particle.y = 130 }
-            if particle.y > 130 { particle.y = -10 }
+            // Bug #29 fix: Wrap around edges using actual geometry size
+            let wrapWidth = currentSize.width + 20
+            let wrapHeight = currentSize.height + 20
+            if particle.x < -10 { particle.x = wrapWidth - 10 }
+            if particle.x > wrapWidth - 10 { particle.x = -10 }
+            if particle.y < -10 { particle.y = wrapHeight - 10 }
+            if particle.y > wrapHeight - 10 { particle.y = -10 }
 
             particles[i] = particle
         }

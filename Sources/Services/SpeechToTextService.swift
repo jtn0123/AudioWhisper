@@ -31,8 +31,9 @@ internal enum SpeechToTextError: Error, LocalizedError {
 
 @Observable
 internal class SpeechToTextService {
-    private let localWhisperService = LocalWhisperService()
-    private let parakeetService = ParakeetService()
+    // Bug #30 fix: Use shared singleton to avoid multiple WhisperKit caches
+    private let localWhisperService = LocalWhisperService.shared
+    private let parakeetService = ParakeetService.shared
     private let keychainService: KeychainServiceProtocol
     private let correctionService = SemanticCorrectionService()
     

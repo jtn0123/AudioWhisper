@@ -20,8 +20,8 @@ struct NeonWaveformView: View {
     @State private var phase: CGFloat = 0
     @State private var colorPhase: CGFloat = 0
 
-    // Decay factor for slower response (lower = slower)
-    private let decayFactor: Float = 0.65
+    // Decay factor for response speed (lower = slower, higher = snappier)
+    private let decayFactor: Float = 0.55
 
     var body: some View {
         GeometryReader { geometry in
@@ -90,18 +90,18 @@ struct NeonWaveformView: View {
         ZStack {
             // Outer glow (largest, most diffuse)
             waveformPath(in: size)
-                .stroke(currentColor.opacity(0.3), lineWidth: 10)
-                .blur(radius: 15)
+                .stroke(currentColor.opacity(0.45), lineWidth: 12)
+                .blur(radius: 18)
 
             // Middle glow
             waveformPath(in: size)
-                .stroke(currentColor.opacity(0.5), lineWidth: 4)
-                .blur(radius: 6)
+                .stroke(currentColor.opacity(0.65), lineWidth: 5)
+                .blur(radius: 8)
 
             // Inner glow
             waveformPath(in: size)
-                .stroke(currentColor.opacity(0.8), lineWidth: 2)
-                .blur(radius: 2)
+                .stroke(currentColor.opacity(0.9), lineWidth: 3)
+                .blur(radius: 3)
 
             // Core line
             waveformPath(in: size)
@@ -135,14 +135,14 @@ struct NeonWaveformView: View {
         Circle()
             .fill(
                 RadialGradient(
-                    colors: [currentColor.opacity(0.2 * Double(audioLevel)), .clear],
+                    colors: [currentColor.opacity(0.35 * Double(audioLevel)), .clear],
                     center: .center,
                     startRadius: 0,
-                    endRadius: size.width * 0.6
+                    endRadius: size.width * 0.7
                 )
             )
-            .scaleEffect(1.0 + CGFloat(audioLevel) * 0.3)
-            .animation(.easeOut(duration: 0.1), value: audioLevel)
+            .scaleEffect(1.0 + CGFloat(audioLevel) * 0.5)
+            .animation(.easeOut(duration: 0.08), value: audioLevel)
     }
 
     // MARK: - Path Generation
@@ -155,7 +155,7 @@ struct NeonWaveformView: View {
         Path { path in
             let centerY = size.height / 2
             let stepX = size.width / CGFloat(max(1, samples.count - 1))
-            let maxAmplitude = size.height * 0.55
+            let maxAmplitude = size.height * 0.70
 
             guard !samples.isEmpty else {
                 // Flat line when no samples
@@ -202,8 +202,8 @@ struct NeonWaveformView: View {
             return waveformSamples.map { sample in
                 let sign: Float = sample >= 0 ? 1 : -1
                 let magnitude = abs(sample)
-                // Boost quieter samples more aggressively, loud samples less
-                let boosted = magnitude + 0.08 + magnitude * 0.4
+                // Aggressive boost for more reactive, vibrant waveform
+                let boosted = magnitude + 0.12 + magnitude * 0.6
                 return sign * min(boosted, 1.0)
             }
         } else {

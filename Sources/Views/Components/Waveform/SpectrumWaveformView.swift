@@ -50,7 +50,7 @@ struct SpectrumWaveformView: View {
                                     LinearGradient(
                                         colors: [
                                             bandColors[index],
-                                            bandColors[index].opacity(0.7)
+                                            bandColors[index].opacity(0.85)
                                         ],
                                         startPoint: .bottom,
                                         endPoint: .top
@@ -60,7 +60,7 @@ struct SpectrumWaveformView: View {
                                     width: barWidth,
                                     height: max(minHeight, CGFloat(animatedLevels[safe: index] ?? 0) * maxHeight)
                                 )
-                                .shadow(color: bandColors[index].opacity(0.6), radius: 8, x: 0, y: 0)
+                                .shadow(color: bandColors[index].opacity(0.7), radius: 12, x: 0, y: 0)
 
                             // Peak indicator
                             if peakLevels[safe: index] ?? 0 > 0.05 {
@@ -94,19 +94,19 @@ struct SpectrumWaveformView: View {
         for i in 0..<min(animatedLevels.count, frequencyBands.count) {
             let target: Float
             if isActive {
-                // Apply 30% gain boost for better visibility
-                target = min(1.0, frequencyBands[i] * 1.3)
+                // Apply 80% gain boost for more reactive, punchy bars
+                target = min(1.0, frequencyBands[i] * 1.8)
             } else {
                 // Idle animation
                 let breathe = Float(sin(idlePhase + Double(i) * 0.3) * 0.5 + 0.5) * 0.08
                 target = breathe
             }
 
-            // Smooth animation (fast attack, slower decay)
+            // Smooth animation (fast attack, snappier decay)
             if target > animatedLevels[i] {
                 animatedLevels[i] = target
             } else {
-                animatedLevels[i] = animatedLevels[i] * 0.85 + target * 0.15
+                animatedLevels[i] = animatedLevels[i] * 0.75 + target * 0.25
             }
 
             // Update peak hold

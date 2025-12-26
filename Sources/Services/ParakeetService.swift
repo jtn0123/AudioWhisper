@@ -38,6 +38,8 @@ internal struct ParakeetResponse: Codable {
 }
 
 internal class ParakeetService {
+    static let shared = ParakeetService()
+
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "ParakeetService")
     private let daemon = MLDaemonManager.shared
 

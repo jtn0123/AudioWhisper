@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import AVFoundation
 import os.log
 
 internal extension ContentView {
@@ -182,9 +183,14 @@ internal extension ContentView {
                 let wordCount = UsageMetricsStore.estimatedWordCount(for: finalText)
                 let characterCount = finalText.count
 
-                let fileAttributes = try? FileManager.default.attributesOfItem(atPath: audioURL.path)
-                let fileSize = (fileAttributes?[.size] as? Int64) ?? 0
-                let estimatedDuration = TimeInterval(fileSize) / 16000.0
+                // Bug #28 fix: Use AVAsset to get actual duration instead of estimating from file size
+                let asset = AVAsset(url: audioURL)
+                let estimatedDuration: TimeInterval
+                if #available(macOS 12.0, *) {
+                    estimatedDuration = (try? await asset.load(.duration).seconds) ?? 0
+                } else {
+                    estimatedDuration = asset.duration.seconds
+                }
 
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(finalText, forType: .string)
@@ -266,7 +272,9 @@ internal extension ContentView {
         Logger.paste.debug("showConfirmationAndPaste: enableSmartPaste = \(enableSmartPaste)")
         if enableSmartPaste {
             Logger.paste.debug("showConfirmationAndPaste: awaitingSemanticPaste = \(awaitingSemanticPaste)")
-            if !awaitingSemanticPaste {
+            // Capture flag value at schedule time to prevent race condition (#26 fix)
+            let shouldPasteNow = !awaitingSemanticPaste
+            if shouldPasteNow {
                 Logger.paste.debug("showConfirmationAndPaste: scheduling performUserTriggeredPaste")
                 // Delay to allow celebration animation to play before hiding window
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
@@ -352,42 +360,47 @@ internal extension ContentView {
                         awaitingSemanticPaste = true
                         progressMessage = "Semantic correction..."
                     }
-                    // Bug #17 fix: Capture all values before Task.detached to avoid implicit self capture
-                    // Bug #20 fix: Also capture semanticCorrectionService explicitly
+                    // Bug #17 fix: Capture all values before async work to avoid implicit self capture
+                    // Bug #27 fix: Use regular Task instead of Task.detached so it can be cancelled
                     let capturedBundleId: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
                     let capturedModelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? selectedWhisperModel.rawValue : nil }
                     let capturedSourceInfo: SourceAppInfo = await MainActor.run { currentSourceAppInfo() }
                     let shouldSave2: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
                     let capturedSemanticService = semanticCorrectionService
 
-                    Task.detached { [text, transcriptionProvider, capturedBundleId, capturedModelUsed, capturedSourceInfo, shouldSave2, capturedSemanticService] in
-                        let corrected = await capturedSemanticService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId)
-                        let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
-                        let characterCount = corrected.count
-                        if shouldSave2 {
-                            let record = TranscriptionRecord(
-                                text: corrected,
-                                provider: transcriptionProvider,
-                                duration: nil,
-                                modelUsed: capturedModelUsed,
-                                wordCount: wordCount,
-                                characterCount: characterCount,
-                                sourceAppBundleId: capturedSourceInfo.bundleIdentifier,
-                                sourceAppName: capturedSourceInfo.displayName,
-                                sourceAppIconData: capturedSourceInfo.iconData
-                            )
-                            await DataManager.shared.saveTranscriptionQuietly(record)
-                        }
-                        await MainActor.run {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(corrected, forType: .string)
-                            transcriptionStartTime = nil
-                            isProcessing = false
-                            showConfirmationAndPaste(text: corrected)
-                            if awaitingSemanticPaste {
-                                performUserTriggeredPaste()
-                                awaitingSemanticPaste = false
-                            }
+                    // Check for cancellation before starting semantic correction
+                    try Task.checkCancellation()
+
+                    let corrected = await capturedSemanticService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId)
+
+                    // Check for cancellation after semantic correction
+                    try Task.checkCancellation()
+
+                    let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
+                    let characterCount = corrected.count
+                    if shouldSave2 {
+                        let record = TranscriptionRecord(
+                            text: corrected,
+                            provider: transcriptionProvider,
+                            duration: nil,
+                            modelUsed: capturedModelUsed,
+                            wordCount: wordCount,
+                            characterCount: characterCount,
+                            sourceAppBundleId: capturedSourceInfo.bundleIdentifier,
+                            sourceAppName: capturedSourceInfo.displayName,
+                            sourceAppIconData: capturedSourceInfo.iconData
+                        )
+                        await DataManager.shared.saveTranscriptionQuietly(record)
+                    }
+                    await MainActor.run {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(corrected, forType: .string)
+                        transcriptionStartTime = nil
+                        isProcessing = false
+                        showConfirmationAndPaste(text: corrected)
+                        if awaitingSemanticPaste {
+                            performUserTriggeredPaste()
+                            awaitingSemanticPaste = false
                         }
                     }
                 } else {
