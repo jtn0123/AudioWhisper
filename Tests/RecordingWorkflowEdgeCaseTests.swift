@@ -482,7 +482,7 @@ final class RecordingWorkflowEdgeCaseTests: XCTestCase {
         var errorMessage: String?
         var transcriptionStartTime: Date?
         var lastAudioURL: URL?
-        var awaitingSemanticPaste = false
+        let awaitingSemanticPaste = false  // In this test scenario, semantic paste is not awaited
 
         // Start state
         isProcessing = true
@@ -511,6 +511,6 @@ final class RecordingWorkflowEdgeCaseTests: XCTestCase {
         XCTAssertNil(errorMessage)
         XCTAssertNil(transcriptionStartTime)
         XCTAssertNotNil(lastAudioURL, "lastAudioURL should be preserved for potential retry")
-        XCTAssertFalse(awaitingSemanticPaste)
+        XCTAssertFalse(awaitingSemanticPaste, "awaitingSemanticPaste should remain false after workflow")
     }
 }
