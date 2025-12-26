@@ -264,7 +264,13 @@ internal struct UvBootstrap {
             let dAttr = try fm.attributesOfItem(atPath: dst.path)
             let sSize = (sAttr[.size] as? NSNumber)?.intValue ?? -1
             let dSize = (dAttr[.size] as? NSNumber)?.intValue ?? -2
-            if sSize == dSize { return }
+            // Bug #32 fix: Also compare modification dates, not just size
+            // If pyproject.toml changes but stays same size, we'd miss the update
+            let sDate = sAttr[.modificationDate] as? Date
+            let dDate = dAttr[.modificationDate] as? Date
+            let sameSize = sSize == dSize
+            let srcNotNewer = (sDate != nil && dDate != nil) ? sDate! <= dDate! : false
+            if sameSize && srcNotNewer { return }
             try fm.removeItem(at: dst)
         }
         try fm.copyItem(at: src, to: dst)

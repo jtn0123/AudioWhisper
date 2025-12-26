@@ -194,16 +194,31 @@ internal class SpeechToTextService {
         guard let apiKey = keychainService.getQuietly(service: "AudioWhisper", account: "Gemini") else {
             throw SpeechToTextError.apiKeyMissing("Gemini")
         }
-        
+
         // Check file size to decide on upload method
         let fileAttributes = try FileManager.default.attributesOfItem(atPath: audioURL.path)
         let fileSize = fileAttributes[.size] as? Int64 ?? 0
-        
+
         // Use Files API for larger files (>10MB) to avoid memory issues
         if fileSize > 10 * 1024 * 1024 {
             return try await transcribeWithGeminiFilesAPI(audioURL: audioURL, apiKey: apiKey)
         } else {
             return try await transcribeWithGeminiInline(audioURL: audioURL, apiKey: apiKey)
+        }
+    }
+
+    // Bug #31 fix: Helper to get MIME type from audio file extension
+    private func audioMimeType(for url: URL) -> String {
+        let ext = url.pathExtension.lowercased()
+        switch ext {
+        case "m4a", "mp4", "aac": return "audio/mp4"
+        case "mp3": return "audio/mpeg"
+        case "wav": return "audio/wav"
+        case "aiff", "aif": return "audio/aiff"
+        case "caf": return "audio/x-caf"
+        case "flac": return "audio/flac"
+        case "ogg": return "audio/ogg"
+        default: return "audio/mp4" // Default fallback
         }
     }
     
@@ -259,11 +274,14 @@ internal class SpeechToTextService {
             "Content-Type": "application/json"
         ]
         
+        // Bug #31 fix: Use detected MIME type instead of hardcoded audio/mp4
+        let mimeType = audioMimeType(for: audioURL)
+
         let body: [String: Any] = [
             "contents": [[
                 "parts": [[
                     "file_data": [
-                        "mime_type": "audio/mp4",
+                        "mime_type": mimeType,
                         "file_uri": uploadedFile.file.uri
                     ]
                 ], [
@@ -271,7 +289,7 @@ internal class SpeechToTextService {
                 ]]
             ]]
         ]
-        
+
         return try await withCheckedThrowingContinuation { continuation in
             // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
             var hasResumed = false
@@ -328,11 +346,14 @@ internal class SpeechToTextService {
             "Content-Type": "application/json"
         ]
         
+        // Bug #31 fix: Use detected MIME type instead of hardcoded audio/mp4
+        let mimeType = audioMimeType(for: audioURL)
+
         let body: [String: Any] = [
             "contents": [[
                 "parts": [[
                     "inline_data": [
-                        "mime_type": "audio/mp4",
+                        "mime_type": mimeType,
                         "data": base64Audio
                     ]
                 ], [
@@ -340,7 +361,7 @@ internal class SpeechToTextService {
                 ]]
             ]]
         ]
-        
+
         return try await withCheckedThrowingContinuation { continuation in
             // Use a flag to prevent double-resume if Alamofire calls the handler multiple times
             var hasResumed = false
