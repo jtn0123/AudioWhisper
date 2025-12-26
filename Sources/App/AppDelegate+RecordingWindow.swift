@@ -34,7 +34,10 @@ internal extension AppDelegate {
 
     func createRecordingWindow() {
         guard let recorder = audioRecorder else {
-            Logger.app.error("Cannot create recording window: AudioRecorder not initialized")
+            // Only log in non-test environment to reduce console noise
+            if !AppEnvironment.isRunningTests {
+                Logger.app.error("Cannot create recording window: AudioRecorder not initialized")
+            }
             return
         }
 

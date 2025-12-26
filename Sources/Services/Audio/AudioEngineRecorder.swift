@@ -59,6 +59,11 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - AudioRecording Protocol
 
     func startRecording() -> Bool {
+        // Skip real audio recording in test environment to prevent hardware errors
+        if AppEnvironment.isRunningTests {
+            return false
+        }
+
         // Check permission via PermissionManager (single source of truth)
         guard PermissionManager.shared.microphonePermissionState == .granted else {
             return false
