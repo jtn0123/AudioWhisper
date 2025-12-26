@@ -95,21 +95,16 @@ final class AudioValidatorTests: XCTestCase {
     }
     
     private func makeValidAudioFile() throws -> URL {
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1) else {
-            throw NSError(domain: "AudioValidatorTests", code: 2, userInfo: [NSLocalizedDescriptionKey: "Unable to create audio format"])
+        // Use bundled test audio file to avoid AVAudioFile framework warnings
+        guard let bundledURL = Bundle.module.url(forResource: "test_audio", withExtension: "wav", subdirectory: "Resources") else {
+            throw NSError(domain: "AudioValidatorTests", code: 3, userInfo: [NSLocalizedDescriptionKey: "Bundled test audio file not found"])
         }
-        let url = FileManager.default.temporaryDirectory
+
+        // Copy to temp location so tests can safely delete it
+        let tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("AudioValidatorTests-valid-\(UUID().uuidString).wav")
-        
-        let frameCount: AVAudioFrameCount = 1_024
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
-            throw NSError(domain: "AudioValidatorTests", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to create buffer"])
-        }
-        buffer.frameLength = frameCount
-        
-        let file = try AVAudioFile(forWriting: url, settings: format.settings)
-        try file.write(from: buffer)
-        return url
+        try FileManager.default.copyItem(at: bundledURL, to: tempURL)
+        return tempURL
     }
     
     private func makeCorruptedAudioFile() throws -> URL {

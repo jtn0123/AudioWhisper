@@ -50,19 +50,46 @@ final class AudioProcessorTests: XCTestCase {
 
     // MARK: - Helpers
 
+    /// Creates a WAV file directly without using AVAudioFile to avoid CoreMedia framework warnings
     private func makeTempAudioFile(samples: [Float], sampleRate: Double) throws -> URL {
-        let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: 1, interleaved: false)!
-        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count))!
-        buffer.frameLength = AVAudioFrameCount(samples.count)
-        if let channel = buffer.floatChannelData?[0] {
-            for (index, sample) in samples.enumerated() {
-                channel[index] = sample
-            }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("audio-\(UUID().uuidString).wav")
+
+        // Build WAV file header and data
+        let numChannels: UInt16 = 1
+        let bitsPerSample: UInt16 = 32
+        let bytesPerSample = bitsPerSample / 8
+        let dataSize = UInt32(samples.count * Int(bytesPerSample))
+        let sampleRateInt = UInt32(sampleRate)
+
+        var data = Data()
+
+        // RIFF header
+        data.append(contentsOf: "RIFF".utf8)
+        data.append(contentsOf: withUnsafeBytes(of: (36 + dataSize).littleEndian) { Array($0) })
+        data.append(contentsOf: "WAVE".utf8)
+
+        // fmt chunk
+        data.append(contentsOf: "fmt ".utf8)
+        data.append(contentsOf: withUnsafeBytes(of: UInt32(16).littleEndian) { Array($0) }) // chunk size
+        data.append(contentsOf: withUnsafeBytes(of: UInt16(3).littleEndian) { Array($0) }) // format = IEEE float
+        data.append(contentsOf: withUnsafeBytes(of: numChannels.littleEndian) { Array($0) })
+        data.append(contentsOf: withUnsafeBytes(of: sampleRateInt.littleEndian) { Array($0) })
+        let byteRate = sampleRateInt * UInt32(numChannels) * UInt32(bytesPerSample)
+        data.append(contentsOf: withUnsafeBytes(of: byteRate.littleEndian) { Array($0) })
+        let blockAlign = numChannels * bytesPerSample
+        data.append(contentsOf: withUnsafeBytes(of: blockAlign.littleEndian) { Array($0) })
+        data.append(contentsOf: withUnsafeBytes(of: bitsPerSample.littleEndian) { Array($0) })
+
+        // data chunk
+        data.append(contentsOf: "data".utf8)
+        data.append(contentsOf: withUnsafeBytes(of: dataSize.littleEndian) { Array($0) })
+
+        // Sample data (32-bit float)
+        for sample in samples {
+            data.append(contentsOf: withUnsafeBytes(of: sample) { Array($0) })
         }
 
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("audio-\(UUID().uuidString).caf")
-        let file = try AVAudioFile(forWriting: url, settings: format.settings)
-        try file.write(from: buffer)
+        try data.write(to: url)
         return url
     }
 }

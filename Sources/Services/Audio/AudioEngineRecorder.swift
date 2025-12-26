@@ -186,7 +186,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         do {
             try FileManager.default.removeItem(at: url)
         } catch {
-            Logger.audioEngineRecorder.error("Failed to cleanup recording file: \(error.localizedDescription)")
+            // Skip logging in tests to reduce console noise
+            if !AppEnvironment.isRunningTests {
+                Logger.audioEngineRecorder.error("Failed to cleanup recording file: \(error.localizedDescription)")
+            }
         }
 
         recordingURL = nil

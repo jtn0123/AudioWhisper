@@ -83,7 +83,10 @@ internal final class MLXCorrectionService {
                 throw MLXCorrectionError.daemonUnavailable("failed to communicate with daemon")
             }
         } catch {
-            logger.error("MLX correction error: \(error.localizedDescription)")
+            // Skip logging in tests to reduce console noise
+            if !AppEnvironment.isRunningTests {
+                logger.error("MLX correction error: \(error.localizedDescription)")
+            }
             throw MLXCorrectionError.correctionFailed(error.localizedDescription)
         }
     }

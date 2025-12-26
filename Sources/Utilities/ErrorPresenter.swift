@@ -37,10 +37,12 @@ internal class ErrorPresenter {
     func showError(_ message: String) {
         // Sanitize input to prevent sensitive data leakage
         let sanitizedMessage = sanitizeErrorMessage(message)
-        
-        // Log error for debugging (sanitized version)
-        logger.error("Error presented: \(sanitizedMessage, privacy: .public)")
-        
+
+        // Log error for debugging (sanitized version) - skip in tests to reduce noise
+        if !isTestEnvironment {
+            logger.error("Error presented: \(sanitizedMessage, privacy: .public)")
+        }
+
         // Ensure we're on the main thread for UI operations
         Task { @MainActor in
             await showAlertOnMainThread(sanitizedMessage)

@@ -88,7 +88,10 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
             self.startLevelMonitoring()
             return true
         } catch {
-            Logger.audioRecorder.error("Failed to start recording: \(error.localizedDescription)")
+            // Skip logging in tests to reduce console noise
+            if !AppEnvironment.isRunningTests {
+                Logger.audioRecorder.error("Failed to start recording: \(error.localizedDescription)")
+            }
             // Restore volume if recording failed and we boosted it
             if UserDefaults.standard.autoBoostMicrophoneVolume {
                 Task {
@@ -136,7 +139,10 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
         do {
             try FileManager.default.removeItem(at: url)
         } catch {
-            Logger.audioRecorder.error("Failed to cleanup recording file: \(error.localizedDescription)")
+            // Skip logging in tests to reduce console noise
+            if !AppEnvironment.isRunningTests {
+                Logger.audioRecorder.error("Failed to cleanup recording file: \(error.localizedDescription)")
+            }
         }
         
         recordingURL = nil
