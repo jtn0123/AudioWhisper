@@ -410,3 +410,45 @@ internal struct PaperAccentButtonStyle: ButtonStyle {
             )
     }
 }
+
+// MARK: - Testable Helpers
+
+extension DashboardRecordingView {
+    /// Gets the SF Symbol icon name for a waveform style
+    static func testableStyleIcon(for style: WaveformStyle) -> String {
+        switch style {
+        case .classic:
+            return "waveform"
+        case .neon:
+            return "sparkles"
+        case .spectrum:
+            return "chart.bar.fill"
+        case .circular:
+            return "sun.max.fill"
+        case .pulseRings:
+            return "dot.radiowaves.left.and.right"
+        case .particles:
+            return "sparkle"
+        }
+    }
+
+    /// Parses waveform style from raw string value
+    static func testableWaveformStyle(from rawValue: String) -> WaveformStyle {
+        WaveformStyle(rawValue: rawValue) ?? .classic
+    }
+
+    /// Parses visual intensity from raw string value
+    static func testableVisualIntensity(from rawValue: String) -> VisualIntensity {
+        VisualIntensity(rawValue: rawValue) ?? .balanced
+    }
+
+    /// Parses press and hold mode from raw string value
+    static func testablePressAndHoldMode(from rawValue: String) -> PressAndHoldMode {
+        PressAndHoldMode(rawValue: rawValue) ?? PressAndHoldConfiguration.defaults.mode
+    }
+
+    /// Parses press and hold key from raw string value
+    static func testablePressAndHoldKey(from rawValue: String) -> PressAndHoldKey {
+        PressAndHoldKey(rawValue: rawValue) ?? PressAndHoldConfiguration.defaults.key
+    }
+}

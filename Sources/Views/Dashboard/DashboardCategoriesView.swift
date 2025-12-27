@@ -314,3 +314,28 @@ private extension View {
     DashboardCategoriesView()
         .frame(width: 700, height: 600)
 }
+
+// MARK: - Testable Helpers
+
+extension DashboardCategoriesView {
+    /// Checks if a category is the last in the list (for divider display logic)
+    static func testableIsLastCategory(_ categoryId: String, in categories: [CategoryDefinition]) -> Bool {
+        categories.last?.id == categoryId
+    }
+
+    /// Checks if a source is the last in the list (for divider display logic)
+    static func testableIsLastSource(_ sourceId: String, in sources: [SourceUsageStats]) -> Bool {
+        sources.last?.id == sourceId
+    }
+
+    /// Gets initials from a display name for fallback icon display
+    static func testableInitials(from displayName: String) -> String {
+        let words = displayName.split(separator: " ")
+        if words.count >= 2 {
+            return String(words[0].prefix(1)) + String(words[1].prefix(1))
+        } else if let first = displayName.first {
+            return String(first)
+        }
+        return "?"
+    }
+}

@@ -264,12 +264,31 @@ internal struct DashboardPreferencesView: View {
     }
 
     private func formattedGigabytes(_ value: Double) -> String {
+        Self.testableFormattedGigabytes(value)
+    }
+}
+
+// MARK: - Testable Helpers
+
+extension DashboardPreferencesView {
+    /// Formats gigabytes value for display (removes trailing zeros for whole numbers)
+    static func testableFormattedGigabytes(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.maximumFractionDigits = value.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 1
         formatter.minimumFractionDigits = 0
         let formattedValue = formatter.string(from: NSNumber(value: value))
             ?? value.formatted(.number.precision(.fractionLength(1)))
         return "\(formattedValue) GB"
+    }
+
+    /// Converts raw retention period string to RetentionPeriod enum
+    static func testableRetentionPeriod(from rawValue: String) -> RetentionPeriod {
+        RetentionPeriod(rawValue: rawValue) ?? .oneMonth
+    }
+
+    /// Gets available storage options
+    static func testableStorageOptions() -> [Double] {
+        [1, 2, 5, 10, 20]
     }
 }
 
