@@ -147,10 +147,10 @@ final class FFTProcessor: @unchecked Sendable {
         var bands = [Float](repeating: 0, count: bandCount)
 
         for (bandIndex, range) in bandRanges.prefix(bandCount).enumerated() {
-            let lowBin = Int(range.low / binWidth)
+            let lowBin = max(0, Int(range.low / binWidth))  // Ensure non-negative
             let highBin = min(Int(range.high / binWidth), magnitudes.count - 1)
 
-            guard lowBin < highBin else {
+            guard lowBin < highBin, lowBin < magnitudes.count else {
                 bands[bandIndex] = 0
                 continue
             }

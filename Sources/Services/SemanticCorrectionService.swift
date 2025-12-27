@@ -202,8 +202,11 @@ internal final class SemanticCorrectionService {
         // First try user-customized prompt file
         if let base = promptsBaseDir() {
             let url = base.appendingPathComponent("\(category.id)_prompt.txt")
-            if let userPrompt = try? String(contentsOf: url, encoding: .utf8), !userPrompt.isEmpty {
-                return userPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let userPrompt = try? String(contentsOf: url, encoding: .utf8) {
+                let trimmed = userPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    return trimmed
+                }
             }
         }
         let trimmed = category.promptTemplate.trimmingCharacters(in: .whitespacesAndNewlines)

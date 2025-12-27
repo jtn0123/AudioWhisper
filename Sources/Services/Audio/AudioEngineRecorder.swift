@@ -293,7 +293,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     }
 
     private func downsampleForDisplay(_ samples: [Float], targetCount: Int) -> [Float] {
-        guard samples.count > targetCount else { return samples }
+        guard targetCount > 0, samples.count > targetCount else { return samples }
 
         let chunkSize = samples.count / targetCount
         var result = [Float](repeating: 0, count: targetCount)
