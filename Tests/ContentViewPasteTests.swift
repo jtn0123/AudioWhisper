@@ -3,7 +3,7 @@ import XCTest
 
 final class ContentViewPasteTests: XCTestCase {
 
-    // MARK: - ResumedFlag Tests (Bug #1 regression prevention)
+    // MARK: - ResumedFlag Tests (bug regression prevention)
 
     func testResumedFlagPreventsDoubleResume() {
         let flag = ResumedFlag()

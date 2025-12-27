@@ -26,7 +26,7 @@ internal extension ContentView {
         let shouldHintThisRun = !hasShownFirstModelUseHint && isLocalModelInvocationPlanned()
         if shouldHintThisRun { showFirstModelUseHint = true }
 
-        // Bug #12 fix: Set isProcessing before creating Task to prevent race condition
+        // Bug fix: Set isProcessing before creating Task to prevent race condition
         isProcessing = true
         transcriptionStartTime = Date()
 
@@ -147,7 +147,7 @@ internal extension ContentView {
         let shouldHintThisRun = !hasShownFirstModelUseHint && isLocalModelInvocationPlanned()
         if shouldHintThisRun { showFirstModelUseHint = true }
 
-        // Bug #12 fix: Set isProcessing before creating Task to prevent race condition
+        // Bug fix: Set isProcessing before creating Task to prevent race condition
         isProcessing = true
         transcriptionStartTime = Date()
 
@@ -183,7 +183,7 @@ internal extension ContentView {
                 let wordCount = UsageMetricsStore.estimatedWordCount(for: finalText)
                 let characterCount = finalText.count
 
-                // Bug #28 fix: Use AVAsset to get actual duration instead of estimating from file size
+                // Bug fix: Use AVAsset to get actual duration instead of estimating from file size
                 let asset = AVAsset(url: audioURL)
                 let estimatedDuration: TimeInterval
                 if #available(macOS 12.0, *) {
@@ -328,7 +328,7 @@ internal extension ContentView {
         
         processingTask?.cancel()
 
-        // Bug #12 fix: Set isProcessing before creating Task to prevent race condition
+        // Bug fix: Set isProcessing before creating Task to prevent race condition
         isProcessing = true
         transcriptionStartTime = Date()
 
@@ -360,8 +360,8 @@ internal extension ContentView {
                         awaitingSemanticPaste = true
                         progressMessage = "Semantic correction..."
                     }
-                    // Bug #17 fix: Capture all values before async work to avoid implicit self capture
-                    // Bug #27 fix: Use regular Task instead of Task.detached so it can be cancelled
+                    // Bug fix: Capture all values before async work to avoid implicit self capture
+                    // Bug fix: Use regular Task instead of Task.detached so it can be cancelled
                     let capturedBundleId: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
                     let capturedModelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? selectedWhisperModel.rawValue : nil }
                     let capturedSourceInfo: SourceAppInfo = await MainActor.run { currentSourceAppInfo() }
@@ -405,7 +405,7 @@ internal extension ContentView {
                     }
                 } else {
                     // Wait for semantic correction before showing confirmation to ensure
-                    // pasteboard content matches displayed text (Bug #3 fix)
+                    // pasteboard content matches displayed text (bug fix)
                     let capturedBundleId2: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
                     let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId2)
                     let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
@@ -442,7 +442,7 @@ internal extension ContentView {
                 await MainActor.run {
                     isProcessing = false
                     transcriptionStartTime = nil
-                    awaitingSemanticPaste = false  // Bug #13 fix: reset on cancellation
+                    awaitingSemanticPaste = false  // Bug fix: reset on cancellation
                 }
             } catch {
                 await MainActor.run {

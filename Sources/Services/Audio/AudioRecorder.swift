@@ -131,7 +131,7 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
         guard let url = recordingURL else { return }
 
         // Note: Volume restoration is handled by the caller (cancelRecording/stopRecording)
-        // to avoid double restoration (Bug #10/15 fix)
+        // to avoid double restoration (bug fix)
 
         currentSessionStart = nil
         lastRecordingDuration = nil

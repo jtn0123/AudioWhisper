@@ -234,7 +234,7 @@ final class WindowControllerTests: XCTestCase {
         XCTAssertNoThrow(windowController.toggleRecordWindow())
     }
 
-    // MARK: - Window Title Constant Tests (Bug #5 regression prevention)
+    // MARK: - Window Title Constant Tests (bug regression prevention)
 
     func testRecordingWindowTitleConstant() {
         // Verify the constant exists and has expected value

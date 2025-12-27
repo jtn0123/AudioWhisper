@@ -160,7 +160,7 @@ internal extension AppDelegate {
 
         button.image = redOutlineImage
 
-        // Bug #23 fix: Use reference type instead of mutable value capture
+        // Bug fix: Use reference type instead of mutable value capture
         final class AnimationState { var isRedState = true }
         let animState = AnimationState()
 

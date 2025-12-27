@@ -26,7 +26,7 @@ private final class ObserverBox: @unchecked Sendable {
     }
 }
 
-// Helper class to safely capture cancellation state (Bug #19 fix)
+// Helper class to safely capture cancellation state (bug fix)
 // Avoids capture-by-value issue where timeoutCancelled var was captured by value
 // Marked @unchecked Sendable with lock for thread-safe cross-isolation access
 private final class CancelledFlag: @unchecked Sendable {
@@ -299,7 +299,7 @@ internal class PasteManager {
         }
 
         let observerBox = ObserverBox()
-        let cancelledFlag = CancelledFlag()  // Bug #19 fix: use reference type instead of capture-by-value
+        let cancelledFlag = CancelledFlag()  // Bug fix: use reference type instead of capture-by-value
 
         // Set up timeout
         // Bug fix: Capture observerBox strongly so it survives until timeout/activation

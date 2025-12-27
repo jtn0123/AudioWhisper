@@ -177,7 +177,7 @@ final class TranscriptionRecordTests: XCTestCase {
         XCTAssertNil(noModelRecord.whisperModel)
     }
 
-    // MARK: - Word/Character Count Tests (Bug #2 regression prevention)
+    // MARK: - Word/Character Count Tests (bug regression prevention)
 
     func testTranscriptionRecordWithMetrics() {
         let text = "Hello world test"

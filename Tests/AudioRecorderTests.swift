@@ -142,10 +142,10 @@ final class AudioRecorderTests: XCTestCase {
         XCTAssertNil(recorder.currentSessionStart)
     }
     
-    // MARK: - Volume Restoration Tests (Bug #10/15 regression prevention)
+    // MARK: - Volume Restoration Tests (bug regression prevention)
 
     func testCleanupRecordingDoesNotRestoreVolume() async {
-        // Bug #10/15: cleanupRecording was restoring volume, causing double restoration
+        // Bug fix: cleanupRecording was restoring volume, causing double restoration
         // when called from cancelRecording which also restores volume.
         // After fix, cleanupRecording should NOT restore volume.
 
@@ -174,11 +174,11 @@ final class AudioRecorderTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 100_000_000)
 
         // After fix, cleanupRecording should NOT restore volume
-        XCTAssertEqual(mockVolumeManager.restoreCount, 0, "cleanupRecording should not restore volume (Bug #10/15 fix)")
+        XCTAssertEqual(mockVolumeManager.restoreCount, 0, "cleanupRecording should not restore volume (bug fix)")
     }
 
     func testCancelRecordingRestoresVolumeAtMostOnce() async {
-        // Verify that cancelRecording restores volume at most once (Bug #10/15 prevents double restoration)
+        // Verify that cancelRecording restores volume at most once (bug fix prevents double restoration)
         // Note: This test verifies cleanupRecording doesn't restore volume; actual Task execution is timing-dependent
 
         let mockVolumeManager = MockMicrophoneVolumeManager()
@@ -203,7 +203,7 @@ final class AudioRecorderTests: XCTestCase {
         // Wait for async operations
         try? await Task.sleep(nanoseconds: 500_000_000)
 
-        // Should restore at most once (cleanupRecording no longer restores - Bug #10/15 fix)
+        // Should restore at most once (cleanupRecording no longer restores - bug fix)
         // Due to Task scheduling, restoreCount may be 0 or 1, but never more than 1
         XCTAssertLessThanOrEqual(mockVolumeManager.restoreCount, 1, "Volume should be restored at most once during cancel")
     }
@@ -237,7 +237,7 @@ private final class StubDateProvider {
     }
 }
 
-// MARK: - Mock Volume Manager for Bug #10/15 testing
+// MARK: - Mock Volume Manager for bug testing
 
 private final class MockMicrophoneVolumeManager: MicrophoneVolumeManaging {
     var boostCount = 0

@@ -5,7 +5,7 @@ import AudioToolbox
 import os.log
 import Observation
 
-// Protocol for testing (Bug #10/15 regression tests)
+// Protocol for testing (bug regression tests)
 internal protocol MicrophoneVolumeManaging {
     func boostMicrophoneVolume() async -> Bool
     func restoreMicrophoneVolume() async

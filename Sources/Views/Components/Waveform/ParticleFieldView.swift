@@ -111,7 +111,7 @@ struct ParticleFieldView: View {
             if isActive && audioLevel > 0.05 {
                 // Audio-reactive movement
 
-                // Bug #29 fix: Use actual geometry size instead of hardcoded values
+                // Bug fix: Use actual geometry size instead of hardcoded values
                 let centerX = currentSize.width / 2
                 let centerY = currentSize.height / 2
                 let dx = particle.x - centerX
@@ -144,7 +144,7 @@ struct ParticleFieldView: View {
             particle.velocityX *= 0.95
             particle.velocityY *= 0.95
 
-            // Bug #29 fix: Wrap around edges using actual geometry size
+            // Bug fix: Wrap around edges using actual geometry size
             let wrapWidth = currentSize.width + 20
             let wrapHeight = currentSize.height + 20
             if particle.x < -10 { particle.x = wrapWidth - 10 }

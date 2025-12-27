@@ -180,7 +180,7 @@ internal class MockKeychainService: KeychainServiceProtocol {
     
     func delete(service: String, account: String) throws {
         let storageKey = "\(service)_\(account)"
-        // Bug #35 fix: Use sync instead of async to match save() and prevent race condition
+        // Bug fix: Use sync instead of async to match save() and prevent race condition
         queue.sync(flags: .barrier) {
             self.storage.removeValue(forKey: storageKey)
         }

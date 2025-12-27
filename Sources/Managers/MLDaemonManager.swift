@@ -263,7 +263,7 @@ internal actor MLDaemonManager {
         process = nil
 
         guard restartAttempts < maxRestartAttempts else {
-            // Bug #40 fix: Complete any pending requests that arrived after the initial completeAllPending
+            // Bug fix: Complete any pending requests that arrived after the initial completeAllPending
             completeAllPending(with: MLDaemonError.daemonUnavailable("max restarts exceeded"))
             return
         }

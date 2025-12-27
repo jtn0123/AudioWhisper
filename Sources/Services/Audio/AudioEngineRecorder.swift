@@ -32,8 +32,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     private var sampleBuffer: [Float] = []
     private let sampleBufferSize = 2048
     private let dateProvider: () -> Date
-    private let sampleBufferLock = NSLock()  // Bug #37 fix: Lock for thread-safe sampleBuffer access
-    private var writeErrorCount = 0  // Bug #38 fix: Track write errors
+    private let sampleBufferLock = NSLock()  // Bug fix: Lock for thread-safe sampleBuffer access
+    private var writeErrorCount = 0  // Bug fix: Track write errors
 
     // MARK: - Volume Management
 
@@ -120,7 +120,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             audioEngine = engine
             currentSessionStart = dateProvider()
             lastRecordingDuration = nil
-            writeErrorCount = 0  // Bug #38 fix: Reset error count
+            writeErrorCount = 0  // Bug fix: Reset error count
             isRecording = true
 
             return true
@@ -128,7 +128,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         } catch {
             Logger.audioEngineRecorder.error("Failed to start engine recording: \(error.localizedDescription)")
 
-            // Bug #36 fix: Clear recordingURL to prevent orphaned file reference
+            // Bug fix: Clear recordingURL to prevent orphaned file reference
             recordingURL = nil
 
             // Restore volume if recording failed
@@ -150,7 +150,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         lastRecordingDuration = sessionDuration
         currentSessionStart = nil
 
-        // Bug #38 fix: Log warning if write errors occurred
+        // Bug fix: Log warning if write errors occurred
         if writeErrorCount > 0 {
             Logger.audioEngineRecorder.warning("Recording had \(self.writeErrorCount) audio buffer write errors - audio may be incomplete")
         }
@@ -214,7 +214,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             engine.stop()
         }
         audioEngine = nil
-        // Bug #39 fix: AVAudioFile flushes buffers on dealloc. Explicitly nil to trigger
+        // Bug fix: AVAudioFile flushes buffers on dealloc. Explicitly nil to trigger
         // immediate deallocation and flush before caller processes the file.
         // Note: If there are other references, dealloc may be delayed.
         audioFile = nil
@@ -224,7 +224,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         audioLevel = 0.0
         waveformSamples = []
         frequencyBands = Array(repeating: 0, count: 8)
-        // Bug #37 fix: Use lock for thread-safe sampleBuffer access
+        // Bug fix: Use lock for thread-safe sampleBuffer access
         sampleBufferLock.lock()
         sampleBuffer.removeAll()
         sampleBufferLock.unlock()
@@ -258,7 +258,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             do {
                 try audioFile.write(from: buffer)
             } catch {
-                // Bug #38 fix: Track write errors for later reporting
+                // Bug fix: Track write errors for later reporting
                 writeErrorCount += 1
                 if writeErrorCount == 1 {
                     // Only log the first error to avoid log spam
@@ -267,7 +267,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             }
         }
 
-        // Bug #37 fix: Use lock for thread-safe sampleBuffer access (called from audio thread)
+        // Bug fix: Use lock for thread-safe sampleBuffer access (called from audio thread)
         sampleBufferLock.lock()
         sampleBuffer.append(contentsOf: monoSamples)
         if sampleBuffer.count > sampleBufferSize {

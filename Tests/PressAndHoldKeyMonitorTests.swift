@@ -113,10 +113,10 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
         XCTAssertEqual(removedEvents.count, 1)
     }
 
-    // MARK: - Thread Safety Tests (Bug #18 Regression Prevention)
+    // MARK: - Thread Safety Tests (Bug Regression Prevention)
 
     func testIsPressedThreadSafety() {
-        // Bug #18 fix verification: Concurrent access to isPressed should not crash
+        // Bug fix verification: Concurrent access to isPressed should not crash
         var keyDownCount = 0
         var keyUpCount = 0
         let lock = NSLock()
@@ -149,7 +149,7 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
 
         // Main assertion: no crash occurred
-        XCTAssertTrue(true, "Concurrent access should not crash (Bug #18 fix)")
+        XCTAssertTrue(true, "Concurrent access should not crash (bug fix)")
     }
 
     func testRapidKeyPresses() {
