@@ -2,24 +2,22 @@ import SwiftUI
 import AVFoundation
 
 internal struct ContentView: View {
+    // MARK: - Core Dependencies
+
     @ObservedObject var audioRecorder: AudioEngineRecorder
+    @State var viewModel: RecordingViewModel
+    var permissionManager: PermissionManager { PermissionManager.shared }
+
+    // MARK: - Persisted Settings (AppStorage)
+
     @AppStorage("transcriptionProvider") var transcriptionProvider = TranscriptionProvider.openai
     @AppStorage("selectedWhisperModel") var selectedWhisperModel = WhisperModel.base
     @AppStorage("immediateRecording") var immediateRecording = true
-    @State var speechService: SpeechToTextService
-    @State var pasteManager = PasteManager()
-    @State var statusViewModel = StatusViewModel()
-    var permissionManager: PermissionManager { PermissionManager.shared }
-    @StateObject var soundManager = SoundManager()
-    let semanticCorrectionService = SemanticCorrectionService()
-    @State var isProcessing = false
-    @State var progressMessage = "Processing..."
-    @State var transcriptionStartTime: Date?
-    @State var showError = false
-    @State var errorMessage = ""
-    @State var showSuccess = false
+    @AppStorage("hasShownFirstModelUseHint") var hasShownFirstModelUseHint = false
+
+    // MARK: - View-Local State (kept for legacy compatibility during migration)
+
     @State var isHovered = false
-    @State var isHandlingSpaceKey = false
     @State var processingTask: Task<Void, Never>?
     @State var transcriptionProgressObserver: NSObjectProtocol?
     @State var spaceKeyObserver: NSObjectProtocol?
@@ -27,20 +25,85 @@ internal struct ContentView: View {
     @State var returnKeyObserver: NSObjectProtocol?
     @State var targetAppObserver: NSObjectProtocol?
     @State var recordingFailedObserver: NSObjectProtocol?
-    @State var targetAppForPaste: NSRunningApplication?
     @State var windowFocusObserver: NSObjectProtocol?
     @State var retryObserver: NSObjectProtocol?
     @State var showAudioFileObserver: NSObjectProtocol?
     @State var transcribeFileObserver: NSObjectProtocol?
-    @State var lastAudioURL: URL?
-    @State var awaitingSemanticPaste = false
-    @State var lastSourceAppInfo: SourceAppInfo?
-    @AppStorage("hasShownFirstModelUseHint") var hasShownFirstModelUseHint = false
-    @State var showFirstModelUseHint = false
-    
+
+    // MARK: - Computed Properties (forwarding to ViewModel)
+
+    var speechService: SpeechToTextService { viewModel.speechService }
+    var pasteManager: PasteManager { viewModel.pasteManager }
+    var statusViewModel: StatusViewModel { viewModel.statusViewModel }
+    var semanticCorrectionService: SemanticCorrectionService { viewModel.semanticCorrectionService }
+    var soundManager: SoundManager { viewModel.soundManager }
+
+    var isProcessing: Bool {
+        get { viewModel.isProcessing }
+        nonmutating set { /* read-only from view */ }
+    }
+    var progressMessage: String {
+        get { viewModel.progressMessage }
+        nonmutating set { viewModel.progressMessage = newValue }
+    }
+    var transcriptionStartTime: Date? {
+        get { viewModel.transcriptionStartTime }
+        nonmutating set { viewModel.transcriptionStartTime = newValue }
+    }
+    var showError: Bool {
+        get { viewModel.showError }
+        nonmutating set { viewModel.showError = newValue }
+    }
+    var errorMessage: String {
+        get { viewModel.errorMessage }
+        nonmutating set { viewModel.errorMessage = newValue }
+    }
+    var showSuccess: Bool {
+        get { viewModel.showSuccess }
+        nonmutating set { viewModel.showSuccess = newValue }
+    }
+    var isHandlingSpaceKey: Bool {
+        get { viewModel.isHandlingSpaceKey }
+        nonmutating set { viewModel.isHandlingSpaceKey = newValue }
+    }
+    var targetAppForPaste: NSRunningApplication? {
+        get { viewModel.targetAppForPaste }
+        nonmutating set { viewModel.targetAppForPaste = newValue }
+    }
+    var lastAudioURL: URL? {
+        get { viewModel.lastAudioURL }
+        nonmutating set { viewModel.lastAudioURL = newValue }
+    }
+    var awaitingSemanticPaste: Bool {
+        get { viewModel.awaitingSemanticPaste }
+        nonmutating set { viewModel.awaitingSemanticPaste = newValue }
+    }
+    var lastSourceAppInfo: SourceAppInfo? {
+        get { viewModel.lastSourceAppInfo }
+        nonmutating set { viewModel.lastSourceAppInfo = newValue }
+    }
+    var showFirstModelUseHint: Bool {
+        get { viewModel.showFirstModelUseHint }
+        nonmutating set { viewModel.showFirstModelUseHint = newValue }
+    }
+
+    // MARK: - Initialization
+
     init(speechService: SpeechToTextService = SpeechToTextService(), audioRecorder: AudioEngineRecorder) {
-        self._speechService = State(initialValue: speechService)
         self._audioRecorder = ObservedObject(wrappedValue: audioRecorder)
+        self._viewModel = State(initialValue: RecordingViewModel(
+            speechService: speechService,
+            pasteManager: PasteManager(),
+            semanticCorrectionService: SemanticCorrectionService(),
+            soundManager: SoundManager(),
+            statusViewModel: StatusViewModel()
+        ))
+    }
+
+    /// Test-friendly initializer that accepts a custom ViewModel
+    init(viewModel: RecordingViewModel, audioRecorder: AudioEngineRecorder) {
+        self._audioRecorder = ObservedObject(wrappedValue: audioRecorder)
+        self._viewModel = State(initialValue: viewModel)
     }
     
     private func showErrorAlert() {
