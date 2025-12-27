@@ -63,8 +63,13 @@ internal extension AppDelegate {
         window.hasShadow = true
         window.isOpaque = false
 
+        guard let container = DataManager.shared.sharedModelContainer ?? createFallbackModelContainer() else {
+            Logger.app.error("Cannot create recording window: Failed to create ModelContainer")
+            return
+        }
+
         let contentView = ContentView(audioRecorder: recorder)
-            .modelContainer(DataManager.shared.sharedModelContainer ?? createFallbackModelContainer())
+            .modelContainer(container)
 
         window.contentView = NSHostingView(rootView: contentView)
         window.center()
@@ -87,13 +92,14 @@ internal extension AppDelegate {
         Logger.app.info("Recording window closed and references cleaned up")
     }
 
-    private func createFallbackModelContainer() -> ModelContainer {
+    private func createFallbackModelContainer() -> ModelContainer? {
         do {
             let schema = Schema([TranscriptionRecord.self])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Failed to create fallback ModelContainer: \(error)")
+            Logger.app.critical("Failed to create fallback ModelContainer: \(error)")
+            return nil
         }
     }
 

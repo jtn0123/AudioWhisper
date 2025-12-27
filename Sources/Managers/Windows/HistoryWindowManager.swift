@@ -33,10 +33,15 @@ internal final class HistoryWindowManager: NSObject {
             return
         }
         
-        // Create new window
+        // Create new window - need a valid ModelContainer
+        guard let container = DataManager.shared.sharedModelContainer ?? createFallbackContainer() else {
+            Logger.app.error("Cannot show history window: Failed to create ModelContainer")
+            return
+        }
+
         let historyView = TranscriptionHistoryView()
-            .modelContainer(DataManager.shared.sharedModelContainer ?? createFallbackContainer())
-        
+            .modelContainer(container)
+
         let hostingController = NSHostingController(rootView: historyView)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
@@ -80,26 +85,26 @@ internal final class HistoryWindowManager: NSObject {
     }
     
     /// Creates a fallback container if DataManager isn't initialized
-    private func createFallbackContainer() -> ModelContainer {
+    private func createFallbackContainer() -> ModelContainer? {
         let schema = Schema([TranscriptionRecord.self])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        
+
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
             Logger.app.error("Failed to create fallback ModelContainer with schema configuration: \(error)")
         }
-        
+
         do {
             return try ModelContainer(
                 for: TranscriptionRecord.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: true)
             )
         } catch {
-            Logger.app.critical("Failed to create in-memory ModelContainer fallback: \(error)")
+            Logger.app.critical("All ModelContainer creation attempts failed: \(error)")
         }
-        
-        preconditionFailure("Unable to create fallback ModelContainer")
+
+        return nil
     }
 }
 

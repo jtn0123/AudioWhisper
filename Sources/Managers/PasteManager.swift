@@ -283,12 +283,7 @@ internal class PasteManager {
         }()
         NotificationCenter.default.post(name: name, object: object)
     }
-    
-    @available(*, deprecated, message: "Use handlePasteResult instead")
-    private func handlePasteFailure(reason: String) {
-        handlePasteResult(.failure(PasteError.keyboardEventCreationFailed))
-    }
-    
+
     // MARK: - App Activation Handling
     
     private func waitForApplicationActivation(_ target: NSRunningApplication, completion: @escaping () -> Void) {

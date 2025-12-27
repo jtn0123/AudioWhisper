@@ -148,3 +148,35 @@ private extension Array {
     .padding()
     .background(Color(red: 0.04, green: 0.04, blue: 0.04))
 }
+
+// MARK: - Testable Helpers
+
+extension SpectrumWaveformView {
+    /// Applies gain boost to frequency band value (70% boost for reactive bars)
+    static func testableApplyGainBoost(_ value: Float) -> Float {
+        min(1.0, value * 1.7)
+    }
+
+    /// Calculates idle breathing animation value
+    static func testableIdleBreathValue(phase: Double, bandIndex: Int) -> Float {
+        Float(sin(phase + Double(bandIndex) * 0.3) * 0.5 + 0.5) * 0.08
+    }
+
+    /// Calculates smoothed level transition (instant attack, gradual decay)
+    static func testableSmoothedLevel(current: Float, target: Float) -> Float {
+        if target > current {
+            return target  // Instant attack
+        } else {
+            return current * 0.75 + target * 0.25  // Gradual decay
+        }
+    }
+
+    /// Calculates peak decay
+    static func testablePeakDecay(current: Float, level: Float) -> Float {
+        if level > current {
+            return level  // New peak
+        } else {
+            return max(0, current - 0.01)  // Slow decay
+        }
+    }
+}

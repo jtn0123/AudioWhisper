@@ -71,7 +71,7 @@ internal struct CategoryDefinition: Identifiable, Codable, Equatable, Hashable {
     ]
 
     static var fallback: CategoryDefinition {
-        defaults.last!
+        defaults.last ?? defaults[0]
     }
 }
 

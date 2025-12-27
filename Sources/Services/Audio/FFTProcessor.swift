@@ -53,9 +53,11 @@ final class FFTProcessor: @unchecked Sendable {
     ///   - bufferSize: Number of samples per FFT (default 2048, must be power of 2)
     ///   - bandCount: Number of frequency bands to output (default 8)
     ///   - sampleRate: Audio sample rate (default 44100)
-    init(bufferSize: Int = 2048, bandCount: Int = 8, sampleRate: Float = 44100) {
-        precondition(bufferSize > 0 && (bufferSize & (bufferSize - 1)) == 0,
-                     "Buffer size must be a power of 2")
+    /// - Returns: nil if FFT setup fails (extremely rare, indicates system memory issues)
+    init?(bufferSize: Int = 2048, bandCount: Int = 8, sampleRate: Float = 44100) {
+        guard bufferSize > 0 && (bufferSize & (bufferSize - 1)) == 0 else {
+            return nil // Buffer size must be a power of 2
+        }
 
         self.bufferSize = bufferSize
         self.bandCount = bandCount
@@ -66,7 +68,7 @@ final class FFTProcessor: @unchecked Sendable {
 
         // Create FFT setup
         guard let setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else {
-            fatalError("Failed to create FFT setup")
+            return nil // FFT setup failed (system memory issue)
         }
         self.fftSetup = setup
 
@@ -111,11 +113,15 @@ final class FFTProcessor: @unchecked Sendable {
 
         realPart.withUnsafeMutableBufferPointer { realPtr in
             imagPart.withUnsafeMutableBufferPointer { imagPtr in
-                var splitComplex = DSPSplitComplex(realp: realPtr.baseAddress!, imagp: imagPtr.baseAddress!)
+                guard let realBase = realPtr.baseAddress, let imagBase = imagPtr.baseAddress else {
+                    return // Return with zero magnitudes (silence)
+                }
+                var splitComplex = DSPSplitComplex(realp: realBase, imagp: imagBase)
 
                 // Pack into split complex format
                 windowedSamples.withUnsafeBufferPointer { ptr in
-                    ptr.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: bufferSize / 2) { complexPtr in
+                    guard let ptrBase = ptr.baseAddress else { return }
+                    ptrBase.withMemoryRebound(to: DSPComplex.self, capacity: bufferSize / 2) { complexPtr in
                         vDSP_ctoz(complexPtr, 2, &splitComplex, 1, vDSP_Length(bufferSize / 2))
                     }
                 }

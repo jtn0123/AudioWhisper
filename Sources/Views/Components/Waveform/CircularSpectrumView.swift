@@ -161,3 +161,26 @@ struct CircularSpectrumView: View {
     .frame(width: 200, height: 200)
     .background(Color(red: 0.04, green: 0.04, blue: 0.04))
 }
+
+// MARK: - Testable Helpers
+
+extension CircularSpectrumView {
+    /// Maps 16 display bars to 8 frequency bands (mirrored pattern)
+    static func testableBandIndex(for barIndex: Int) -> Int {
+        barIndex < 8 ? barIndex : (15 - barIndex)
+    }
+
+    /// Calculates idle breathing animation value
+    static func testableIdleBreathValue(phase: Double, barIndex: Int) -> Float {
+        Float(sin(phase + Double(barIndex) * 0.4) * 0.5 + 0.5) * 0.15 + 0.05
+    }
+
+    /// Calculates smoothed level transition (fast attack, slow decay)
+    static func testableSmoothedLevel(current: Float, target: Float) -> Float {
+        if target > current {
+            return current * 0.3 + target * 0.7  // Fast rise
+        } else {
+            return current * 0.9 + target * 0.1  // Slow decay
+        }
+    }
+}

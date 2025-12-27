@@ -2,7 +2,7 @@ import Cocoa
 
 internal extension NSImage {
     func tinted(with color: NSColor) -> NSImage {
-        let image = self.copy() as! NSImage
+        guard let image = self.copy() as? NSImage else { return self }
         image.lockFocus()
         
         color.set()

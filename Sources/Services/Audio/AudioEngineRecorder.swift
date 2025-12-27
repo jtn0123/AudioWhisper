@@ -28,7 +28,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     // MARK: - Processing
 
-    private let fftProcessor: FFTProcessor
+    private let fftProcessor: FFTProcessor?
     private var sampleBuffer: [Float] = []
     private let sampleBufferSize = 2048
     private let dateProvider: () -> Date
@@ -276,11 +276,9 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         let currentBuffer = sampleBuffer
         sampleBufferLock.unlock()
 
-        // Calculate audio level
-        let level = fftProcessor.calculateLevel(from: monoSamples)
-
-        // Calculate frequency bands
-        let bands = fftProcessor.process(currentBuffer)
+        // Calculate audio level and frequency bands (graceful fallback if FFT unavailable)
+        let level = fftProcessor?.calculateLevel(from: monoSamples) ?? 0.0
+        let bands = fftProcessor?.process(currentBuffer) ?? Array(repeating: 0, count: 8)
 
         // Downsample waveform for display (reduce to ~128 points)
         let displaySamples = downsampleForDisplay(currentBuffer, targetCount: 128)

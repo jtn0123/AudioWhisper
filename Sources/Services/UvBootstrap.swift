@@ -269,7 +269,12 @@ internal struct UvBootstrap {
             let sDate = sAttr[.modificationDate] as? Date
             let dDate = dAttr[.modificationDate] as? Date
             let sameSize = sSize == dSize
-            let srcNotNewer = (sDate != nil && dDate != nil) ? sDate! <= dDate! : false
+            let srcNotNewer: Bool
+            if let sourceDate = sDate, let destDate = dDate {
+                srcNotNewer = sourceDate <= destDate
+            } else {
+                srcNotNewer = false
+            }
             if sameSize && srcNotNewer { return }
             try fm.removeItem(at: dst)
         }

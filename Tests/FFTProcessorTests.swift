@@ -6,7 +6,8 @@ final class FFTProcessorTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        processor = FFTProcessor(bufferSize: 2048, bandCount: 8, sampleRate: 44100)
+        // Force unwrap in test - valid parameters should always succeed
+        processor = FFTProcessor(bufferSize: 2048, bandCount: 8, sampleRate: 44100)!
     }
 
     override func tearDown() {
@@ -22,11 +23,18 @@ final class FFTProcessorTests: XCTestCase {
         XCTAssertEqual(processor.sampleRate, 44100)
     }
 
-    func testInitializationWithCustomValues() {
-        let customProcessor = FFTProcessor(bufferSize: 1024, bandCount: 4, sampleRate: 48000)
+    func testInitializationWithCustomValues() throws {
+        let customProcessor = try XCTUnwrap(FFTProcessor(bufferSize: 1024, bandCount: 4, sampleRate: 48000))
         XCTAssertEqual(customProcessor.bufferSize, 1024)
         XCTAssertEqual(customProcessor.bandCount, 4)
         XCTAssertEqual(customProcessor.sampleRate, 48000)
+    }
+
+    func testInitializationFailsWithInvalidBufferSize() {
+        // Buffer size must be power of 2
+        XCTAssertNil(FFTProcessor(bufferSize: 100, bandCount: 8, sampleRate: 44100))
+        XCTAssertNil(FFTProcessor(bufferSize: 0, bandCount: 8, sampleRate: 44100))
+        XCTAssertNil(FFTProcessor(bufferSize: -1, bandCount: 8, sampleRate: 44100))
     }
 
     // MARK: - Processing Tests
