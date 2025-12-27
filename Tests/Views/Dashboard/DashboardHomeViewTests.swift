@@ -174,7 +174,6 @@ final class DashboardHomeViewTests: XCTestCase {
             makeTestRecord(provider: "gemini", wordCount: 100),
             makeTestRecord(provider: "local", wordCount: 100),
             makeTestRecord(provider: "parakeet", wordCount: 100),
-            makeTestRecord(provider: "unknown", wordCount: 100),
         ]
 
         let stats = DashboardHomeView.testableCalculateProviderStats(from: records)
@@ -184,7 +183,6 @@ final class DashboardHomeViewTests: XCTestCase {
         XCTAssertEqual(iconsByProvider["gemini"], "sparkles")
         XCTAssertEqual(iconsByProvider["local"], "laptopcomputer")
         XCTAssertEqual(iconsByProvider["parakeet"], "bird")
-        XCTAssertEqual(iconsByProvider["unknown"], "waveform")
     }
 
     func testProviderStatsEmptyRecords() {

@@ -6,22 +6,22 @@ import SwiftData
 @MainActor
 final class UISnapshotTests: SnapshotTestCase {
     private let defaults = UserDefaults.standard
-    
+
     override func setUp() async throws {
         try await super.setUp()
         resetAppStorage()
     }
-    
+
     override func tearDown() async throws {
         UsageMetricsStore.shared.reset()
         SourceUsageStore.shared.resetForTesting()
         try await super.tearDown()
     }
-    
+
     func testWelcomeViewSnapshot() {
         defaults.set(TranscriptionProvider.local.rawValue, forKey: "transcriptionProvider")
         defaults.set(WhisperModel.base.rawValue, forKey: "selectedWhisperModel")
-        
+
         let view = WelcomeView()
         assertSnapshot(
             view,
@@ -30,11 +30,11 @@ final class UISnapshotTests: SnapshotTestCase {
             colorScheme: .light
         )
     }
-    
+
     func testDashboardViewSnapshot() {
         seedUsageMetrics()
         seedSourceUsage()
-        
+
         let view = DashboardView()
         assertSnapshot(
             view,
@@ -42,21 +42,138 @@ final class UISnapshotTests: SnapshotTestCase {
             size: LayoutMetrics.DashboardWindow.previewSize,
             colorScheme: .light
         )
-        
+
         UsageMetricsStore.shared.reset()
         SourceUsageStore.shared.resetForTesting()
     }
-    
+
     func testTranscriptionHistoryViewSnapshot() throws {
         let container = try makePreviewContainer()
         let view = TranscriptionHistoryView()
             .modelContainer(container)
-        
+
         assertSnapshot(
             view,
             named: "TranscriptionHistoryView-dark",
             size: LayoutMetrics.TranscriptionHistory.previewSize,
             colorScheme: .dark
+        )
+    }
+
+    // MARK: - Provider View Snapshots
+
+    func testDashboardProvidersViewOpenAISnapshot() {
+        defaults.set(TranscriptionProvider.openai.rawValue, forKey: "transcriptionProvider")
+
+        let view = DashboardProvidersView()
+        assertSnapshot(
+            view,
+            named: "DashboardProvidersView-openai-selected",
+            size: CGSize(width: 750, height: 800),
+            colorScheme: .light
+        )
+    }
+
+    func testDashboardProvidersViewLocalSnapshot() {
+        defaults.set(TranscriptionProvider.local.rawValue, forKey: "transcriptionProvider")
+        defaults.set(WhisperModel.base.rawValue, forKey: "selectedWhisperModel")
+
+        let view = DashboardProvidersView()
+        assertSnapshot(
+            view,
+            named: "DashboardProvidersView-local-selected",
+            size: CGSize(width: 750, height: 800),
+            colorScheme: .light
+        )
+    }
+
+    func testDashboardProvidersViewParakeetSnapshot() {
+        defaults.set(TranscriptionProvider.parakeet.rawValue, forKey: "transcriptionProvider")
+
+        let view = DashboardProvidersView()
+        assertSnapshot(
+            view,
+            named: "DashboardProvidersView-parakeet-selected",
+            size: CGSize(width: 750, height: 800),
+            colorScheme: .light
+        )
+    }
+
+    // MARK: - Correction View Snapshots
+
+    func testDashboardCorrectionViewModeOffSnapshot() {
+        defaults.set(SemanticCorrectionMode.off.rawValue, forKey: "semanticCorrectionMode")
+
+        let view = DashboardCorrectionView()
+        assertSnapshot(
+            view,
+            named: "DashboardCorrectionView-mode-off",
+            size: CGSize(width: 750, height: 600),
+            colorScheme: .light
+        )
+    }
+
+    func testDashboardCorrectionViewModeLocalMLXSnapshot() {
+        defaults.set(SemanticCorrectionMode.localMLX.rawValue, forKey: "semanticCorrectionMode")
+
+        let view = DashboardCorrectionView()
+        assertSnapshot(
+            view,
+            named: "DashboardCorrectionView-mode-localMLX",
+            size: CGSize(width: 750, height: 700),
+            colorScheme: .light
+        )
+    }
+
+    // MARK: - Categories View Snapshots
+
+    func testDashboardCategoriesViewEmptySnapshot() {
+        // Categories view with default state
+        let view = DashboardCategoriesView()
+        assertSnapshot(
+            view,
+            named: "DashboardCategoriesView-default",
+            size: CGSize(width: 750, height: 600),
+            colorScheme: .light
+        )
+    }
+
+    // MARK: - Category Editor Snapshots
+
+    func testCategoryEditorSheetCreateSnapshot() {
+        let view = CategoryEditorSheet(
+            category: nil,
+            onSave: { _ in },
+            onDelete: nil
+        )
+        assertSnapshot(
+            view,
+            named: "CategoryEditorSheet-create",
+            size: CGSize(width: 560, height: 680),
+            colorScheme: .light
+        )
+    }
+
+    func testCategoryEditorSheetEditSnapshot() {
+        let category = CategoryDefinition(
+            id: "test-category",
+            displayName: "Test Category",
+            icon: "star.fill",
+            colorHex: "#FF5500",
+            promptDescription: "A test category for editing",
+            promptTemplate: "Correct the following text:\n{text}",
+            isSystem: false
+        )
+        let view = CategoryEditorSheet(
+            category: category,
+            onSave: { _ in },
+            onDelete: { }
+        )
+        assertSnapshot(
+            view,
+            named: "CategoryEditorSheet-edit",
+            size: CGSize(width: 560, height: 680),
+            colorScheme: .light
         )
     }
 }
