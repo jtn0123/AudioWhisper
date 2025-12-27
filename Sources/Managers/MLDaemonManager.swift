@@ -262,7 +262,11 @@ internal actor MLDaemonManager {
         completeAllPending(with: MLDaemonError.daemonUnavailable("exited (\(exitCode))"))
         process = nil
 
-        guard restartAttempts < maxRestartAttempts else { return }
+        guard restartAttempts < maxRestartAttempts else {
+            // Bug #40 fix: Complete any pending requests that arrived after the initial completeAllPending
+            completeAllPending(with: MLDaemonError.daemonUnavailable("max restarts exceeded"))
+            return
+        }
 
         do {
             try startProcess(isRestart: true)

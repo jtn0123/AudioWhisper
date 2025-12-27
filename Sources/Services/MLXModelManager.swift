@@ -307,12 +307,16 @@ except Exception as e:
             logger.info("Python process launched, waiting for completion...")
             
             // Wait for process in background
-            Task.detached {
+            Task.detached { [outputPipe, errorPipe] in
                 process.waitUntilExit()
-                
+
+                // Bug #33 fix: Clear readability handlers to prevent file descriptor leak
+                outputPipe.fileHandleForReading.readabilityHandler = nil
+                errorPipe.fileHandleForReading.readabilityHandler = nil
+
                 let exitStatus = process.terminationStatus
-                
-                
+
+
                 await MainActor.run { [weak self] in
                     self?.isDownloading[repo] = false
                     if exitStatus != 0 {
@@ -320,7 +324,7 @@ except Exception as e:
                     } else {
                         self?.downloadProgress.removeValue(forKey: repo)
                     }
-                    
+
                     if exitStatus == 0 {
                         Task {
                             await self?.refreshModelList()
@@ -471,8 +475,12 @@ except Exception as e:
             try process.run()
 
             // Wait for process in background to avoid blocking main thread
-            Task.detached {
+            Task.detached { [outputPipe, errorPipe] in
                 process.waitUntilExit()
+
+                // Bug #34 fix: Clear readability handlers to prevent file descriptor leak
+                outputPipe.fileHandleForReading.readabilityHandler = nil
+                errorPipe.fileHandleForReading.readabilityHandler = nil
 
                 let exitStatus = process.terminationStatus
 

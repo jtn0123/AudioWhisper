@@ -101,7 +101,12 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
             cleaned = re.sub(r"<think>.*", "", cleaned, flags=re.DOTALL)
             cleaned = cleaned.strip().strip('"').strip("'").strip()
         except Exception:
-            pass
-    
+            # Bug #41 fix: Return original text if fallback fails instead of empty string
+            cleaned = text
+
+    # Bug #41 fix: Also return original text if still empty after retries
+    if not cleaned:
+        cleaned = text
+
     return {"success": True, "text": cleaned}
 
