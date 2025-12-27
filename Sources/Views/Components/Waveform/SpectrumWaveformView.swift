@@ -94,8 +94,8 @@ struct SpectrumWaveformView: View {
         for i in 0..<min(animatedLevels.count, frequencyBands.count) {
             let target: Float
             if isActive {
-                // Apply 40% gain boost for reactive bars
-                target = min(1.0, frequencyBands[i] * 1.4)
+                // Apply 70% gain boost (40% more than original) for reactive bars
+                target = min(1.0, frequencyBands[i] * 1.7)
             } else {
                 // Idle animation
                 let breathe = Float(sin(idlePhase + Double(i) * 0.3) * 0.5 + 0.5) * 0.08

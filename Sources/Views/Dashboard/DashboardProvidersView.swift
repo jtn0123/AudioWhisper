@@ -818,4 +818,63 @@ internal struct DashboardProvidersView: View {
             .tracking(0.8)
             .textCase(.uppercase)
     }
+
 }
+
+// MARK: - Testable Helpers
+#if DEBUG
+extension DashboardProvidersView {
+    /// Returns the status info tuple for a given provider
+    /// Used for testing status badge logic
+    static func testableStatusInfo(
+        for provider: TranscriptionProvider,
+        openAIKey: String,
+        geminiKey: String,
+        downloadedModels: [WhisperModel],
+        envReady: Bool
+    ) -> (String, Bool) {
+        switch provider {
+        case .openai:
+            return openAIKey.isEmpty ? ("Setup", false) : ("Ready", true)
+        case .gemini:
+            return geminiKey.isEmpty ? ("Setup", false) : ("Ready", true)
+        case .local:
+            return downloadedModels.isEmpty ? ("Setup", false) : ("Ready", true)
+        case .parakeet:
+            return envReady ? ("Ready", true) : ("Setup", false)
+        }
+    }
+
+    /// Returns the engine config for a given provider
+    /// Used for testing engine card configuration
+    static func testableEngineConfig(for provider: TranscriptionProvider) -> (icon: String, tagline: String) {
+        switch provider {
+        case .openai:
+            return ("waveform.circle", "Industry-leading accuracy via cloud")
+        case .gemini:
+            return ("sparkles", "Google's multimodal intelligence")
+        case .local:
+            return ("desktopcomputer", "WhisperKit on Apple Silicon")
+        case .parakeet:
+            return ("bird", "NVIDIA's neural speech engine")
+        }
+    }
+
+    /// Returns the semantic correction mode from raw string
+    static func testableSemanticCorrectionMode(from rawValue: String) -> SemanticCorrectionMode? {
+        SemanticCorrectionMode(rawValue: rawValue)
+    }
+
+    /// Returns whether MLX section should be shown based on correction mode
+    static func testableShowsMLXSection(modeRaw: String) -> Bool {
+        let mode = SemanticCorrectionMode(rawValue: modeRaw) ?? .off
+        return mode == .localMLX
+    }
+
+    /// Returns whether cloud info should be shown based on correction mode
+    static func testableShowsCloudInfo(modeRaw: String) -> Bool {
+        let mode = SemanticCorrectionMode(rawValue: modeRaw) ?? .off
+        return mode == .cloud
+    }
+}
+#endif

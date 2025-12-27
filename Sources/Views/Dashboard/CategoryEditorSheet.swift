@@ -336,19 +336,19 @@ internal struct CategoryEditorSheet: View {
         // Validate
         let trimmedId = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         if trimmedName.isEmpty {
             validationError = "Display name is required"
             return
         }
-        
+
         // Check for duplicate ID (only if ID changed or new category)
         let originalId = originalCategory?.id
         if trimmedId != originalId && categoryStore.containsCategory(withId: trimmedId) {
             validationError = "A category with this identifier already exists"
             return
         }
-        
+
         let category = CategoryDefinition(
             id: isSystem ? (originalCategory?.id ?? trimmedId) : trimmedId,
             displayName: trimmedName,
@@ -358,8 +358,89 @@ internal struct CategoryEditorSheet: View {
             promptTemplate: promptTemplate.trimmingCharacters(in: .whitespacesAndNewlines),
             isSystem: isSystem
         )
-        
+
         onSave(category)
         dismiss()
     }
 }
+
+// MARK: - Testable Helpers
+#if DEBUG
+extension CategoryEditorSheet {
+    /// Validation result for form fields
+    enum ValidationResult: Equatable {
+        case valid
+        case emptyName
+        case duplicateId
+    }
+
+    /// Validates the category form fields
+    static func testableValidate(
+        displayName: String,
+        identifier: String,
+        originalId: String?,
+        existingIds: Set<String>
+    ) -> ValidationResult {
+        let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if trimmedName.isEmpty {
+            return .emptyName
+        }
+
+        let trimmedId = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedId != originalId && existingIds.contains(trimmedId) {
+            return .duplicateId
+        }
+
+        return .valid
+    }
+
+    /// Returns whether this is a new category (create mode)
+    static func testableIsNewCategory(category: CategoryDefinition?) -> Bool {
+        category == nil
+    }
+
+    /// Returns whether identifier editing should be disabled
+    static func testableIsIdentifierDisabled(isSystem: Bool) -> Bool {
+        isSystem
+    }
+
+    /// Returns whether delete button should be shown
+    static func testableShowsDeleteButton(isNewCategory: Bool, isSystem: Bool, hasDeleteHandler: Bool) -> Bool {
+        !isNewCategory && !isSystem && hasDeleteHandler
+    }
+
+    /// Returns whether save button should be disabled
+    static func testableIsSaveDisabled(displayName: String) -> Bool {
+        displayName.isEmpty
+    }
+
+    /// Creates default values for a new category
+    static func testableDefaultCategoryValues() -> (id: String, name: String, icon: String, colorHex: String, description: String) {
+        (
+            id: "new-category",
+            name: "New Category",
+            icon: "sparkles",
+            colorHex: "#888888",
+            description: "Describe this category's purpose"
+        )
+    }
+
+    /// Trims whitespace from all category fields for saving
+    static func testableNormalizeForSave(
+        identifier: String,
+        displayName: String,
+        icon: String,
+        promptDescription: String,
+        promptTemplate: String
+    ) -> (id: String, name: String, icon: String, desc: String, template: String) {
+        (
+            id: identifier.trimmingCharacters(in: .whitespacesAndNewlines),
+            name: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+            icon: icon.trimmingCharacters(in: .whitespacesAndNewlines),
+            desc: promptDescription.trimmingCharacters(in: .whitespacesAndNewlines),
+            template: promptTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+}
+#endif

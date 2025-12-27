@@ -541,3 +541,76 @@ internal struct DashboardCorrectionView: View {
         func stderrMessage() -> String { stderr }
     }
 }
+
+// MARK: - Testable Helpers
+#if DEBUG
+extension DashboardCorrectionView {
+    /// Returns the semantic correction mode from raw string
+    static func testableParseMode(from rawValue: String) -> SemanticCorrectionMode? {
+        SemanticCorrectionMode(rawValue: rawValue)
+    }
+
+    /// Returns the view type that should be displayed for a given mode
+    static func testableViewTypeForMode(_ modeRaw: String) -> String {
+        let mode = SemanticCorrectionMode(rawValue: modeRaw) ?? .off
+        switch mode {
+        case .off:
+            return "disabled_info"
+        case .localMLX:
+            return "local_mlx_card"
+        case .cloud:
+            return "cloud_info"
+        }
+    }
+
+    /// Returns whether install button should be shown
+    static func testableShowsInstallButton(envReady: Bool) -> Bool {
+        !envReady
+    }
+
+    /// Returns whether model list should be shown
+    static func testableShowsModelList(envReady: Bool) -> Bool {
+        envReady
+    }
+
+    /// Returns the default model repo for fallback
+    static func testableDefaultModelRepo() -> String {
+        "mlx-community/Qwen3-1.7B-4bit"
+    }
+
+    /// Creates a mock model entry for testing
+    static func testableMakeMLXEntry(
+        model: MLXModel,
+        isDownloaded: Bool,
+        isDownloading: Bool,
+        isSelected: Bool,
+        badgeText: String?
+    ) -> (title: String, subtitle: String, isDownloaded: Bool, isDownloading: Bool, isSelected: Bool, badgeText: String?) {
+        (
+            title: model.displayName,
+            subtitle: model.description,
+            isDownloaded: isDownloaded,
+            isDownloading: isDownloading,
+            isSelected: isSelected,
+            badgeText: badgeText
+        )
+    }
+
+    /// Returns whether a model should have the "RECOMMENDED" badge
+    static func testableIsRecommended(repo: String) -> Bool {
+        repo == "mlx-community/Qwen3-1.7B-4bit"
+    }
+
+    /// Returns the venv Python path for testing
+    static func testableVenvPythonPath() -> String {
+        let appSupport = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+        let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
+        return base ?? ""
+    }
+
+    /// Verification timeout value in seconds
+    static var testableVerificationTimeout: Int {
+        180
+    }
+}
+#endif
