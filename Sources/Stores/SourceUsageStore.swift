@@ -85,7 +85,10 @@ internal struct SourceUsageStats: Codable, Identifiable, Equatable {
 @Observable
 @MainActor
 internal final class SourceUsageStore {
-    static let shared = SourceUsageStore()
+    // nonisolated(unsafe) allows access from non-isolated contexts like default parameter values
+    nonisolated(unsafe) static let shared = MainActor.assumeIsolated {
+        SourceUsageStore()
+    }
     
     private let defaults: UserDefaults
     private let storageKey = "sourceUsage.stats"

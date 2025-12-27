@@ -103,7 +103,7 @@ final class ContentViewLifecycleTests: XCTestCase {
     }
 
     func testEscapeKeyCancelsProcessing() {
-        var isRecording = false
+        let isRecording = false
         var isProcessing = true
         var taskCancelled = false
 
@@ -120,8 +120,8 @@ final class ContentViewLifecycleTests: XCTestCase {
     }
 
     func testEscapeKeyClosesWindowWhenIdle() {
-        var isRecording = false
-        var isProcessing = false
+        let isRecording = false
+        let isProcessing = false
         var windowClosed = false
         var restoreFocusPosted = false
         var showSuccess = true
@@ -147,7 +147,7 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testReturnKeyTriggersPasteWhenSuccess() {
         testDefaults.set(true, forKey: "enableSmartPaste")
-        var showSuccess = true
+        let showSuccess = true
         var pasteCalled = false
 
         let enableSmartPaste = testDefaults.bool(forKey: "enableSmartPaste")
@@ -161,7 +161,7 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testReturnKeyDoesNothingWithoutSuccess() {
         testDefaults.set(true, forKey: "enableSmartPaste")
-        var showSuccess = false
+        let showSuccess = false
         var pasteCalled = false
 
         let enableSmartPaste = testDefaults.bool(forKey: "enableSmartPaste")
@@ -175,7 +175,7 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testReturnKeyDoesNothingWithSmartPasteDisabled() {
         testDefaults.set(false, forKey: "enableSmartPaste")
-        var showSuccess = true
+        let showSuccess = true
         var pasteCalled = false
 
         let enableSmartPaste = testDefaults.bool(forKey: "enableSmartPaste")
@@ -191,18 +191,14 @@ final class ContentViewLifecycleTests: XCTestCase {
 
     func testTargetAppStoredUpdatesState() {
         var targetAppForPaste: NSRunningApplication?
-        var lastSourceAppInfo: SourceAppInfo?
 
         // Simulate receiving target app notification
         let mockApp = NSRunningApplication.current  // Use current app as mock
 
         targetAppForPaste = mockApp
-        if let info = SourceAppInfo.from(app: mockApp) {
-            lastSourceAppInfo = info
-        }
+        // SourceAppInfo.from(app:) creates info from running app if available
 
         XCTAssertNotNil(targetAppForPaste, "Target app should be set")
-        // lastSourceAppInfo might be nil if SourceAppInfo.from returns nil for current app
     }
 
     // MARK: - Transcription Provider Loading Tests

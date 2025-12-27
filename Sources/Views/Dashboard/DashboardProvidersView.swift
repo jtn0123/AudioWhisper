@@ -822,7 +822,7 @@ internal struct DashboardProvidersView: View {
 }
 
 // MARK: - Testable Helpers
-#if DEBUG
+#if DEBUG || TESTING
 extension DashboardProvidersView {
     /// Returns the status info tuple for a given provider
     /// Used for testing status badge logic

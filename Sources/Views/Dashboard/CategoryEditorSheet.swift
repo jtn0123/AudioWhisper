@@ -365,7 +365,7 @@ internal struct CategoryEditorSheet: View {
 }
 
 // MARK: - Testable Helpers
-#if DEBUG
+#if DEBUG || TESTING
 extension CategoryEditorSheet {
     /// Validation result for form fields
     enum ValidationResult: Equatable {

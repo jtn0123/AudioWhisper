@@ -8,4 +8,4 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 export OS_ACTIVITY_MODE=disable
 
 # Run all tests
-swift test 2>&1 | grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel)" | grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)"
+swift test -Xswiftc -DTESTING 2>&1 | grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel)" | grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)"

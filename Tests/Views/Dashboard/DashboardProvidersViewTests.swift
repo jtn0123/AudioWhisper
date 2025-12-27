@@ -414,7 +414,7 @@ final class DashboardProvidersViewTests: XCTestCase {
 
     func testModelDownloadStateTransitions() {
         var downloadStartTime: [WhisperModel: Date] = [:]
-        var downloadError: String?
+        let downloadError: String? = nil
 
         // Start download
         let model = WhisperModel.base

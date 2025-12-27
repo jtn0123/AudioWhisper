@@ -746,7 +746,7 @@ private extension DashboardHomeView {
 }
 
 // MARK: - Testable Helpers
-#if DEBUG
+#if DEBUG || TESTING
 extension DashboardHomeView {
     /// Testable heatmap color calculation
     static func testableHeatmapColor(for wordCount: Int) -> Color {

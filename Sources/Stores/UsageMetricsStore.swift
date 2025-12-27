@@ -57,7 +57,10 @@ internal struct UsageSnapshot: Equatable {
 @Observable
 @MainActor
 internal final class UsageMetricsStore {
-    static let shared = UsageMetricsStore()
+    // nonisolated(unsafe) allows access from non-isolated contexts like default parameter values
+    nonisolated(unsafe) static let shared = MainActor.assumeIsolated {
+        UsageMetricsStore()
+    }
 
     static let defaultTypingWordsPerMinute: Double = UsageMetricsConstants.defaultTypingWordsPerMinute
     static let averageCharactersPerWord: Double = UsageMetricsConstants.averageCharactersPerWord
@@ -248,7 +251,7 @@ internal final class UsageMetricsStore {
         return words.count
     }
 
-#if DEBUG
+#if DEBUG || TESTING
     /// Helper for tests to set a deterministic snapshot without recording sessions.
     func setSnapshotForTesting(_ snapshot: UsageSnapshot) {
         persist(snapshot)

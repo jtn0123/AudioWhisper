@@ -427,7 +427,7 @@ final class ContentViewRecordingTests: XCTestCase {
     // MARK: - Retry Logic Tests
 
     func testRetryRequiresLastAudioURL() async throws {
-        var lastAudioURL: URL? = nil
+        let lastAudioURL: URL? = nil
         var showError = false
         var errorMessage: String?
 
@@ -461,7 +461,7 @@ final class ContentViewRecordingTests: XCTestCase {
     }
 
     func testRetryBlockedWhileProcessing() async throws {
-        var isProcessing = true
+        let isProcessing = true
         var retryAttempted = false
 
         // Simulate retry guard
