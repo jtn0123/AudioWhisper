@@ -151,12 +151,14 @@ internal extension AppDelegate {
         let iconSize = AppSetupHelper.getAdaptiveMenuBarIconSize()
         let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
 
-        let redImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config)
-        redImage?.isTemplate = false
-        let redOutlineImage = redImage?.tinted(with: .systemRed)
-
-        let blackImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config)
-        blackImage?.isTemplate = true
+        // Ensure images are created successfully before starting animation
+        guard let redImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config),
+              let blackImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config) else {
+            return
+        }
+        redImage.isTemplate = false
+        let redOutlineImage = redImage.tinted(with: .systemRed)
+        blackImage.isTemplate = true
 
         button.image = redOutlineImage
 

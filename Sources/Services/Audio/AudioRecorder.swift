@@ -40,6 +40,11 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
     private func setupRecorder() {
         // AVAudioSession is not needed on macOS
     }
+
+    deinit {
+        // Ensure timer is invalidated if recorder is deallocated
+        levelUpdateTimer?.invalidate()
+    }
     
     func startRecording() -> Bool {
         // Check permission via PermissionManager (single source of truth)

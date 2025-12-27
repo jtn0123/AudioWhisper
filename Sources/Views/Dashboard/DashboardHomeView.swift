@@ -253,14 +253,14 @@ private extension DashboardHomeView {
     
     var activityGrid: some View {
         let weeks = generateActivityWeeks()
-        
+
         return VStack(spacing: 6) {
-            ForEach(0..<4, id: \.self) { weekIndex in
+            ForEach(0..<weeks.count, id: \.self) { weekIndex in
                 HStack(spacing: 6) {
-                    ForEach(0..<7, id: \.self) { dayIndex in
+                    ForEach(0..<weeks[weekIndex].count, id: \.self) { dayIndex in
                         let date = weeks[weekIndex][dayIndex]
                         let wordCount = dailyActivity[Calendar.current.startOfDay(for: date)] ?? 0
-                        
+
                         RoundedRectangle(cornerRadius: 2)
                             .fill(heatmapColor(for: wordCount))
                             .frame(width: 18, height: 18)

@@ -94,6 +94,10 @@ internal class WindowManager: ObservableObject {
     }
     
     private func setupWindowObserver(for window: NSWindow) {
+        // Remove any existing observer before adding new one
+        if let existingObserver = windowObserver {
+            NotificationCenter.default.removeObserver(existingObserver)
+        }
         // Add click outside to dismiss
         windowObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification,

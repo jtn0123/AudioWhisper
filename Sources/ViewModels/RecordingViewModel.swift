@@ -431,13 +431,20 @@ final class RecordingViewModel {
     }
 
     private func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3, completion: (() -> Void)? = nil) {
+        // Retain window during animation to prevent deallocation
+        let retainedWindow = window
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = duration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            window.animator().alphaValue = 0.0
+            retainedWindow.animator().alphaValue = 0.0
         }, completionHandler: {
-            window.orderOut(nil)
-            window.alphaValue = 1.0
+            // Check window is still valid before operating on it
+            guard retainedWindow.isVisible || retainedWindow.alphaValue == 0 else {
+                completion?()
+                return
+            }
+            retainedWindow.orderOut(nil)
+            retainedWindow.alphaValue = 1.0
             completion?()
         })
     }
