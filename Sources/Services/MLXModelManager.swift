@@ -310,7 +310,7 @@ except Exception as e:
             Task.detached { [outputPipe, errorPipe] in
                 process.waitUntilExit()
 
-                // Bug fix: Clear readability handlers to prevent file descriptor leak
+                // Clear readability handlers to prevent file descriptor leak
                 outputPipe.fileHandleForReading.readabilityHandler = nil
                 errorPipe.fileHandleForReading.readabilityHandler = nil
 
@@ -478,7 +478,7 @@ except Exception as e:
             Task.detached { [outputPipe, errorPipe] in
                 process.waitUntilExit()
 
-                // Bug fix: Clear readability handlers to prevent file descriptor leak
+                // Clear readability handlers to prevent file descriptor leak
                 outputPipe.fileHandleForReading.readabilityHandler = nil
                 errorPipe.fileHandleForReading.readabilityHandler = nil
 

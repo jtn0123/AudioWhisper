@@ -31,7 +31,7 @@ internal enum SpeechToTextError: Error, LocalizedError {
 
 @Observable
 internal class SpeechToTextService {
-    // Bug fix: Use shared singleton to avoid multiple WhisperKit caches
+    // Use shared singleton to avoid multiple WhisperKit caches
     private let localWhisperService = LocalWhisperService.shared
     private let parakeetService = ParakeetService.shared
     private let keychainService: KeychainServiceProtocol
@@ -209,7 +209,7 @@ internal class SpeechToTextService {
         }
     }
 
-    // Bug fix: Helper to get MIME type from audio file extension
+    // Helper to get MIME type from audio file extension
     private func audioMimeType(for url: URL) -> String {
         let ext = url.pathExtension.lowercased()
         switch ext {
@@ -278,7 +278,7 @@ internal class SpeechToTextService {
             "Content-Type": "application/json"
         ]
         
-        // Bug fix: Use detected MIME type instead of hardcoded audio/mp4
+        // Use detected MIME type for correct audio format handling
         let mimeType = audioMimeType(for: audioURL)
 
         let body: [String: Any] = [
@@ -352,7 +352,7 @@ internal class SpeechToTextService {
             "Content-Type": "application/json"
         ]
         
-        // Bug fix: Use detected MIME type instead of hardcoded audio/mp4
+        // Use detected MIME type for correct audio format handling
         let mimeType = audioMimeType(for: audioURL)
 
         let body: [String: Any] = [

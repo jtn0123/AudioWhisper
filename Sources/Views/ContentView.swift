@@ -15,20 +15,11 @@ internal struct ContentView: View {
     @AppStorage("immediateRecording") var immediateRecording = true
     @AppStorage("hasShownFirstModelUseHint") var hasShownFirstModelUseHint = false
 
-    // MARK: - View-Local State (kept for legacy compatibility during migration)
+    // MARK: - View-Local State
 
     @State var isHovered = false
     @State var processingTask: Task<Void, Never>?
-    @State var transcriptionProgressObserver: NSObjectProtocol?
-    @State var spaceKeyObserver: NSObjectProtocol?
-    @State var escapeKeyObserver: NSObjectProtocol?
-    @State var returnKeyObserver: NSObjectProtocol?
-    @State var targetAppObserver: NSObjectProtocol?
-    @State var recordingFailedObserver: NSObjectProtocol?
-    @State var windowFocusObserver: NSObjectProtocol?
-    @State var retryObserver: NSObjectProtocol?
-    @State var showAudioFileObserver: NSObjectProtocol?
-    @State var transcribeFileObserver: NSObjectProtocol?
+    @State var notificationCoordinator = NotificationCoordinator()
 
     // MARK: - Computed Properties (forwarding to ViewModel)
 

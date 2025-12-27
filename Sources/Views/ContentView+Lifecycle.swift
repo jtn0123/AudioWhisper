@@ -8,178 +8,117 @@ internal extension ContentView {
         loadStoredTranscriptionProvider()
         updateStatus()
     }
-    
+
     func handleOnDisappear() {
-        removeNotificationObservers()
+        notificationCoordinator.removeAll()
         processingTask?.cancel()
         processingTask = nil
         lastAudioURL = nil
     }
-    
+
     private func setupNotificationObservers() {
-        // Guard against duplicate observer registration if onAppear fires multiple times
-        removeNotificationObservers()
+        // Clear any existing observers first
+        notificationCoordinator.removeAll()
 
-        transcriptionProgressObserver = NotificationCenter.default.addObserver(
-            forName: .transcriptionProgress,
-            object: nil,
-            queue: .main
-        ) { notification in
-            Task { @MainActor in
-                if let message = notification.object as? String {
-                    progressMessage = enhanceProgressMessage(message)
-                }
+        // Transcription progress updates
+        notificationCoordinator.observeOnMainActor(.transcriptionProgress) { notification in
+            if let message = notification.object as? String {
+                progressMessage = enhanceProgressMessage(message)
             }
         }
-        
-        spaceKeyObserver = NotificationCenter.default.addObserver(
-            forName: .spaceKeyPressed,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                guard !isHandlingSpaceKey else { return }
-                isHandlingSpaceKey = true
-                
-                if audioRecorder.isRecording {
-                    stopAndProcess()
-                } else if !isProcessing && permissionManager.microphonePermissionState == .granted && !showSuccess {
-                    startRecording()
-                } else if permissionManager.microphonePermissionState != .granted {
-                    permissionManager.requestPermissionWithEducation()
-                }
-                
-                try? await Task.sleep(for: .seconds(1))
-                isHandlingSpaceKey = false
-            }
-        }
-        
-        escapeKeyObserver = NotificationCenter.default.addObserver(
-            forName: .escapeKeyPressed,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                if audioRecorder.isRecording {
-                    audioRecorder.cancelRecording()
-                    isProcessing = false
-                } else if isProcessing {
-                    processingTask?.cancel()
-                    isProcessing = false
-                } else {
-                    // Only close the recording window, not any other window
-                    if let recordWindow = NSApp.windows.first(where: { $0.title == WindowTitles.recording }) {
-                        recordWindow.orderOut(nil)
-                        NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-                    }
-                    // Note: No fallback to close keyWindow - that could close the wrong window
-                    // (e.g., Dashboard) if recording window lookup fails
 
-                    showSuccess = false
+        // Space key - toggle recording
+        notificationCoordinator.observeOnMainActor(.spaceKeyPressed) { _ in
+            guard !isHandlingSpaceKey else { return }
+            isHandlingSpaceKey = true
+
+            if audioRecorder.isRecording {
+                stopAndProcess()
+            } else if !isProcessing && permissionManager.microphonePermissionState == .granted && !showSuccess {
+                startRecording()
+            } else if permissionManager.microphonePermissionState != .granted {
+                permissionManager.requestPermissionWithEducation()
+            }
+
+            try? await Task.sleep(for: .seconds(1))
+            isHandlingSpaceKey = false
+        }
+
+        // Escape key - cancel or close
+        notificationCoordinator.observeOnMainActor(.escapeKeyPressed) { _ in
+            if audioRecorder.isRecording {
+                audioRecorder.cancelRecording()
+                viewModel.showError = false
+            } else if isProcessing {
+                processingTask?.cancel()
+                viewModel.showError = false
+            } else {
+                // Only close the recording window, not any other window
+                if let recordWindow = NSApp.windows.first(where: { $0.title == WindowTitles.recording }) {
+                    recordWindow.orderOut(nil)
+                    NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
+                }
+                showSuccess = false
+            }
+        }
+
+        // Return key - trigger paste when showing success
+        notificationCoordinator.observeOnMainActor(.returnKeyPressed) { _ in
+            if showSuccess {
+                let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+                if enableSmartPaste {
+                    performUserTriggeredPaste()
                 }
             }
         }
-        
-        returnKeyObserver = NotificationCenter.default.addObserver(
-            forName: .returnKeyPressed,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                if showSuccess {
-                    let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
-                    if enableSmartPaste {
-                        performUserTriggeredPaste()
-                    }
+
+        // Target app stored - update paste target
+        notificationCoordinator.observeOnMainActor(.targetAppStored) { notification in
+            if let app = notification.object as? NSRunningApplication {
+                targetAppForPaste = app
+                if let info = SourceAppInfo.from(app: app) {
+                    lastSourceAppInfo = info
                 }
             }
         }
-        
-        targetAppObserver = NotificationCenter.default.addObserver(
-            forName: .targetAppStored,
-            object: nil,
-            queue: .main
-        ) { notification in
-            Task { @MainActor in
-                if let app = notification.object as? NSRunningApplication {
-                    targetAppForPaste = app
-                    if let info = SourceAppInfo.from(app: app) {
-                        lastSourceAppInfo = info
-                    }
-                }
-            }
+
+        // Recording failed notification
+        notificationCoordinator.observeOnMainActor(.recordingStartFailed) { _ in
+            errorMessage = LocalizedStrings.Errors.failedToStartRecording
+            showError = true
         }
-        
-        recordingFailedObserver = NotificationCenter.default.addObserver(
-            forName: .recordingStartFailed,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                errorMessage = LocalizedStrings.Errors.failedToStartRecording
-                showError = true
-            }
-        }
-        
-        windowFocusObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
+
+        // Window focus - ensure proper first responder
+        notificationCoordinator.observe(NSWindow.didBecomeKeyNotification) { _ in
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 if let window = NSApp.keyWindow {
                     window.makeFirstResponder(window.contentView)
                 }
             }
         }
-        
-        retryObserver = NotificationCenter.default.addObserver(
-            forName: .retryTranscriptionRequested,
-            object: nil,
-            queue: .main
-        ) { _ in
-            retryLastTranscription()
+
+        // Retry transcription request
+        notificationCoordinator.observe(.retryTranscriptionRequested) { _ in
+            Task { @MainActor in
+                retryLastTranscription()
+            }
         }
-        
-        showAudioFileObserver = NotificationCenter.default.addObserver(
-            forName: .showAudioFileRequested,
-            object: nil,
-            queue: .main
-        ) { _ in
-            showLastAudioFile()
+
+        // Show audio file request
+        notificationCoordinator.observe(.showAudioFileRequested) { _ in
+            Task { @MainActor in
+                showLastAudioFile()
+            }
         }
-        
-        transcribeFileObserver = NotificationCenter.default.addObserver(
-            forName: .transcribeAudioFile,
-            object: nil,
-            queue: .main
-        ) { notification in
+
+        // Transcribe external file
+        notificationCoordinator.observeOnMainActor(.transcribeAudioFile) { notification in
             if let url = notification.object as? URL {
                 transcribeExternalAudioFile(url)
             }
         }
     }
-    
-    private func removeNotificationObservers() {
-        removeObserver(&transcriptionProgressObserver)
-        removeObserver(&spaceKeyObserver)
-        removeObserver(&escapeKeyObserver)
-        removeObserver(&returnKeyObserver)
-        removeObserver(&targetAppObserver)
-        removeObserver(&recordingFailedObserver)
-        removeObserver(&windowFocusObserver)
-        removeObserver(&retryObserver)
-        removeObserver(&showAudioFileObserver)
-        removeObserver(&transcribeFileObserver)
-    }
-    
-    private func removeObserver(_ observer: inout NSObjectProtocol?) {
-        if let existing = observer {
-            NotificationCenter.default.removeObserver(existing)
-            observer = nil
-        }
-    }
-    
+
     private func loadStoredTranscriptionProvider() {
         if let storedProvider = UserDefaults.standard.string(forKey: "transcriptionProvider"),
            let provider = TranscriptionProvider(rawValue: storedProvider) {

@@ -33,32 +33,37 @@ struct ParticleFieldView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            Canvas { context, size in
-                for particle in particles {
-                    let rect = CGRect(
-                        x: particle.x - particle.size / 2,
-                        y: particle.y - particle.size / 2,
-                        width: particle.size,
-                        height: particle.size
-                    )
+            TimelineView(.animation(minimumInterval: 0.033, paused: !isViewActive)) { timeline in
+                Canvas { context, size in
+                    for particle in particles {
+                        let rect = CGRect(
+                            x: particle.x - particle.size / 2,
+                            y: particle.y - particle.size / 2,
+                            width: particle.size,
+                            height: particle.size
+                        )
 
-                    // Outer glow
-                    let glowRect = rect.insetBy(dx: -4, dy: -4)
-                    let glowPath = Path(ellipseIn: glowRect)
-                    context.fill(
-                        glowPath,
-                        with: .color(colors[particle.colorIndex].opacity(particle.opacity * 0.3))
-                    )
+                        // Outer glow
+                        let glowRect = rect.insetBy(dx: -4, dy: -4)
+                        let glowPath = Path(ellipseIn: glowRect)
+                        context.fill(
+                            glowPath,
+                            with: .color(colors[particle.colorIndex].opacity(particle.opacity * 0.3))
+                        )
 
-                    // Core particle
-                    let particlePath = Path(ellipseIn: rect)
-                    context.fill(
-                        particlePath,
-                        with: .color(colors[particle.colorIndex].opacity(particle.opacity))
-                    )
+                        // Core particle
+                        let particlePath = Path(ellipseIn: rect)
+                        context.fill(
+                            particlePath,
+                            with: .color(colors[particle.colorIndex].opacity(particle.opacity))
+                        )
+                    }
+                }
+                .blur(radius: 1)
+                .onChange(of: timeline.date) { _, _ in
+                    updateParticles()
                 }
             }
-            .blur(radius: 1)
             .onAppear {
                 initializeParticles(in: geometry.size)
             }
@@ -68,10 +73,6 @@ struct ParticleFieldView: View {
                     initializeParticles(in: newSize)
                 }
             }
-        }
-        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
-            guard isViewActive else { return }
-            updateParticles()
         }
         .onAppear {
             isViewActive = true
@@ -111,7 +112,7 @@ struct ParticleFieldView: View {
             if isActive && audioLevel > 0.05 {
                 // Audio-reactive movement
 
-                // Bug fix: Use actual geometry size instead of hardcoded values
+                // Use actual geometry size instead of hardcoded values
                 let centerX = currentSize.width / 2
                 let centerY = currentSize.height / 2
                 let dx = particle.x - centerX
@@ -144,7 +145,7 @@ struct ParticleFieldView: View {
             particle.velocityX *= 0.95
             particle.velocityY *= 0.95
 
-            // Bug fix: Wrap around edges using actual geometry size
+            // Wrap around edges using actual geometry size
             let wrapWidth = currentSize.width + 20
             let wrapHeight = currentSize.height + 20
             if particle.x < -10 { particle.x = wrapWidth - 10 }

@@ -294,10 +294,10 @@ internal class PasteManager {
         }
 
         let observerBox = ObserverBox()
-        let cancelledFlag = CancelledFlag()  // Bug fix: use reference type instead of capture-by-value
+        let cancelledFlag = CancelledFlag()  // Use reference type to share state across closures
 
         // Set up timeout
-        // Bug fix: Capture observerBox strongly so it survives until timeout/activation
+        // Capture observerBox strongly so it survives until timeout/activation
         // The observerBox is only deallocated after the observer is properly removed
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [observerBox, cancelledFlag] in
             guard !cancelledFlag.value else { return }
@@ -310,7 +310,7 @@ internal class PasteManager {
         }
 
         // Observe app activation
-        // Bug fix: Capture observerBox strongly to ensure we can remove the observer
+        // Capture observerBox strongly to ensure we can remove the observer
         observerBox.observer = NotificationCenter.default.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,

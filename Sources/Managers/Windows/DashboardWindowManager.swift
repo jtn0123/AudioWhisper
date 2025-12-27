@@ -3,9 +3,15 @@ import AppKit
 import SwiftUI
 import os.log
 
+/// Protocol for dashboard window management, enabling dependency injection for testing
+@MainActor
+internal protocol DashboardWindowManaging {
+    func showDashboardWindow()
+}
+
 /// Manages the dashboard window lifecycle
 @MainActor
-internal final class DashboardWindowManager: NSObject {
+internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     static let shared = DashboardWindowManager()
     
     private weak var dashboardWindow: NSWindow?

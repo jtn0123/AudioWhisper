@@ -145,9 +145,9 @@ final class AudioRecorderTests: XCTestCase {
     // MARK: - Volume Restoration Tests (bug regression prevention)
 
     func testCleanupRecordingDoesNotRestoreVolume() async {
-        // Bug fix: cleanupRecording was restoring volume, causing double restoration
-        // when called from cancelRecording which also restores volume.
-        // After fix, cleanupRecording should NOT restore volume.
+        // cleanupRecording should not restore volume because cancelRecording
+        // also restores volume, which would cause double restoration.
+        // This test verifies cleanupRecording does NOT restore volume.
 
         let mockVolumeManager = MockMicrophoneVolumeManager()
         let recorder = AudioRecorder(

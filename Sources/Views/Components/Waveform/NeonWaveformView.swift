@@ -19,6 +19,7 @@ struct NeonWaveformView: View {
     @State private var smoothedSamples: [Float] = []
     @State private var phase: CGFloat = 0
     @State private var colorPhase: CGFloat = 0
+    @State private var isViewActive = false
 
     // Decay factor for response speed (lower = slower, higher = snappier)
     private let decayFactor: Float = 0.55
@@ -47,7 +48,14 @@ struct NeonWaveformView: View {
                 waveformReflection(in: geometry.size)
             }
         }
+        .onAppear {
+            isViewActive = true
+        }
+        .onDisappear {
+            isViewActive = false
+        }
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
+            guard isViewActive else { return }
             phase += 0.05
             colorPhase += 0.02
             updateSmoothedSamples()

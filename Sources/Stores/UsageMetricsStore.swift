@@ -116,7 +116,7 @@ internal final class UsageMetricsStore {
     }
     
     private func cleanupOldDailyActivity(_ activity: [String: Int]) -> [String: Int] {
-        // Bug fix: If date calculation fails, return unchanged activity instead of
+        // If date calculation fails, return unchanged activity instead of
         // defaulting to Date() which would delete all historical data
         guard let cutoffDate = Calendar.current.date(
             byAdding: .day,
