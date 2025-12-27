@@ -8,7 +8,7 @@ final class MockDataManager: DataManagerProtocol {
     // MARK: - State
 
     var isHistoryEnabled: Bool = true
-    var retentionPeriod: RetentionPeriod = .forever
+    var retentionPeriod: RetentionPeriod = .oneMonth
     var sharedModelContainer: ModelContainer?
 
     // MARK: - Configurable Data
@@ -45,6 +45,9 @@ final class MockDataManager: DataManagerProtocol {
         saveTranscriptionCallCount += 1
         saveTranscriptionLastRecord = record
 
+        // Skip saving if history is disabled
+        guard isHistoryEnabled else { return }
+
         if shouldThrowOnSave {
             throw errorToThrow
         }
@@ -59,7 +62,8 @@ final class MockDataManager: DataManagerProtocol {
             throw errorToThrow
         }
 
-        return recordsToReturn
+        // Sort by date descending (newest first) to match real DataManager behavior
+        return recordsToReturn.sorted { $0.date > $1.date }
     }
 
     func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord] {
@@ -70,12 +74,17 @@ final class MockDataManager: DataManagerProtocol {
             throw errorToThrow
         }
 
+        // Sort by date descending (newest first)
+        let sorted = recordsToReturn.sorted { $0.date > $1.date }
+
         if searchQuery.isEmpty {
-            return recordsToReturn
+            return sorted
         }
 
-        return recordsToReturn.filter { record in
-            record.text.localizedCaseInsensitiveContains(searchQuery)
+        return sorted.filter { record in
+            record.text.localizedCaseInsensitiveContains(searchQuery) ||
+            record.provider.localizedCaseInsensitiveContains(searchQuery) ||
+            (record.modelUsed?.localizedCaseInsensitiveContains(searchQuery) ?? false)
         }
     }
 
@@ -87,9 +96,15 @@ final class MockDataManager: DataManagerProtocol {
             throw errorToThrow
         }
 
-        var results = recordsToReturn
+        // Sort by date descending (newest first)
+        var results = recordsToReturn.sorted { $0.date > $1.date }
+
         if !searchQuery.isEmpty {
-            results = results.filter { $0.text.localizedCaseInsensitiveContains(searchQuery) }
+            results = results.filter { record in
+                record.text.localizedCaseInsensitiveContains(searchQuery) ||
+                record.provider.localizedCaseInsensitiveContains(searchQuery) ||
+                (record.modelUsed?.localizedCaseInsensitiveContains(searchQuery) ?? false)
+            }
         }
 
         if let offset = offset {
@@ -126,6 +141,12 @@ final class MockDataManager: DataManagerProtocol {
 
     func cleanupExpiredRecords() async throws {
         cleanupExpiredRecordsCallCount += 1
+
+        // Skip if retention is forever
+        guard let timeInterval = retentionPeriod.timeInterval else { return }
+
+        let cutoffDate = Date().addingTimeInterval(-timeInterval)
+        recordsToReturn.removeAll { $0.date < cutoffDate }
     }
 
     // MARK: - Quiet Methods (no throwing)
@@ -134,6 +155,9 @@ final class MockDataManager: DataManagerProtocol {
         saveTranscriptionQuietlyCallCount += 1
         saveTranscriptionLastRecord = record
 
+        // Skip saving if history is disabled
+        guard isHistoryEnabled else { return }
+
         if !shouldThrowOnSave {
             recordsToReturn.append(record)
         }
@@ -141,18 +165,28 @@ final class MockDataManager: DataManagerProtocol {
 
     func fetchAllRecordsQuietly() async -> [TranscriptionRecord] {
         fetchAllRecordsQuietlyCallCount += 1
-        return shouldThrowOnFetch ? [] : recordsToReturn
+        if shouldThrowOnFetch {
+            return []
+        }
+        // Sort by date descending (newest first) to match real DataManager behavior
+        return recordsToReturn.sorted { $0.date > $1.date }
     }
 
     func cleanupExpiredRecordsQuietly() async {
         cleanupExpiredRecordsQuietlyCallCount += 1
+
+        // Skip if retention is forever
+        guard let timeInterval = retentionPeriod.timeInterval else { return }
+
+        let cutoffDate = Date().addingTimeInterval(-timeInterval)
+        recordsToReturn.removeAll { $0.date < cutoffDate }
     }
 
     // MARK: - Test Helpers
 
     func reset() {
         isHistoryEnabled = true
-        retentionPeriod = .forever
+        retentionPeriod = .oneMonth
         sharedModelContainer = nil
         recordsToReturn = []
         shouldThrowOnSave = false
