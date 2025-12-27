@@ -465,6 +465,11 @@ internal struct DashboardCorrectionView: View {
                 let timeout = Task { try await Task.sleep(for: .seconds(180)); if process.isRunning { process.terminate() } }
                 await Task.detached { process.waitUntilExit() }.value
                 timeout.cancel()
+
+                // Clean up file handle handlers to prevent leaks
+                out.fileHandleForReading.readabilityHandler = nil
+                err.fileHandleForReading.readabilityHandler = nil
+
                 let lastMsg = await messageStore.stdoutMessage()
                 await MainActor.run {
                     isVerifyingMLX = false

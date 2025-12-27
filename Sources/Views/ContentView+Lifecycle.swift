@@ -17,6 +17,9 @@ internal extension ContentView {
     }
     
     private func setupNotificationObservers() {
+        // Guard against duplicate observer registration if onAppear fires multiple times
+        removeNotificationObservers()
+
         transcriptionProgressObserver = NotificationCenter.default.addObserver(
             forName: .transcriptionProgress,
             object: nil,

@@ -300,6 +300,10 @@ internal extension DashboardProvidersView {
                 await Task.detached { process.waitUntilExit() }.value
                 timeoutTask.cancel()
 
+                // Clean up file handle handlers to prevent leaks
+                out.fileHandleForReading.readabilityHandler = nil
+                err.fileHandleForReading.readabilityHandler = nil
+
                 let lastStdoutMessage = await messageStore.stdoutMessage()
                 let lastStderrMessage = await messageStore.stderrMessage()
 

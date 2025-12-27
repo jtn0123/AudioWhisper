@@ -4,12 +4,27 @@ import AppKit
 
 internal struct DashboardHomeView: View {
     @Binding var selectedNav: DashboardNavItem
-    @State private var metricsStore = UsageMetricsStore.shared
-    @State private var sourceUsageStore = SourceUsageStore.shared
+    @State private var metricsStore: UsageMetricsStore
+    @State private var sourceUsageStore: SourceUsageStore
     @State private var recentRecords: [TranscriptionRecord] = []
     @State private var dailyActivity: [Date: Int] = [:]
     @State private var providerStats: [(provider: String, words: Int, icon: String)] = []
     @State private var isLoaded = false
+
+    /// Data manager for fetching records (injectable for testing)
+    private let dataManager: DataManagerProtocol
+
+    init(
+        selectedNav: Binding<DashboardNavItem>,
+        metricsStore: UsageMetricsStore = .shared,
+        sourceUsageStore: SourceUsageStore = .shared,
+        dataManager: DataManagerProtocol = DataManager.shared
+    ) {
+        self._selectedNav = selectedNav
+        self._metricsStore = State(initialValue: metricsStore)
+        self._sourceUsageStore = State(initialValue: sourceUsageStore)
+        self.dataManager = dataManager
+    }
     
     var body: some View {
         ScrollView {
@@ -529,9 +544,9 @@ private extension DashboardHomeView {
     func loadDashboardData() {
         Task {
             // First, ensure daily activity is bootstrapped from records if needed
-            await metricsStore.bootstrapIfNeeded()
-            
-            let records = await DataManager.shared.fetchAllRecordsQuietly()
+            await metricsStore.bootstrapIfNeeded(dataManager: dataManager)
+
+            let records = await dataManager.fetchAllRecordsQuietly()
             await MainActor.run {
                 recentRecords = records
                 calculateProviderStats(from: records)
@@ -729,6 +744,117 @@ private extension DashboardHomeView {
         return formatter
     }()
 }
+
+// MARK: - Testable Helpers
+#if DEBUG
+extension DashboardHomeView {
+    /// Testable heatmap color calculation
+    static func testableHeatmapColor(for wordCount: Int) -> Color {
+        switch wordCount {
+        case 0:
+            return DashboardTheme.heatmapEmpty
+        case 1..<50:
+            return DashboardTheme.heatmapLow
+        case 50..<150:
+            return DashboardTheme.heatmapMedium
+        case 150..<300:
+            return DashboardTheme.heatmapHigh
+        default:
+            return DashboardTheme.heatmapMax
+        }
+    }
+
+    /// Testable streak calculation
+    static func testableCalculateStreak(from dailyActivity: [Date: Int]) -> Int {
+        let calendar = Calendar.current
+        var streak = 0
+        var currentDate = Date()
+
+        while true {
+            let day = calendar.startOfDay(for: currentDate)
+            if let words = dailyActivity[day], words > 0 {
+                streak += 1
+                guard let previousDay = calendar.date(byAdding: .day, value: -1, to: currentDate) else { break }
+                currentDate = previousDay
+            } else {
+                break
+            }
+        }
+
+        return streak
+    }
+
+    /// Testable active days calculation
+    static func testableCalculateActiveDays(from dailyActivity: [Date: Int]) -> Int {
+        dailyActivity.filter { $0.value > 0 }.count
+    }
+
+    /// Testable provider stats calculation
+    static func testableCalculateProviderStats(from records: [TranscriptionRecord]) -> [(provider: String, words: Int, icon: String)] {
+        var stats: [String: Int] = [:]
+        for record in records {
+            stats[record.provider, default: 0] += record.wordCount
+        }
+
+        func providerIcon(for provider: String) -> String {
+            switch provider.lowercased() {
+            case "openai": return "cloud"
+            case "gemini": return "sparkles"
+            case "local": return "laptopcomputer"
+            case "parakeet": return "bird"
+            default: return "waveform"
+            }
+        }
+
+        return stats.map { (provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
+            .sorted { $0.words > $1.words }
+    }
+
+    /// Testable week generation
+    static func testableGenerateActivityWeeks(from referenceDate: Date = Date()) -> [[Date]] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: referenceDate)
+
+        let todayWeekday = calendar.component(.weekday, from: today)
+        let daysUntilSaturday = 7 - todayWeekday
+        guard let currentWeekSaturday = calendar.date(byAdding: .day, value: daysUntilSaturday, to: today) else {
+            return []
+        }
+
+        var weeks: [[Date]] = []
+
+        for weekOffset in (0..<4).reversed() {
+            var week: [Date] = []
+            guard let weekSaturday = calendar.date(byAdding: .day, value: -weekOffset * 7, to: currentWeekSaturday) else {
+                continue
+            }
+            for dayIndex in 0..<7 {
+                let daysFromSunday = dayIndex - 6
+                if let date = calendar.date(byAdding: .day, value: daysFromSunday, to: weekSaturday) {
+                    week.append(date)
+                }
+            }
+            weeks.append(week)
+        }
+
+        return weeks
+    }
+
+    /// Testable duration formatting
+    static func testableFormatDuration(_ interval: TimeInterval) -> String {
+        guard interval > 0 else { return "0m" }
+        let totalSeconds = Int(interval)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
+}
+#endif
 
 #Preview("Dashboard Home") {
     DashboardHomeView(selectedNav: .constant(.dashboard))

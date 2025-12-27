@@ -34,15 +34,4 @@ internal struct AudioWhisperApp: App {
             }
         }
     }
-
-    /// Creates a fallback container if DataManager initialization fails
-    private func createFallbackContainer() -> ModelContainer {
-        do {
-            let schema = Schema([TranscriptionRecord.self])
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            return try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            fatalError("Failed to create fallback ModelContainer: \(error)")
-        }
-    }
 }

@@ -8,6 +8,7 @@ internal enum MLDaemonError: Error, LocalizedError {
     case remoteError(String)
     case restartLimitReached
     case writeFailed
+    case timeout
 
     var errorDescription: String? {
         switch self {
@@ -23,6 +24,8 @@ internal enum MLDaemonError: Error, LocalizedError {
             return "ML daemon restart limit reached"
         case .writeFailed:
             return "Failed to write request to ML daemon"
+        case .timeout:
+            return "ML daemon request timed out"
         }
     }
 }
@@ -36,6 +39,7 @@ internal actor MLDaemonManager {
 
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
     private let maxRestartAttempts = 3
+    private let requestTimeoutSeconds: UInt64 = 60
 
     private var process: Process?
     private var stdinPipe: Pipe?
@@ -122,11 +126,21 @@ internal actor MLDaemonManager {
             throw MLDaemonError.daemonUnavailable("stdin unavailable")
         }
 
-        writer.write(data)
-        writer.write(Data([0x0a])) // newline
+        // Write with error handling
+        do {
+            try writer.write(contentsOf: data)
+            try writer.write(contentsOf: Data([0x0a])) // newline
+        } catch {
+            logger.error("Failed to write to daemon stdin: \(error.localizedDescription)")
+            throw MLDaemonError.writeFailed
+        }
+
+        // Use withCheckedThrowingContinuation with timeout via Task
+        let timeoutNanos = requestTimeoutSeconds * 1_000_000_000
 
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response, Error>) in
-            pending[requestID] = PendingRequest { result in
+            // Store pending request in actor context (this is synchronous within actor)
+            self.pending[requestID] = PendingRequest { result in
                 switch result {
                 case .success(let responseData):
                     do {
@@ -139,7 +153,21 @@ internal actor MLDaemonManager {
                     continuation.resume(throwing: error)
                 }
             }
+
+            // Start timeout task
+            Task {
+                try? await Task.sleep(nanoseconds: timeoutNanos)
+                // Check if request is still pending (wasn't completed)
+                if await self.pending[requestID] != nil {
+                    await self.removePendingRequest(requestID)
+                    continuation.resume(throwing: MLDaemonError.timeout)
+                }
+            }
         }
+    }
+
+    private func removePendingRequest(_ id: Int) {
+        pending.removeValue(forKey: id)
     }
 
     private func handle(line: String) {
@@ -193,7 +221,7 @@ internal actor MLDaemonManager {
         let script = try resolvedScript()
 
         if isRestart { restartAttempts += 1 } else { restartAttempts = 0 }
-        if restartAttempts > maxRestartAttempts { throw MLDaemonError.restartLimitReached }
+        if restartAttempts >= maxRestartAttempts { throw MLDaemonError.restartLimitReached }
 
         let proc = Process()
         proc.executableURL = python
@@ -279,11 +307,17 @@ internal actor MLDaemonManager {
     private func closePipes() {
         stdoutReaderTask?.cancel()
         stdoutReaderTask = nil
+
+        // Close file handles BEFORE setting readabilityHandler to nil
+        // This ensures no new callbacks are queued during cleanup
         stdinPipe?.fileHandleForWriting.closeFile()
-        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
         stdoutPipe?.fileHandleForReading.closeFile()
-        stderrPipe?.fileHandleForReading.readabilityHandler = nil
         stderrPipe?.fileHandleForReading.closeFile()
+
+        // Now safe to clear handlers - no more data can arrive
+        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
+        stderrPipe?.fileHandleForReading.readabilityHandler = nil
+
         stdinPipe = nil
         stdoutPipe = nil
         stderrPipe = nil

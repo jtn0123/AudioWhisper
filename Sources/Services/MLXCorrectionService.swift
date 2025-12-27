@@ -81,6 +81,8 @@ internal final class MLXCorrectionService {
                 throw MLXCorrectionError.daemonUnavailable("restart limit reached")
             case .writeFailed:
                 throw MLXCorrectionError.daemonUnavailable("failed to communicate with daemon")
+            case .timeout:
+                throw MLXCorrectionError.daemonUnavailable("request timed out")
             }
         } catch {
             // Skip logging in tests to reduce console noise

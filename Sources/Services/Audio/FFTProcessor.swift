@@ -3,6 +3,14 @@ import Foundation
 
 /// Real-time FFT processor for audio frequency analysis.
 /// Uses the Accelerate framework for SIMD-optimized processing.
+///
+/// ## Thread Safety
+/// Marked `@unchecked Sendable` because:
+/// - Each `AudioEngineRecorder` creates its own `FFTProcessor` instance
+/// - Audio tap callbacks for a single input node are serialized by AVAudioEngine
+/// - The mutable working buffers (`realPart`, `imagPart`, `window`) are only
+///   accessed from the audio tap callback via `processAudioBuffer`
+/// - Never shared across multiple `AudioEngineRecorder` instances
 final class FFTProcessor: @unchecked Sendable {
     // MARK: - Configuration
 
