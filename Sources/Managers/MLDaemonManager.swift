@@ -52,9 +52,7 @@ internal actor MLDaemonManager {
     private var stdoutReaderTask: Task<Void, Never>?
     private var pythonExecutable: URL?
     private var scriptLocation: URL?
-#if DEBUG || TESTING
     private var testResponder: ((String, [String: Any]) throws -> Any)?
-#endif
 
     // MARK: - Public API
 
@@ -96,7 +94,6 @@ internal actor MLDaemonManager {
     // MARK: - Core JSON-RPC plumbing
 
     private func sendRequest<Response: Decodable>(method: String, params: [String: Any]) async throws -> Response {
-#if DEBUG || TESTING
         if let testResponder {
             let resultObject = try testResponder(method, params)
             let data = try JSONSerialization.data(withJSONObject: resultObject, options: [])
@@ -106,7 +103,6 @@ internal actor MLDaemonManager {
                 throw MLDaemonError.invalidResponse(error.localizedDescription)
             }
         }
-#endif
         try ensureDaemonRunning()
 
         let requestID = nextRequestID
@@ -363,7 +359,6 @@ internal actor MLDaemonManager {
     }
 }
 
-#if DEBUG || TESTING
 internal extension MLDaemonManager {
     func setTestResponder(_ responder: ((String, [String: Any]) throws -> Any)?) {
         testResponder = responder
@@ -385,4 +380,3 @@ internal extension MLDaemonManager {
         testResponder = nil
     }
 }
-#endif

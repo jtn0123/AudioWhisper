@@ -822,7 +822,6 @@ internal struct DashboardProvidersView: View {
 }
 
 // MARK: - Testable Helpers
-#if DEBUG || TESTING
 extension DashboardProvidersView {
     /// Returns the status info tuple for a given provider
     /// Used for testing status badge logic
@@ -877,4 +876,3 @@ extension DashboardProvidersView {
         return mode == .cloud
     }
 }
-#endif

@@ -481,13 +481,20 @@ final class DashboardCorrectionViewTests: XCTestCase {
 
     func testCleanupButtonPluralText() {
         let count = 2
-        let text = "Clean up \(count) old model\(count == 1 ? "" : "s")"
+        let suffix = pluralSuffix(for: count)
+        let text = "Clean up \(count) old model\(suffix)"
         XCTAssertEqual(text, "Clean up 2 old models")
     }
 
     func testCleanupButtonSingularText() {
         let count = 1
-        let text = "Clean up \(count) old model\(count == 1 ? "" : "s")"
+        let suffix = pluralSuffix(for: count)
+        let text = "Clean up \(count) old model\(suffix)"
         XCTAssertEqual(text, "Clean up 1 old model")
+    }
+
+    // Helper to avoid compile-time constant folding warnings
+    private func pluralSuffix(for count: Int) -> String {
+        count == 1 ? "" : "s"
     }
 }

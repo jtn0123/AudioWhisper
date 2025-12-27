@@ -543,7 +543,6 @@ internal struct DashboardCorrectionView: View {
 }
 
 // MARK: - Testable Helpers
-#if DEBUG || TESTING
 extension DashboardCorrectionView {
     /// Returns the semantic correction mode from raw string
     static func testableParseMode(from rawValue: String) -> SemanticCorrectionMode? {
@@ -613,4 +612,3 @@ extension DashboardCorrectionView {
         180
     }
 }
-#endif

@@ -432,10 +432,9 @@ final class ContentViewRecordingTests: XCTestCase {
         var errorMessage: String?
 
         // Simulate retryLastTranscription check
-        guard lastAudioURL != nil else {
+        if lastAudioURL == nil {
             errorMessage = "No audio file available to retry. Please record again."
             showError = true
-            return
         }
 
         XCTAssertTrue(showError, "Should show error when no audio URL")
@@ -448,11 +447,10 @@ final class ContentViewRecordingTests: XCTestCase {
         var errorMessage: String?
         var lastAudioURL: URL? = nonExistentURL
 
-        guard FileManager.default.fileExists(atPath: nonExistentURL.path) else {
+        if !FileManager.default.fileExists(atPath: nonExistentURL.path) {
             errorMessage = "Audio file no longer exists. Please record again."
             showError = true
             lastAudioURL = nil
-            return
         }
 
         XCTAssertTrue(showError, "Should show error when file doesn't exist")
@@ -461,18 +459,19 @@ final class ContentViewRecordingTests: XCTestCase {
     }
 
     func testRetryBlockedWhileProcessing() async throws {
-        let isProcessing = true
         var retryAttempted = false
 
-        // Simulate retry guard
-        guard !isProcessing else {
-            retryAttempted = false
-            return
+        // Simulate retry guard - only attempt if not processing
+        if !isCurrentlyProcessing(true) {
+            retryAttempted = true
         }
 
-        retryAttempted = true
-
         XCTAssertFalse(retryAttempted, "Retry should be blocked while processing")
+    }
+
+    // Helper to avoid compile-time constant folding
+    private func isCurrentlyProcessing(_ value: Bool) -> Bool {
+        value
     }
 
     // MARK: - Error Handling Tests

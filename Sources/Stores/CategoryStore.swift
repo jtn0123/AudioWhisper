@@ -100,11 +100,9 @@ internal final class CategoryStore {
     }
 }
 
-#if DEBUG || TESTING
 extension CategoryStore {
     func reloadForPreviews() {
         categories = CategoryDefinition.defaults
         rebuildIndex()
     }
 }
-#endif

@@ -16,14 +16,14 @@ internal struct DashboardHomeView: View {
 
     init(
         selectedNav: Binding<DashboardNavItem>,
-        metricsStore: UsageMetricsStore = .shared,
-        sourceUsageStore: SourceUsageStore = .shared,
-        dataManager: DataManagerProtocol = DataManager.shared
+        metricsStore: UsageMetricsStore? = nil,
+        sourceUsageStore: SourceUsageStore? = nil,
+        dataManager: DataManagerProtocol? = nil
     ) {
         self._selectedNav = selectedNav
-        self._metricsStore = State(initialValue: metricsStore)
-        self._sourceUsageStore = State(initialValue: sourceUsageStore)
-        self.dataManager = dataManager
+        self._metricsStore = State(initialValue: metricsStore ?? .shared)
+        self._sourceUsageStore = State(initialValue: sourceUsageStore ?? .shared)
+        self.dataManager = dataManager ?? DataManager.shared
     }
     
     var body: some View {
@@ -746,7 +746,6 @@ private extension DashboardHomeView {
 }
 
 // MARK: - Testable Helpers
-#if DEBUG || TESTING
 extension DashboardHomeView {
     /// Testable heatmap color calculation
     static func testableHeatmapColor(for wordCount: Int) -> Color {
@@ -854,7 +853,6 @@ extension DashboardHomeView {
         }
     }
 }
-#endif
 
 #Preview("Dashboard Home") {
     DashboardHomeView(selectedNav: .constant(.dashboard))
