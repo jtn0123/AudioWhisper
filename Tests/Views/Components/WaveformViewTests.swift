@@ -64,9 +64,11 @@ final class WaveformViewTests: XCTestCase {
     // MARK: - SpectrumWaveformView Tests
 
     func testSpectrumGainBoostApplied() {
-        // 70% gain boost (multiply by 1.7)
-        XCTAssertEqual(SpectrumWaveformView.testableApplyGainBoost(0.5), 0.85, accuracy: 0.001)
-        XCTAssertEqual(SpectrumWaveformView.testableApplyGainBoost(0.4), 0.68, accuracy: 0.001)
+        // 138% gain boost (multiply by 2.38), clamped to 1.0
+        // 0.5 * 2.38 = 1.19 → clamped to 1.0
+        XCTAssertEqual(SpectrumWaveformView.testableApplyGainBoost(0.5), 1.0, accuracy: 0.001)
+        // 0.4 * 2.38 = 0.952
+        XCTAssertEqual(SpectrumWaveformView.testableApplyGainBoost(0.4), 0.952, accuracy: 0.001)
     }
 
     func testSpectrumGainBoostClampedAtMax() {

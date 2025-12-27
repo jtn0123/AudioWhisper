@@ -173,9 +173,10 @@ internal extension AppDelegate {
             guard let button = button else { return }
 
             animState.isRedState.toggle()
+            let showRed = animState.isRedState  // Capture value before async dispatch
 
             Task { @MainActor in
-                button.image = animState.isRedState ? redOutlineImage : blackImage
+                button.image = showRed ? redOutlineImage : blackImage
             }
         }
 

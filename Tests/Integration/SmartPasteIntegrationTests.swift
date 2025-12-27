@@ -32,14 +32,21 @@ final class SmartPasteIntegrationTests: XCTestCase {
         try? await Task.sleep(for: .milliseconds(100))
     }
 
+    /// Creates a unique named pasteboard to avoid race conditions with parallel tests
+    private func createTestPasteboard() -> NSPasteboard {
+        let name = NSPasteboard.Name("SmartPasteTest-\(UUID().uuidString)")
+        return NSPasteboard(name: name)
+    }
+
     // MARK: - Clipboard Integration Tests
 
     func testTextCopiedToClipboard() {
         // Given
         let testText = "This is test transcription text for clipboard"
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
 
         // When - Copy to pasteboard
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(testText, forType: .string)
 
@@ -50,7 +57,9 @@ final class SmartPasteIntegrationTests: XCTestCase {
 
     func testClipboardClearedBeforeNewContent() {
         // Given - Existing content in clipboard
-        let pasteboard = NSPasteboard.general
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
+
         pasteboard.clearContents()
         pasteboard.setString("Old content", forType: .string)
 
@@ -67,9 +76,10 @@ final class SmartPasteIntegrationTests: XCTestCase {
     func testEmptyTextHandledGracefully() {
         // Given
         let emptyText = ""
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
 
         // When
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         let success = pasteboard.setString(emptyText, forType: .string)
 
@@ -82,9 +92,10 @@ final class SmartPasteIntegrationTests: XCTestCase {
     func testLongTextCopiedSuccessfully() {
         // Given - Very long text
         let longText = String(repeating: "This is a long sentence. ", count: 1000)
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
 
         // When
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(longText, forType: .string)
 
@@ -96,11 +107,15 @@ final class SmartPasteIntegrationTests: XCTestCase {
     func testUnicodeTextCopiedCorrectly() {
         // Given - Unicode text
         let unicodeText = "Hello 世界! Привет! 🎉 émojis and ñ special chars"
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
 
         // When
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(unicodeText, forType: .string)
+        let success = pasteboard.setString(unicodeText, forType: .string)
+
+        // Verify the write succeeded
+        XCTAssertTrue(success, "Pasteboard write should succeed")
 
         // Then
         let clipboardText = pasteboard.string(forType: .string)
@@ -259,9 +274,10 @@ final class SmartPasteIntegrationTests: XCTestCase {
     func testTranscriptionToClipboardFlow() {
         // Given - Simulated transcription result
         let transcriptionResult = "Hello, this is my voice transcription"
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
 
         // When - Copy to clipboard (as the app does)
-        let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         let copySuccess = pasteboard.setString(transcriptionResult, forType: .string)
 
@@ -272,7 +288,9 @@ final class SmartPasteIntegrationTests: XCTestCase {
 
     func testMultipleTranscriptionsReplaceClipboard() {
         // Given - First transcription
-        let pasteboard = NSPasteboard.general
+        let pasteboard = createTestPasteboard()
+        defer { pasteboard.releaseGlobally() }
+
         pasteboard.clearContents()
         pasteboard.setString("First transcription", forType: .string)
 

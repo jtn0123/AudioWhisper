@@ -36,6 +36,11 @@ def main():
         print(json.dumps({"success": False, "error": f"Failed to read input: {e}"}))
         return 3
 
+    # Early exit for empty text - don't waste resources loading model
+    if not user_text:
+        print(json.dumps({"success": True, "text": ""}))
+        return 0
+
     try:
         # Strictly offline here: downloads must be done in Settings
         prev_hf_offline = os.environ.get("HF_HUB_OFFLINE")

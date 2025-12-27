@@ -7,9 +7,10 @@ final class AppCategoryManagerTests: XCTestCase {
     private var defaults: UserDefaults!
     private var categoryStore: CategoryStore!
     private var tempURL: URL!
-    private let suiteName = "com.audiowhisper.tests.categories"
+    private var suiteName: String!
 
     override func setUp() async throws {
+        suiteName = "com.audiowhisper.tests.categories-\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suiteName)
         defaults.removePersistentDomain(forName: suiteName)
 

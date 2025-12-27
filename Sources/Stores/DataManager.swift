@@ -243,24 +243,30 @@ internal final class DataManager: DataManagerProtocol {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
         }
-        
+
         do {
             let context = ModelContext(container)
-            
-            // Find the record in the context by fetching all and filtering
-            let allRecords = try context.fetch(FetchDescriptor<TranscriptionRecord>())
-            guard let recordToDelete = allRecords.first(where: { $0.id == record.id }) else {
+
+            // Use predicate to find specific record instead of fetching all
+            let targetId = record.id
+            var descriptor = FetchDescriptor<TranscriptionRecord>(
+                predicate: #Predicate { $0.id == targetId }
+            )
+            descriptor.fetchLimit = 1
+
+            let matches = try context.fetch(descriptor)
+            guard let recordToDelete = matches.first else {
                 Logger.dataManager.warning("Record with ID \(record.id) not found for deletion")
                 return
             }
-            
+
             context.delete(recordToDelete)
             try context.save()
 
             Logger.dataManager.info("Deleted transcription record with ID: \(record.id)")
 
             // Rebuild usage metrics and source usage stats from remaining records
-            let remainingRecords = allRecords.filter { $0.id != record.id }
+            let remainingRecords = try context.fetch(FetchDescriptor<TranscriptionRecord>())
             UsageMetricsStore.shared.rebuild(using: remainingRecords)
             SourceUsageStore.shared.rebuild(using: remainingRecords)
 

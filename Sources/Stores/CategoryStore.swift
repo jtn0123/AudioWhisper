@@ -76,7 +76,8 @@ internal final class CategoryStore {
                 rebuildIndex()
             }
         } catch {
-            // If loading fails, keep defaults and ignore.
+            // Log load failure but keep defaults - file may be corrupted
+            Logger.app.warning("CategoryStore: Failed to load categories from disk: \(error.localizedDescription)")
         }
     }
 

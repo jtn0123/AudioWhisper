@@ -33,12 +33,8 @@ internal class ModelManager {
         }
     }
     
-    deinit {
-        Task { @MainActor [weak self] in
-            self?.fileSystemWatcher?.cancel()
-            self?.refreshTimer?.invalidate()
-        }
-    }
+    // Note: deinit cleanup removed - this is a singleton that effectively never deinits.
+    // The fileSystemWatcher and refreshTimer are cleaned up when the app terminates.
     
     nonisolated func isModelDownloaded(_ model: WhisperModel) async -> Bool {
         // Only check if model files exist on disk - DO NOT initialize WhisperKit
@@ -145,7 +141,8 @@ internal class ModelManager {
             }
             
             // Clear the ready stage after a moment
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
                 ModelManager.shared.downloadStages.removeValue(forKey: model)
             }
             
@@ -162,7 +159,8 @@ internal class ModelManager {
             }
             
             // Clear the error stage after a moment
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(5))
                 ModelManager.shared.downloadStages.removeValue(forKey: model)
             }
             

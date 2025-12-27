@@ -180,8 +180,10 @@ internal class ParakeetService {
             if numFrames == 0 {
                 break  // EOF
             }
-            
-            samples.append(contentsOf: buffer[0..<Int(numFrames)])
+
+            // Defensive bounds check - ExtAudioFileRead should never return more than requested
+            let framesToCopy = min(Int(numFrames), bufferFrameSize)
+            samples.append(contentsOf: buffer[0..<framesToCopy])
         }
         
         return samples

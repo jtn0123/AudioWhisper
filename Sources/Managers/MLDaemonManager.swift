@@ -153,9 +153,9 @@ internal actor MLDaemonManager {
             // Start timeout task
             Task {
                 try? await Task.sleep(nanoseconds: timeoutNanos)
-                // Check if request is still pending (wasn't completed)
-                if self.pending[requestID] != nil {
-                    self.removePendingRequest(requestID)
+                // Atomically check-and-remove: only resume if WE removed it
+                // This prevents double-resume if response arrives simultaneously
+                if self.pending.removeValue(forKey: requestID) != nil {
                     continuation.resume(throwing: MLDaemonError.timeout)
                 }
             }
