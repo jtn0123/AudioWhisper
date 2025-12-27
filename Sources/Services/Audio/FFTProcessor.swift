@@ -160,8 +160,8 @@ final class FFTProcessor: @unchecked Sendable {
             vDSP_sve(Array(magnitudes[lowBin...highBin]), 1, &sum, vDSP_Length(highBin - lowBin + 1))
             let average = sum / Float(highBin - lowBin + 1)
 
-            // Apply logarithmic scaling for perceptual uniformity
-            let logValue = log10(1 + average * 10) / log10(11)
+            // Apply logarithmic scaling for perceptual uniformity (50x boost for better visibility)
+            let logValue = log10(1 + average * 50) / log10(51)
 
             // Clamp to 0-1 range
             bands[bandIndex] = min(1.0, max(0.0, logValue))

@@ -404,22 +404,27 @@ internal extension ContentView {
                         }
                     }
                 } else {
-                    // Wait for semantic correction before showing confirmation to ensure
-                    // pasteboard content matches displayed text (bug fix)
-                    let capturedBundleId2: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
-                    let corrected = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId2)
-                    let wordCount = UsageMetricsStore.estimatedWordCount(for: corrected)
-                    let characterCount = corrected.count
+                    // Only apply semantic correction if mode is not off
+                    let finalText: String
+                    if mode != .off {
+                        let capturedBundleId2: String? = await MainActor.run { currentSourceAppInfo().bundleIdentifier }
+                        finalText = await semanticCorrectionService.correct(text: text, providerUsed: transcriptionProvider, sourceAppBundleId: capturedBundleId2)
+                    } else {
+                        finalText = text  // Skip semantic correction entirely when off
+                    }
+
+                    let wordCount = UsageMetricsStore.estimatedWordCount(for: finalText)
+                    let characterCount = finalText.count
 
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(corrected, forType: .string)
+                    NSPasteboard.general.setString(finalText, forType: .string)
 
                     let shouldSave3: Bool = await MainActor.run { DataManager.shared.isHistoryEnabled }
                     if shouldSave3 {
                         let modelUsed: String? = await MainActor.run { (transcriptionProvider == .local) ? self.selectedWhisperModel.rawValue : nil }
                         let sourceInfo: SourceAppInfo = await MainActor.run { self.currentSourceAppInfo() }
                         let record = TranscriptionRecord(
-                            text: corrected,
+                            text: finalText,
                             provider: transcriptionProvider,
                             duration: nil,
                             modelUsed: modelUsed,
@@ -435,7 +440,7 @@ internal extension ContentView {
                     await MainActor.run {
                         transcriptionStartTime = nil
                         isProcessing = false  // Bug fix: Reset flag when smart paste disabled
-                        showConfirmationAndPaste(text: corrected)
+                        showConfirmationAndPaste(text: finalText)
                     }
                 }
             } catch is CancellationError {
