@@ -90,30 +90,34 @@ jobs:
         run: |
           echo "=== Pre-test diagnostics ==="
           echo "Listing available tests..."
-          swift test list 2>&1 | head -100 || echo "Warning: Could not list tests"
+          swift test list 2>&1 | tee test_list.txt | head -100 || echo "Warning: Could not list tests"
           echo ""
-          echo "=== Running tests ==="
+
+          # Try running a simple test first to verify test infrastructure
+          echo "=== Trying single test run ==="
+          swift test --filter "AppStatusTests" 2>&1 | head -50 || echo "Simple test failed"
+          echo ""
+
+          echo "=== Running all tests ==="
           set +e
-          # Run tests without --parallel as it can cause issues in CI
           swift test 2>&1 | tee test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
-          # Filter and display cleaned output
-          grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" test_output.txt || true
 
-          if [ $TEST_EXIT_CODE -ne 0 ]; then
-            echo ""
-            echo "=== TEST FAILURES ==="
-            echo "## Test Failures" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            # Extract test failures and errors
-            grep -E "(error:|failed:|✗|FAILED|Test Case .* failed)" test_output.txt | tail -50 >> $GITHUB_STEP_SUMMARY || echo "No specific failures found" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Full Output (last 100 lines)" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -100 test_output.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
+          echo ""
+          echo "=== Test output summary ==="
+          echo "Exit code: $TEST_EXIT_CODE"
+          echo "Output size: $(wc -c < test_output.txt) bytes"
+          echo "Last 50 lines:"
+          tail -50 test_output.txt
+
+          # Write to summary
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "Exit code: $TEST_EXIT_CODE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat test_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
           exit $TEST_EXIT_CODE
         env:
           OS_ACTIVITY_MODE: disable
@@ -124,7 +128,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-logs
-          path: test_output.txt
+          path: |
+            test_output.txt
+            test_list.txt
           retention-days: 5
 
   lint:
