@@ -88,40 +88,25 @@ jobs:
 
       - name: Run Tests
         run: |
-          echo "=== Pre-test diagnostics ==="
-          echo "Listing available tests..."
-          swift test list 2>&1 | tee test_list.txt | head -100 || echo "Warning: Could not list tests"
-          echo ""
-
-          # Try running a simple test first to verify test infrastructure
-          echo "=== Trying single test run ==="
-          swift test --filter "AppStatusTests" 2>&1 | head -50 || echo "Simple test failed"
-          echo ""
-
-          echo "=== Running all tests with verbose output ==="
-          set +e
-          # Use verbose mode to get more detailed output
-          swift test -v 2>&1 | tee test_output.txt
-          TEST_EXIT_CODE=${PIPESTATUS[0]}
+          # Simple test run with all output captured
+          echo "Running swift test..."
+          swift test > test_output.txt 2>&1 || TEST_FAILED=1
 
           echo ""
-          echo "=== Test output summary ==="
-          echo "Exit code: $TEST_EXIT_CODE"
-          echo "Output size: $(wc -c < test_output.txt) bytes"
-          echo "Last 50 lines:"
-          tail -50 test_output.txt
+          echo "=== TEST OUTPUT ==="
+          cat test_output.txt
+          echo ""
+          echo "=== END TEST OUTPUT ==="
 
-          # Write to summary
-          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "Exit code: $TEST_EXIT_CODE" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat test_output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Also show file size
+          echo "Output file size: $(wc -c < test_output.txt) bytes"
+          echo "Output line count: $(wc -l < test_output.txt) lines"
 
-          exit $TEST_EXIT_CODE
+          if [ -n "$TEST_FAILED" ]; then
+            echo "Tests failed with errors shown above"
+            exit 1
+          fi
         env:
-          OS_ACTIVITY_MODE: disable
           CI: "true"
 
       - name: Upload test logs on failure
