@@ -88,24 +88,23 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Simple test run with all output captured
-          echo "Running swift test..."
-          swift test > test_output.txt 2>&1 || TEST_FAILED=1
+          echo "Step 1: List tests to verify test discovery works"
+          swift test list 2>&1 || echo "Warning: Test list failed"
+          echo ""
+
+          echo "Step 2: Try running a single simple test"
+          swift test --filter "UtilityTests" 2>&1 || echo "Warning: Single test failed"
+          echo ""
+
+          echo "Step 3: Run all tests"
+          swift test 2>&1 | tee test_output.txt
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
 
           echo ""
-          echo "=== TEST OUTPUT ==="
-          cat test_output.txt
-          echo ""
-          echo "=== END TEST OUTPUT ==="
-
-          # Also show file size
+          echo "Test exit code: $TEST_EXIT_CODE"
           echo "Output file size: $(wc -c < test_output.txt) bytes"
-          echo "Output line count: $(wc -l < test_output.txt) lines"
 
-          if [ -n "$TEST_FAILED" ]; then
-            echo "Tests failed with errors shown above"
-            exit 1
-          fi
+          exit $TEST_EXIT_CODE
         env:
           CI: "true"
 
