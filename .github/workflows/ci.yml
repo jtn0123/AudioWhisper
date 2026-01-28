@@ -43,6 +43,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      - name: Generate VersionInfo.swift
+        run: |
+          # Generate VersionInfo.swift from template (required for build)
+          mkdir -p Sources/Utilities
+          GIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "ci-build")
+          BUILD_DATE=$(date '+%Y-%m-%d')
+          VERSION=$(cat VERSION 2>/dev/null | tr -d '[:space:]' || echo "0.0.0")
+          sed -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$BUILD_DATE/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+          echo "Generated VersionInfo.swift with version $VERSION"
+
       - name: Build
         run: swift build
 
