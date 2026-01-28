@@ -57,7 +57,18 @@ jobs:
           echo "Generated VersionInfo.swift with version $VERSION"
 
       - name: Build
-        run: swift build
+        run: |
+          echo "=== Starting Build ==="
+          echo "Contents of Sources/Utilities/:"
+          ls -la Sources/Utilities/ || echo "Directory not found"
+          echo ""
+          echo "=== Running swift build with verbose output ==="
+          swift build -v 2>&1 || {
+            echo ""
+            echo "=== BUILD FAILED ==="
+            echo "Exit code: $?"
+            exit 1
+          }
 
       - name: Run Tests
         run: |
