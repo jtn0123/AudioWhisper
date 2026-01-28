@@ -88,7 +88,11 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Run tests and filter out macOS system framework noise
+          echo "=== Pre-test diagnostics ==="
+          echo "Listing available tests..."
+          swift test list 2>&1 | head -100 || echo "Warning: Could not list tests"
+          echo ""
+          echo "=== Running tests ==="
           set +e
           # Run tests without --parallel as it can cause issues in CI
           swift test 2>&1 | tee test_output.txt
