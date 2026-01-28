@@ -61,14 +61,30 @@ jobs:
           echo "=== Starting Build ==="
           echo "Contents of Sources/Utilities/:"
           ls -la Sources/Utilities/ || echo "Directory not found"
+          cat Sources/Utilities/VersionInfo.swift || echo "VersionInfo.swift not found"
           echo ""
-          echo "=== Running swift build with verbose output ==="
-          swift build -v 2>&1 || {
+          echo "=== Resolving Swift package dependencies ==="
+          swift package resolve 2>&1 | tee build_output.txt
+          echo ""
+          echo "=== Running swift build ==="
+          swift build 2>&1 | tee -a build_output.txt || {
             echo ""
             echo "=== BUILD FAILED ==="
-            echo "Exit code: $?"
+            echo "Build output saved to build_output.txt"
+            echo "## Build Failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -100 build_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             exit 1
           }
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: build_output.txt
+          retention-days: 5
 
       - name: Run Tests
         run: |
