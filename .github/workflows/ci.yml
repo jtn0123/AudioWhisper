@@ -90,7 +90,8 @@ jobs:
         run: |
           # Run tests and filter out macOS system framework noise
           set +e
-          swift test --parallel 2>&1 | tee test_output.txt
+          # Run tests without --parallel as it can cause issues in CI
+          swift test 2>&1 | tee test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           # Filter and display cleaned output
           grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" test_output.txt || true
