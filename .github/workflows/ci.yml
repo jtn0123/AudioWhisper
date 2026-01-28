@@ -98,9 +98,10 @@ jobs:
           swift test --filter "AppStatusTests" 2>&1 | head -50 || echo "Simple test failed"
           echo ""
 
-          echo "=== Running all tests ==="
+          echo "=== Running all tests with verbose output ==="
           set +e
-          swift test 2>&1 | tee test_output.txt
+          # Use verbose mode to get more detailed output
+          swift test -v 2>&1 | tee test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
 
           echo ""
