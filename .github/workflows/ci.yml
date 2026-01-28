@@ -89,15 +89,38 @@ jobs:
       - name: Run Tests
         run: |
           # Run tests and filter out macOS system framework noise
-          # Use a temp file to preserve exit code while filtering output
           set +e
-          swift test --parallel 2>&1 | tee /tmp/test_output.txt
+          swift test --parallel 2>&1 | tee test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           # Filter and display cleaned output
-          grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" /tmp/test_output.txt || true
+          grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" test_output.txt || true
+
+          if [ $TEST_EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "=== TEST FAILURES ==="
+            echo "## Test Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            # Extract test failures and errors
+            grep -E "(error:|failed:|✗|FAILED|Test Case .* failed)" test_output.txt | tail -50 >> $GITHUB_STEP_SUMMARY || echo "No specific failures found" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Full Output (last 100 lines)" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -100 test_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
           exit $TEST_EXIT_CODE
         env:
           OS_ACTIVITY_MODE: disable
+          CI: "true"
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: test_output.txt
+          retention-days: 5
 
   lint:
     runs-on: ubuntu-latest
