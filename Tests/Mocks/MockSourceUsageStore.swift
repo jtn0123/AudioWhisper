@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Protocol for SourceUsageStore to enable mocking
 @MainActor

@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for AppDelegate+Notifications.swift focusing on notification observers
 @MainActor

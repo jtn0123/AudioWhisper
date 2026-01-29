@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 class MockKeychainService: KeychainServiceProtocol {
     private var storage: [String: String] = [:]

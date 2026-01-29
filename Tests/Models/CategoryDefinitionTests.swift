@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - CategoryDefinition Basic Tests
 final class CategoryDefinitionBasicTests: XCTestCase {

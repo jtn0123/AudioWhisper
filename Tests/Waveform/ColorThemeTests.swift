@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - ColorTheme Tests
 final class ColorThemeTests: XCTestCase {

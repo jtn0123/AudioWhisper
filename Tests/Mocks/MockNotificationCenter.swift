@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Mock NotificationCenter for capturing and verifying posted notifications
 final class MockNotificationCenter: @unchecked Sendable {

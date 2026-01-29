@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 final class FFTProcessorTests: XCTestCase {
     var processor: FFTProcessor!

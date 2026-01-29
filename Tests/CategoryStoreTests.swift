@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 final class CategoryStoreTests: XCTestCase {
     private var tempStorageURL: URL!

@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Integration tests for the full transcription flow:
 /// AudioRecorder -> SpeechToTextService -> SemanticCorrectionService -> DataManager -> UsageMetricsStore

@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 @MainActor
 final class DataManagerIntegrationTests: XCTestCase {

@@ -7,6 +7,10 @@ let package = Package(
     platforms: [
         .macOS(.v14)
     ],
+    products: [
+        .library(name: "AudioWhisperLib", targets: ["AudioWhisperLib"]),
+        .executable(name: "AudioWhisper", targets: ["AudioWhisper"])
+    ],
     dependencies: [
         .package(url: "https://github.com/Alamofire/Alamofire.git", from: "5.10.2"),
         .package(url: "https://github.com/soffes/HotKey", from: "0.2.1"),
@@ -14,11 +18,12 @@ let package = Package(
         .package(url: "https://github.com/nalexn/ViewInspector", from: "0.10.0")
     ],
     targets: [
-        .executableTarget(
-            name: "AudioWhisper",
+        // Library target containing all app code (testable)
+        .target(
+            name: "AudioWhisperLib",
             dependencies: ["Alamofire", "HotKey", "WhisperKit"],
             path: "Sources",
-            exclude: ["VersionInfo.swift.template"],
+            exclude: ["VersionInfo.swift.template", "AudioWhisperApp"],
             resources: [
                 .process("Assets.xcassets"),
                 .copy("parakeet_transcribe_pcm.py"),
@@ -27,13 +32,19 @@ let package = Package(
                 .copy("verify_mlx.py"),
                 .copy("ml_daemon.py"),
                 .copy("ml"),
-                // Bundle additional resources like uv binary and lock files
                 .copy("Resources")
             ]
         ),
+        // Executable target with @main entry point
+        .executableTarget(
+            name: "AudioWhisper",
+            dependencies: ["AudioWhisperLib"],
+            path: "Sources/AudioWhisperApp"
+        ),
+        // Tests depend on the library, not the executable
         .testTarget(
             name: "AudioWhisperTests",
-            dependencies: ["AudioWhisper", "ViewInspector"],
+            dependencies: ["AudioWhisperLib", "ViewInspector"],
             path: "Tests",
             exclude: ["README.md", "test_parakeet_transcribe.py", "__Snapshots__"],
             resources: [

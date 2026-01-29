@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for ContentView recording state machine and transcription workflow
 /// Complements RecordingWorkflowEdgeCaseTests with additional coverage

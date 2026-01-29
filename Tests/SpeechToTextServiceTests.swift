@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 class SpeechToTextServiceTests: XCTestCase {
     var service: SpeechToTextService!

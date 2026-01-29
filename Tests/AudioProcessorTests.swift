@@ -1,7 +1,7 @@
 import XCTest
 import AVFoundation
 import AudioToolbox
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 final class AudioProcessorTests: XCTestCase {
 

@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for AppDelegate+Lifecycle.swift focusing on app initialization and termination
 @MainActor

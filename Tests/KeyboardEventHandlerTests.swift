@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 @MainActor
 final class KeyboardEventHandlerTests: XCTestCase {

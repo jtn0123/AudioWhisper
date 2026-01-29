@@ -86,22 +86,29 @@ jobs:
           path: build_output.txt
           retention-days: 5
 
-      # TODO: Tests are disabled pending resolution of CI environment issues
-      # Tests fail immediately (<5s) in GitHub Actions but pass locally with scripts/run-tests.sh
-      # Suspected cause: Testing an executableTarget with @main may not work reliably in SPM
-      # Recommended fix: Refactor to separate library target for testable code
-      # See: https://forums.swift.org/t/testing-executable-targets/50399
       - name: Run Tests
         run: |
-          echo "⚠️ Tests temporarily disabled in CI"
+          # Tests now use AudioWhisperLib (library target) instead of executable
+          # This avoids issues with @main entry point in test environment
+          export OS_ACTIVITY_MODE=disable
+          swift test -Xswiftc -DTESTING 2>&1 | tee test_output.txt
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
+
           echo ""
-          echo "Tests pass locally using: scripts/run-tests.sh"
-          echo "Tests fail in GitHub Actions environment with immediate exit."
-          echo ""
-          echo "Build verification completed successfully."
-          echo "Run 'make test' locally to verify tests pass."
+          echo "=== Test Summary ==="
+          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)" test_output.txt || true
+
+          exit $TEST_EXIT_CODE
         env:
           CI: "true"
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: test_output.txt
+          retention-days: 5
 
   lint:
     runs-on: ubuntu-latest

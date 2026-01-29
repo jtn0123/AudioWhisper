@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Integration tests for SmartPaste flow:
 /// Transcription -> PasteManager -> Clipboard -> Notification

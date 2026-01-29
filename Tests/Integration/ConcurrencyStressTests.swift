@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Stress tests for concurrent operations across key components.
 /// These tests verify thread safety and race condition handling.
