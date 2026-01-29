@@ -98,9 +98,14 @@ jobs:
           BUILD_EXIT=${PIPESTATUS[0]}
 
           if [ $BUILD_EXIT -ne 0 ]; then
-            echo "## Test Compilation Failed" >> $GITHUB_STEP_SUMMARY
+            echo ""
+            echo "=== Test Compilation Failed ==="
+            echo "Last 100 lines of output:"
+            tail -100 test_build.txt
+            echo ""
+            echo "## ❌ Test Compilation Failed" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -50 test_build.txt >> $GITHUB_STEP_SUMMARY
+            tail -100 test_build.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             exit $BUILD_EXIT
           fi
@@ -112,6 +117,14 @@ jobs:
           echo ""
           echo "## ✅ Test Compilation Passed" >> $GITHUB_STEP_SUMMARY
           echo "Tests compile successfully. Run \`make test\` locally to execute tests." >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-build-logs
+          path: test_build.txt
+          retention-days: 5
 
   lint:
     runs-on: ubuntu-latest
