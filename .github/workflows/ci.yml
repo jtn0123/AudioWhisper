@@ -88,40 +88,18 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Use xcodebuild for testing - better handles macOS app targets
-          echo "=== Generating Xcode project ==="
-          swift package generate-xcodeproj 2>&1 || echo "Warning: generate-xcodeproj failed, trying xcodebuild directly"
+          # Run using the same command as scripts/run-tests.sh
+          export OS_ACTIVITY_MODE=disable
+          swift test -Xswiftc -DTESTING 2>&1 | tee test_output.txt
+          TEST_EXIT_CODE=${PIPESTATUS[0]}
 
           echo ""
-          echo "=== Running tests with xcodebuild ==="
-          set -o pipefail
-          xcodebuild test \
-            -scheme AudioWhisper-Package \
-            -destination 'platform=macOS' \
-            -only-testing:AudioWhisperTests \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee test_output.txt || {
-              TEST_EXIT_CODE=$?
-              echo ""
-              echo "=== xcodebuild failed, trying swift test as fallback ==="
-              swift test -Xswiftc -DTESTING 2>&1 | tee test_output.txt
-              TEST_EXIT_CODE=${PIPESTATUS[0]}
-            }
+          echo "=== Test Summary ==="
+          # Show test results (filtered for readability)
+          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)" test_output.txt || true
 
-          echo ""
-          echo "=== Test Results ==="
-          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped|\*\* TEST)" test_output.txt || tail -100 test_output.txt
-
-          # Check if tests passed
-          if grep -q "TEST SUCCEEDED" test_output.txt || grep -q "passed" test_output.txt; then
-            echo "Tests passed!"
-            exit 0
-          else
-            echo "Tests failed"
-            exit 1
-          fi
+          exit $TEST_EXIT_CODE
         env:
-          OS_ACTIVITY_MODE: disable
           CI: "true"
 
       - name: Upload test logs on failure
@@ -129,9 +107,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-logs
-          path: |
-            test_output.txt
-            single_test.txt
+          path: test_output.txt
           retention-days: 5
 
   lint:
