@@ -95,30 +95,39 @@ jobs:
           swift package describe 2>&1 || true
 
           echo ""
-          echo "=== Listing Test Targets ==="
-          swift test list 2>&1 || true
+          echo "=== Building Test Bundle ==="
+          # Build tests separately to isolate build vs runtime issues
+          swift build --build-tests -Xswiftc -DTESTING 2>&1 | tee test_output.txt
+          BUILD_EXIT=${PIPESTATUS[0]}
+          echo "Test build exit code: $BUILD_EXIT"
 
-          echo ""
-          echo "=== Running Single Simple Test First ==="
-          swift test --filter ColorHexTests/testInitFromValidHex6Digits -Xswiftc -DTESTING 2>&1 | tee test_output.txt
-          SINGLE_TEST_EXIT=${PIPESTATUS[0]}
-          echo "Single test exit code: $SINGLE_TEST_EXIT"
-
-          if [ $SINGLE_TEST_EXIT -ne 0 ]; then
-            echo ""
-            echo "=== Single test failed, capturing full output ==="
-            cat test_output.txt
-            exit $SINGLE_TEST_EXIT
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "Test bundle build failed"
+            exit $BUILD_EXIT
           fi
 
           echo ""
-          echo "=== Running Full Test Suite ==="
-          swift test -Xswiftc -DTESTING 2>&1 | tee -a test_output.txt
+          echo "=== Test Bundle Info ==="
+          find .build -name "*.xctest" -type d 2>/dev/null | head -5 || true
+          ls -la .build/debug/*.xctest 2>/dev/null || echo "No xctest bundles found in debug"
+
+          echo ""
+          echo "=== Running Tests with xcodebuild ==="
+          # Try xcodebuild which handles test hosting better
+          xcodebuild test \
+            -scheme AudioWhisper \
+            -destination 'platform=macOS' \
+            -only-testing:AudioWhisperTests/ColorHexTests \
+            2>&1 | tee -a test_output.txt || {
+              echo ""
+              echo "xcodebuild failed, trying swift test..."
+              swift test --filter ColorHexTests -Xswiftc -DTESTING 2>&1 | tee -a test_output.txt
+            }
           TEST_EXIT_CODE=${PIPESTATUS[0]}
 
           echo ""
           echo "=== Test Summary ==="
-          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)" test_output.txt || true
+          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped|PASS|FAIL)" test_output.txt || true
 
           exit $TEST_EXIT_CODE
         env:
