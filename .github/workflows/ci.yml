@@ -88,24 +88,28 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Run tests with same flags as local test script
-          # -Xswiftc -DTESTING passes TESTING flag to compiler
-          # OS_ACTIVITY_MODE=disable suppresses macOS system framework noise
+          # Debug: Show what tests are available
+          echo "=== Listing available tests ==="
+          swift test list 2>&1 | head -30 || echo "Could not list tests"
+          echo ""
+
+          # Try running a single minimal test first
+          echo "=== Running single test ==="
+          swift test -Xswiftc -DTESTING --filter "TranscriptionErrorTests" 2>&1 | tee single_test.txt || true
+          echo ""
+          echo "Single test output:"
+          cat single_test.txt
+          echo ""
+
+          # Run all tests
+          echo "=== Running all tests ==="
           swift test -Xswiftc -DTESTING 2>&1 | tee test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
 
-          # Filter out macOS system framework noise for cleaner output
           echo ""
           echo "=== Test Results ==="
-          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)" test_output.txt || true
+          grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)" test_output.txt || cat test_output.txt
 
-          if [ $TEST_EXIT_CODE -ne 0 ]; then
-            echo ""
-            echo "## Test Failures" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            grep -E "(error:|failed:|FAILED|Test Case .* failed)" test_output.txt | tail -50 >> $GITHUB_STEP_SUMMARY || echo "See full output below" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          fi
           exit $TEST_EXIT_CODE
         env:
           OS_ACTIVITY_MODE: disable
@@ -116,7 +120,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-logs
-          path: test_output.txt
+          path: |
+            test_output.txt
+            single_test.txt
           retention-days: 5
 
   lint:
