@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Integration tests for KeychainService -> SpeechToTextService provider routing
 @MainActor

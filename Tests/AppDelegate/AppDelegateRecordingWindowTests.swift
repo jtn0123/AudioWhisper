@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for AppDelegate+RecordingWindow.swift focusing on window management
 @MainActor

@@ -1,6 +1,6 @@
 import XCTest
 import UniformTypeIdentifiers
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for AppDelegate+Menu.swift focusing on menu creation and actions
 @MainActor

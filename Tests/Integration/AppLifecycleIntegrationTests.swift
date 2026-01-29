@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Integration tests for app lifecycle events and state management
 @MainActor

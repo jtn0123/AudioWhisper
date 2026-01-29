@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Protocol for speech-to-text service to enable mocking
 protocol SpeechToTextServiceProtocol {

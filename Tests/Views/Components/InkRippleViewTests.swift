@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - InkRippleView Tests
 final class InkRippleViewTests: XCTestCase {

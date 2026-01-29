@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for Arch utility
 final class ArchTests: XCTestCase {

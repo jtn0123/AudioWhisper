@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - Settings and Configuration Notifications Tests
 final class SettingsNotificationNamesTests: XCTestCase {

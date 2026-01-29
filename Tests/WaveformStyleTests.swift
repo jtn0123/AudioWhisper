@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 final class WaveformStyleTests: XCTestCase {
     private let testDefaultsKey = "waveformStyle"

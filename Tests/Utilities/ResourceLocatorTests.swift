@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - ResourceLocator Tests
 final class ResourceLocatorTests: XCTestCase {

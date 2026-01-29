@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - WindowTitles Tests
 final class WindowTitlesTests: XCTestCase {

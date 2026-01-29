@@ -2,7 +2,7 @@ import XCTest
 import SwiftUI
 import HotKey
 import AppKit
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - HotKeyRecorderView Tests
 @MainActor

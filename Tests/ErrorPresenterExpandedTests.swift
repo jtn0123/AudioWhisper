@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Expanded tests for ErrorPresenter covering sanitization, pattern matching, and error handling
 @MainActor

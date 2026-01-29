@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - Audio Processing Performance Tests
 final class AudioProcessingPerformanceTests: XCTestCase {

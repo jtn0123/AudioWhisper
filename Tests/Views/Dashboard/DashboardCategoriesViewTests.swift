@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 final class DashboardCategoriesViewTests: XCTestCase {
 

@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - LocalizedStrings UI Tests
 final class LocalizedStringsUITests: XCTestCase {

@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 class TranscriptionTypesTests: XCTestCase {
     

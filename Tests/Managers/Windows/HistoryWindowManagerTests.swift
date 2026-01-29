@@ -1,7 +1,7 @@
 import XCTest
 import AppKit
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for HistoryWindowManager lifecycle and behavior
 /// Note: Window creation is skipped in test environment by design, so we test

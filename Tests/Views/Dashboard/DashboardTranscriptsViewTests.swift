@@ -1,7 +1,7 @@
 import XCTest
 import SwiftUI
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - DashboardTranscriptsView Tests
 @MainActor

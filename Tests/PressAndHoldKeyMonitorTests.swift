@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 final class PressAndHoldKeyMonitorTests: XCTestCase {
     private var addedEvents: [(NSEvent.EventTypeMask, (NSEvent) -> Void)] = []

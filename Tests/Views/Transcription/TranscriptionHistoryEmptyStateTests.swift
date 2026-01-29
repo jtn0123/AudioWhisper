@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - TranscriptionHistoryEmptyState Tests
 final class TranscriptionHistoryEmptyStateTests: XCTestCase {

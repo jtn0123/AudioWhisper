@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for ContentView lifecycle and notification observer management
 @MainActor

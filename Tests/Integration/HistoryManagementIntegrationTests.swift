@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Integration tests for DataManager <-> UsageMetricsStore interaction
 /// Verifies that saving/deleting records correctly updates metrics

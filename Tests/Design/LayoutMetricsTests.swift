@@ -1,6 +1,6 @@
 import XCTest
 import CoreGraphics
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - LayoutMetrics RecordingWindow Tests
 final class LayoutMetricsRecordingWindowTests: XCTestCase {

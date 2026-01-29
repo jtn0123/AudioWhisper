@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for LRU cache behavior in LocalWhisperService.
 /// Note: The WhisperKitCache is a private actor, so we test through the public interface

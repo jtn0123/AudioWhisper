@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - TranscriptionProvider Edge Cases
 final class TranscriptionProviderEdgeCaseTests: XCTestCase {

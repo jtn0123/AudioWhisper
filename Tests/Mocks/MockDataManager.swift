@@ -1,6 +1,6 @@
 import Foundation
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Mock implementation for DataManager to avoid SwiftData operations in tests
 @MainActor

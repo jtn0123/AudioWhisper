@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Protocol for MLXModelManager to enable mocking
 @MainActor

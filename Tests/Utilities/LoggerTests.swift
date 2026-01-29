@@ -1,6 +1,6 @@
 import XCTest
 import os.log
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - Logger Extension Tests
 final class LoggerExtensionTests: XCTestCase {

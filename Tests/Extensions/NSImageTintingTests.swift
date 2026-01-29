@@ -1,6 +1,6 @@
 import XCTest
 import Cocoa
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 // MARK: - NSImage+Tinting Tests
 final class NSImageTintingTests: XCTestCase {

@@ -1,6 +1,6 @@
 import Foundation
 import AppKit
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Mock PressAndHoldKeyMonitor for testing hotkey monitoring
 final class MockPressAndHoldKeyMonitor {

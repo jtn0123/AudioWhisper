@@ -1,6 +1,6 @@
 import Foundation
 import AppKit
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Mock WindowController for testing window operations without actual UI
 @MainActor

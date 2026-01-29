@@ -1,7 +1,7 @@
 import XCTest
 import SwiftUI
 import SwiftData
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 @MainActor
 final class TranscriptionHistoryViewTests: XCTestCase {

@@ -1,6 +1,6 @@
 import XCTest
 import AVFoundation
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 @MainActor
 final class AudioEngineRecorderTests: XCTestCase {

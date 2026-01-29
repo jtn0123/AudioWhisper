@@ -1,6 +1,6 @@
 import XCTest
 import AVFoundation
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for audio processing validation including format conversion,
 /// sample ranges, and edge cases in audio handling.

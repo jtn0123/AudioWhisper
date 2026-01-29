@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import AudioWhisperLib
+@testable import AudioWhisper
 
 /// Tests for ContentView paste coordination and target app selection
 /// Extends ContentViewPasteTests with additional coverage
