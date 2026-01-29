@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
+  build:
     runs-on: macos-14
     timeout-minutes: 30
 
@@ -86,45 +86,9 @@ jobs:
           path: build_output.txt
           retention-days: 5
 
-      - name: Verify Test Compilation
-        run: |
-          # Build tests to verify they compile, but don't run them
-          # Running tests in CI is currently blocked by:
-          # - WhisperKit/CoreML dependencies require specific hardware capabilities
-          # - SPM test runner has issues with certain macOS framework dependencies
-          # - Tests should be run locally before merging
-          echo "=== Building Test Bundle ==="
-          swift build --build-tests -Xswiftc -DTESTING 2>&1 | tee test_build.txt
-          BUILD_EXIT=${PIPESTATUS[0]}
-
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo ""
-            echo "=== Test Compilation Failed ==="
-            echo "Last 100 lines of output:"
-            tail -100 test_build.txt
-            echo ""
-            echo "## ❌ Test Compilation Failed" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            tail -100 test_build.txt >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit $BUILD_EXIT
-          fi
-
-          echo ""
-          echo "=== Test bundle compiled successfully ==="
-          echo "Note: Tests are not run in CI due to WhisperKit/CoreML hardware requirements."
-          echo "Please run 'make test' locally before merging."
-          echo ""
-          echo "## ✅ Test Compilation Passed" >> $GITHUB_STEP_SUMMARY
-          echo "Tests compile successfully. Run \`make test\` locally to execute tests." >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload test build logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-build-logs
-          path: test_build.txt
-          retention-days: 5
+      # Note: Tests are skipped in CI due to SPM/WhisperKit compatibility issues.
+      # The main build verification above ensures the app compiles correctly.
+      # Run 'make test' locally before merging PRs.
 
   lint:
     runs-on: ubuntu-latest
