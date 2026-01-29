@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Mock implementation for testing semantic correction flows
 final class MockSemanticCorrectionService: @unchecked Sendable {

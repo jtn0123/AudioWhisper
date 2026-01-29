@@ -1,7 +1,7 @@
 import XCTest
 import Foundation
 import WhisperKit
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - Thread-Safe Helper
 actor ActorBox<T> {

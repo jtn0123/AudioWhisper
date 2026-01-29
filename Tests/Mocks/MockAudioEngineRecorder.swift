@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Mock AudioEngineRecorder for testing recording operations
 @MainActor

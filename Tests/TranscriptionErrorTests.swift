@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Comprehensive tests for TranscriptionError enum
 final class TranscriptionErrorTests: XCTestCase {

@@ -1,6 +1,6 @@
 import XCTest
 import SwiftData
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Integration tests for cross-service error propagation
 /// Verifies that errors flow correctly through the service chain

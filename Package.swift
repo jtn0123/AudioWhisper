@@ -8,6 +8,7 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
+        .library(name: "AudioWhisperLib", targets: ["AudioWhisperLib"]),
         .executable(name: "AudioWhisper", targets: ["AudioWhisper"])
     ],
     dependencies: [
@@ -17,8 +18,9 @@ let package = Package(
         .package(url: "https://github.com/nalexn/ViewInspector", from: "0.10.0")
     ],
     targets: [
-        .executableTarget(
-            name: "AudioWhisper",
+        // Library target containing all app code (testable)
+        .target(
+            name: "AudioWhisperLib",
             dependencies: ["Alamofire", "HotKey", "WhisperKit"],
             path: "Sources",
             exclude: ["VersionInfo.swift.template", "AudioWhisperApp"],
@@ -33,9 +35,16 @@ let package = Package(
                 .copy("Resources")
             ]
         ),
+        // Executable target with @main entry point
+        .executableTarget(
+            name: "AudioWhisper",
+            dependencies: ["AudioWhisperLib"],
+            path: "Sources/AudioWhisperApp"
+        ),
+        // Tests depend on the library, not the executable
         .testTarget(
             name: "AudioWhisperTests",
-            dependencies: ["AudioWhisper", "ViewInspector"],
+            dependencies: ["AudioWhisperLib", "ViewInspector"],
             path: "Tests",
             exclude: ["README.md", "test_parakeet_transcribe.py", "__Snapshots__"],
             resources: [

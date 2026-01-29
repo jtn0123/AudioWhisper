@@ -1,7 +1,7 @@
 import XCTest
 import SwiftUI
 import AppKit
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for GlassBackground visual effect component
 @MainActor

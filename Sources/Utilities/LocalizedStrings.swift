@@ -1,7 +1,7 @@
 import Foundation
 
 /// Centralized localized strings for AudioWhisper
-internal enum LocalizedStrings {
+public enum LocalizedStrings {
     
     // MARK: - UI States
     enum UI {
@@ -116,25 +116,25 @@ internal enum LocalizedStrings {
     }
     
     // MARK: - Menu Items
-    enum Menu {
-        static let record = NSLocalizedString("menu.record", 
-            value: "Record", 
+    public enum Menu {
+        public static let record = NSLocalizedString("menu.record",
+            value: "Record",
             comment: "Menu item to start recording")
-        
-        static let settings = NSLocalizedString("menu.settings", 
-            value: "Settings...", 
+
+        public static let settings = NSLocalizedString("menu.settings",
+            value: "Settings...",
             comment: "Menu item to open settings")
-        
-        static let quit = NSLocalizedString("menu.quit", 
-            value: "Quit", 
+
+        public static let quit = NSLocalizedString("menu.quit",
+            value: "Quit",
             comment: "Menu item to quit the app")
-        
-        static let closeWindow = NSLocalizedString("menu.close_window", 
-            value: "Close Window", 
+
+        public static let closeWindow = NSLocalizedString("menu.close_window",
+            value: "Close Window",
             comment: "Menu item to close current window")
-        
-        static let history = NSLocalizedString("menu.history", 
-            value: "History...", 
+
+        public static let history = NSLocalizedString("menu.history",
+            value: "History...",
             comment: "Menu item to open transcription history")
     }
     

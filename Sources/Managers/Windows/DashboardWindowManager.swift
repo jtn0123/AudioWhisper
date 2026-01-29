@@ -11,8 +11,8 @@ internal protocol DashboardWindowManaging {
 
 /// Manages the dashboard window lifecycle
 @MainActor
-internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
-    static let shared = DashboardWindowManager()
+public final class DashboardWindowManager: NSObject, DashboardWindowManaging {
+    public static let shared = DashboardWindowManager()
     
     private weak var dashboardWindow: NSWindow?
     private var windowDelegate: DashboardWindowDelegate?
@@ -24,7 +24,7 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     }
     
     /// Shows the dashboard window, creating it if necessary or bringing existing one to front
-    func showDashboardWindow() {
+    public func showDashboardWindow() {
         if isTestEnvironment {
             return
         }

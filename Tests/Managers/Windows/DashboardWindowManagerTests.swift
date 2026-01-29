@@ -1,6 +1,6 @@
 import XCTest
 import AppKit
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for DashboardWindowManager lifecycle and behavior
 /// Note: Window creation is skipped in test environment by design, so we test

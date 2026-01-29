@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - LocalWhisperEntry Tests
 final class LocalWhisperEntryTests: XCTestCase {

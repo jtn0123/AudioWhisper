@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for AppDelegate+Hotkeys.swift focusing on hotkey and recording handling
 @MainActor

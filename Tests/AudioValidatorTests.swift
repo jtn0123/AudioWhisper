@@ -1,6 +1,6 @@
 import XCTest
 import AVFoundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 final class AudioValidatorTests: XCTestCase {
     

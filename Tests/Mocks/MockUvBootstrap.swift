@@ -1,5 +1,5 @@
 import Foundation
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Mock for UvBootstrap to avoid actual Python environment operations in tests
 enum MockUvBootstrap {

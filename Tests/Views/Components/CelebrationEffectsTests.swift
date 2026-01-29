@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - SuccessCelebration Tests
 final class SuccessCelebrationTests: XCTestCase {

@@ -1,7 +1,7 @@
 import XCTest
 import SwiftUI
 import SwiftData
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - TranscriptionRecordRow Tests
 @MainActor

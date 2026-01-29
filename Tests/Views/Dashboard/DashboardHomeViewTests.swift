@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for DashboardHomeView calculations and logic
 @MainActor

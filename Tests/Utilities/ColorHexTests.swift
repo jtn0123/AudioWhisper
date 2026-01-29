@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - Color+Hex Tests
 final class ColorHexTests: XCTestCase {

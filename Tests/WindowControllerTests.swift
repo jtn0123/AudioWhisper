@@ -1,7 +1,7 @@
 import XCTest
 import AppKit
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 final class WindowControllerTests: XCTestCase {
     

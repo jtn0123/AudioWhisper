@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - VisualIntensity Tests
 final class VisualIntensityTests: XCTestCase {

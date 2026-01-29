@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 @MainActor
 final class SourceUsageStoreTests: XCTestCase {

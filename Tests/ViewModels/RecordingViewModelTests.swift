@@ -1,5 +1,5 @@
 import XCTest
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 /// Tests for RecordingViewModel state management and behavior
 @MainActor

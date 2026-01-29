@@ -1,6 +1,6 @@
 import XCTest
 import SwiftUI
-@testable import AudioWhisper
+@testable import AudioWhisperLib
 
 // MARK: - RecordingButton Tests
 final class RecordingButtonTests: XCTestCase {
