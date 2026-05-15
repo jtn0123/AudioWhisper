@@ -32,6 +32,7 @@ internal enum DashboardTheme {
     static let accent = Color.accentColor
     static let accentLight = Color.accentColor.opacity(0.12)
     static let accentSubtle = Color.accentColor.opacity(0.06)
+    static let accentDeep = Color.accentColor.opacity(0.85)
     
     // Borders & Dividers - Standard macOS
     static let rule = Color(nsColor: .separatorColor)

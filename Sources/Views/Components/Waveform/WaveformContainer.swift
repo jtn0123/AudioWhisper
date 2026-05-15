@@ -1,7 +1,17 @@
 import SwiftUI
 
 /// Container view that switches between waveform visualization styles.
-/// Reads the style preference from UserDefaults and displays the appropriate visualization.
+///
+/// Visual direction "B · Frameless + glow" from the design canvas:
+/// - No rounded-rectangle stroke; the window sits on a soft outer shadow plus
+///   a state-aware colored glow (coral while listening, sage on success,
+///   faint coral on error).
+/// - A radial vignette recesses the waveform.
+/// - The status row floats — left shows the dot + label, right shows
+///   contextual info (live timer while recording, ⌘⇧Space keycap when ready,
+///   duration recap on success).
+/// - `.processing` swaps the breathing bars for a scanning shimmer so there
+///   is no fake waveform when there is no audio.
 struct WaveformContainer: View {
     let status: AppStatus
     let audioLevel: Float
@@ -32,44 +42,51 @@ struct WaveformContainer: View {
     @AppDefault(\.waveformStyle) private var waveformStyle
     @AppDefault(\.visualIntensity) private var visualIntensity
 
-    // Track previous status for transitions
     @State private var previousStatus: AppStatus?
     @State private var showError = false
+    @State private var recordingStartedAt: Date?
 
     // Colors (sourced from WaveformPalette so the theme owns the literals)
     private let bgColor = WaveformPalette.background
-    private let barColor = WaveformPalette.bar
+    private let creamColor = WaveformPalette.bar
+    private let creamDim = WaveformPalette.creamDim
     private let mutedColor = WaveformPalette.muted
     private let successColor = WaveformPalette.success
-    private let accentColor = WaveformPalette.accent
+    private let coralColor = WaveformPalette.accent
+    private let amberColor = WaveformPalette.amber
 
     private var style: WaveformStyle { waveformStyle }
-
     private var intensity: VisualIntensity { visualIntensity }
+
+    private let cornerRadius: CGFloat = 18
 
     var body: some View {
         Button(action: onTap) {
             ZStack {
-                // Glass background (expressive and bold only)
+                // Solid base
+                bgColor
+
+                // Glass background (expressive / bold intensities only)
                 if intensity.showGlass {
-                    GlassBackground(intensity: intensity, cornerRadius: 12)
+                    GlassBackground(intensity: intensity, cornerRadius: cornerRadius)
+                        .opacity(0.85)
                 }
 
-                // Solid background (with reduced opacity if glass is active)
-                bgColor.opacity(intensity.showGlass ? 0.7 : 1.0)
+                // Inner vignette — pulls focus to the waveform
+                vignette
 
-                // Waveform fills entire container edge-to-edge
-                waveformView
+                // Main visualization (bars / shimmer / glyph swap by state)
+                stateVisual
 
-                // Particle overlay for neon style (scaled by intensity)
+                // Particle overlay for neon style while recording
                 if style == .neon && isRecording {
                     ParticleOverlay(audioLevel: audioLevel, isActive: true)
                         .opacity(intensity.particleMultiplier)
                 }
 
-                // State transition effects. While processing, the wave
-                // animation is non-deterministic (driven by wall-clock
-                // time); allow tests to suppress it via processingAnimated.
+                // State transition flourish. While processing, the transition
+                // animation is non-deterministic; tests suppress it via
+                // processingAnimated.
                 if processingAnimated || !isProcessing {
                     StatusTransitionOverlay(
                         fromStatus: previousStatus,
@@ -85,41 +102,28 @@ struct WaveformContainer: View {
                         isActive: true,
                         successColor: successColor
                     )
+                    .opacity(0.7)
                 }
 
-                // Status text overlay at bottom
-                VStack {
-                    Spacer()
-                    HStack(spacing: 8) {
-                        if shouldShowDot {
-                            EnhancedStatusDot(
-                                color: dotColor,
-                                intensity: intensity,
-                                isPulsing: shouldPulseStatusDot
-                            )
-                        }
-
-                        Text(statusText)
-                            .font(.system(size: 12, weight: .medium, design: .default))
-                            .tracking(0.5)
-                            .foregroundStyle(statusTextColor)
-                    }
-                    .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 1)
-                    .padding(.bottom, 12)
-                }
+                // Status row — floats, no chrome
+                statusRow
             }
         }
         .buttonStyle(.plain)
-        .background(bgColor)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
-        )
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        // Outer soft shadow — always on
+        .shadow(color: .black.opacity(0.55), radius: 30, x: 0, y: 16)
+        // State-aware colored glow — gives each state its own ambient color
+        .shadow(color: glowColor, radius: glowRadius, x: 0, y: 0)
         .shake(when: showError, intensity: intensity)
         .onChange(of: status) { oldStatus, newStatus in
             previousStatus = oldStatus
-            // Trigger shake on error
+            if case .recording = newStatus {
+                recordingStartedAt = Date()
+            } else if case .recording = oldStatus {
+                // Hold the timestamp briefly so the success recap can show duration.
+                if !isSuccess { recordingStartedAt = nil }
+            }
             if case .error = newStatus {
                 showError = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -130,6 +134,48 @@ struct WaveformContainer: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Recording waveform")
         .accessibilityValue(isRecording ? "Active" : "Idle")
+    }
+
+    // MARK: - Chrome layers
+
+    @ViewBuilder
+    private var vignette: some View {
+        RadialGradient(
+            colors: [.clear, Color.black.opacity(0.55)],
+            center: .center,
+            startRadius: 60,
+            endRadius: 220
+        )
+        .blendMode(.multiply)
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - State visual
+
+    @ViewBuilder
+    private var stateVisual: some View {
+        switch status {
+        case .processing:
+            ProcessingShimmerView(color: creamColor.opacity(0.85), animated: processingAnimated)
+                .padding(.horizontal, 24)
+
+        case .success:
+            ZStack {
+                waveformView
+                    .opacity(0.35)
+                successBadge
+            }
+
+        case .error:
+            ZStack {
+                waveformView
+                    .opacity(0.25)
+                errorGlyph
+            }
+
+        default:
+            waveformView
+        }
     }
 
     // MARK: - Waveform View
@@ -143,38 +189,117 @@ struct WaveformContainer: View {
                 isActive: isRecording,
                 barColor: currentBarColor
             )
-
         case .neon:
             NeonWaveformView(
                 waveformSamples: waveformSamples,
                 audioLevel: audioLevel,
                 isActive: isRecording
             )
-
         case .spectrum:
             SpectrumWaveformView(
                 frequencyBands: frequencyBands,
                 isActive: isRecording
             )
-
-        case .circular:
-            CircularSpectrumView(
-                frequencyBands: frequencyBands,
-                isActive: isRecording
-            )
-
-        case .pulseRings:
-            PulseRingsView(
+        case .stream:
+            StreamWaveformView(
                 audioLevel: audioLevel,
                 isActive: isRecording
             )
-
-        case .particles:
-            ParticleFieldView(
+        case .constellation:
+            ConstellationWaveformView(
                 audioLevel: audioLevel,
-                frequencyBands: frequencyBands,
                 isActive: isRecording
             )
+        case .halo:
+            HaloWaveformView(
+                frequencyBands: frequencyBands,
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
+        case .dial:
+            DialWaveformView(
+                frequencyBands: frequencyBands,
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
+        case .heartbeat:
+            HeartbeatPulseView(
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
+        }
+    }
+
+    // MARK: - State badges
+
+    private var successBadge: some View {
+        Circle()
+            .fill(successColor.opacity(0.12))
+            .overlay(
+                Circle().stroke(successColor.opacity(0.4), lineWidth: 1)
+            )
+            .overlay(
+                Image(systemName: "checkmark")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(successColor)
+            )
+            .frame(width: 64, height: 64)
+            .shadow(color: successColor.opacity(0.35), radius: 18)
+    }
+
+    private var errorGlyph: some View {
+        Circle()
+            .stroke(coralColor.opacity(0.45), lineWidth: 1)
+            .overlay(
+                Image(systemName: "xmark")
+                    .font(.system(size: 24, weight: .regular))
+                    .foregroundStyle(coralColor)
+            )
+            .frame(width: 64, height: 64)
+    }
+
+    // MARK: - Status row
+
+    @ViewBuilder
+    private var statusRow: some View {
+        VStack {
+            Spacer()
+            HStack(alignment: .center, spacing: 0) {
+                // Left: dot + label
+                HStack(spacing: 8) {
+                    if shouldShowDot {
+                        EnhancedStatusDot(
+                            color: dotColor,
+                            intensity: intensity,
+                            isPulsing: shouldPulseStatusDot
+                        )
+                    }
+                    Text(statusText)
+                        .font(.system(size: 10, weight: .semibold, design: .default))
+                        .tracking(1.6)
+                        .foregroundStyle(statusTextColor)
+                }
+
+                Spacer()
+
+                // Right: contextual info
+                Group {
+                    switch status {
+                    case .recording:
+                        TimerLabel(start: recordingStartedAt)
+                    case .ready:
+                        HotkeyHint()
+                    case .success:
+                        SuccessRecapLabel(start: recordingStartedAt, wordCount: nil)
+                    default:
+                        EmptyView()
+                    }
+                }
+                .foregroundStyle(Color.white.opacity(0.32))
+            }
+            .padding(.horizontal, 18)
+            .padding(.bottom, 14)
+            .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 1)
         }
     }
 
@@ -219,92 +344,175 @@ struct WaveformContainer: View {
 
     private var dotColor: Color {
         switch status {
-        case .recording:
-            return accentColor
-        case .processing:
-            return barColor
-        case .success:
-            return successColor
-        case .error:
-            return accentColor
-        default:
-            return mutedColor
+        case .recording:          return coralColor
+        case .processing:         return amberColor
+        case .success:            return successColor
+        case .error:              return coralColor
+        case .ready:              return creamDim
+        case .permissionRequired: return mutedColor
         }
     }
 
     private var currentBarColor: Color {
         switch status {
-        case .recording:
-            return barColor
-        case .processing:
-            return mutedColor
-        case .success:
-            return successColor
-        case .error:
-            return accentColor
-        default:
-            return mutedColor.opacity(0.5)
+        case .recording:  return creamColor
+        case .processing: return creamColor.opacity(0.6)
+        case .success:    return successColor
+        case .error:      return coralColor
+        default:          return creamColor.opacity(0.35) // ready: barely-there breathing
         }
     }
 
     private var statusTextColor: Color {
         switch status {
-        case .recording:
-            return .white.opacity(0.85)
-        case .processing:
-            return .white.opacity(0.7)
-        case .success:
-            return successColor
-        case .error:
-            return accentColor
-        default:
-            return .white.opacity(0.5)
+        case .recording:  return .white.opacity(0.7)
+        case .processing: return .white.opacity(0.6)
+        case .success:    return successColor
+        case .error:      return coralColor
+        default:          return .white.opacity(0.45)
         }
     }
 
     private var statusText: String {
         switch status {
-        case .recording:
-            return "LISTENING"
-        case .processing(let message):
-            return message.uppercased()
-        case .success:
-            return "COPIED"
-        case .ready:
-            return "TAP TO RECORD"
-        case .permissionRequired:
-            return "PERMISSION NEEDED"
-        case .error(let message):
-            return message.uppercased()
+        case .recording:           return "LISTENING"
+        case .processing(let message): return message.uppercased()
+        case .success:             return "COPIED"
+        case .ready:               return "TAP TO RECORD"
+        case .permissionRequired:  return "PERMISSION NEEDED"
+        case .error(let message):  return message.uppercased()
+        }
+    }
+
+    // Glow color/strength keyed off state
+    private var glowColor: Color {
+        switch status {
+        case .recording: return coralColor.opacity(0.35)
+        case .success:   return successColor.opacity(0.30)
+        case .error:     return coralColor.opacity(0.22)
+        default:         return .clear
+        }
+    }
+
+    private var glowRadius: CGFloat {
+        switch status {
+        case .recording: return 48
+        case .success:   return 40
+        case .error:     return 32
+        default:         return 0
         }
     }
 }
 
-// MARK: - Pulse Animation Modifier
+// MARK: - ProcessingShimmerView
+// Seven horizontally-arranged dots with a soft falloff. Used in place of
+// breathing bars during .processing so we don't pretend to be listening.
 
-private struct PulseModifier: ViewModifier {
-    let isActive: Bool
-    @State private var isPulsing = false
+private struct ProcessingShimmerView: View {
+    let color: Color
+    let animated: Bool
+    @State private var phase: CGFloat = 0
 
-    func body(content: Content) -> some View {
-        content
-            .opacity(isActive ? (isPulsing ? 0.4 : 1.0) : 1.0)
-            .onAppear {
-                if isActive {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                        isPulsing = true
-                    }
+    var body: some View {
+        GeometryReader { geo in
+            HStack(spacing: max(8, geo.size.width * 0.04)) {
+                ForEach(0..<7, id: \.self) { i in
+                    Circle()
+                        .fill(color)
+                        .frame(width: 6, height: 6)
+                        .opacity(dotOpacity(for: i))
                 }
             }
-            .onChange(of: isActive) { _, active in
-                if active {
-                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                        isPulsing = true
-                    }
-                } else {
-                    isPulsing = false
-                }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .onAppear {
+            guard animated else { return }
+            withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) {
+                phase = 1
             }
+        }
+    }
+
+    private func dotOpacity(for i: Int) -> Double {
+        let t = (CGFloat(i) / 6.0)
+        let center = phase
+        let dist = abs(t - center.truncatingRemainder(dividingBy: 1.0))
+        let wrapped = min(dist, 1 - dist)
+        return Double(0.15 + 0.65 * exp(-pow(wrapped * 3.0, 2)))
+    }
+}
+
+// MARK: - TimerLabel
+// Live elapsed-time label shown to the right of LISTENING.
+
+private struct TimerLabel: View {
+    let start: Date?
+    @State private var now: Date = Date()
+
+    private let formatter: DateComponentsFormatter = {
+        let f = DateComponentsFormatter()
+        f.unitsStyle = .positional
+        f.zeroFormattingBehavior = .pad
+        f.allowedUnits = [.minute, .second]
+        return f
+    }()
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 11, weight: .regular, design: .monospaced))
+            .tracking(0.5)
+            .onAppear { now = Date() }
+            .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
+                now = Date()
+            }
+    }
+
+    private var label: String {
+        guard let start = start else { return "00:00" }
+        let dt = max(0, now.timeIntervalSince(start))
+        return formatter.string(from: dt) ?? "00:00"
+    }
+}
+
+// MARK: - HotkeyHint
+// Compact keycap shown on .ready so users know how to invoke the app.
+
+private struct HotkeyHint: View {
+    var body: some View {
+        Text("⌘⇧Space")
+            .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1.5)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.white.opacity(0.06))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                    )
+            )
+    }
+}
+
+// MARK: - SuccessRecapLabel
+// On success, show how long the recording was. Pass a word count from the
+// view-model if you want to surface "N words · M.Ms".
+
+private struct SuccessRecapLabel: View {
+    let start: Date?
+    let wordCount: Int?
+
+    var body: some View {
+        Text(label)
+            .font(.system(size: 10, weight: .regular))
+            .tracking(0.4)
+    }
+
+    private var label: String {
+        let dur = start.map { Date().timeIntervalSince($0) } ?? 0
+        let secs = String(format: "%.1fs", dur)
+        if let count = wordCount, count > 0 { return "\(count) words · \(secs)" }
+        return secs
     }
 }
 
@@ -318,41 +526,9 @@ private struct PulseModifier: ViewModifier {
         frequencyBands: Array(repeating: 0.5, count: 8),
         onTap: {}
     )
-    .frame(width: 280)
+    .frame(width: 280, height: 160)
     .padding(40)
     .background(Color.black)
-}
-
-#Preview("Container - Neon Recording") {
-    WaveformContainer(
-        status: .recording,
-        audioLevel: 0.6,
-        waveformSamples: (0..<64).map { _ in Float.random(in: -0.5...0.5) },
-        frequencyBands: Array(repeating: 0.5, count: 8),
-        onTap: {}
-    )
-    .frame(width: 280)
-    .padding(40)
-    .background(Color.black)
-    .onAppear {
-        AppDefaults.waveformStyle = .neon
-    }
-}
-
-#Preview("Container - Spectrum Recording") {
-    WaveformContainer(
-        status: .recording,
-        audioLevel: 0.6,
-        waveformSamples: [],
-        frequencyBands: [0.8, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15],
-        onTap: {}
-    )
-    .frame(width: 280)
-    .padding(40)
-    .background(Color.black)
-    .onAppear {
-        AppDefaults.waveformStyle = .spectrum
-    }
 }
 
 #Preview("Container - Ready") {
@@ -363,7 +539,7 @@ private struct PulseModifier: ViewModifier {
         frequencyBands: Array(repeating: 0, count: 8),
         onTap: {}
     )
-    .frame(width: 280)
+    .frame(width: 280, height: 160)
     .padding(40)
     .background(Color.black)
 }

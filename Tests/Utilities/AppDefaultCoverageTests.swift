@@ -43,7 +43,7 @@ final class AppDefaultCoverageTests: IsolatedXCTestCase {
     }
 
     func testWrapperRendersInsideHostingView() {
-        AppDefaults.waveformStyle = .pulseRings
+        AppDefaults.waveformStyle = .heartbeat
         AppDefaults.immediateRecording = true
         let hosting = NSHostingView(rootView: ProbeView())
         hosting.frame = CGRect(x: 0, y: 0, width: 120, height: 80)
@@ -54,7 +54,7 @@ final class AppDefaultCoverageTests: IsolatedXCTestCase {
     func testUpdateDoesNotCrashWhenStoreChanges() {
         let wrapper = AppDefault(\.waveformStyle)
         // Simulate an external store mutation then invoke update().
-        AppDefaults.waveformStyle = .circular
+        AppDefaults.waveformStyle = .halo
         wrapper.update()
         XCTAssertNotNil(wrapper)
     }

@@ -123,51 +123,6 @@ final class LocalizedStringsPerformanceTests: XCTestCase {
     }
 }
 
-// MARK: - Waveform Calculation Performance Tests
-final class WaveformCalculationPerformanceTests: XCTestCase {
-
-    func testCircularSpectrumBandIndexPerformance() {
-        measure {
-            for _ in 0..<10000 {
-                for index in 0..<16 {
-                    _ = CircularSpectrumView.testableBandIndex(for: index)
-                }
-            }
-        }
-    }
-
-    func testCircularSpectrumIdleBreathPerformance() {
-        measure {
-            for _ in 0..<1000 {
-                for phase in stride(from: 0.0, to: 6.28, by: 0.1) {
-                    for barIndex in 0..<16 {
-                        _ = CircularSpectrumView.testableIdleBreathValue(phase: phase, barIndex: barIndex)
-                    }
-                }
-            }
-        }
-    }
-
-    func testCircularSpectrumSmoothedLevelPerformance() {
-        measure {
-            for _ in 0..<10000 {
-                _ = CircularSpectrumView.testableSmoothedLevel(current: 0.3, target: 0.8)
-                _ = CircularSpectrumView.testableSmoothedLevel(current: 0.8, target: 0.3)
-            }
-        }
-    }
-
-    func testSpectrumGainBoostPerformance() {
-        measure {
-            for _ in 0..<10000 {
-                for value in stride(from: 0.0, to: 1.0, by: 0.01) {
-                    _ = SpectrumWaveformView.testableApplyGainBoost(Float(value))
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Encoding Performance Tests
 final class EncodingPerformanceTests: XCTestCase {
 
