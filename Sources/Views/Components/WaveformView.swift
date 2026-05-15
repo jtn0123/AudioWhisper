@@ -184,8 +184,8 @@ private struct WaveformBars: View {
         var newLevels: [CGFloat] = []
         let centerIndex = barCount / 2
         
-        for i in 0..<barCount {
-            let distanceFromCenter = abs(i - centerIndex)
+        for barIndex in 0..<barCount {
+            let distanceFromCenter = abs(barIndex - centerIndex)
             let normalizedDistance = CGFloat(distanceFromCenter) / CGFloat(centerIndex)
             
             // Base wave shape - higher in center, tapering to edges
@@ -197,13 +197,13 @@ private struct WaveformBars: View {
                 
                 // Add some randomness for organic feel
                 let noise = CGFloat.random(in: -0.15...0.15)
-                let variation = sin(CGFloat(i) * 0.5 + idlePhase * 2) * 0.2
+                let variation = sin(CGFloat(barIndex) * 0.5 + idlePhase * 2) * 0.2
                 
                 let height = minHeight + (maxHeight - minHeight) * baseShape * level * (1 + noise + variation)
                 newLevels.append(max(minHeight, min(maxHeight, height)))
             } else {
                 // Idle state - subtle breathing wave
-                let breathe = sin(idlePhase + CGFloat(i) * 0.15) * 0.5 + 0.5
+                let breathe = sin(idlePhase + CGFloat(barIndex) * 0.15) * 0.5 + 0.5
                 let idleHeight = minHeight + (maxHeight * 0.08) * baseShape * breathe
                 newLevels.append(idleHeight)
             }

@@ -141,11 +141,11 @@ final class KeychainServiceTests: XCTestCase {
         let group = DispatchGroup()
         let iterations = 50  // Reduced for faster test execution
 
-        for i in 0..<iterations {
+        for index in 0..<iterations {
             group.enter()
             DispatchQueue.global().async {
-                self.keychainService.saveQuietly("key-\(i)", service: self.testService, account: "account-\(i)")
-                _ = self.keychainService.getQuietly(service: self.testService, account: "account-\(i)")
+                self.keychainService.saveQuietly("key-\(index)", service: self.testService, account: "account-\(index)")
+                _ = self.keychainService.getQuietly(service: self.testService, account: "account-\(index)")
                 group.leave()
             }
         }
@@ -174,8 +174,8 @@ final class KeychainServiceTests: XCTestCase {
     }
 
     func testMultipleSavesToSameKey() throws {
-        for i in 0..<10 {
-            try keychainService.save("value-\(i)", service: testService, account: testAccount)
+        for index in 0..<10 {
+            try keychainService.save("value-\(index)", service: testService, account: testAccount)
         }
         let retrieved = try keychainService.get(service: testService, account: testAccount)
         XCTAssertEqual(retrieved, "value-9", "Last save should be the stored value")

@@ -224,8 +224,10 @@ final class DashboardHomeViewTests: XCTestCase {
         let calendar = Calendar.current
 
         for week in weeks {
-            for i in 1..<week.count {
-                let daysDiff = calendar.dateComponents([.day], from: week[i-1], to: week[i]).day
+            for dayIndex in 1..<week.count {
+                let daysDiff = calendar.dateComponents(
+                    [.day], from: week[dayIndex - 1], to: week[dayIndex]
+                ).day
                 XCTAssertEqual(daysDiff, 1, "Days within a week should be consecutive")
             }
         }

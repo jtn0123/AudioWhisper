@@ -172,7 +172,7 @@ final class VisualIntensityTests: IsolatedXCTestCase {
 
 // MARK: - VisualIntensity UserDefaults Tests
 final class VisualIntensityUserDefaultsTests: IsolatedXCTestCase {
-    // TODO(D1): `UserDefaults.visualIntensity` is an extension on
+    // NOTE(D1): `UserDefaults.visualIntensity` is an extension on
     // UserDefaults.standard. Once a non-standard accessor exists, route
     // writes through a UUID-scoped suite and re-enable isolation.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }

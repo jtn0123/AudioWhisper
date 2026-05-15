@@ -4,7 +4,7 @@ import XCTest
 /// Tests for AppDelegate+Lifecycle.swift focusing on app initialization and termination
 @MainActor
 final class AppDelegateLifecycleTests: IsolatedXCTestCase {
-    // TODO(D1): One test registers volatile defaults on
+    // NOTE(D1): One test registers volatile defaults on
     // UserDefaults.standard (does not mutate the persistent domain), but
     // the registration is visible via `bool(forKey:)`. Disable isolation
     // here until the lifecycle code accepts an injected UserDefaults.

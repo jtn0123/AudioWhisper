@@ -28,11 +28,9 @@ internal struct PythonDetector {
             "/usr/bin/python3"
         ]
         
-        for candidate in candidates {
-            if await checkPythonHasMLX(at: candidate) {
-                logger.info("Found Python with mlx-lm at: \(candidate.redactingHomeDirectory)")
-                return candidate
-            }
+        for candidate in candidates where await checkPythonHasMLX(at: candidate) {
+            logger.info("Found Python with mlx-lm at: \(candidate.redactingHomeDirectory)")
+            return candidate
         }
         
         // Try to find it via which command

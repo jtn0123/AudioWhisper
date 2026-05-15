@@ -213,42 +213,7 @@ extension DashboardProvidersView {
                 .foregroundStyle(DashboardTheme.inkMuted)
 
             // Action
-            if isDownloading {
-                ProgressView().controlSize(.small)
-            } else if isDownloaded {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(DashboardTheme.success)
-
-                    Button {
-                        Task { await mlxModelManager.deleteModel(model.repo) }
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 10))
-                            .foregroundStyle(DashboardTheme.inkMuted)
-                    }
-                    .buttonStyle(.plain)
-                }
-            } else {
-                Button {
-                    Task {
-                        await MainActor.run {
-                            mlxModelManager.isDownloading[model.repo] = true
-                        }
-                        await mlxModelManager.downloadModel(model.repo)
-                    }
-                } label: {
-                    Text("Get")
-                        .font(DashboardTheme.Fonts.sans(10, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(DashboardTheme.accent)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
-                .buttonStyle(.plain)
-            }
+            correctionModelAction(model, isDownloaded: isDownloaded, isDownloading: isDownloading)
         }
         .padding(.horizontal, DashboardTheme.Spacing.sm)
         .padding(.vertical, DashboardTheme.Spacing.sm)
@@ -263,6 +228,50 @@ extension DashboardProvidersView {
                     await mlxModelManager.downloadModel(model.repo)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func correctionModelAction(
+        _ model: MLXModel,
+        isDownloaded: Bool,
+        isDownloading: Bool
+    ) -> some View {
+        if isDownloading {
+            ProgressView().controlSize(.small)
+        } else if isDownloaded {
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(DashboardTheme.success)
+
+                Button {
+                    Task { await mlxModelManager.deleteModel(model.repo) }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 10))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            Button {
+                Task {
+                    await MainActor.run {
+                        mlxModelManager.isDownloading[model.repo] = true
+                    }
+                    await mlxModelManager.downloadModel(model.repo)
+                }
+            } label: {
+                Text("Get")
+                    .font(DashboardTheme.Fonts.sans(10, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(DashboardTheme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            .buttonStyle(.plain)
         }
     }
 

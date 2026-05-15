@@ -10,7 +10,11 @@ private actor WhisperKitCache {
     private var instances: [WhisperModel: WhisperKit] = [:]
     private var accessTimes: [WhisperModel: Date] = [:]
 
-    func getOrCreate(model: WhisperModel, maxCached: Int, progressCallback: (@Sendable (String) -> Void)?) async throws -> WhisperKit {
+    func getOrCreate(
+        model: WhisperModel,
+        maxCached: Int,
+        progressCallback: (@Sendable (String) -> Void)?
+    ) async throws -> WhisperKit {
         // Check if we have a cached instance
         if let existingInstance = instances[model] {
             // Update access time for LRU tracking
@@ -74,11 +78,9 @@ private actor WhisperKitCache {
         let sortedByAccess = accessTimes.sorted { $0.value > $1.value }
 
         // Keep only the most recent model
-        for (index, entry) in sortedByAccess.enumerated() {
-            if index > 0 {
-                instances.removeValue(forKey: entry.key)
-                accessTimes.removeValue(forKey: entry.key)
-            }
+        for (index, entry) in sortedByAccess.enumerated() where index > 0 {
+            instances.removeValue(forKey: entry.key)
+            accessTimes.removeValue(forKey: entry.key)
         }
     }
 
@@ -159,7 +161,11 @@ internal final class LocalWhisperService: Sendable {
         memoryPressureSource?.cancel()
     }
     
-    func transcribe(audioFileURL: URL, model: WhisperModel, progressCallback: (@Sendable (String) -> Void)? = nil) async throws -> String {
+    func transcribe(
+        audioFileURL: URL,
+        model: WhisperModel,
+        progressCallback: (@Sendable (String) -> Void)? = nil
+    ) async throws -> String {
         // Get or create WhisperKit instance from actor-isolated cache.
         // Audit item B3: cache is keyed by the typed `WhisperModel`; the raw
         // model name is only used internally when constructing `WhisperKitConfig`.

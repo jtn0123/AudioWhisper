@@ -190,10 +190,8 @@ internal enum TranscriptionError {
         // Look for common model names
         let models = ["tiny", "base", "small", "medium", "large", "turbo"]
         let lowercased = message.lowercased()
-        for model in models {
-            if lowercased.contains(model) {
-                return model.capitalized
-            }
+        for model in models where lowercased.contains(model) {
+            return model.capitalized
         }
         
         return "Unknown"

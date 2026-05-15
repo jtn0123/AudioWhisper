@@ -244,17 +244,25 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
 
     // MARK: - Error Type Classification Tests
 
+    private struct ErrorClassificationCase {
+        let message: String
+        let expectsConnection: Bool
+        let expectsTranscription: Bool
+    }
+
     func testErrorTypeClassificationIsAccurate() {
         // Test that different error messages are classified correctly
-        let testCases: [(String, Bool, Bool)] = [
-            // (message, expectsRetryRequested, expectsRetryTranscriptionRequested)
-            ("Connection timeout", true, false),
-            ("Transcription failed", false, true),
-            ("Internet not available", true, false),
-            ("Whisper transcription error", false, true)
+        let testCases: [ErrorClassificationCase] = [
+            ErrorClassificationCase(message: "Connection timeout", expectsConnection: true, expectsTranscription: false),
+            ErrorClassificationCase(message: "Transcription failed", expectsConnection: false, expectsTranscription: true),
+            ErrorClassificationCase(message: "Internet not available", expectsConnection: true, expectsTranscription: false),
+            ErrorClassificationCase(message: "Whisper transcription error", expectsConnection: false, expectsTranscription: true)
         ]
 
-        for (message, expectsConnection, expectsTranscription) in testCases {
+        for testCase in testCases {
+            let message = testCase.message
+            let expectsConnection = testCase.expectsConnection
+            let expectsTranscription = testCase.expectsTranscription
             let error = TranscriptionError.from(errorMessage: message)
 
             if expectsConnection {

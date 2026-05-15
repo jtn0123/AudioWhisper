@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class SoundManagerTests: IsolatedXCTestCase {
-    // TODO(D1): SoundManager reads `playCompletionSound` from
+    // Deferred(D1): SoundManager reads `playCompletionSound` from
     // UserDefaults.standard directly. Once it accepts an injected
     // UserDefaults, route writes through a UUID-scoped suite and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }

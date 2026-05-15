@@ -40,13 +40,21 @@ internal extension ContentView {
             do {
                 try Task.checkCancellation()
                 guard let audioURL = audioRecorder.stopRecording() else {
-                    throw NSError(domain: "AudioRecorder", code: 1, userInfo: [NSLocalizedDescriptionKey: LocalizedStrings.Errors.failedToGetRecordingURL])
+                    throw NSError(
+                        domain: "AudioRecorder",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: LocalizedStrings.Errors.failedToGetRecordingURL]
+                    )
                 }
                 let sessionDuration = audioRecorder.lastRecordingDuration
                 source = .liveRecording(sessionDuration: sessionDuration)
 
                 guard !audioURL.path.isEmpty else {
-                    throw NSError(domain: "AudioRecorder", code: 2, userInfo: [NSLocalizedDescriptionKey: LocalizedStrings.Errors.recordingURLEmpty])
+                    throw NSError(
+                        domain: "AudioRecorder",
+                        code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: LocalizedStrings.Errors.recordingURLEmpty]
+                    )
                 }
 
                 viewModel.lastAudioURL = audioURL
@@ -58,11 +66,13 @@ internal extension ContentView {
                 await viewModel.finishTranscription(
                     text: pipelineResult.text,
                     correctionOutcome: pipelineResult.correctionOutcome,
-                    source: source,
-                    transcriptionProvider: transcriptionProvider,
-                    selectedWhisperModel: selectedWhisperModel,
-                    shouldHintThisRun: shouldHintThisRun,
-                    setHintShown: { hasShownFirstModelUseHint = true }
+                    context: TranscriptionRunContext(
+                        source: source,
+                        transcriptionProvider: transcriptionProvider,
+                        selectedWhisperModel: selectedWhisperModel,
+                        shouldHintThisRun: shouldHintThisRun,
+                        setHintShown: { hasShownFirstModelUseHint = true }
+                    )
                 )
             } catch is CancellationError {
                 await MainActor.run {
@@ -114,11 +124,13 @@ internal extension ContentView {
                 await viewModel.finishTranscription(
                     text: pipelineResult.text,
                     correctionOutcome: pipelineResult.correctionOutcome,
-                    source: source,
-                    transcriptionProvider: transcriptionProvider,
-                    selectedWhisperModel: selectedWhisperModel,
-                    shouldHintThisRun: shouldHintThisRun,
-                    setHintShown: { hasShownFirstModelUseHint = true }
+                    context: TranscriptionRunContext(
+                        source: source,
+                        transcriptionProvider: transcriptionProvider,
+                        selectedWhisperModel: selectedWhisperModel,
+                        shouldHintThisRun: shouldHintThisRun,
+                        setHintShown: { hasShownFirstModelUseHint = true }
+                    )
                 )
             } catch is CancellationError {
                 await MainActor.run {
@@ -279,11 +291,13 @@ internal extension ContentView {
                 await viewModel.finishTranscription(
                     text: pipelineResult.text,
                     correctionOutcome: pipelineResult.correctionOutcome,
-                    source: source,
-                    transcriptionProvider: transcriptionProvider,
-                    selectedWhisperModel: selectedWhisperModel,
-                    shouldHintThisRun: false,
-                    setHintShown: { }
+                    context: TranscriptionRunContext(
+                        source: source,
+                        transcriptionProvider: transcriptionProvider,
+                        selectedWhisperModel: selectedWhisperModel,
+                        shouldHintThisRun: false,
+                        setHintShown: { }
+                    )
                 )
             } catch is CancellationError {
                 await MainActor.run {

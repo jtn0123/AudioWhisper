@@ -100,8 +100,16 @@ final class AudioValidatorTests: XCTestCase {
     
     private func makeValidAudioFile() throws -> URL {
         // Use bundled test audio file to avoid AVAudioFile framework warnings
-        guard let bundledURL = Bundle.module.url(forResource: "test_audio", withExtension: "wav", subdirectory: "Resources") else {
-            throw NSError(domain: "AudioValidatorTests", code: 3, userInfo: [NSLocalizedDescriptionKey: "Bundled test audio file not found"])
+        guard let bundledURL = Bundle.module.url(
+            forResource: "test_audio",
+            withExtension: "wav",
+            subdirectory: "Resources"
+        ) else {
+            throw NSError(
+                domain: "AudioValidatorTests",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Bundled test audio file not found"]
+            )
         }
 
         // Copy to temp location so tests can safely delete it

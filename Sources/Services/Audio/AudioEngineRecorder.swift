@@ -265,12 +265,12 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             monoSamples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
         } else {
             // Average channels
-            for i in 0..<frameLength {
+            for frameIndex in 0..<frameLength {
                 var sum: Float = 0
                 for channel in 0..<channelCount {
-                    sum += channelData[channel][i]
+                    sum += channelData[channel][frameIndex]
                 }
-                monoSamples[i] = sum / Float(channelCount)
+                monoSamples[frameIndex] = sum / Float(channelCount)
             }
         }
 
@@ -338,15 +338,15 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         let chunkSize = samples.count / targetCount
         var result = [Float](repeating: 0, count: targetCount)
 
-        for i in 0..<targetCount {
-            let startIndex = i * chunkSize
+        for chunkIndex in 0..<targetCount {
+            let startIndex = chunkIndex * chunkSize
             let endIndex = min(startIndex + chunkSize, samples.count)
             let chunk = Array(samples[startIndex..<endIndex])
 
             // Use RMS for each chunk
             var rms: Float = 0
             vDSP_rmsqv(chunk, 1, &rms, vDSP_Length(chunk.count))
-            result[i] = rms
+            result[chunkIndex] = rms
         }
 
         return result
@@ -356,5 +356,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 // MARK: - Logger Extension
 
 private extension Logger {
-    static let audioEngineRecorder = Logger(subsystem: Bundle.main.bundleIdentifier ?? "AudioWhisper", category: "AudioEngineRecorder")
+    static let audioEngineRecorder = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "AudioWhisper",
+        category: "AudioEngineRecorder"
+    )
 }

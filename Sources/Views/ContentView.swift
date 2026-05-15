@@ -30,7 +30,7 @@ internal struct ContentView: View {
     // view-model and is accessed directly via `viewModel.xxx` at the call sites.
     var isProcessing: Bool {
         get { viewModel.isProcessing }
-        nonmutating set { /* read-only from view; VM owns the write */ }
+        nonmutating set(newValue) { _ = newValue /* read-only from view; VM owns the write */ }
     }
 
     // MARK: - Initialization

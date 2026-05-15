@@ -73,7 +73,8 @@ internal enum PasteError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .accessibilityPermissionDenied:
-            return "Accessibility permission is required for SmartPaste. Please enable it in System Settings > Privacy & Security > Accessibility."
+            return "Accessibility permission is required for SmartPaste. "
+                + "Please enable it in System Settings > Privacy & Security > Accessibility."
         case .eventSourceCreationFailed:
             return "Could not create event source for paste operation."
         case .keyboardEventCreationFailed:

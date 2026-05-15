@@ -4,7 +4,7 @@ import SwiftUI
 @testable import AudioWhisper
 
 final class WindowControllerTests: IsolatedXCTestCase {
-    // TODO(D1): WindowController reads `hasCompletedWelcome` from
+    // Deferred(D1): WindowController reads `hasCompletedWelcome` from
     // UserDefaults.standard directly. Once it accepts an injected
     // UserDefaults, route writes through a UUID-scoped suite and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
@@ -148,9 +148,9 @@ final class WindowControllerTests: IsolatedXCTestCase {
         UserDefaults.standard.set(true, forKey: "hasCompletedWelcome")
         
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<10 {
+            for index in 0..<10 {
                 group.addTask { @MainActor in
-                    if i % 2 == 0 {
+                    if index % 2 == 0 {
                         self.windowController.toggleRecordWindow()
                     } else {
                         self.windowController.openSettings()

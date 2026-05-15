@@ -120,7 +120,12 @@ extension DashboardCorrectionView {
     }
 
     func venvPythonPath() -> String {
-        let appSupport = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+        let appSupport = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
         let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
         return base ?? ""
     }
@@ -150,11 +155,11 @@ extension DashboardCorrectionView {
                 // to avoid retain cycles. State is updated after process completion using messageStore.
                 out.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let s = String(data: data, encoding: .utf8) else { return }
-                    for line in s.split(separator: "\n").map(String.init) {
-                        if let d = line.data(using: .utf8),
-                           let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-                           let msg = j["message"] as? String {
+                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                    for line in output.split(separator: "\n").map(String.init) {
+                        if let lineData = line.data(using: .utf8),
+                           let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                           let msg = json["message"] as? String {
                             Task {
                                 await messageStore.updateStdout(msg)
                             }
@@ -163,8 +168,8 @@ extension DashboardCorrectionView {
                 }
                 err.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let s = String(data: data, encoding: .utf8) else { return }
-                    let msg = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                    let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
                     Task {
                         await messageStore.updateStderr(msg)
                     }

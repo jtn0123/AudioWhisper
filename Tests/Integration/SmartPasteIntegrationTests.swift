@@ -130,7 +130,7 @@ final class SmartPasteIntegrationTests: IsolatedXCTestCase {
         // Use actor to safely capture notification in @Sendable closure
         actor NotificationCapture {
             var notification: Notification?
-            func set(_ n: Notification) { notification = n }
+            func set(_ value: Notification) { notification = value }
             func get() -> Notification? { notification }
         }
         let capture = NotificationCapture()
@@ -161,7 +161,7 @@ final class SmartPasteIntegrationTests: IsolatedXCTestCase {
         // Use actor to safely capture notification in @Sendable closure
         actor NotificationCapture {
             var notification: Notification?
-            func set(_ n: Notification) { notification = n }
+            func set(_ value: Notification) { notification = value }
             func get() -> Notification? { notification }
         }
         let capture = NotificationCapture()

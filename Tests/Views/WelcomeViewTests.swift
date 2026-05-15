@@ -53,7 +53,8 @@ final class FeatureRowTests: XCTestCase {
         let row = FeatureRow(
             icon: "star.fill",
             title: "A Very Long Feature Title That Might Wrap",
-            description: "This is a very long description that explains the feature in great detail and might need multiple lines to display properly in the UI."
+            description: "This is a very long description that explains the feature in great "
+                + "detail and might need multiple lines to display properly in the UI."
         )
         XCTAssertNotNil(row)
     }

@@ -8,16 +8,16 @@ internal struct CategoryEditorSheet: View {
     let onSave: (CategoryDefinition) -> Void
     let onDelete: (() -> Void)?
     
-    @State private var displayName: String
-    @State private var identifier: String
-    @State private var icon: String
-    @State private var accentColor: Color
-    @State private var promptDescription: String
-    @State private var promptTemplate: String
+    @State var displayName: String
+    @State var identifier: String
+    @State var icon: String
+    @State var accentColor: Color
+    @State var promptDescription: String
+    @State var promptTemplate: String
     @State private var validationError: String?
-    
+
     private let isNewCategory: Bool
-    private let isSystem: Bool
+    let isSystem: Bool
     
     init(
         category: CategoryDefinition?,
@@ -139,118 +139,6 @@ internal struct CategoryEditorSheet: View {
         )
     }
     
-    // MARK: - Sections
-    
-    private var identitySection: some View {
-        formSection("Identity") {
-            formField("Display Name") {
-                TextField("e.g. Terminal", text: $displayName)
-                    .textFieldStyle(.plain)
-                    .font(DashboardTheme.Fonts.sans(14, weight: .regular))
-                    .padding(12)
-                    .background(DashboardTheme.pageBg, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(DashboardTheme.rule, lineWidth: 1)
-                    )
-            }
-            
-            formField("Identifier") {
-                TextField("e.g. terminal", text: $identifier)
-                    .textFieldStyle(.plain)
-                    .font(DashboardTheme.Fonts.mono(14, weight: .regular))
-                    .padding(12)
-                    .background(DashboardTheme.pageBg, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(DashboardTheme.rule, lineWidth: 1)
-                    )
-                    .disabled(isSystem)
-                    .opacity(isSystem ? 0.6 : 1)
-                
-                if isSystem {
-                    Text("System category identifiers cannot be changed")
-                        .font(DashboardTheme.Fonts.sans(11, weight: .regular))
-                        .foregroundStyle(DashboardTheme.inkFaint)
-                }
-            }
-        }
-    }
-    
-    private var appearanceSection: some View {
-        formSection("Appearance") {
-            HStack(alignment: .top, spacing: DashboardTheme.Spacing.xl) {
-                formField("Icon") {
-                    HStack(spacing: DashboardTheme.Spacing.sm) {
-                        Image(systemName: icon.isEmpty ? "questionmark" : icon)
-                            .font(.system(size: 16))
-                            .foregroundStyle(accentColor)
-                            .frame(width: 40, height: 40)
-                            .background(accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-                        
-                        TextField("SF Symbol", text: $icon)
-                            .textFieldStyle(.plain)
-                            .font(DashboardTheme.Fonts.mono(13, weight: .regular))
-                            .padding(10)
-                            .frame(width: 140)
-                            .background(DashboardTheme.pageBg, in: RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(DashboardTheme.rule, lineWidth: 1)
-                            )
-                    }
-                }
-                
-                formField("Color") {
-                    HStack(spacing: DashboardTheme.Spacing.sm) {
-                        ColorPicker("", selection: $accentColor, supportsOpacity: false)
-                            .labelsHidden()
-                        
-                        Text(accentColor.hexString() ?? "#000000")
-                            .font(DashboardTheme.Fonts.mono(12, weight: .regular))
-                            .foregroundStyle(DashboardTheme.inkMuted)
-                    }
-                }
-                
-                Spacer()
-            }
-        }
-    }
-    
-    private var correctionSection: some View {
-        formSection("Correction Behavior") {
-            formField("Description") {
-                TextField("Brief summary for category list", text: $promptDescription, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(DashboardTheme.Fonts.sans(13, weight: .regular))
-                    .lineLimit(2...3)
-                    .padding(12)
-                    .background(DashboardTheme.pageBg, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(DashboardTheme.rule, lineWidth: 1)
-                    )
-            }
-            
-            formField("Prompt Template") {
-                TextEditor(text: $promptTemplate)
-                    .font(DashboardTheme.Fonts.mono(12, weight: .regular))
-                    .scrollContentBackground(.hidden)
-                    .padding(12)
-                    .frame(minHeight: 160)
-                    .background(DashboardTheme.pageBg, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(DashboardTheme.rule, lineWidth: 1)
-                    )
-                
-                Text("Instructions sent to the correction model for this category")
-                    .font(DashboardTheme.Fonts.sans(11, weight: .regular))
-                    .foregroundStyle(DashboardTheme.inkFaint)
-            }
-        }
-    }
-    
     // MARK: - Actions
     
     private var actionButtons: some View {
@@ -303,7 +191,7 @@ internal struct CategoryEditorSheet: View {
     
     // MARK: - Helpers
     
-    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             Text(title.uppercased())
                 .font(DashboardTheme.Fonts.sans(10, weight: .bold))
@@ -322,7 +210,7 @@ internal struct CategoryEditorSheet: View {
         }
     }
     
-    private func formField<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+    func formField<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(DashboardTheme.Fonts.sans(12, weight: .semibold))
@@ -414,9 +302,27 @@ extension CategoryEditorSheet {
         displayName.isEmpty
     }
 
+    /// Default values for a new category
+    struct DefaultCategoryValues {
+        let id: String
+        let name: String
+        let icon: String
+        let colorHex: String
+        let description: String
+    }
+
+    /// Normalized category fields prepared for saving
+    struct NormalizedCategoryFields {
+        let id: String
+        let name: String
+        let icon: String
+        let desc: String
+        let template: String
+    }
+
     /// Creates default values for a new category
-    static func testableDefaultCategoryValues() -> (id: String, name: String, icon: String, colorHex: String, description: String) {
-        (
+    static func testableDefaultCategoryValues() -> DefaultCategoryValues {
+        DefaultCategoryValues(
             id: "new-category",
             name: "New Category",
             icon: "sparkles",
@@ -432,8 +338,8 @@ extension CategoryEditorSheet {
         icon: String,
         promptDescription: String,
         promptTemplate: String
-    ) -> (id: String, name: String, icon: String, desc: String, template: String) {
-        (
+    ) -> NormalizedCategoryFields {
+        NormalizedCategoryFields(
             id: identifier.trimmingCharacters(in: .whitespacesAndNewlines),
             name: displayName.trimmingCharacters(in: .whitespacesAndNewlines),
             icon: icon.trimmingCharacters(in: .whitespacesAndNewlines),

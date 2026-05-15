@@ -2,122 +2,19 @@ import Foundation
 import AppKit
 import KeyboardShortcuts
 
-// MARK: - Key Enum (drop-in replacement for HotKey.Key)
-//
-// We replaced the soffes/HotKey library with sindresorhus/KeyboardShortcuts.
-// HotKey exposed a `Key` enum that several files (HotKeyRecorderView,
-// DashboardRecordingView, tests) consume directly. To keep the public surface
-// of those files unchanged, we re-publish the same enum here. It bridges to
-// `KeyboardShortcuts.Key` via `keyboardShortcutsKey`.
-internal enum Key: Hashable {
-    // Letters
-    case a, b, c, d, e, f, g, h, i, j, k, l, m
-    case n, o, p, q, r, s, t, u, v, w, x, y, z
-
-    // Numbers (HotKey naming)
-    case zero, one, two, three, four, five, six, seven, eight, nine
-
-    // Function
-    case f1, f2, f3, f4, f5, f6, f7, f8, f9, f10
-    case f11, f12, f13, f14, f15, f16, f17, f18, f19, f20
-
-    // Punctuation / misc
-    case `return`, tab, space, delete, escape
-    case equal, minus, leftBracket, rightBracket, quote, semicolon
-    case backslash, comma, slash, period, grave
-
-    // Arrows
-    case upArrow, downArrow, leftArrow, rightArrow
-
-    /// Bridge to KeyboardShortcuts.Key.
-    var keyboardShortcutsKey: KeyboardShortcuts.Key {
-        switch self {
-        case .a: return .a
-        case .b: return .b
-        case .c: return .c
-        case .d: return .d
-        case .e: return .e
-        case .f: return .f
-        case .g: return .g
-        case .h: return .h
-        case .i: return .i
-        case .j: return .j
-        case .k: return .k
-        case .l: return .l
-        case .m: return .m
-        case .n: return .n
-        case .o: return .o
-        case .p: return .p
-        case .q: return .q
-        case .r: return .r
-        case .s: return .s
-        case .t: return .t
-        case .u: return .u
-        case .v: return .v
-        case .w: return .w
-        case .x: return .x
-        case .y: return .y
-        case .z: return .z
-        case .zero: return .zero
-        case .one: return .one
-        case .two: return .two
-        case .three: return .three
-        case .four: return .four
-        case .five: return .five
-        case .six: return .six
-        case .seven: return .seven
-        case .eight: return .eight
-        case .nine: return .nine
-        case .f1: return .f1
-        case .f2: return .f2
-        case .f3: return .f3
-        case .f4: return .f4
-        case .f5: return .f5
-        case .f6: return .f6
-        case .f7: return .f7
-        case .f8: return .f8
-        case .f9: return .f9
-        case .f10: return .f10
-        case .f11: return .f11
-        case .f12: return .f12
-        case .f13: return .f13
-        case .f14: return .f14
-        case .f15: return .f15
-        case .f16: return .f16
-        case .f17: return .f17
-        case .f18: return .f18
-        case .f19: return .f19
-        case .f20: return .f20
-        case .return: return .return
-        case .tab: return .tab
-        case .space: return .space
-        case .delete: return .delete
-        case .escape: return .escape
-        case .equal: return .equal
-        case .minus: return .minus
-        case .leftBracket: return .leftBracket
-        case .rightBracket: return .rightBracket
-        case .quote: return .quote
-        case .semicolon: return .semicolon
-        case .backslash: return .backslash
-        case .comma: return .comma
-        case .slash: return .slash
-        case .period: return .period
-        case .grave: return .backtick
-        case .upArrow: return .upArrow
-        case .downArrow: return .downArrow
-        case .leftArrow: return .leftArrow
-        case .rightArrow: return .rightArrow
-        }
-    }
-}
-
 // MARK: - KeyboardShortcuts Name
 extension KeyboardShortcuts.Name {
     /// Global toggle-recording shortcut. The default value is set the first
     /// time `HotKeyManager` boots from `AppDefaults.globalHotkey` so that the
     /// user's stored preference always wins.
     static let toggleRecording = Self("audioWhisper.toggleRecording")
+}
+
+// MARK: - Parsed Hotkey
+/// Result of parsing a hotkey string such as "⌘⇧Space".
+internal struct ParsedHotkey {
+    let key: Key?
+    let modifiers: NSEvent.ModifierFlags
 }
 
 // MARK: - HotKeyManager
@@ -172,9 +69,9 @@ internal class HotKeyManager {
     }
 
     private func setupHotKeyFromString(_ hotkeyString: String) {
-        let (key, modifiers) = Self.parseHotkeyString(hotkeyString)
+        let parsed = Self.parseHotkeyString(hotkeyString)
 
-        guard let key = key else {
+        guard let key = parsed.key else {
             // Invalid / empty: clear the active shortcut so nothing fires.
             KeyboardShortcuts.setShortcut(nil, for: .toggleRecording)
             return
@@ -182,7 +79,7 @@ internal class HotKeyManager {
 
         let shortcut = KeyboardShortcuts.Shortcut(
             key.keyboardShortcutsKey,
-            modifiers: modifiers
+            modifiers: parsed.modifiers
         )
         KeyboardShortcuts.setShortcut(shortcut, for: .toggleRecording)
     }
@@ -192,111 +89,48 @@ internal class HotKeyManager {
     // Same string format as before ("⌘⇧Space", "⌘A", "F5", etc.). Extracted
     // as a static helper so callers (e.g. tests, future migrations) can use
     // it without instantiating the manager.
-    internal static func parseHotkeyString(_ hotkeyString: String) -> (Key?, NSEvent.ModifierFlags) {
+    internal static func parseHotkeyString(_ hotkeyString: String) -> ParsedHotkey {
         var modifiers: NSEvent.ModifierFlags = []
         var keyString = hotkeyString
 
-        if keyString.contains("⌘") {
-            modifiers.insert(.command)
-            keyString = keyString.replacingOccurrences(of: "⌘", with: "")
-        }
-        if keyString.contains("⇧") {
-            modifiers.insert(.shift)
-            keyString = keyString.replacingOccurrences(of: "⇧", with: "")
-        }
-        if keyString.contains("⌥") {
-            modifiers.insert(.option)
-            keyString = keyString.replacingOccurrences(of: "⌥", with: "")
-        }
-        if keyString.contains("⌃") {
-            modifiers.insert(.control)
-            keyString = keyString.replacingOccurrences(of: "⌃", with: "")
+        let modifierSymbols: [(symbol: String, flag: NSEvent.ModifierFlags)] = [
+            ("⌘", .command),
+            ("⇧", .shift),
+            ("⌥", .option),
+            ("⌃", .control)
+        ]
+        for entry in modifierSymbols where keyString.contains(entry.symbol) {
+            modifiers.insert(entry.flag)
+            keyString = keyString.replacingOccurrences(of: entry.symbol, with: "")
         }
 
-        return (stringToKey(keyString), modifiers)
+        return ParsedHotkey(key: stringToKey(keyString), modifiers: modifiers)
     }
 
+    /// Lookup table mapping the uppercased hotkey string fragment to a `Key`.
+    /// Using a dictionary keeps `stringToKey` simple and avoids a large
+    /// switch statement.
+    private static let keyLookup: [String: Key] = [
+        "F1": .f1, "F2": .f2, "F3": .f3, "F4": .f4, "F5": .f5,
+        "F6": .f6, "F7": .f7, "F8": .f8, "F9": .f9, "F10": .f10,
+        "F11": .f11, "F12": .f12, "F13": .f13, "F14": .f14, "F15": .f15,
+        "F16": .f16, "F17": .f17, "F18": .f18, "F19": .f19, "F20": .f20,
+        "A": .a, "B": .b, "C": .c, "D": .d, "E": .e, "F": .f, "G": .g,
+        "H": .h, "I": .i, "J": .j, "K": .k, "L": .l, "M": .m, "N": .n,
+        "O": .o, "P": .p, "Q": .q, "R": .r, "S": .s, "T": .t, "U": .u,
+        "V": .v, "W": .w, "X": .x, "Y": .y, "Z": .z,
+        "0": .zero, "1": .one, "2": .two, "3": .three, "4": .four,
+        "5": .five, "6": .six, "7": .seven, "8": .eight, "9": .nine,
+        "=": .equal, "-": .minus, "]": .rightBracket, "[": .leftBracket,
+        "'": .quote, ";": .semicolon, "\\": .backslash, ",": .comma,
+        "/": .slash, ".": .period, "`": .grave,
+        "⏎": .return, "⇥": .tab, "SPACE": .space, "⌫": .delete,
+        "⎋": .escape, "↑": .upArrow, "↓": .downArrow,
+        "←": .leftArrow, "→": .rightArrow
+    ]
+
     private static func stringToKey(_ keyString: String) -> Key? {
-        switch keyString.uppercased() {
-        // Function keys
-        case "F1": return .f1
-        case "F2": return .f2
-        case "F3": return .f3
-        case "F4": return .f4
-        case "F5": return .f5
-        case "F6": return .f6
-        case "F7": return .f7
-        case "F8": return .f8
-        case "F9": return .f9
-        case "F10": return .f10
-        case "F11": return .f11
-        case "F12": return .f12
-        case "F13": return .f13
-        case "F14": return .f14
-        case "F15": return .f15
-        case "F16": return .f16
-        case "F17": return .f17
-        case "F18": return .f18
-        case "F19": return .f19
-        case "F20": return .f20
-        case "A": return .a
-        case "S": return .s
-        case "D": return .d
-        case "F": return .f
-        case "H": return .h
-        case "G": return .g
-        case "Z": return .z
-        case "X": return .x
-        case "C": return .c
-        case "V": return .v
-        case "B": return .b
-        case "Q": return .q
-        case "W": return .w
-        case "E": return .e
-        case "R": return .r
-        case "Y": return .y
-        case "T": return .t
-        case "1": return .one
-        case "2": return .two
-        case "3": return .three
-        case "4": return .four
-        case "6": return .six
-        case "5": return .five
-        case "=": return .equal
-        case "9": return .nine
-        case "7": return .seven
-        case "-": return .minus
-        case "8": return .eight
-        case "0": return .zero
-        case "]": return .rightBracket
-        case "O": return .o
-        case "U": return .u
-        case "[": return .leftBracket
-        case "I": return .i
-        case "P": return .p
-        case "⏎": return .return
-        case "L": return .l
-        case "J": return .j
-        case "'": return .quote
-        case "K": return .k
-        case ";": return .semicolon
-        case "\\": return .backslash
-        case ",": return .comma
-        case "/": return .slash
-        case "N": return .n
-        case "M": return .m
-        case ".": return .period
-        case "⇥": return .tab
-        case "SPACE": return .space
-        case "`": return .grave
-        case "⌫": return .delete
-        case "⎋": return .escape
-        case "↑": return .upArrow
-        case "↓": return .downArrow
-        case "←": return .leftArrow
-        case "→": return .rightArrow
-        default: return nil
-        }
+        keyLookup[keyString.uppercased()]
     }
 
     deinit {

@@ -40,7 +40,7 @@ final class TranscriptionHistoryViewTests: XCTestCase {
             modelUsed: modelUsed
         )
         modelContext.insert(record)
-        try! modelContext.save()
+        try? modelContext.save()
         return record
     }
     
@@ -353,14 +353,14 @@ final class TranscriptionHistoryViewTests: XCTestCase {
     func testSearchPerformanceWithManyRecords() {
         // Given - Create many records
         let recordCount = 1000
-        for i in 0..<recordCount {
-            _ = createSampleRecord(text: "Record number \(i)")
+        for index in 0..<recordCount {
+            _ = createSampleRecord(text: "Record number \(index)")
         }
         
         // When & Then - Measure search performance
         measure {
             let descriptor = FetchDescriptor<TranscriptionRecord>()
-            let allRecords = try! modelContext.fetch(descriptor)
+            let allRecords = (try? modelContext.fetch(descriptor)) ?? []
             
             let filtered = allRecords.filter { record in
                 record.matches(searchQuery: "500")

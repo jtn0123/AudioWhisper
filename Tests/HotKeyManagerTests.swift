@@ -2,7 +2,7 @@ import XCTest
 @testable import AudioWhisper
 
 final class HotKeyManagerTests: IsolatedXCTestCase {
-    // TODO(D1): HotKeyManager reads `globalHotkey` from UserDefaults.standard
+    // Deferred(D1): HotKeyManager reads `globalHotkey` from UserDefaults.standard
     // directly. Once it accepts an injected UserDefaults, route writes
     // through a UUID-scoped suite and re-enable isolation.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
@@ -290,8 +290,8 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     
     func testHotkeyParsingPerformance() {
         measure {
-            for i in 0..<1000 {
-                let hotkeyString = i % 2 == 0 ? "⌘A" : "⌘⇧B"
+            for index in 0..<1000 {
+                let hotkeyString = index % 2 == 0 ? "⌘A" : "⌘⇧B"
                 NotificationCenter.default.post(
                     name: .updateGlobalHotkey,
                     object: hotkeyString

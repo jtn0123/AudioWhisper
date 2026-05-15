@@ -1,11 +1,15 @@
 import Foundation
 
+/// Completion handler signature shared by the URL session protocol and mock.
+typealias MockURLSessionCompletion = @Sendable (Data?, URLResponse?, Error?) -> Void
+
 class MockURLSession: URLSessionProtocol, @unchecked Sendable {
     var mockData: Data?
     var mockResponse: URLResponse?
     var mockError: Error?
-    
-    func dataTask(with request: URLRequest, completionHandler: @escaping @Sendable (Data?, URLResponse?, Error?) -> Void) -> MockURLSessionDataTask {
+
+    func dataTask(with request: URLRequest,
+                  completionHandler: @escaping MockURLSessionCompletion) -> MockURLSessionDataTask {
         return MockURLSessionDataTask {
             completionHandler(self.mockData, self.mockResponse, self.mockError)
         }
@@ -19,7 +23,8 @@ class MockURLSession: URLSessionProtocol, @unchecked Sendable {
 }
 
 protocol URLSessionProtocol {
-    func dataTask(with request: URLRequest, completionHandler: @escaping @Sendable (Data?, URLResponse?, Error?) -> Void) -> MockURLSessionDataTask
+    func dataTask(with request: URLRequest,
+                  completionHandler: @escaping MockURLSessionCompletion) -> MockURLSessionDataTask
 }
 
 class MockURLSessionDataTask: @unchecked Sendable {

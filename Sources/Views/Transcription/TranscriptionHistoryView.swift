@@ -250,14 +250,27 @@ internal extension TranscriptionHistoryView {
 #Preview("With Records") {
     let previewContainer: ModelContainer = {
         do {
-            let container = try ModelContainer(for: TranscriptionRecord.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+            let container = try ModelContainer(
+                for: TranscriptionRecord.self,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            )
             let context = ModelContext(container)
 
             // Add sample data
             let sampleRecords = [
-                TranscriptionRecord(text: "This is a sample transcription from the Parakeet speech engine. It demonstrates how the history view will look with longer text content.", provider: .parakeet, duration: 12.5),
+                TranscriptionRecord(
+                    text: "This is a sample transcription from the Parakeet speech engine. "
+                        + "It demonstrates how the history view will look with longer text content.",
+                    provider: .parakeet,
+                    duration: 12.5
+                ),
                 TranscriptionRecord(text: "Short test", provider: .local, duration: 2.1, modelUsed: "base"),
-                TranscriptionRecord(text: "Another example transcription that shows how multiple records are displayed in the history view.", provider: .parakeet, duration: 8.3)
+                TranscriptionRecord(
+                    text: "Another example transcription that shows how multiple records "
+                        + "are displayed in the history view.",
+                    provider: .parakeet,
+                    duration: 8.3
+                )
             ]
 
             for record in sampleRecords {
@@ -282,7 +295,10 @@ internal extension TranscriptionHistoryView {
 #Preview("Empty State") {
     let previewContainer: ModelContainer = {
         do {
-            return try ModelContainer(for: TranscriptionRecord.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+            return try ModelContainer(
+                for: TranscriptionRecord.self,
+                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            )
         } catch {
             fatalError("Failed to create preview container: \(error)")
         }

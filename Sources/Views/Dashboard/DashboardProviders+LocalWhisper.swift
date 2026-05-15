@@ -130,45 +130,7 @@ internal extension DashboardProvidersView {
                 .foregroundStyle(DashboardTheme.inkMuted)
             
             // Status/Action
-            Group {
-                if isDownloading {
-                    DownloadProgressView(
-                        state: .downloading(
-                            progress: modelManager.downloadProgress[model] ?? 0,
-                            statusText: stage?.displayText
-                        )
-                    )
-                    .frame(maxWidth: 160)
-                } else if isDownloaded {
-                    HStack(spacing: 6) {
-                        Text("Installed")
-                            .font(DashboardTheme.Fonts.sans(10, weight: .medium))
-                            .foregroundStyle(Color(red: 0.35, green: 0.60, blue: 0.40))
-                        
-                        Button {
-                            deleteModel(model)
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.inkMuted)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    Button {
-                        downloadModel(model)
-                    } label: {
-                        Text("Get")
-                            .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(DashboardTheme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            whisperModelStatusAction(model, stage: stage, isDownloaded: isDownloaded, isDownloading: isDownloading)
         }
         .padding(.horizontal, DashboardTheme.Spacing.md)
         .padding(.vertical, DashboardTheme.Spacing.md)
@@ -178,6 +140,52 @@ internal extension DashboardProvidersView {
             if !isDownloaded && !isDownloading {
                 downloadModel(model)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func whisperModelStatusAction(
+        _ model: WhisperModel,
+        stage: DownloadStage?,
+        isDownloaded: Bool,
+        isDownloading: Bool
+    ) -> some View {
+        if isDownloading {
+            DownloadProgressView(
+                state: .downloading(
+                    progress: modelManager.downloadProgress[model] ?? 0,
+                    statusText: stage?.displayText
+                )
+            )
+            .frame(maxWidth: 160)
+        } else if isDownloaded {
+            HStack(spacing: 6) {
+                Text("Installed")
+                    .font(DashboardTheme.Fonts.sans(10, weight: .medium))
+                    .foregroundStyle(Color(red: 0.35, green: 0.60, blue: 0.40))
+
+                Button {
+                    deleteModel(model)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            Button {
+                downloadModel(model)
+            } label: {
+                Text("Get")
+                    .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(DashboardTheme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+            }
+            .buttonStyle(.plain)
         }
     }
     

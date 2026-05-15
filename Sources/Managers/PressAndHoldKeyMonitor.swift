@@ -104,7 +104,9 @@ internal enum PressAndHoldSettings {
         let keyIdentifier = defaults.string(forKey: keyIdentifierKey) ?? PressAndHoldConfiguration.defaults.key.rawValue
         let modeIdentifier = defaults.string(forKey: modeKey) ?? PressAndHoldConfiguration.defaults.mode.rawValue
 
-        let key = PressAndHoldKey(rawValue: keyIdentifier) ?? legacyKey(from: keyIdentifier) ?? PressAndHoldConfiguration.defaults.key
+        let key = PressAndHoldKey(rawValue: keyIdentifier)
+            ?? legacyKey(from: keyIdentifier)
+            ?? PressAndHoldConfiguration.defaults.key
         let mode = PressAndHoldMode(rawValue: modeIdentifier) ?? PressAndHoldConfiguration.defaults.mode
 
         return PressAndHoldConfiguration(enabled: enabled, key: key, mode: mode)

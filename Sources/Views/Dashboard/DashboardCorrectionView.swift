@@ -35,7 +35,10 @@ internal struct DashboardCorrectionView: View {
                 switch semanticCorrectionMode {
                 case .off:
                     SettingsSectionCard(title: "Correction Disabled", icon: "pause.circle") {
-                        Text("Semantic correction is turned off. Turn it on to improve readability and formatting of transcriptions.")
+                        Text(
+                            "Semantic correction is turned off. Turn it on to improve "
+                            + "readability and formatting of transcriptions."
+                        )
                             .font(.footnote)
                             .foregroundStyle(DashboardTheme.inkMuted)
                     }
@@ -107,6 +110,16 @@ extension DashboardCorrectionView {
         "mlx-community/Qwen3-1.7B-4bit"
     }
 
+    /// A mock model entry used for testing
+    struct TestableModelEntry {
+        let title: String
+        let subtitle: String
+        let isDownloaded: Bool
+        let isDownloading: Bool
+        let isSelected: Bool
+        let badgeText: String?
+    }
+
     /// Creates a mock model entry for testing
     static func testableMakeMLXEntry(
         model: MLXModel,
@@ -114,8 +127,8 @@ extension DashboardCorrectionView {
         isDownloading: Bool,
         isSelected: Bool,
         badgeText: String?
-    ) -> (title: String, subtitle: String, isDownloaded: Bool, isDownloading: Bool, isSelected: Bool, badgeText: String?) {
-        (
+    ) -> TestableModelEntry {
+        TestableModelEntry(
             title: model.displayName,
             subtitle: model.description,
             isDownloaded: isDownloaded,
@@ -132,7 +145,12 @@ extension DashboardCorrectionView {
 
     /// Returns the venv Python path for testing
     static func testableVenvPythonPath() -> String {
-        let appSupport = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+        let appSupport = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
         let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
         return base ?? ""
     }

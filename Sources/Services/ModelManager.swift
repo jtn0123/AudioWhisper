@@ -17,8 +17,8 @@ internal class ModelManager {
     var lastRefresh: Date = Date()
     
     // FileManager operations are performed directly to avoid Sendable warnings
-    private var fileSystemWatcher: DispatchSourceFileSystemObject?
-    private var refreshTimer: Timer?
+    var fileSystemWatcher: DispatchSourceFileSystemObject?
+    var refreshTimer: Timer?
     private var isDeleteInProgress: Set<WhisperModel> = []
 
     /// Serializes concurrent downloads of the same model. Two callers asking
@@ -288,10 +288,8 @@ internal class ModelManager {
         // Check which models can be successfully initialized
         var downloadedModels: [WhisperModel] = []
         
-        for model in WhisperModel.allCases {
-            if await isModelDownloaded(model) {
-                downloadedModels.append(model)
-            }
+        for model in WhisperModel.allCases where await isModelDownloaded(model) {
+            downloadedModels.append(model)
         }
         
         return downloadedModels
@@ -307,136 +305,6 @@ internal class ModelManager {
         }
     }
     
-    // MARK: - Enhanced Model Management Methods
-    
-    private func setupFileSystemWatching() {
-        WhisperKitStorage.ensureBaseDirectoryExists()
-        guard let whisperKitPath = WhisperKitStorage.storageDirectory() else { return }
-        
-        // Create directory if it doesn't exist
-        do {
-            try FileManager.default.createDirectory(at: whisperKitPath, withIntermediateDirectories: true)
-        } catch {
-            Logger.modelManager.error("Failed to create WhisperKit directory at \(whisperKitPath.path.redactingHomeDirectory): \(error.localizedDescription)")
-        }
-        
-        let descriptor = open(whisperKitPath.path, O_EVTONLY)
-        guard descriptor >= 0 else { return }
-        
-        fileSystemWatcher = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: descriptor,
-            eventMask: [.write, .delete, .rename],
-            queue: DispatchQueue.global(qos: .utility)
-        )
-        
-        fileSystemWatcher?.setEventHandler { [weak self] in
-            Task { @MainActor in
-                await self?.refreshDownloadedModels()
-            }
-        }
-        
-        fileSystemWatcher?.setCancelHandler {
-            close(descriptor)
-        }
-        
-        fileSystemWatcher?.resume()
-    }
-    
-    private func startPeriodicRefresh() {
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                await self?.refreshDownloadedModels()
-            }
-        }
-    }
-    
-    @MainActor
-    private func refreshDownloadedModels() async {
-        var newDownloadedModels: Set<WhisperModel> = []
-        
-        for model in WhisperModel.allCases {
-            if await isModelDownloaded(model) {
-                newDownloadedModels.insert(model)
-            }
-        }
-        
-        // Only update if there are changes to avoid unnecessary UI updates
-        if newDownloadedModels != downloadedModels {
-            downloadedModels = newDownloadedModels
-            lastRefresh = Date()
-        }
-    }
-    
-    private nonisolated func estimateDownloadTime(for model: WhisperModel) -> TimeInterval {
-        // Estimate based on model size and typical download speeds
-        let sizeInMB = Double(model.estimatedSize) / (1024 * 1024)
-        
-        // Assume average download speed of 10 MB/s (conservative estimate)
-        let estimatedSeconds = sizeInMB / 10.0
-        
-        // Add processing time based on model size
-        let processingTime = sizeInMB / 50.0 // Rough estimate for model processing
-        
-        return estimatedSeconds + processingTime
-    }
-    
-    private nonisolated func getAvailableStorageSpace() async throws -> Int64 {
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            throw ModelError.applicationSupportDirectoryNotFound
-        }
-        
-        let resourceValues = try documentsPath.resourceValues(forKeys: [.volumeAvailableCapacityKey])
-        return Int64(resourceValues.volumeAvailableCapacity ?? 0)
-    }
-    
-    private nonisolated func sendDownloadCompletionNotification(for model: WhisperModel) async {
-        // Check if notifications are available (only works in proper app bundles)
-        guard Bundle.main.bundleIdentifier != nil else {
-            // Running in development/debug mode, skip notifications
-            return
-        }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Model Download Complete"
-        content.body = "\(model.displayName) is ready for offline transcription"
-        content.sound = .default
-
-        let request = UNNotificationRequest(
-            identifier: "model-download-\(model.rawValue)",
-            content: content,
-            trigger: nil
-        )
-
-        do {
-            try await UNUserNotificationCenter.current().add(request)
-        } catch {
-            // Silently fail if notifications aren't available (e.g., when running with swift run)
-            Logger.modelManager.debug("Failed to send notification: \(error.localizedDescription)")
-        }
-    }
-    
-    @MainActor
-    func refreshModelStates() async {
-        await refreshDownloadedModels()
-    }
-    
-    /// Check if a model is ready for use (downloaded and not currently downloading).
-    /// This is an async function to ensure thread-safe access to MainActor-isolated state.
-    nonisolated func isModelReady(_ model: WhisperModel) async -> Bool {
-        return await MainActor.run {
-            downloadedModels.contains(model) && !downloadingModels.contains(model)
-        }
-    }
-    
-    @MainActor
-    func getDownloadStage(for model: WhisperModel) -> DownloadStage? {
-        return downloadStages[model]
-    }
-    
-    @MainActor
-    func getEstimatedTimeRemaining(for model: WhisperModel) -> TimeInterval? {
-        return downloadEstimates[model]
-    }
 }
 
 internal enum DownloadStage: Equatable {

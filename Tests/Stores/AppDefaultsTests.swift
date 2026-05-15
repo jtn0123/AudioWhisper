@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class AppDefaultsTests: IsolatedXCTestCase {
-    // TODO(D1): AppDefaults reads/writes UserDefaults.standard directly and
+    // NOTE(D1): AppDefaults reads/writes UserDefaults.standard directly and
     // is the canonical accessor; these tests exercise it against `.standard`
     // by design. Re-enable isolation once AppDefaults accepts an injected
     // UserDefaults instance.

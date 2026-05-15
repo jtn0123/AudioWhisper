@@ -65,7 +65,11 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
         let tempDir = FileManager.default.temporaryDirectory
         let audioFile = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).m4a")
         // Create a minimal valid file
-        FileManager.default.createFile(atPath: audioFile.path, contents: Data([0x00, 0x00, 0x00, 0x1C, 0x66, 0x74, 0x79, 0x70]), attributes: nil)
+        FileManager.default.createFile(
+            atPath: audioFile.path,
+            contents: Data([0x00, 0x00, 0x00, 0x1C, 0x66, 0x74, 0x79, 0x70]),
+            attributes: nil
+        )
         return audioFile
     }
 

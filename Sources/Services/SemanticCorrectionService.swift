@@ -20,8 +20,8 @@ internal enum CorrectionOutcome {
     /// Convenience: the text to use in the UI, regardless of outcome.
     var text: String {
         switch self {
-        case .applied(let s), .skipped(let s): return s
-        case .failed(_, fallback: let s): return s
+        case .applied(let value), .skipped(let value): return value
+        case .failed(_, fallback: let value): return value
         }
     }
 }
@@ -70,7 +70,11 @@ internal final class SemanticCorrectionService {
     /// - `.failed(error, fallback: text)` if the correction pipeline threw;
     ///   the fallback is the unchanged original text so callers can still
     ///   show something useful.
-    func correctWithOutcome(text: String, providerUsed: TranscriptionProvider, sourceAppBundleId: String? = nil) async -> CorrectionOutcome {
+    func correctWithOutcome(
+        text: String,
+        providerUsed: TranscriptionProvider,
+        sourceAppBundleId: String? = nil
+    ) async -> CorrectionOutcome {
         let mode = AppDefaults.semanticCorrectionMode
 
         let category = categoryFor(bundleId: sourceAppBundleId)
@@ -134,8 +138,12 @@ internal final class SemanticCorrectionService {
 
     // MARK: - Prompt file helpers
     private func promptsBaseDir() -> URL? {
-        return try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appendingPathComponent("AudioWhisper/prompts", isDirectory: true)
+        return try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ).appendingPathComponent("AudioWhisper/prompts", isDirectory: true)
     }
 
     private func loadPrompt(for category: CategoryDefinition) -> String {
@@ -192,44 +200,43 @@ internal final class SemanticCorrectionService {
 
     /// Computes normalized edit distance using space-efficient 2-row DP.
     /// Memory: O(min(m,n)) instead of O(m*n) for full matrix.
-    static func normalizedEditDistance(a: String, b: String) -> Double {
-        if a == b { return 0 }
-        let aChars = Array(a)
-        let bChars = Array(b)
-        var m = aChars.count
-        var n = bChars.count
-        if m == 0 || n == 0 { return 1 }
+    static func normalizedEditDistance(a lhs: String, b rhs: String) -> Double {
+        if lhs == rhs { return 0 }
+        let lhsChars = Array(lhs)
+        let rhsChars = Array(rhs)
+        let lhsCount = lhsChars.count
+        let rhsCount = rhsChars.count
+        if lhsCount == 0 || rhsCount == 0 { return 1 }
 
         // Optimize: ensure we iterate over shorter string in inner loop
         let (shorter, longer): ([Character], [Character])
-        if m > n {
-            shorter = bChars
-            longer = aChars
-            swap(&m, &n)
+        if lhsCount > rhsCount {
+            shorter = rhsChars
+            longer = lhsChars
         } else {
-            shorter = aChars
-            longer = bChars
+            shorter = lhsChars
+            longer = rhsChars
         }
 
         // Two-row DP: only keep current and previous rows
         var previousRow = Array(0...shorter.count)
         var currentRow = Array(repeating: 0, count: shorter.count + 1)
 
-        for i in 1...longer.count {
-            currentRow[0] = i
-            for j in 1...shorter.count {
-                let cost = longer[i - 1] == shorter[j - 1] ? 0 : 1
-                currentRow[j] = min(
-                    previousRow[j] + 1,      // deletion
-                    currentRow[j - 1] + 1,   // insertion
-                    previousRow[j - 1] + cost // substitution
+        for longerIndex in 1...longer.count {
+            currentRow[0] = longerIndex
+            for shorterIndex in 1...shorter.count {
+                let cost = longer[longerIndex - 1] == shorter[shorterIndex - 1] ? 0 : 1
+                currentRow[shorterIndex] = min(
+                    previousRow[shorterIndex] + 1,      // deletion
+                    currentRow[shorterIndex - 1] + 1,   // insertion
+                    previousRow[shorterIndex - 1] + cost // substitution
                 )
             }
             swap(&previousRow, &currentRow)
         }
 
         let dist = previousRow[shorter.count]
-        let denom = max(aChars.count, bChars.count)
+        let denom = max(lhsChars.count, rhsChars.count)
         return Double(dist) / Double(denom)
     }
 }

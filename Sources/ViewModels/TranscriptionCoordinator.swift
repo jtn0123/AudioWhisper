@@ -2,6 +2,17 @@ import Foundation
 import SwiftUI
 import os.log
 
+/// Bundles the run-specific context needed to complete a transcription so the
+/// coordinator's tail/error entry points stay below the parameter-count limit.
+@MainActor
+struct TranscriptionRunContext {
+    let source: TranscriptionSource
+    let transcriptionProvider: TranscriptionProvider
+    let selectedWhisperModel: WhisperModel
+    let shouldHintThisRun: Bool
+    let setHintShown: () -> Void
+}
+
 /// Coordinates the transcription pipeline + post-processing tail for the
 /// `RecordingViewModel`. Owns the bridge between captured audio and the
 /// pipeline: validation → provider → optional semantic correction → history
@@ -72,11 +83,7 @@ final class TranscriptionCoordinator {
     func finishTranscription(
         text: String,
         correctionOutcome: CorrectionOutcome? = nil,
-        source: TranscriptionSource,
-        transcriptionProvider: TranscriptionProvider,
-        selectedWhisperModel: WhisperModel,
-        shouldHintThisRun: Bool,
-        setHintShown: @escaping () -> Void
+        context: TranscriptionRunContext
     ) async {
         guard let viewModel else { return }
 
@@ -86,14 +93,14 @@ final class TranscriptionCoordinator {
         PasteManager.copyToClipboard(text)
 
         if DataManager.shared.isHistoryEnabled {
-            let modelUsed: String? = (transcriptionProvider == .local)
-                ? selectedWhisperModel.rawValue
+            let modelUsed: String? = (context.transcriptionProvider == .local)
+                ? context.selectedWhisperModel.rawValue
                 : nil
             let sourceInfo = viewModel.currentSourceAppInfo()
             let record = TranscriptionRecord(
                 text: text,
-                provider: transcriptionProvider,
-                duration: source.duration,
+                provider: context.transcriptionProvider,
+                duration: context.source.duration,
                 modelUsed: modelUsed,
                 wordCount: wordCount,
                 characterCount: characterCount,
@@ -105,7 +112,7 @@ final class TranscriptionCoordinator {
         }
 
         UsageMetricsStore.shared.recordSession(
-            duration: source.duration,
+            duration: context.source.duration,
             wordCount: wordCount,
             characterCount: characterCount
         )
@@ -122,8 +129,8 @@ final class TranscriptionCoordinator {
 
         viewModel.showConfirmationAndPaste(text: text)
 
-        if shouldHintThisRun {
-            setHintShown()
+        if context.shouldHintThisRun {
+            context.setHintShown()
             viewModel.showFirstModelUseHint = false
         }
     }

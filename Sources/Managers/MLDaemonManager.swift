@@ -33,7 +33,10 @@ internal enum MLDaemonError: Error, LocalizedError {
 internal actor MLDaemonManager {
     static let shared = MLDaemonManager()
 
-    private struct PendingRequest {
+    // Note: the storage below is `internal` rather than `private` because the
+    // process-lifecycle methods live in `MLDaemonManager+Process.swift`. Swift
+    // `private` is file-scoped, so a cross-file extension cannot see it.
+    struct PendingRequest {
         let completion: (Result<Data, Error>) -> Void
         /// Hard deadline after which the request is considered abandoned and is
         /// reaped by `sweepExpiredRequests()`. Prevents `pending` from growing
@@ -41,19 +44,19 @@ internal actor MLDaemonManager {
         let deadline: Date
     }
 
-    private let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
-    private let maxRestartAttempts = 3
+    let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
+    let maxRestartAttempts = 3
     private let requestTimeoutSeconds: UInt64 = 60
 
-    private var process: Process?
-    private var stdinPipe: Pipe?
-    private var stdoutPipe: Pipe?
-    private var stderrPipe: Pipe?
-    private var pending: [Int: PendingRequest] = [:]
+    var process: Process?
+    var stdinPipe: Pipe?
+    var stdoutPipe: Pipe?
+    var stderrPipe: Pipe?
+    var pending: [Int: PendingRequest] = [:]
     private var nextRequestID: Int = 1
-    private var restartAttempts: Int = 0
-    private var isShuttingDown = false
-    private var stdoutReaderTask: Task<Void, Never>?
+    var restartAttempts: Int = 0
+    var isShuttingDown = false
+    var stdoutReaderTask: Task<Void, Never>?
     private var pythonExecutable: URL?
     private var scriptLocation: URL?
     private var testResponder: ((String, [String: Any]) throws -> Any)?
@@ -195,7 +198,7 @@ internal actor MLDaemonManager {
         logger.error("Reaped \(expired.count, privacy: .public) expired ML daemon request(s)")
     }
 
-    private func handle(line: String) {
+    func handle(line: String) {
         guard let data = line.data(using: .utf8) else {
             logger.error("Failed to decode daemon line")
             return
@@ -232,162 +235,16 @@ internal actor MLDaemonManager {
         }
     }
 
-    // MARK: - Process lifecycle
-
-    private func ensureDaemonRunning() async throws {
-        if let process, process.isRunning { return }
-        guard !isShuttingDown else { throw MLDaemonError.daemonUnavailable("shutting down") }
-        guard restartAttempts < maxRestartAttempts else { throw MLDaemonError.restartLimitReached }
-        try await startProcess(isRestart: false)
-    }
-
-    private func startProcess(isRestart: Bool) async throws {
-        let python = try await resolvedPython()
-        let script = try resolvedScript()
-
-        if isRestart { restartAttempts += 1 } else { restartAttempts = 0 }
-        if restartAttempts >= maxRestartAttempts { throw MLDaemonError.restartLimitReached }
-
-        let proc = Process()
-        proc.executableURL = python
-        proc.arguments = [script.path]
-        proc.environment = ProcessInfo.processInfo.environment.merging(["PYTHONUNBUFFERED": "1"]) { _, new in new }
-
-        let stdin = Pipe()
-        let stdout = Pipe()
-        let stderr = Pipe()
-
-        proc.standardInput = stdin
-        proc.standardOutput = stdout
-        proc.standardError = stderr
-
-        proc.terminationHandler = { [weak self] process in
-            Task { await self?.processTerminated(exitCode: process.terminationStatus) }
-        }
-
-        stderr.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else { return }
-            let message = String(decoding: data, as: UTF8.self)
-            self?.logger.error("ml_daemon stderr: \(message, privacy: .public)")
-        }
-
-        do {
-            try proc.run()
-        } catch {
-            throw MLDaemonError.daemonUnavailable("Failed to start process: \(error.localizedDescription)")
-        }
-
-        process = proc
-        stdinPipe = stdin
-        stdoutPipe = stdout
-        stderrPipe = stderr
-        isShuttingDown = false
-        startStdoutReader(pipe: stdout)
-    }
-
-    private func startStdoutReader(pipe: Pipe) {
-        stdoutReaderTask?.cancel()
-        let handle = pipe.fileHandleForReading
-        stdoutReaderTask = Task { [weak self] in
-            do {
-                for try await line in handle.bytes.lines {
-                    guard !line.isEmpty else { continue }
-                    await self?.handle(line: line)
-                }
-            } catch is CancellationError {
-                return
-            } catch {
-                await self?.handleStdoutReaderError(error)
-            }
-        }
-    }
-
-    private func processTerminated(exitCode: Int32) async {
-        logger.error("ml_daemon exited with code \(exitCode)")
-        closePipes()
-
-        if isShuttingDown {
-            process = nil
-            return
-        }
-
-        completeAllPending(with: MLDaemonError.daemonUnavailable("exited (\(exitCode))"))
-        process = nil
-
-        guard restartAttempts < maxRestartAttempts else {
-            // Complete any pending requests that arrived after the initial completeAllPending
-            completeAllPending(with: MLDaemonError.daemonUnavailable("max restarts exceeded"))
-            return
-        }
-
-        do {
-            try await startProcess(isRestart: true)
-        } catch {
-            logger.error("Failed to restart ml_daemon: \(error.localizedDescription)")
-            completeAllPending(with: error)
-        }
-    }
-
-    private func closePipes() {
-        stdoutReaderTask?.cancel()
-        stdoutReaderTask = nil
-
-        // Close file handles BEFORE setting readabilityHandler to nil
-        // This ensures no new callbacks are queued during cleanup
-        stdinPipe?.fileHandleForWriting.closeFile()
-        stdoutPipe?.fileHandleForReading.closeFile()
-        stderrPipe?.fileHandleForReading.closeFile()
-
-        // Now safe to clear handlers - no more data can arrive
-        stdoutPipe?.fileHandleForReading.readabilityHandler = nil
-        stderrPipe?.fileHandleForReading.readabilityHandler = nil
-
-        stdinPipe = nil
-        stdoutPipe = nil
-        stderrPipe = nil
-    }
-
-    func shutdown() async {
-        isShuttingDown = true
-
-        // Cancel the stdout reader task and await its completion BEFORE we
-        // terminate the process or tear down pipes. This guarantees no
-        // straggler `handle(line:)` calls land on a disposed pipe and avoids
-        // leaking the reader Task across teardown.
-        let reader = stdoutReaderTask
-        stdoutReaderTask = nil
-        reader?.cancel()
-        _ = await reader?.value
-
-        closePipes()
-        process?.terminate()
-        process = nil
-        completeAllPending(with: MLDaemonError.daemonUnavailable("shutdown"))
-    }
-
-    private func completeAllPending(with error: Error) {
-        for (_, pendingRequest) in pending {
-            pendingRequest.completion(.failure(error))
-        }
-        pending.removeAll()
-    }
-
-    private func handleStdoutReaderError(_ error: Error) {
-        guard !isShuttingDown else { return }
-        logger.error("ml_daemon stdout reader failed: \(error.localizedDescription)")
-    }
-
     // MARK: - Helpers
 
-    private func resolvedPython() async throws -> URL {
+    func resolvedPython() async throws -> URL {
         if let pythonExecutable { return pythonExecutable }
         let url = try await UvBootstrap.ensureVenv(userPython: nil)
         pythonExecutable = url
         return url
     }
 
-    private func resolvedScript() throws -> URL {
+    func resolvedScript() throws -> URL {
         if let scriptLocation { return scriptLocation }
         if let bundled = ResourceLocator.pythonScriptURL(named: "ml_daemon") {
             scriptLocation = bundled

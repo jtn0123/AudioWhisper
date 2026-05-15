@@ -6,7 +6,7 @@ import AVFoundation
 
 // MARK: - Simple Test Implementation
 class LocalWhisperServiceTests: IsolatedXCTestCase {
-    // TODO(D1): LocalWhisperService reads `selectedWhisperModel` from
+    // Deferred(D1): LocalWhisperService reads `selectedWhisperModel` from
     // UserDefaults.standard via AppDefaults. Once AppDefaults accepts an
     // injected UserDefaults, route writes through a UUID-scoped suite and
     // re-enable isolation.
@@ -96,7 +96,8 @@ class LocalWhisperErrorTests: XCTestCase {
     
     func testErrorDescriptions() {
         let errors: [(LocalWhisperError, String)] = [
-            (.modelNotDownloaded, "Whisper model not downloaded. Please download the model in Settings before using offline transcription."),
+            (.modelNotDownloaded,
+             "Whisper model not downloaded. Please download the model in Settings before using offline transcription."),
             (.invalidAudioFile, "Invalid audio file format"),
             (.bufferAllocationFailed, "Failed to allocate audio buffer"),
             (.noChannelData, "No audio channel data found"),

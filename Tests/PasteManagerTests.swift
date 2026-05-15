@@ -4,7 +4,7 @@ import AppKit
 
 @MainActor
 final class PasteManagerTests: IsolatedXCTestCase {
-    // TODO(D1): PasteManager reads `enableSmartPaste` from
+    // Deferred(D1): PasteManager reads `enableSmartPaste` from
     // UserDefaults.standard directly. Once it accepts an injected
     // UserDefaults, route writes through a UUID-scoped suite and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }

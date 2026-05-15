@@ -58,8 +58,8 @@ struct ParticleFieldView: View {
         var rng = SeededRandomNumberGenerator(seed: seed)
         return (0..<count).map { _ in
             Particle(
-                x: CGFloat.random(in: 0...size.width, using: &rng),
-                y: CGFloat.random(in: 0...size.height, using: &rng),
+                positionX: CGFloat.random(in: 0...size.width, using: &rng),
+                positionY: CGFloat.random(in: 0...size.height, using: &rng),
                 velocityX: CGFloat.random(in: -0.5...0.5, using: &rng),
                 velocityY: CGFloat.random(in: -0.5...0.5, using: &rng),
                 size: CGFloat.random(in: 3...8, using: &rng),
@@ -79,8 +79,8 @@ struct ParticleFieldView: View {
 
     struct Particle: Identifiable {
         let id = UUID()
-        var x: CGFloat
-        var y: CGFloat
+        var positionX: CGFloat
+        var positionY: CGFloat
         var velocityX: CGFloat
         var velocityY: CGFloat
         var size: CGFloat
@@ -94,8 +94,8 @@ struct ParticleFieldView: View {
                 Canvas { context, _ in
                     for particle in particles {
                         let rect = CGRect(
-                            x: particle.x - particle.size / 2,
-                            y: particle.y - particle.size / 2,
+                            x: particle.positionX - particle.size / 2,
+                            y: particle.positionY - particle.size / 2,
                             width: particle.size,
                             height: particle.size
                         )
@@ -151,8 +151,8 @@ struct ParticleFieldView: View {
         } else {
             particles = (0..<particleCount).map { _ in
                 Particle(
-                    x: CGFloat.random(in: 0...size.width),
-                    y: CGFloat.random(in: 0...size.height),
+                    positionX: CGFloat.random(in: 0...size.width),
+                    positionY: CGFloat.random(in: 0...size.height),
                     velocityX: CGFloat.random(in: -0.5...0.5),
                     velocityY: CGFloat.random(in: -0.5...0.5),
                     size: CGFloat.random(in: 3...8),
@@ -170,10 +170,10 @@ struct ParticleFieldView: View {
         let bassForce = frequencyBands.first ?? 0 // Low frequencies push outward
         let highForce = frequencyBands.last ?? 0  // High frequencies add jitter
 
-        for i in 0..<particles.count {
-            guard i < particles.count else { break }
+        for particleIndex in 0..<particles.count {
+            guard particleIndex < particles.count else { break }
 
-            var particle = particles[i]
+            var particle = particles[particleIndex]
 
             if isActive && audioLevel > 0.05 {
                 // Audio-reactive movement
@@ -181,8 +181,8 @@ struct ParticleFieldView: View {
                 // Use actual geometry size instead of hardcoded values
                 let centerX = currentSize.width / 2
                 let centerY = currentSize.height / 2
-                let dx = particle.x - centerX
-                let dy = particle.y - centerY
+                let dx = particle.positionX - centerX
+                let dy = particle.positionY - centerY
                 let distance = sqrt(dx * dx + dy * dy)
                 if distance > 1 {
                     let pushStrength = CGFloat(bassForce) * 2.0
@@ -203,27 +203,27 @@ struct ParticleFieldView: View {
                 particle.opacity = min(1.0, 0.5 + CGFloat(audioLevel) * 0.5)
             } else {
                 // Idle gentle drift
-                let drift = sin(idlePhase + CGFloat(i) * 0.1) * 0.1
+                let drift = sin(idlePhase + CGFloat(particleIndex) * 0.1) * 0.1
                 particle.velocityX += drift * 0.5
-                particle.velocityY += cos(idlePhase + CGFloat(i) * 0.15) * 0.05
-                particle.opacity = 0.4 + sin(idlePhase + CGFloat(i) * 0.2) * 0.2
+                particle.velocityY += cos(idlePhase + CGFloat(particleIndex) * 0.15) * 0.05
+                particle.opacity = 0.4 + sin(idlePhase + CGFloat(particleIndex) * 0.2) * 0.2
             }
 
             // Apply velocity with damping
-            particle.x += particle.velocityX
-            particle.y += particle.velocityY
+            particle.positionX += particle.velocityX
+            particle.positionY += particle.velocityY
             particle.velocityX *= 0.95
             particle.velocityY *= 0.95
 
             // Wrap around edges using actual geometry size
             let wrapWidth = currentSize.width + 20
             let wrapHeight = currentSize.height + 20
-            if particle.x < -10 { particle.x = wrapWidth - 10 }
-            if particle.x > wrapWidth - 10 { particle.x = -10 }
-            if particle.y < -10 { particle.y = wrapHeight - 10 }
-            if particle.y > wrapHeight - 10 { particle.y = -10 }
+            if particle.positionX < -10 { particle.positionX = wrapWidth - 10 }
+            if particle.positionX > wrapWidth - 10 { particle.positionX = -10 }
+            if particle.positionY < -10 { particle.positionY = wrapHeight - 10 }
+            if particle.positionY > wrapHeight - 10 { particle.positionY = -10 }
 
-            particles[i] = particle
+            particles[particleIndex] = particle
         }
     }
 }

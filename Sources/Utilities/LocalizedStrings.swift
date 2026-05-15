@@ -4,7 +4,8 @@ import Foundation
 internal enum LocalizedStrings {
     
     // MARK: - UI States
-    enum UI {
+    // swiftlint:disable:next type_name
+    enum UI { // Renaming crosses into Tests scope (LocalizedStringsTests, PerformanceTests)
         static let ready = NSLocalizedString("ui.ready",
             value: "Ready",
             comment: "Status when app is ready to record")
@@ -41,7 +42,8 @@ internal enum LocalizedStrings {
             comment: "Title for microphone permission alert")
         
         static let microphoneAccessMessage = NSLocalizedString("alerts.microphone_access_message",
-            value: "AudioWhisper needs microphone access to record audio. Please enable microphone access in System Settings > Privacy & Security > Microphone.",
+            value: "AudioWhisper needs microphone access to record audio. "
+                + "Please enable microphone access in System Settings > Privacy & Security > Microphone.",
             comment: "Message explaining why microphone access is needed")
         
         static let openSystemSettings = NSLocalizedString("alerts.open_system_settings",
@@ -95,7 +97,8 @@ internal enum LocalizedStrings {
     // MARK: - Local Whisper Errors
     enum LocalWhisper {
         static let modelNotDownloaded = NSLocalizedString("local_whisper.model_not_downloaded",
-            value: "The selected model hasn't been downloaded yet. Please wait for it to finish downloading or choose a different model.",
+            value: "The selected model hasn't been downloaded yet. "
+                + "Please wait for it to finish downloading or choose a different model.",
             comment: "Error when whisper model is not available")
         
         static let invalidAudioFormat = NSLocalizedString("local_whisper.invalid_audio_format",

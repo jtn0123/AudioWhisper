@@ -87,7 +87,7 @@ final class ColorThemeTests: IsolatedXCTestCase {
 
 // MARK: - ColorTheme UserDefaults Tests
 final class ColorThemeUserDefaultsTests: IsolatedXCTestCase {
-    // TODO(D1): `UserDefaults.colorTheme` is an extension on
+    // NOTE(D1): `UserDefaults.colorTheme` is an extension on
     // UserDefaults.standard. Once a non-standard accessor exists, route
     // writes through the existing UUID-scoped suite below and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }

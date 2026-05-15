@@ -4,7 +4,7 @@ import SwiftUI
 
 // MARK: - RecordingButton Tests
 final class RecordingButtonTests: IsolatedXCTestCase {
-    // TODO(D1): RecordingButton reads `enableSmartPaste` from
+    // NOTE(D1): RecordingButton reads `enableSmartPaste` from
     // UserDefaults.standard via AppStorage. Once the component accepts an
     // injected UserDefaults, route writes through a UUID-scoped suite and
     // re-enable isolation.

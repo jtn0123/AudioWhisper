@@ -102,15 +102,19 @@ internal class ParakeetService {
                 return false
             }
 
-            guard let rev = try? String(contentsOf: refsMain, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !rev.isEmpty else {
+            let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let rev = rawRev, !rev.isEmpty else {
                 return false
             }
             let snap = base.appendingPathComponent("snapshots/\(rev)")
             guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else { return false }
             // Look for at least one weights file under snapshot or blobs
             let snapFiles = (try? FileManager.default.contentsOfDirectory(atPath: snap.path)) ?? []
-            let blobsFiles = (try? FileManager.default.contentsOfDirectory(atPath: base.appendingPathComponent("blobs").path)) ?? []
-            let hasWeights = snapFiles.contains { $0.hasSuffix(".safetensors") } || blobsFiles.contains { $0.hasSuffix(".safetensors") }
+            let blobsPath = base.appendingPathComponent("blobs").path
+            let blobsFiles = (try? FileManager.default.contentsOfDirectory(atPath: blobsPath)) ?? []
+            let hasWeights = snapFiles.contains { $0.hasSuffix(".safetensors") }
+                || blobsFiles.contains { $0.hasSuffix(".safetensors") }
             return hasWeights
         }.value
     }

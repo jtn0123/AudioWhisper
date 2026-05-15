@@ -3,7 +3,7 @@ import Foundation
 @testable import AudioWhisper
 
 class SpeechToTextServiceTests: IsolatedXCTestCase {
-    // TODO(D1): SpeechToTextService reads `parakeetPythonPath` from
+    // Deferred(D1): SpeechToTextService reads `parakeetPythonPath` from
     // UserDefaults.standard directly. Once the service accepts an injected
     // UserDefaults, route writes through a UUID-scoped suite and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
@@ -145,10 +145,7 @@ extension SpeechToTextServiceTests {
         let audioURL = tempDir.appendingPathComponent("test_audio.m4a")
 
         // Create a minimal test file
-        guard let testData = "test audio data".data(using: .utf8) else {
-            XCTFail("Failed to create test data")
-            return tempDir.appendingPathComponent("invalid")
-        }
+        let testData = Data("test audio data".utf8)
         do {
             try testData.write(to: audioURL)
         } catch {

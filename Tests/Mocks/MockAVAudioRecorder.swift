@@ -11,7 +11,11 @@ class MockAVAudioRecorder: AVAudioRecorder, @unchecked Sendable {
             AVSampleRateKey: 44100,
             AVNumberOfChannelsKey: 1
         ]
-        try! self.init(url: tempURL, settings: settings)
+        do {
+            try self.init(url: tempURL, settings: settings)
+        } catch {
+            fatalError("MockAVAudioRecorder failed to initialize: \(error)")
+        }
     }
     private var mockCurrentTime: TimeInterval = 0
     private var mockAveragePower: Float = -10.0

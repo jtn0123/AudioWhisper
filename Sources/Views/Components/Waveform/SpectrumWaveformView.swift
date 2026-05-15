@@ -91,30 +91,30 @@ struct SpectrumWaveformView: View {
         idlePhase += 0.05
 
         // Update animated levels with smoothing
-        for i in 0..<min(animatedLevels.count, frequencyBands.count) {
+        for bandIndex in 0..<min(animatedLevels.count, frequencyBands.count) {
             let target: Float
             if isActive {
                 // Apply 138% gain boost for highly reactive bars
-                target = min(1.0, frequencyBands[i] * 2.38)
+                target = min(1.0, frequencyBands[bandIndex] * 2.38)
             } else {
                 // Idle animation
-                let breathe = Float(sin(idlePhase + Double(i) * 0.3) * 0.5 + 0.5) * 0.08
+                let breathe = Float(sin(idlePhase + Double(bandIndex) * 0.3) * 0.5 + 0.5) * 0.08
                 target = breathe
             }
 
             // Smooth animation (fast attack, snappier decay)
-            if target > animatedLevels[i] {
-                animatedLevels[i] = target
+            if target > animatedLevels[bandIndex] {
+                animatedLevels[bandIndex] = target
             } else {
-                animatedLevels[i] = animatedLevels[i] * 0.75 + target * 0.25
+                animatedLevels[bandIndex] = animatedLevels[bandIndex] * 0.75 + target * 0.25
             }
 
             // Update peak hold
-            if animatedLevels[i] > peakLevels[i] {
-                peakLevels[i] = animatedLevels[i]
+            if animatedLevels[bandIndex] > peakLevels[bandIndex] {
+                peakLevels[bandIndex] = animatedLevels[bandIndex]
             } else {
                 // Slow peak decay
-                peakLevels[i] = max(0, peakLevels[i] - 0.01)
+                peakLevels[bandIndex] = max(0, peakLevels[bandIndex] - 0.01)
             }
         }
     }

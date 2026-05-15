@@ -4,7 +4,7 @@ import AVFoundation
 @testable import AudioWhisper
 
 class UtilityTests: IsolatedXCTestCase {
-    // TODO(D1): Generic utility tests exercise UserDefaults.standard
+    // Deferred(D1): Generic utility tests exercise UserDefaults.standard
     // directly under synthetic keys. Migrate to a UUID-scoped suite once
     // the assertions can target a non-standard domain.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
@@ -17,11 +17,8 @@ class UtilityTests: IsolatedXCTestCase {
         let audioFilename = tempDir.appendingPathComponent("recording_\(timestamp).m4a")
         
         // Create temporary file
-        guard let testData = "test data".data(using: .utf8) else {
-            XCTFail("Failed to create test data")
-            return
-        }
-        
+        let testData = Data("test data".utf8)
+
         do {
             try testData.write(to: audioFilename)
             
@@ -89,7 +86,7 @@ class UtilityTests: IsolatedXCTestCase {
     // MARK: - Data Conversion Tests
     
     func testBase64AudioEncoding() {
-        let testAudioData = "fake audio data".data(using: .utf8)!
+        let testAudioData = Data("fake audio data".utf8)
         let base64String = testAudioData.base64EncodedString()
         
         XCTAssertFalse(base64String.isEmpty)
@@ -285,14 +282,11 @@ class UtilityTests: IsolatedXCTestCase {
     
     func testFileOperationPerformance() {
         let tempDir = FileManager.default.temporaryDirectory
-        guard let testData = "performance test data".data(using: .utf8) else {
-            XCTFail("Failed to create performance test data")
-            return
-        }
-        
+        let testData = Data("performance test data".utf8)
+
         measure {
-            for i in 0..<100 {
-                let filename = tempDir.appendingPathComponent("perf_test_\(i).txt")
+            for index in 0..<100 {
+                let filename = tempDir.appendingPathComponent("perf_test_\(index).txt")
                 do {
                     try testData.write(to: filename)
                     _ = try Data(contentsOf: filename)

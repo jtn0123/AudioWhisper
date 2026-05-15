@@ -24,11 +24,11 @@ internal struct TranscriptionSearchBar: View {
                 Button(action: {
                     searchText = ""
                     isFocused.wrappedValue = false
-                }) {
+                }, label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                         .font(.callout)
-                }
+                })
                 .buttonStyle(.plain)
                 .accessibilityLabel("Clear search")
                 .help("Clear search (Escape)")

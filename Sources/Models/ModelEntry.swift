@@ -31,8 +31,11 @@ internal struct LocalWhisperEntry: ModelEntry {
     var sizeText: String? { model.fileSize }
     var statusText: String? {
         guard let stage = stage else { return nil }
-        let time = estimatedTimeRemaining.map { t -> String in
-            let s = max(0, Int(t)); let m = s / 60; let r = s % 60; return m > 0 ? "~\(m)m \(r)s" : "~\(r)s"
+        let time = estimatedTimeRemaining.map { remaining -> String in
+            let totalSeconds = max(0, Int(remaining))
+            let minutes = totalSeconds / 60
+            let seconds = totalSeconds % 60
+            return minutes > 0 ? "~\(minutes)m \(seconds)s" : "~\(seconds)s"
         }
         return stage.displayText + (time.map { " • \($0)" } ?? "")
     }
@@ -62,7 +65,8 @@ internal struct MLXEntry: ModelEntry {
     var title: String { model.displayName }
     var subtitle: String { model.description }
     var statusColor: Color? {
-        if let t = statusText, t.localizedCaseInsensitiveContains("error") || t.localizedCaseInsensitiveContains("please") {
+        if let status = statusText,
+           status.localizedCaseInsensitiveContains("error") || status.localizedCaseInsensitiveContains("please") {
             return .red
         }
         return isDownloading ? .blue : nil

@@ -17,10 +17,10 @@ public enum DownloadState: Equatable {
         switch (lhs, rhs) {
         case (.idle, .idle), (.verifying, .verifying), (.verified, .verified):
             return true
-        case let (.downloading(lp, lt), .downloading(rp, rt)):
-            return lp == rp && lt == rt
-        case let (.failed(l), .failed(r)):
-            return l == r
+        case let (.downloading(leftProgress, leftText), .downloading(rightProgress, rightText)):
+            return leftProgress == rightProgress && leftText == rightText
+        case let (.failed(leftMessage), .failed(rightMessage)):
+            return leftMessage == rightMessage
         default:
             return false
         }
@@ -98,10 +98,10 @@ public struct DownloadProgressView: View {
     private var accessibilityLabel: String {
         switch state {
         case .idle: return ""
-        case .downloading(let p, let t):
-            return "Downloading \(Int(p * 100)) percent. \(t ?? "")"
+        case .downloading(let progress, let statusText):
+            return "Downloading \(Int(progress * 100)) percent. \(statusText ?? "")"
         case .verifying: return "Verifying model"
-        case .failed(let m): return "Download failed: \(m)"
+        case .failed(let message): return "Download failed: \(message)"
         case .verified: return "Model ready"
         }
     }

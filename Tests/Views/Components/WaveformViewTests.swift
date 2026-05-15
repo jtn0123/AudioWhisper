@@ -7,8 +7,8 @@ final class WaveformViewTests: XCTestCase {
 
     func testCircularBandIndexMappingForFirstHalf() {
         // First 8 bars map directly to bands 0-7
-        for i in 0..<8 {
-            XCTAssertEqual(CircularSpectrumView.testableBandIndex(for: i), i)
+        for barIndex in 0..<8 {
+            XCTAssertEqual(CircularSpectrumView.testableBandIndex(for: barIndex), barIndex)
         }
     }
 

@@ -109,10 +109,9 @@ final class ShowAudioFileButtonTest: XCTestCase {
             "transcription": ["transcription"]
         ]
         
-        for (errorType, patterns) in errorPatterns {
-            if patterns.contains(where: { lowercasedMessage.contains($0) }) {
-                return errorType
-            }
+        for (errorType, patterns) in errorPatterns
+            where patterns.contains(where: { lowercasedMessage.contains($0) }) {
+            return errorType
         }
         return nil
     }

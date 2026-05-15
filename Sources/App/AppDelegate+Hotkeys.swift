@@ -152,8 +152,14 @@ internal extension AppDelegate {
         let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
 
         // Ensure images are created successfully before starting animation
-        guard let redImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config),
-              let blackImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config) else {
+        guard let redImage = NSImage(
+                  systemSymbolName: "microphone.circle",
+                  accessibilityDescription: "Recording"
+              )?.withSymbolConfiguration(config),
+              let blackImage = NSImage(
+                  systemSymbolName: "microphone.circle",
+                  accessibilityDescription: "Recording"
+              )?.withSymbolConfiguration(config) else {
             return
         }
         redImage.isTemplate = false

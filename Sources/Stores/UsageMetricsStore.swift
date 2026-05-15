@@ -193,7 +193,8 @@ internal final class UsageMetricsStore {
     func bootstrapIfNeeded(dataManager: DataManagerProtocol = DataManager.shared) async {
         // If dailyActivity is empty but we have records, rebuild from records
         let needsDailyActivityBootstrap = snapshot.dailyActivity.isEmpty && dataManager.isHistoryEnabled
-        let needsFullBootstrap = snapshot.totalSessions == 0 && snapshot.totalDuration == 0 && snapshot.totalWords == 0 && dataManager.isHistoryEnabled
+        let needsFullBootstrap = snapshot.totalSessions == 0 && snapshot.totalDuration == 0
+            && snapshot.totalWords == 0 && dataManager.isHistoryEnabled
         
         guard needsDailyActivityBootstrap || needsFullBootstrap else {
             return

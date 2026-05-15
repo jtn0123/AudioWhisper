@@ -207,11 +207,11 @@ final class AppStatusTests: XCTestCase {
         let viewModel = StatusViewModel()
         
         measure {
-            for i in 0..<1000 {
+            for index in 0..<1000 {
                 viewModel.updateStatus(
-                    isRecording: i % 2 == 0,
-                    isProcessing: i % 3 == 0,
-                    progressMessage: "Message \(i)",
+                    isRecording: index % 2 == 0,
+                    isProcessing: index % 3 == 0,
+                    progressMessage: "Message \(index)",
                     hasPermission: true,
                     showSuccess: false
                 )
@@ -221,9 +221,9 @@ final class AppStatusTests: XCTestCase {
     
     func testAppStatusCreationPerformance() {
         measure {
-            for i in 0..<1000 {
-                _ = AppStatus.processing("Processing \(i)")
-                _ = AppStatus.error("Error \(i)")
+            for index in 0..<1000 {
+                _ = AppStatus.processing("Processing \(index)")
+                _ = AppStatus.error("Error \(index)")
             }
         }
     }

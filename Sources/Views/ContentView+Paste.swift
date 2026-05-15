@@ -143,7 +143,11 @@ internal extension ContentView {
                     }
                 }
             } else {
-                throw NSError(domain: "AudioWhisper", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to activate target application"])
+                throw NSError(
+                    domain: "AudioWhisper",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to activate target application"]
+                )
             }
         }
         

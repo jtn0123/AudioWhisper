@@ -227,13 +227,13 @@ final class CategoryStoreTests: XCTestCase {
 
     func testIndexConsistencyAfterMultipleOperations() {
         // Add several categories
-        for i in 1...5 {
+        for index in 1...5 {
             let category = CategoryDefinition(
-                id: "test-\(i)",
-                displayName: "Test \(i)",
+                id: "test-\(index)",
+                displayName: "Test \(index)",
                 icon: "number",
                 colorHex: "#000000",
-                promptDescription: "Test \(i)",
+                promptDescription: "Test \(index)",
                 promptTemplate: "Template",
                 isSystem: false
             )

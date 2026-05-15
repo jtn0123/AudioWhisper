@@ -43,7 +43,9 @@ class MockFileManager: FileManagerProtocol {
         return mockFiles.contains(path)
     }
     
-    func createDirectory(at url: URL, withIntermediateDirectories createIntermediates: Bool, attributes: [FileAttributeKey: Any]? = nil) throws {
+    func createDirectory(at url: URL,
+                         withIntermediateDirectories createIntermediates: Bool,
+                         attributes: [FileAttributeKey: Any]? = nil) throws {
         createDirectoryCalled = true
         if shouldThrowOnCreateDirectory {
             throw NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mock create directory error"])
@@ -71,7 +73,9 @@ class MockFileManager: FileManagerProtocol {
 protocol FileManagerProtocol {
     func urls(for directory: FileManager.SearchPathDirectory, in domainMask: FileManager.SearchPathDomainMask) -> [URL]
     func fileExists(atPath path: String) -> Bool
-    func createDirectory(at url: URL, withIntermediateDirectories createIntermediates: Bool, attributes: [FileAttributeKey: Any]?) throws
+    func createDirectory(at url: URL,
+                         withIntermediateDirectories createIntermediates: Bool,
+                         attributes: [FileAttributeKey: Any]?) throws
     func removeItem(at url: URL) throws
     func attributesOfItem(atPath path: String) throws -> [FileAttributeKey: Any]
 }

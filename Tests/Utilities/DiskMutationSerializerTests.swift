@@ -29,16 +29,16 @@ final class DiskMutationSerializerTests: XCTestCase {
         let serializer = DiskMutationSerializer<String>()
         let counter = Counter()
 
-        async let a: Void = try serializer.run(key: "shared") {
+        async let firstRun: Void = try serializer.run(key: "shared") {
             try await Task.sleep(nanoseconds: 50_000_000) // 50ms
             await counter.increment()
         }
-        async let b: Void = try serializer.run(key: "shared") {
+        async let secondRun: Void = try serializer.run(key: "shared") {
             try await Task.sleep(nanoseconds: 50_000_000) // 50ms
             await counter.increment()
         }
 
-        _ = try await (a, b)
+        _ = try await (firstRun, secondRun)
         let final = await counter.value
         XCTAssertEqual(final, 1, "Concurrent same-key callers should run the body exactly once")
     }
@@ -48,17 +48,17 @@ final class DiskMutationSerializerTests: XCTestCase {
         let serializer = DiskMutationSerializer<String>()
         let counter = Counter()
 
-        async let a: Void = try serializer.run(key: "one") {
+        async let firstRun: Void = try serializer.run(key: "one") {
             try await Task.sleep(nanoseconds: 50_000_000)
             await counter.increment()
         }
-        async let b: Void = try serializer.run(key: "two") {
+        async let secondRun: Void = try serializer.run(key: "two") {
             try await Task.sleep(nanoseconds: 50_000_000)
             await counter.increment()
         }
 
         let start = Date()
-        _ = try await (a, b)
+        _ = try await (firstRun, secondRun)
         let elapsed = Date().timeIntervalSince(start)
         let final = await counter.value
         XCTAssertEqual(final, 2)
@@ -153,10 +153,10 @@ final class DiskMutationSerializerTests: XCTestCase {
         let bytes = Data(repeating: 0x42, count: 200_000) // 200KB to exercise chunk loop
         try bytes.write(to: modelURL)
 
-        let a = try ModelIntegrity.sha256(of: modelURL)
-        let b = try ModelIntegrity.sha256(of: modelURL)
-        XCTAssertEqual(a, b)
-        XCTAssertEqual(a.count, 64, "SHA-256 hex digest should be 64 chars")
+        let firstHash = try ModelIntegrity.sha256(of: modelURL)
+        let secondHash = try ModelIntegrity.sha256(of: modelURL)
+        XCTAssertEqual(firstHash, secondHash)
+        XCTAssertEqual(firstHash.count, 64, "SHA-256 hex digest should be 64 chars")
     }
 
     func test_modelIntegrity_quietVerifyReturnsFalseOnMismatch() throws {

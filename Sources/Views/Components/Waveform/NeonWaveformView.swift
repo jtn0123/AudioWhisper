@@ -73,8 +73,9 @@ struct NeonWaveformView: View {
         }
 
         // Interpolate toward target with decay for slower response
-        for i in 0..<targetSamples.count {
-            smoothedSamples[i] = smoothedSamples[i] * decayFactor + targetSamples[i] * (1 - decayFactor)
+        for sampleIndex in 0..<targetSamples.count {
+            smoothedSamples[sampleIndex] = smoothedSamples[sampleIndex] * decayFactor
+                + targetSamples[sampleIndex] * (1 - decayFactor)
         }
     }
 
@@ -177,20 +178,20 @@ struct NeonWaveformView: View {
             path.move(to: CGPoint(x: 0, y: firstY))
 
             // Draw smooth bezier curve through sample points
-            for i in 1..<samples.count {
-                let x = CGFloat(i) * stepX
-                let y = centerY - CGFloat(samples[i]) * maxAmplitude
+            for sampleIndex in 1..<samples.count {
+                let posX = CGFloat(sampleIndex) * stepX
+                let posY = centerY - CGFloat(samples[sampleIndex]) * maxAmplitude
 
-                let prevX = CGFloat(i - 1) * stepX
-                let prevY = centerY - CGFloat(samples[i - 1]) * maxAmplitude
+                let prevX = CGFloat(sampleIndex - 1) * stepX
+                let prevY = centerY - CGFloat(samples[sampleIndex - 1]) * maxAmplitude
 
                 let controlX1 = prevX + stepX * 0.5
-                let controlX2 = x - stepX * 0.5
+                let controlX2 = posX - stepX * 0.5
 
                 path.addCurve(
-                    to: CGPoint(x: x, y: y),
+                    to: CGPoint(x: posX, y: posY),
                     control1: CGPoint(x: controlX1, y: prevY),
-                    control2: CGPoint(x: controlX2, y: y)
+                    control2: CGPoint(x: controlX2, y: posY)
                 )
             }
         }
@@ -216,9 +217,9 @@ struct NeonWaveformView: View {
             }
         } else {
             // Generate idle breathing wave
-            return (0..<64).map { i in
-                let t = Float(i) / 64.0
-                let breathe = sin(Float(phase) + t * .pi * 4) * 0.08
+            return (0..<64).map { sampleIndex in
+                let fraction = Float(sampleIndex) / 64.0
+                let breathe = sin(Float(phase) + fraction * .pi * 4) * 0.08
                 return breathe
             }
         }

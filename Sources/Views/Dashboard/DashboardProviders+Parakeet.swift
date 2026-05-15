@@ -95,7 +95,9 @@ internal extension DashboardProvidersView {
             // Status icon
             ZStack {
                 Circle()
-                    .fill(envReady ? Color(red: 0.35, green: 0.60, blue: 0.40).opacity(0.12) : DashboardTheme.accent.opacity(0.12))
+                    .fill(envReady
+                        ? Color(red: 0.35, green: 0.60, blue: 0.40).opacity(0.12)
+                        : DashboardTheme.accent.opacity(0.12))
                     .frame(width: 44, height: 44)
                 
                 if isCheckingEnv {
@@ -253,7 +255,12 @@ internal extension DashboardProvidersView {
     }
 
     private func venvPythonPath() -> String {
-        let appSupport = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+        let appSupport = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
         let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
         return base ?? ""
     }
@@ -285,11 +292,11 @@ internal extension DashboardProvidersView {
                 // to avoid retain cycles. State is updated after process completion using messageStore.
                 out.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let s = String(data: data, encoding: .utf8) else { return }
-                    for line in s.split(separator: "\n").map(String.init) {
-                        if let d = line.data(using: .utf8),
-                           let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-                           let msg = j["message"] as? String {
+                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                    for line in output.split(separator: "\n").map(String.init) {
+                        if let lineData = line.data(using: .utf8),
+                           let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                           let msg = json["message"] as? String {
                             Task {
                                 await messageStore.updateStdout(msg)
                             }
@@ -298,8 +305,8 @@ internal extension DashboardProvidersView {
                 }
                 err.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let s = String(data: data, encoding: .utf8) else { return }
-                    let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                    let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
                     Task {
                         await messageStore.updateStderr(trimmed)
                     }

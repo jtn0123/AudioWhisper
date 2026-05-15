@@ -69,36 +69,36 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
 
     // MARK: - Keychain Service Integration
 
-    func testKeychainServiceSaveAndRetrieve() {
+    func testKeychainServiceSaveAndRetrieve() throws {
         // Given
         let testKey = "test-api-key-xyz"
         let service = "AudioWhisper"
         let account = "TestAccount"
 
         // When
-        try! mockKeychain.save(testKey, service: service, account: account)
+        try mockKeychain.save(testKey, service: service, account: account)
         let retrievedKey = mockKeychain.getQuietly(service: service, account: account)
 
         // Then
         XCTAssertEqual(retrievedKey, testKey)
     }
 
-    func testKeychainServiceDelete() {
+    func testKeychainServiceDelete() throws {
         // Given
         let testKey = "key-to-delete"
-        try! mockKeychain.save(testKey, service: "AudioWhisper", account: "DeleteTest")
+        try mockKeychain.save(testKey, service: "AudioWhisper", account: "DeleteTest")
 
         // When
-        try! mockKeychain.delete(service: "AudioWhisper", account: "DeleteTest")
+        try mockKeychain.delete(service: "AudioWhisper", account: "DeleteTest")
         let retrievedKey = mockKeychain.getQuietly(service: "AudioWhisper", account: "DeleteTest")
 
         // Then
         XCTAssertNil(retrievedKey)
     }
 
-    func testKeychainServiceContains() {
+    func testKeychainServiceContains() throws {
         // Given
-        try! mockKeychain.save("some-key", service: "AudioWhisper", account: "ContainsTest")
+        try mockKeychain.save("some-key", service: "AudioWhisper", account: "ContainsTest")
 
         // When/Then
         XCTAssertTrue(mockKeychain.contains(service: "AudioWhisper", account: "ContainsTest"))
@@ -145,17 +145,17 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
         let keychain = mockKeychain!
 
         // When - Perform concurrent saves
-        for i in 0..<10 {
-            try? keychain.save("\(key)-\(i)", service: "AudioWhisper", account: "Concurrent\(i)")
+        for index in 0..<10 {
+            try? keychain.save("\(key)-\(index)", service: "AudioWhisper", account: "Concurrent\(index)")
         }
 
         // Wait for operations to complete
         try? await Task.sleep(for: .milliseconds(100))
 
         // Then - All keys should be accessible
-        for i in 0..<10 {
-            let retrieved = keychain.getQuietly(service: "AudioWhisper", account: "Concurrent\(i)")
-            XCTAssertEqual(retrieved, "\(key)-\(i)")
+        for index in 0..<10 {
+            let retrieved = keychain.getQuietly(service: "AudioWhisper", account: "Concurrent\(index)")
+            XCTAssertEqual(retrieved, "\(key)-\(index)")
         }
     }
 

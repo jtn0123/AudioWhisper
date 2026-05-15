@@ -12,7 +12,11 @@ internal extension AppDelegate {
         menu.addItem(NSMenuItem(title: LocalizedStrings.Menu.history, action: #selector(showHistory), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Help", action: #selector(showHelp), keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(NSMenuItem(title: LocalizedStrings.Menu.quit, action: #selector(NSApplication.terminate(_:)), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(
+            title: LocalizedStrings.Menu.quit,
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: ""
+        ))
         return menu
     }
 

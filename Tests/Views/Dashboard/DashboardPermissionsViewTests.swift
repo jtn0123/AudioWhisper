@@ -6,7 +6,7 @@ import AppKit
 // MARK: - DashboardPermissionsView Tests
 @MainActor
 final class DashboardPermissionsViewTests: IsolatedXCTestCase {
-    // TODO(D1): DashboardPermissionsView reads `enableSmartPaste` from
+    // NOTE(D1): DashboardPermissionsView reads `enableSmartPaste` from
     // UserDefaults.standard via AppStorage. Once the view accepts an
     // injected UserDefaults, route writes through a UUID-scoped suite and
     // re-enable isolation.

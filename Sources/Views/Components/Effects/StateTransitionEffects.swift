@@ -79,15 +79,15 @@ struct ProcessingWave: View {
                     let elapsed = timeline.date.timeIntervalSinceReferenceDate
                     let wavePhase = elapsed * 2
 
-                    let path = Path { p in
-                        p.move(to: CGPoint(x: 0, y: size.height / 2))
+                    let path = Path { path in
+                        path.move(to: CGPoint(x: 0, y: size.height / 2))
 
-                        for x in stride(from: 0, through: size.width, by: 2) {
-                            let normalizedX = Double(x / size.width)
+                        for posX in stride(from: 0, through: size.width, by: 2) {
+                            let normalizedX = Double(posX / size.width)
                             let wave1 = sin(normalizedX * Double.pi * 4 + wavePhase) * 3
                             let wave2 = sin(normalizedX * Double.pi * 2 + wavePhase * 0.7) * 2
-                            let y = size.height / 2 + CGFloat(wave1 + wave2) * CGFloat(intensity.glowIntensity)
-                            p.addLine(to: CGPoint(x: x, y: y))
+                            let posY = size.height / 2 + CGFloat(wave1 + wave2) * CGFloat(intensity.glowIntensity)
+                            path.addLine(to: CGPoint(x: posX, y: posY))
                         }
                     }
 

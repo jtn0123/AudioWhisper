@@ -29,10 +29,10 @@ internal enum DataManagerError: Error, LocalizedError {
 }
 
 internal enum RetentionPeriod: String, CaseIterable, Codable {
-    case oneWeek = "oneWeek"
-    case oneMonth = "oneMonth"
-    case threeMonths = "threeMonths"
-    case forever = "forever"
+    case oneWeek
+    case oneMonth
+    case threeMonths
+    case forever
     
     var displayName: String {
         switch self {

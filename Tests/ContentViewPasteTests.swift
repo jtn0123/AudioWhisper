@@ -36,10 +36,8 @@ final class ContentViewPasteTests: XCTestCase {
                 }
             }
 
-            for await result in group {
-                if result {
-                    await counter.increment()
-                }
+            for await result in group where result {
+                await counter.increment()
             }
         }
 

@@ -4,7 +4,7 @@ import XCTest
 /// Tests for AppDelegate+Hotkeys.swift focusing on hotkey and recording handling
 @MainActor
 final class AppDelegateHotkeysTests: IsolatedXCTestCase {
-    // TODO(D1): AppDelegate reads `immediateRecording` from
+    // NOTE(D1): AppDelegate reads `immediateRecording` from
     // UserDefaults.standard directly. Once it accepts an injected
     // UserDefaults, route writes through a UUID-scoped suite and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }

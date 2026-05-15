@@ -2,9 +2,9 @@ import SwiftUI
 import Observation
 
 internal struct DashboardCategoriesView: View {
-    @State private var categoryManager = AppCategoryManager.shared
-    @State private var categoryStore = CategoryStore.shared
-    @State private var sourceUsageStore = SourceUsageStore.shared
+    @State var categoryManager = AppCategoryManager.shared
+    @State var categoryStore = CategoryStore.shared
+    @State var sourceUsageStore = SourceUsageStore.shared
     @State private var editingCategory: CategoryDefinition?
     @State private var isCreatingNew = false
     
@@ -139,23 +139,23 @@ internal struct DashboardCategoriesView: View {
     }
     
     // MARK: - App Mappings
-    private var appMappingsSection: some View {
+    var appMappingsSection: some View {
         let topSources = sourceUsageStore.topSources(limit: 10)
-        
+
         return VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("App Assignments")
-            
+
             if topSources.isEmpty {
                 VStack(spacing: DashboardTheme.Spacing.md) {
                     Image(systemName: "app.badge")
                         .font(.system(size: 32, weight: .light))
                         .foregroundStyle(DashboardTheme.inkFaint)
-                    
+
                     VStack(spacing: DashboardTheme.Spacing.xs) {
                         Text("No apps recorded yet")
                             .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                             .foregroundStyle(DashboardTheme.inkLight)
-                        
+
                         Text("Use AudioWhisper in different apps to customize their categories")
                             .font(DashboardTheme.Fonts.sans(13, weight: .regular))
                             .foregroundStyle(DashboardTheme.inkMuted)
@@ -169,7 +169,7 @@ internal struct DashboardCategoriesView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(topSources) { source in
                         appMappingRow(source)
-                        
+
                         if source.id != topSources.last?.id {
                             Divider().background(DashboardTheme.rule)
                         }
@@ -179,113 +179,9 @@ internal struct DashboardCategoriesView: View {
             }
         }
     }
-    
-    private func appMappingRow(_ source: SourceUsageStats) -> some View {
-        let currentCategory = categoryManager.category(for: source.bundleIdentifier)
-        let isOverridden = categoryManager.isUserOverridden(source.bundleIdentifier)
-        
-        return HStack(spacing: DashboardTheme.Spacing.md) {
-            // App icon
-            Group {
-                if let image = source.nsImage() {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 28, height: 28)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                } else {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(DashboardTheme.rule)
-                        .frame(width: 28, height: 28)
-                        .overlay(
-                            Text(source.initials.uppercased())
-                                .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
-                                .foregroundStyle(DashboardTheme.inkMuted)
-                        )
-                }
-            }
-            
-            // App name
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: DashboardTheme.Spacing.xs) {
-                    Text(source.displayName)
-                        .font(DashboardTheme.Fonts.sans(14, weight: .medium))
-                        .foregroundStyle(DashboardTheme.ink)
-                    
-                    if isOverridden {
-                        Text("Custom")
-                            .font(DashboardTheme.Fonts.sans(9, weight: .medium))
-                            .foregroundStyle(DashboardTheme.accent)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                RoundedRectangle(cornerRadius: 3)
-                                    .fill(DashboardTheme.accentLight)
-                            )
-                    }
-                }
-                
-                Text(source.bundleIdentifier)
-                    .font(DashboardTheme.Fonts.mono(10, weight: .regular))
-                    .foregroundStyle(DashboardTheme.inkFaint)
-            }
-            
-            Spacer()
-            
-            // Category picker
-            Menu {
-                ForEach(categoryStore.categories, id: \.id) { category in
-                    Button {
-                        categoryManager.setCategory(category, for: source.bundleIdentifier)
-                    } label: {
-                        HStack {
-                            Image(systemName: category.icon)
-                            Text(category.displayName)
-                            if currentCategory.id == category.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
 
-                if isOverridden {
-                    Divider()
-                    Button("Reset to Default") {
-                        categoryManager.resetToDefault(for: source.bundleIdentifier)
-                    }
-                }
-            } label: {
-                HStack(spacing: DashboardTheme.Spacing.xs) {
-                    Image(systemName: currentCategory.icon)
-                        .font(.system(size: 12))
-                        .foregroundStyle(currentCategory.color)
-                    
-                    Text(currentCategory.displayName)
-                        .font(DashboardTheme.Fonts.sans(12, weight: .medium))
-                        .foregroundStyle(DashboardTheme.ink)
-                    
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(DashboardTheme.inkMuted)
-                }
-                .padding(.horizontal, DashboardTheme.Spacing.sm)
-                .padding(.vertical, DashboardTheme.Spacing.xs + 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(DashboardTheme.cardBgAlt)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(DashboardTheme.rule, lineWidth: 1)
-                )
-            }
-            .menuStyle(.borderlessButton)
-        }
-        .padding(DashboardTheme.Spacing.md)
-    }
-    
     // MARK: - Helpers
-    private func sectionHeader(_ title: String) -> some View {
+    func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
             .foregroundStyle(DashboardTheme.inkMuted)

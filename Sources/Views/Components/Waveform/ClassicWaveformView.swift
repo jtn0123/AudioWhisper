@@ -59,8 +59,8 @@ struct ClassicWaveformView: View {
         idlePhase += 0.06
         let centerIndex = barCount / 2
 
-        for i in 0..<barCount {
-            let distanceFromCenter = abs(i - centerIndex)
+        for barIndex in 0..<barCount {
+            let distanceFromCenter = abs(barIndex - centerIndex)
             let normalizedDistance = CGFloat(distanceFromCenter) / CGFloat(centerIndex)
             let baseShape = 1.0 - pow(normalizedDistance, 1.5)
 
@@ -70,47 +70,47 @@ struct ClassicWaveformView: View {
                 // Active - calculate target based on audio level (+10% gain)
                 let level = CGFloat(audioLevel) * 1.1
                 let noise = CGFloat.random(in: -0.1...0.1)
-                let variation = sin(CGFloat(i) * 0.5 + idlePhase * 2) * 0.15
+                let variation = sin(CGFloat(barIndex) * 0.5 + idlePhase * 2) * 0.15
                 targetHeight = minHeight + (physicsMaxHeight - minHeight) * baseShape * level * (1 + noise + variation)
                 targetHeight = max(minHeight, min(physicsMaxHeight, targetHeight))
             } else {
                 // Idle - subtle breathing
-                let breathe = sin(idlePhase + CGFloat(i) * 0.15) * 0.5 + 0.5
+                let breathe = sin(idlePhase + CGFloat(barIndex) * 0.15) * 0.5 + 0.5
                 targetHeight = minHeight + (physicsMaxHeight * 0.08) * baseShape * breathe
             }
 
             // Physics update
-            if targetHeight > barHeights[i] {
+            if targetHeight > barHeights[barIndex] {
                 // Rising: move quickly toward target (no gravity)
-                barHeights[i] += (targetHeight - barHeights[i]) * riseSpeed
-                velocities[i] = 0 // Reset velocity when rising
+                barHeights[barIndex] += (targetHeight - barHeights[barIndex]) * riseSpeed
+                velocities[barIndex] = 0 // Reset velocity when rising
             } else {
                 // Falling: apply gravity
-                velocities[i] += gravity
+                velocities[barIndex] += gravity
 
                 // Apply velocity
-                barHeights[i] -= velocities[i]
+                barHeights[barIndex] -= velocities[barIndex]
 
                 // Bounce off minimum height
-                if barHeights[i] < minHeight {
-                    barHeights[i] = minHeight
-                    if velocities[i] > 1 {
+                if barHeights[barIndex] < minHeight {
+                    barHeights[barIndex] = minHeight
+                    if velocities[barIndex] > 1 {
                         // Bounce with energy loss
-                        velocities[i] = -velocities[i] * bounceFactor
+                        velocities[barIndex] = -velocities[barIndex] * bounceFactor
                     } else {
-                        velocities[i] = 0
+                        velocities[barIndex] = 0
                     }
                 }
 
                 // Damping when near rest
-                if abs(velocities[i]) < 0.5 && abs(barHeights[i] - targetHeight) < 2 {
-                    velocities[i] = 0
-                    barHeights[i] = targetHeight
+                if abs(velocities[barIndex]) < 0.5 && abs(barHeights[barIndex] - targetHeight) < 2 {
+                    velocities[barIndex] = 0
+                    barHeights[barIndex] = targetHeight
                 }
             }
 
             // Clamp height
-            barHeights[i] = max(minHeight, min(physicsMaxHeight, barHeights[i]))
+            barHeights[barIndex] = max(minHeight, min(physicsMaxHeight, barHeights[barIndex]))
         }
     }
 }

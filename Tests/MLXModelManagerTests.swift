@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class MLXModelManagerTests: IsolatedXCTestCase {
-    // TODO(D1): MLXModelManager reads `selectedParakeetModel` from
+    // Deferred(D1): MLXModelManager reads `selectedParakeetModel` from
     // UserDefaults.standard via AppDefaults. Once AppDefaults accepts an
     // injected UserDefaults, route writes through a UUID-scoped suite and
     // re-enable isolation.

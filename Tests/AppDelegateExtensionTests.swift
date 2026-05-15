@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class AppDelegateExtensionTests: IsolatedXCTestCase {
-    // TODO(D1): AppDelegate reads `immediateRecording` from
+    // Deferred(D1): AppDelegate reads `immediateRecording` from
     // UserDefaults.standard directly. Once that code path accepts an
     // injected UserDefaults, route writes through a UUID-scoped suite and
     // re-enable isolation.

@@ -50,8 +50,8 @@ struct AppDefault<Value>: DynamicProperty {
         }
     }
 
-    private func valuesEqual(_ a: Value, _ b: Value) -> Bool {
-        guard let lhs = a as? AnyHashable, let rhs = b as? AnyHashable else { return false }
+    private func valuesEqual(_ lhsValue: Value, _ rhsValue: Value) -> Bool {
+        guard let lhs = lhsValue as? AnyHashable, let rhs = rhsValue as? AnyHashable else { return false }
         return lhs == rhs
     }
 }

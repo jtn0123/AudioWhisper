@@ -71,7 +71,10 @@ internal struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Privacy-First Local Transcription")
                         .font(.headline)
-                    Text("AudioWhisper uses Apple's Neural Engine to transcribe audio locally on your Mac. Your audio never leaves your device.")
+                    Text(
+                        "AudioWhisper uses Apple's Neural Engine to transcribe audio locally "
+                        + "on your Mac. Your audio never leaves your device."
+                    )
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -94,9 +97,21 @@ internal struct WelcomeView: View {
         
         return LazyVGrid(columns: columns, spacing: 16) {
             FeatureRow(icon: "command", title: "Global Hotkey", description: "Press ⌘⇧Space anywhere (configurable) to record")
-            FeatureRow(icon: "waveform", title: "Powerful Transcription", description: "With semantic correction to fix transcription errors intelligently")
-            FeatureRow(icon: "clock.arrow.circlepath", title: "Transcription History", description: "Keep track of all your transcriptions with searchable history")
-            FeatureRow(icon: "brain", title: "Multiple AI Models", description: "Choose from offline and online models based on your needs")
+            FeatureRow(
+                icon: "waveform",
+                title: "Powerful Transcription",
+                description: "With semantic correction to fix transcription errors intelligently"
+            )
+            FeatureRow(
+                icon: "clock.arrow.circlepath",
+                title: "Transcription History",
+                description: "Keep track of all your transcriptions with searchable history"
+            )
+            FeatureRow(
+                icon: "brain",
+                title: "Multiple AI Models",
+                description: "Choose from offline and online models based on your needs"
+            )
         }
         .padding(.horizontal, 20) // Add padding to move it right
     }

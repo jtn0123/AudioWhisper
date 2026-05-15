@@ -71,7 +71,9 @@ internal extension AppDelegate {
         // Validate local model is ready before allowing use.
         // Preserves the legacy default-to-local behavior (no key set = treat as local)
         // which is also what `AppSetupHelper.checkFirstRun()` later writes.
-        let providerRaw = AppDefaults.defaults.string(forKey: AppDefaults.Key.transcriptionProvider.rawValue) ?? TranscriptionProvider.local.rawValue
+        let providerRaw = AppDefaults.defaults.string(
+            forKey: AppDefaults.Key.transcriptionProvider.rawValue
+        ) ?? TranscriptionProvider.local.rawValue
         if providerRaw == TranscriptionProvider.local.rawValue {
             let model = AppDefaults.selectedWhisperModel
             if !WhisperKitStorage.isModelDownloaded(model) {

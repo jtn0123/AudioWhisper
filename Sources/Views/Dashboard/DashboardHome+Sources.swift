@@ -107,7 +107,7 @@ extension DashboardHomeView {
         .padding(.vertical, DashboardTheme.Spacing.sm + 4)
     }
 
-    func providerRow(_ stat: (provider: String, words: Int, icon: String), index: Int) -> some View {
+    func providerRow(_ stat: ProviderStat, index: Int) -> some View {
         HStack(spacing: DashboardTheme.Spacing.md) {
             Text("\(index)")
                 .font(DashboardTheme.Fonts.mono(11, weight: .medium))

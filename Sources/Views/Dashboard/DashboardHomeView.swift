@@ -2,13 +2,20 @@ import SwiftUI
 import SwiftData
 import AppKit
 
+/// Aggregated transcription stats for a single provider.
+struct ProviderStat {
+    let provider: String
+    let words: Int
+    let icon: String
+}
+
 internal struct DashboardHomeView: View {
     @Binding var selectedNav: DashboardNavItem
     @State var metricsStore: UsageMetricsStore
     @State var sourceUsageStore: SourceUsageStore
     @State var recentRecords: [TranscriptionRecord] = []
     @State var dailyActivity: [Date: Int] = [:]
-    @State var providerStats: [(provider: String, words: Int, icon: String)] = []
+    @State var providerStats: [ProviderStat] = []
     @State var isLoaded = false
 
     /// Data manager for fetching records (injectable for testing)
@@ -119,7 +126,7 @@ extension DashboardHomeView {
             stats[record.provider, default: 0] += record.wordCount
         }
 
-        providerStats = stats.map { (provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
+        providerStats = stats.map { ProviderStat(provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
             .sorted { $0.words > $1.words }
     }
 
@@ -346,7 +353,7 @@ extension DashboardHomeView {
     }
 
     /// Testable provider stats calculation
-    static func testableCalculateProviderStats(from records: [TranscriptionRecord]) -> [(provider: String, words: Int, icon: String)] {
+    static func testableCalculateProviderStats(from records: [TranscriptionRecord]) -> [ProviderStat] {
         var stats: [String: Int] = [:]
         for record in records {
             stats[record.provider, default: 0] += record.wordCount
@@ -362,7 +369,7 @@ extension DashboardHomeView {
             }
         }
 
-        return stats.map { (provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
+        return stats.map { ProviderStat(provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
             .sorted { $0.words > $1.words }
     }
 

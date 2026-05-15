@@ -116,12 +116,10 @@ internal struct UvBootstrap {
                 resURL.appendingPathComponent("bin/uv"),
                 resURL.appendingPathComponent("Resources/bin/uv")
             ]
-            for url in paths {
-                if FileManager.default.isExecutableFile(atPath: url.path) {
-                    if let ver = try? uvVersion(at: url) {
-                        if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
-                        foundButOld = foundButOld ?? (url, ver)
-                    }
+            for url in paths where FileManager.default.isExecutableFile(atPath: url.path) {
+                if let ver = try? uvVersion(at: url) {
+                    if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
+                    foundButOld = foundButOld ?? (url, ver)
                 }
             }
         }
@@ -163,22 +161,32 @@ internal struct UvBootstrap {
             if !fm.fileExists(atPath: venvDir.path) {
                 let pythonSpecifier = userPython.flatMap { $0.isEmpty ? nil : $0 } ?? defaultPythonVersion
                 log?("Creating project .venv with Python \(pythonSpecifier)…")
-                let (out, err, status) = runInDir(uv.path, ["venv", "--python", pythonSpecifier], cwd: proj)
-                if status != 0 { throw UvError.venvCreationFailed(err.isEmpty ? out : err) }
+                let venvResult = runInDir(uv.path, ["venv", "--python", pythonSpecifier], cwd: proj)
+                if venvResult.status != 0 {
+                    throw UvError.venvCreationFailed(
+                        venvResult.stderr.isEmpty ? venvResult.stdout : venvResult.stderr
+                    )
+                }
             }
 
             // Run uv sync in project directory. We do not enforce --frozen so that
             // a stale lock can be updated to match the bundled pyproject.toml.
             log?("Syncing project dependencies via uv sync…")
-            let (out, err, status) = runInDir(uv.path, ["sync"], cwd: proj)
-            if status != 0 { throw UvError.syncFailed(err.isEmpty ? out : err) }
+            let syncResult = runInDir(uv.path, ["sync"], cwd: proj)
+            if syncResult.status != 0 {
+                throw UvError.syncFailed(
+                    syncResult.stderr.isEmpty ? syncResult.stdout : syncResult.stderr
+                )
+            }
 
             // Return the project venv python
             let candidates = [
                 proj.appendingPathComponent(".venv/bin/python3").path,
                 proj.appendingPathComponent(".venv/bin/python").path
             ]
-            for c in candidates { if fm.isExecutableFile(atPath: c) { return URL(fileURLWithPath: c) } }
+            for candidate in candidates where fm.isExecutableFile(atPath: candidate) {
+                return URL(fileURLWithPath: candidate)
+            }
             throw UvError.pythonNotUsable("project venv python not found")
         }
     }
@@ -267,9 +275,9 @@ internal struct UvBootstrap {
     // MARK: - Utilities
 
     private static func which(_ cmd: String) -> String? {
-        let (out, _, status) = run("/usr/bin/which", [cmd])
-        guard status == 0 else { return nil }
-        let path = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        let result = run("/usr/bin/which", [cmd])
+        guard result.status == 0 else { return nil }
+        let path = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         return path.isEmpty ? nil : path
     }
 
@@ -287,86 +295,36 @@ internal struct UvBootstrap {
     }
 
     private static func uvVersion(at url: URL) throws -> String {
-        let (out, err, status) = run(url.path, ["--version"])
-        guard status == 0 else { throw UvError.syncFailed(err.isEmpty ? out : err) }
-        let s = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        let result = run(url.path, ["--version"])
+        guard result.status == 0 else {
+            throw UvError.syncFailed(result.stderr.isEmpty ? result.stdout : result.stderr)
+        }
+        let versionOutput = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         // Common formats:
         //  - "uv 0.8.5 (ce3728681 2025-08-05)"
         //  - "uv 0.8.5"
         //  - "0.8.5"
-        if let range = s.range(of: #"\d+\.\d+\.\d+([\-\+][A-Za-z0-9\.\-]+)?"#, options: .regularExpression) {
-            return String(s[range])
+        let semverPattern = #"\d+\.\d+\.\d+([\-\+][A-Za-z0-9\.\-]+)?"#
+        if let range = versionOutput.range(of: semverPattern, options: .regularExpression) {
+            return String(versionOutput[range])
         }
-        let comps = s.split(separator: " ")
-        if comps.count >= 2 && comps[0].lowercased() == "uv" { return String(comps[1]) }
-        return s
+        let components = versionOutput.split(separator: " ")
+        if components.count >= 2 && components[0].lowercased() == "uv" {
+            return String(components[1])
+        }
+        return versionOutput
     }
 
-    private static func isVersion(_ v: String, greaterOrEqualThan min: String) -> Bool {
-        func parse(_ s: String) -> [Int] { s.split(separator: ".").compactMap { Int($0) } }
-        let a = parse(v)
-        let b = parse(min)
-        for i in 0..<max(a.count, b.count) {
-            let ai = i < a.count ? a[i] : 0
-            let bi = i < b.count ? b[i] : 0
-            if ai != bi { return ai > bi }
+    private static func isVersion(_ version: String, greaterOrEqualThan minimum: String) -> Bool {
+        func parse(_ text: String) -> [Int] { text.split(separator: ".").compactMap { Int($0) } }
+        let versionParts = parse(version)
+        let minimumParts = parse(minimum)
+        for index in 0..<max(versionParts.count, minimumParts.count) {
+            let versionPart = index < versionParts.count ? versionParts[index] : 0
+            let minimumPart = index < minimumParts.count ? minimumParts[index] : 0
+            if versionPart != minimumPart { return versionPart > minimumPart }
         }
         return true
-    }
-
-    @discardableResult
-    private static func run(_ cmd: String, _ args: [String]) -> (String, String, Int32) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: cmd)
-        p.arguments = args
-        let outPipe = Pipe(); let errPipe = Pipe()
-        p.standardOutput = outPipe; p.standardError = errPipe
-        do {
-            try p.run()
-        } catch {
-            // Close file handles to prevent resource leak
-            try? outPipe.fileHandleForReading.close()
-            try? errPipe.fileHandleForReading.close()
-            return ("", String(describing: error), 1)
-        }
-        p.waitUntilExit()
-        // Read output before closing handles
-        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-        // Explicitly close file handles to ensure immediate resource cleanup
-        try? outPipe.fileHandleForReading.close()
-        try? errPipe.fileHandleForReading.close()
-        let out = String(data: outData, encoding: .utf8) ?? ""
-        let err = String(data: errData, encoding: .utf8) ?? ""
-        return (out, err, p.terminationStatus)
-    }
-
-    @discardableResult
-    private static func runInDir(_ cmd: String, _ args: [String], cwd: URL) -> (String, String, Int32) {
-        let p = Process()
-        p.currentDirectoryURL = cwd
-        p.executableURL = URL(fileURLWithPath: cmd)
-        p.arguments = args
-        let outPipe = Pipe(); let errPipe = Pipe()
-        p.standardOutput = outPipe; p.standardError = errPipe
-        do {
-            try p.run()
-        } catch {
-            // Close file handles to prevent resource leak
-            try? outPipe.fileHandleForReading.close()
-            try? errPipe.fileHandleForReading.close()
-            return ("", String(describing: error), 1)
-        }
-        p.waitUntilExit()
-        // Read output before closing handles
-        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-        // Explicitly close file handles to ensure immediate resource cleanup
-        try? outPipe.fileHandleForReading.close()
-        try? errPipe.fileHandleForReading.close()
-        let out = String(data: outData, encoding: .utf8) ?? ""
-        let err = String(data: errData, encoding: .utf8) ?? ""
-        return (out, err, p.terminationStatus)
     }
 
     private static func copyIfDifferent(src: URL, dst: URL) throws {

@@ -219,11 +219,11 @@ final class AppLifecycleIntegrationTests: IsolatedXCTestCase {
 
     func testMultipleSessionsAccumulateRecords() async throws {
         // Given - Multiple "sessions" of transcriptions
-        for i in 1...3 {
+        for index in 1...3 {
             let record = TranscriptionRecord(
-                text: "Session \(i) transcription",
+                text: "Session \(index) transcription",
                 provider: .local,
-                duration: Double(i * 5)
+                duration: Double(index * 5)
             )
             modelContext.insert(record)
         }

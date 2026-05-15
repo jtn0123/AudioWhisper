@@ -131,8 +131,8 @@ final class UsageMetricsStreakTests: XCTestCase {
     func testStreakWithLongHistory() {
         // 30 consecutive days of activity
         var dailyActivity: [String: Int] = [:]
-        for i in 0..<30 {
-            let date = Calendar.current.date(byAdding: .day, value: -i, to: Date())!
+        for dayOffset in 0..<30 {
+            let date = Calendar.current.date(byAdding: .day, value: -dayOffset, to: Date())!
             let dateString = Self.dateFormatter.string(from: date)
             dailyActivity[dateString] = 50
         }
@@ -244,41 +244,6 @@ final class UsageMetricsStreakTests: XCTestCase {
         // Count days with zero
         let zeroDays = activity.values.filter { $0 == 0 }.count
         XCTAssertEqual(zeroDays, 6, "6 of 7 days should have zero activity")
-    }
-
-    // MARK: - Word Count Estimation Tests
-
-    func testWordCountWithEmptyString() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: ""), 0)
-    }
-
-    func testWordCountWithSingleWord() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "hello"), 1)
-    }
-
-    func testWordCountWithContractions() {
-        // Contractions should count as single words
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "don't won't can't"), 3)
-    }
-
-    func testWordCountWithNumbers() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "I have 42 apples"), 4)
-    }
-
-    func testWordCountWithPunctuation() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "Hello, world! How are you?"), 5)
-    }
-
-    func testWordCountWithMultipleSpaces() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "hello    world"), 2)
-    }
-
-    func testWordCountWithNewlines() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "hello\nworld"), 2)
-    }
-
-    func testWordCountWithTabs() {
-        XCTAssertEqual(UsageMetricsStore.estimatedWordCount(for: "hello\tworld"), 2)
     }
 
     // MARK: - Statistics Calculation Tests

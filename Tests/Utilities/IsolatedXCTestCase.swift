@@ -15,7 +15,7 @@ import Foundation
 /// mutate `.standard`, without failing. Tests that *must* mutate `.standard`
 /// (e.g. exercising production code that reads from the global domain)
 /// should opt out via `enforcesStandardUserDefaultsIsolation = false` with
-/// a `// TODO(D1):` comment explaining the constraint.
+/// a `// NOTE(D1):` comment explaining the constraint.
 ///
 /// Override via the `AUDIOWHISPER_TEST_ISOLATION` env var:
 ///   - `AUDIOWHISPER_TEST_ISOLATION=off`    — silence warnings entirely.
