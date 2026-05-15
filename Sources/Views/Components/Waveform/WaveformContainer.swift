@@ -303,8 +303,11 @@ struct WaveformContainer: View {
         }
     }
 
-    // MARK: - State Helpers
+}
 
+// MARK: - State Helpers
+
+extension WaveformContainer {
     private var isRecording: Bool {
         if case .recording = status { return true }
         return false
@@ -416,11 +419,11 @@ private struct ProcessingShimmerView: View {
     var body: some View {
         GeometryReader { geo in
             HStack(spacing: max(8, geo.size.width * 0.04)) {
-                ForEach(0..<7, id: \.self) { i in
+                ForEach(0..<7, id: \.self) { index in
                     Circle()
                         .fill(color)
                         .frame(width: 6, height: 6)
-                        .opacity(dotOpacity(for: i))
+                        .opacity(dotOpacity(for: index))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -433,10 +436,10 @@ private struct ProcessingShimmerView: View {
         }
     }
 
-    private func dotOpacity(for i: Int) -> Double {
-        let t = (CGFloat(i) / 6.0)
+    private func dotOpacity(for index: Int) -> Double {
+        let position = (CGFloat(index) / 6.0)
         let center = phase
-        let dist = abs(t - center.truncatingRemainder(dividingBy: 1.0))
+        let dist = abs(position - center.truncatingRemainder(dividingBy: 1.0))
         let wrapped = min(dist, 1 - dist)
         return Double(0.15 + 0.65 * exp(-pow(wrapped * 3.0, 2)))
     }
@@ -450,11 +453,11 @@ private struct TimerLabel: View {
     @State private var now: Date = Date()
 
     private let formatter: DateComponentsFormatter = {
-        let f = DateComponentsFormatter()
-        f.unitsStyle = .positional
-        f.zeroFormattingBehavior = .pad
-        f.allowedUnits = [.minute, .second]
-        return f
+        let componentsFormatter = DateComponentsFormatter()
+        componentsFormatter.unitsStyle = .positional
+        componentsFormatter.zeroFormattingBehavior = .pad
+        componentsFormatter.allowedUnits = [.minute, .second]
+        return componentsFormatter
     }()
 
     var body: some View {

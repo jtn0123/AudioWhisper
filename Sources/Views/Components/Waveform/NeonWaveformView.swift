@@ -131,8 +131,8 @@ struct NeonWaveformView: View {
             smoothedSamples = target
             return
         }
-        for i in 0..<target.count {
-            smoothedSamples[i] = smoothedSamples[i] * decayFactor + target[i] * (1 - decayFactor)
+        for index in 0..<target.count {
+            smoothedSamples[index] = smoothedSamples[index] * decayFactor + target[index] * (1 - decayFactor)
         }
     }
 
@@ -163,17 +163,17 @@ struct NeonWaveformView: View {
             let firstY = centerY - CGFloat(samples[0]) * maxAmp
             path.move(to: CGPoint(x: 0, y: firstY))
 
-            for i in 1..<samples.count {
-                let x = CGFloat(i) * stepX
-                let y = centerY - CGFloat(samples[i]) * maxAmp
-                let prevX = CGFloat(i - 1) * stepX
-                let prevY = centerY - CGFloat(samples[i - 1]) * maxAmp
+            for index in 1..<samples.count {
+                let posX = CGFloat(index) * stepX
+                let posY = centerY - CGFloat(samples[index]) * maxAmp
+                let prevX = CGFloat(index - 1) * stepX
+                let prevY = centerY - CGFloat(samples[index - 1]) * maxAmp
                 let c1x = prevX + stepX * 0.5
-                let c2x = x - stepX * 0.5
+                let c2x = posX - stepX * 0.5
                 path.addCurve(
-                    to: CGPoint(x: x, y: y),
+                    to: CGPoint(x: posX, y: posY),
                     control1: CGPoint(x: c1x, y: prevY),
-                    control2: CGPoint(x: c2x, y: y)
+                    control2: CGPoint(x: c2x, y: posY)
                 )
             }
         }
@@ -185,16 +185,16 @@ struct NeonWaveformView: View {
 
     private var rawEffectiveSamples: [Float] {
         if isActive && !waveformSamples.isEmpty {
-            return waveformSamples.map { s in
-                let sign: Float = s >= 0 ? 1 : -1
-                let mag = abs(s)
+            return waveformSamples.map { sample in
+                let sign: Float = sample >= 0 ? 1 : -1
+                let mag = abs(sample)
                 let boosted = mag + 0.12 + mag * 0.6
                 return sign * min(boosted, 1.0)
             }
         } else {
-            return (0..<64).map { i in
-                let t = Float(i) / 64.0
-                return sin(Float(phase) + t * .pi * 4) * 0.08
+            return (0..<64).map { index in
+                let fraction = Float(index) / 64.0
+                return sin(Float(phase) + fraction * .pi * 4) * 0.08
             }
         }
     }

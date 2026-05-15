@@ -7,7 +7,7 @@ struct HaloWaveformView: View {
     let audioLevel: Float
     let isActive: Bool
 
-    @State private var t: CGFloat = 0
+    @State private var time: CGFloat = 0
     @State private var isViewActive = false
 
     private let barCount = 28
@@ -22,7 +22,7 @@ struct HaloWaveformView: View {
         Color(red: 0.91, green: 0.60, blue: 0.47),  // #E89A77
         Color(red: 0.95, green: 0.75, blue: 0.63),  // #F2BFA0
         Color(red: 0.94, green: 0.84, blue: 0.76),  // #F0D7C2
-        Color(red: 0.90, green: 0.85, blue: 0.80),  // #E6D9CC
+        Color(red: 0.90, green: 0.85, blue: 0.80)  // #E6D9CC
     ]
 
     var body: some View {
@@ -64,23 +64,24 @@ struct HaloWaveformView: View {
                 // Rotating bars (drawn via Canvas for performance)
                 Canvas { context, canvasSize in
                     let cp = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-                    let rotation = t * 0.15
+                    let rotation = time * 0.15
                     let bandCount = frequencyBands.count
 
-                    for i in 0..<barCount {
-                        let a = (CGFloat(i) / CGFloat(barCount)) * 2 * .pi - .pi / 2 + rotation
-                        let bandIdx = (Int((Double(i) / Double(barCount)) * Double(bandCount))) % max(1, bandCount)
-                        let v: CGFloat = bandCount > 0 ? CGFloat(frequencyBands[bandIdx]) : 0
-                        let len = rIn + (rMax - rIn) * (0.3 + v * 0.85)
+                    for index in 0..<barCount {
+                        let angle = (CGFloat(index) / CGFloat(barCount)) * 2 * .pi - .pi / 2 + rotation
+                        let bandIdx = (Int((Double(index) / Double(barCount)) * Double(bandCount))) % max(1, bandCount)
+                        let value: CGFloat = bandCount > 0 ? CGFloat(frequencyBands[bandIdx]) : 0
+                        let len = rIn + (rMax - rIn) * (0.3 + value * 0.85)
 
-                        let x1 = cp.x + cos(a) * rIn
-                        let y1 = cp.y + sin(a) * rIn
-                        let x2 = cp.x + cos(a) * len
-                        let y2 = cp.y + sin(a) * len
+                        let x1 = cp.x + cos(angle) * rIn
+                        let y1 = cp.y + sin(angle) * rIn
+                        let x2 = cp.x + cos(angle) * len
+                        let y2 = cp.y + sin(angle) * len
 
-                        let angleFrac = (Double(i) / Double(barCount) + Double(t) * 0.02).truncatingRemainder(dividingBy: 1)
+                        let rawFrac = Double(index) / Double(barCount) + Double(time) * 0.02
+                        let angleFrac = rawFrac.truncatingRemainder(dividingBy: 1)
                         let palIdx = Int(angleFrac * Double(palette.count))
-                        let c = palette[min(palIdx, palette.count - 1)]
+                        let color = palette[min(palIdx, palette.count - 1)]
 
                         // Glow stroke
                         var glow = Path()
@@ -88,7 +89,7 @@ struct HaloWaveformView: View {
                         glow.addLine(to: CGPoint(x: x2, y: y2))
                         context.stroke(
                             glow,
-                            with: .color(c.opacity(0.35)),
+                            with: .color(color.opacity(0.35)),
                             style: StrokeStyle(lineWidth: 4, lineCap: .round)
                         )
 
@@ -98,7 +99,7 @@ struct HaloWaveformView: View {
                         core.addLine(to: CGPoint(x: x2, y: y2))
                         context.stroke(
                             core,
-                            with: .color(c),
+                            with: .color(color),
                             style: StrokeStyle(lineWidth: 2, lineCap: .round)
                         )
                     }
@@ -111,7 +112,7 @@ struct HaloWaveformView: View {
         .onDisappear { isViewActive = false }
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
             guard isViewActive else { return }
-            t += 0.033
+            time += 0.033
         }
     }
 }

@@ -152,12 +152,12 @@ internal final class MenuBarIconRenderer {
             let startX = (size - totalW) * 0.5
             let maxBarH = size * 0.78
 
-            for (i, h) in heights.enumerated() {
-                let barH = maxBarH * h
-                let x = startX + CGFloat(i) * (barW + gap)
-                let y = (size - barH) * 0.5
+            for (index, heightFraction) in heights.enumerated() {
+                let barH = maxBarH * heightFraction
+                let posX = startX + CGFloat(index) * (barW + gap)
+                let posY = (size - barH) * 0.5
                 let path = NSBezierPath(
-                    roundedRect: NSRect(x: x, y: y, width: barW, height: barH),
+                    roundedRect: NSRect(x: posX, y: posY, width: barW, height: barH),
                     xRadius: barW / 2,
                     yRadius: barW / 2
                 )

@@ -8,7 +8,7 @@ struct DialWaveformView: View {
     let audioLevel: Float
     let isActive: Bool
 
-    @State private var t: CGFloat = 0
+    @State private var time: CGFloat = 0
     @State private var isViewActive = false
 
     private let dotCount = 36
@@ -42,15 +42,15 @@ struct DialWaveformView: View {
                 Canvas { context, canvasSize in
                     let cp = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
                     let bandCount = max(1, frequencyBands.count)
-                    for i in 0..<dotCount {
-                        let a = (CGFloat(i) / CGFloat(dotCount)) * 2 * .pi - .pi / 2
-                        let v: CGFloat = CGFloat(frequencyBands[i % bandCount])
-                        let brightness = 0.15 + Double(v) * 0.7
-                        let dx = cp.x + cos(a) * ringR
-                        let dy = cp.y + sin(a) * ringR
-                        let r: CGFloat = 1.2 + v * 1.2
+                    for index in 0..<dotCount {
+                        let angle = (CGFloat(index) / CGFloat(dotCount)) * 2 * .pi - .pi / 2
+                        let value: CGFloat = CGFloat(frequencyBands[index % bandCount])
+                        let brightness = 0.15 + Double(value) * 0.7
+                        let dx = cp.x + cos(angle) * ringR
+                        let dy = cp.y + sin(angle) * ringR
+                        let radius: CGFloat = 1.2 + value * 1.2
                         context.fill(
-                            Path(ellipseIn: CGRect(x: dx - r, y: dy - r, width: r * 2, height: r * 2)),
+                            Path(ellipseIn: CGRect(x: dx - radius, y: dy - radius, width: radius * 2, height: radius * 2)),
                             with: .color(cream.opacity(brightness))
                         )
                     }
@@ -84,7 +84,7 @@ struct DialWaveformView: View {
         .onDisappear { isViewActive = false }
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
             guard isViewActive else { return }
-            t += 0.033
+            time += 0.033
         }
     }
 
@@ -102,14 +102,14 @@ private struct ProgressArc: Shape {
     let coral: Color
 
     func path(in rect: CGRect) -> Path {
-        var p = Path()
-        let c = CGPoint(x: rect.midX, y: rect.midY)
+        var arcPath = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
         // Sweep up to 324° (1.8π) with full energy
         let sweep = energy * .pi * 1.8
         let start: Angle = .degrees(-90)
         let end: Angle = .degrees(-90 + sweep * 180 / .pi)
-        p.addArc(center: c, radius: ringR, startAngle: start, endAngle: end, clockwise: false)
-        return p
+        arcPath.addArc(center: center, radius: ringR, startAngle: start, endAngle: end, clockwise: false)
+        return arcPath
     }
 }
 

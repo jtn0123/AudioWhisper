@@ -23,7 +23,7 @@ struct SpectrumWaveformView: View {
         Color(red: 0.91, green: 0.60, blue: 0.47),  // #E89A77
         Color(red: 0.95, green: 0.75, blue: 0.63),  // #F2BFA0
         Color(red: 0.94, green: 0.84, blue: 0.76),  // #F0D7C2
-        Color(red: 0.90, green: 0.85, blue: 0.80),  // #E6D9CC
+        Color(red: 0.90, green: 0.85, blue: 0.80)  // #E6D9CC
     ]
 
     @State private var peakLevels: [Float] = Array(repeating: 0, count: 8)
@@ -53,7 +53,7 @@ struct SpectrumWaveformView: View {
                                 LinearGradient(
                                     colors: [
                                         bandColors[index],
-                                        bandColors[index].opacity(0.78),
+                                        bandColors[index].opacity(0.78)
                                     ],
                                     startPoint: .top, endPoint: .bottom
                                 )
@@ -83,25 +83,25 @@ struct SpectrumWaveformView: View {
 
     private func updateLevels() {
         idlePhase += 0.05
-        for i in 0..<min(animatedLevels.count, frequencyBands.count) {
+        for index in 0..<min(animatedLevels.count, frequencyBands.count) {
             let target: Float
             if isActive {
-                target = min(1.0, frequencyBands[i] * 2.38)
+                target = min(1.0, frequencyBands[index] * 2.38)
             } else {
-                let breathe = Float(sin(idlePhase + Double(i) * 0.3) * 0.5 + 0.5) * 0.08
+                let breathe = Float(sin(idlePhase + Double(index) * 0.3) * 0.5 + 0.5) * 0.08
                 target = breathe
             }
 
-            if target > animatedLevels[i] {
-                animatedLevels[i] = target
+            if target > animatedLevels[index] {
+                animatedLevels[index] = target
             } else {
-                animatedLevels[i] = animatedLevels[i] * 0.75 + target * 0.25
+                animatedLevels[index] = animatedLevels[index] * 0.75 + target * 0.25
             }
 
-            if animatedLevels[i] > peakLevels[i] {
-                peakLevels[i] = animatedLevels[i]
+            if animatedLevels[index] > peakLevels[index] {
+                peakLevels[index] = animatedLevels[index]
             } else {
-                peakLevels[i] = max(0, peakLevels[i] - 0.01)
+                peakLevels[index] = max(0, peakLevels[index] - 0.01)
             }
         }
     }

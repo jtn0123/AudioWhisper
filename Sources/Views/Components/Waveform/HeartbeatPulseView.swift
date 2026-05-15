@@ -102,24 +102,24 @@ struct HeartbeatPulseView: View {
         rings = rings.compactMap { ring in
             let age = now.timeIntervalSince(ring.createdAt)
             if age > ringLifetime { return nil }
-            var r = ring
+            var updatedRing = ring
             let progress = age / ringLifetime
             // Radius grows; width tapers
-            r.radius = size * 0.1 + CGFloat(progress) * size * 0.42
-            r.opacity = CGFloat(pow(1 - progress, 1.5)) * 0.85
-            r.width = 6 - CGFloat(progress) * 4
-            return r
+            updatedRing.radius = size * 0.1 + CGFloat(progress) * size * 0.42
+            updatedRing.opacity = CGFloat(pow(1 - progress, 1.5)) * 0.85
+            updatedRing.width = 6 - CGFloat(progress) * 4
+            return updatedRing
         }
     }
 
     private func spawnRing() {
-        let r = Ring(
+        let newRing = Ring(
             radius: 20,
             opacity: 0.85,
             width: 6,
             createdAt: Date()
         )
-        rings.append(r)
+        rings.append(newRing)
     }
 }
 

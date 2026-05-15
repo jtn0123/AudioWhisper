@@ -7,7 +7,7 @@ struct StreamWaveformView: View {
     let audioLevel: Float
     let isActive: Bool
 
-    @State private var t: CGFloat = 0
+    @State private var time: CGFloat = 0
     @State private var isViewActive = false
 
     // AW palette
@@ -23,18 +23,18 @@ struct StreamWaveformView: View {
             let speed: CGFloat = 30 + level * 80
             let periodWidth = size.width + 60
 
-            for i in 0..<count {
-                let lane = sin(Double(i) * 11.7) * 0.5 + 0.5
-                let phaseOffset = CGFloat(i) / CGFloat(count) * periodWidth
-                let rawX = (t * speed + phaseOffset).truncatingRemainder(dividingBy: periodWidth)
-                let x = rawX - 30
-                let y = size.height * 0.15 + CGFloat(lane) * size.height * 0.7
-                    + CGFloat(sin(Double(t) * 1.5 + Double(i) * 0.7)) * 4
+            for index in 0..<count {
+                let lane = sin(Double(index) * 11.7) * 0.5 + 0.5
+                let phaseOffset = CGFloat(index) / CGFloat(count) * periodWidth
+                let rawX = (time * speed + phaseOffset).truncatingRemainder(dividingBy: periodWidth)
+                let posX = rawX - 30
+                let posY = size.height * 0.15 + CGFloat(lane) * size.height * 0.7
+                    + CGFloat(sin(Double(time) * 1.5 + Double(index) * 0.7)) * 4
 
-                let baseSize: CGFloat = 1.2 + CGFloat(sin(Double(i) * 3) * 0.5 + 0.5) * 2.4
+                let baseSize: CGFloat = 1.2 + CGFloat(sin(Double(index) * 3) * 0.5 + 0.5) * 2.4
                 let trailLen = level * 8 + 2
 
-                let colorPick = sin(Double(i) * 5.3) * 0.5 + 0.5
+                let colorPick = sin(Double(index) * 5.3) * 0.5 + 0.5
                 let color: Color =
                     colorPick > 0.85 ? coral :
                     colorPick > 0.5  ? coralLite :
@@ -42,8 +42,8 @@ struct StreamWaveformView: View {
 
                 // Trail
                 var trail = Path()
-                trail.move(to: CGPoint(x: x - trailLen, y: y))
-                trail.addLine(to: CGPoint(x: x, y: y))
+                trail.move(to: CGPoint(x: posX - trailLen, y: posY))
+                trail.addLine(to: CGPoint(x: posX, y: posY))
                 context.stroke(
                     trail,
                     with: .color(color.opacity(0.2 + Double(level) * 0.3)),
@@ -52,11 +52,11 @@ struct StreamWaveformView: View {
 
                 // Outer glow
                 let glowR: CGFloat = baseSize + 1.5
-                let glowRect = CGRect(x: x - glowR, y: y - glowR, width: glowR * 2, height: glowR * 2)
+                let glowRect = CGRect(x: posX - glowR, y: posY - glowR, width: glowR * 2, height: glowR * 2)
                 context.fill(Path(ellipseIn: glowRect), with: .color(color.opacity(0.18)))
 
                 // Core
-                let coreRect = CGRect(x: x - baseSize, y: y - baseSize, width: baseSize * 2, height: baseSize * 2)
+                let coreRect = CGRect(x: posX - baseSize, y: posY - baseSize, width: baseSize * 2, height: baseSize * 2)
                 context.fill(Path(ellipseIn: coreRect),
                     with: .color(color.opacity(0.45 + Double(level) * 0.4)))
             }
@@ -65,7 +65,7 @@ struct StreamWaveformView: View {
         .onDisappear { isViewActive = false }
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
             guard isViewActive else { return }
-            t += 0.033
+            time += 0.033
         }
     }
 }

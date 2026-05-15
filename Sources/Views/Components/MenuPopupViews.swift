@@ -36,15 +36,15 @@ internal struct MenuHeaderView: View {
                     Canvas { context, size in
                         let heights: [CGFloat] = [0.45, 0.85, 1.0, 0.7, 0.35]
                         let barW: CGFloat = size.width / 11
-                        let gap:  CGFloat = size.width / 14
+                        let gap: CGFloat = size.width / 14
                         let total = barW * 5 + gap * 4
                         let startX = (size.width - total) * 0.5
                         let maxH = size.height * 0.6
-                        for (i, h) in heights.enumerated() {
-                            let barH = maxH * h
-                            let x = startX + CGFloat(i) * (barW + gap)
-                            let y = (size.height - barH) * 0.5
-                            let path = Path(roundedRect: CGRect(x: x, y: y, width: barW, height: barH),
+                        for (index, heightFraction) in heights.enumerated() {
+                            let barH = maxH * heightFraction
+                            let posX = startX + CGFloat(index) * (barW + gap)
+                            let posY = (size.height - barH) * 0.5
+                            let path = Path(roundedRect: CGRect(x: posX, y: posY, width: barW, height: barH),
                                             cornerRadius: barW / 2)
                             context.fill(path, with: .color(.white))
                         }

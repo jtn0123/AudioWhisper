@@ -23,7 +23,7 @@ final class LivePreviewSampler: ObservableObject {
     var isActive: Bool = true
 
     private var timer: AnyCancellable?
-    private var t: Double = 0
+    private var time: Double = 0
     private var lastPeakAt: Double = -10
 
     func start() {
@@ -40,33 +40,33 @@ final class LivePreviewSampler: ObservableObject {
     }
 
     private func tick() {
-        t += 0.033
+        time += 0.033
 
         // Envelope — slow varying
-        let env = 0.45 + 0.25 * sin(t * 0.7) + 0.15 * sin(t * 1.8)
+        let env = 0.45 + 0.25 * sin(time * 0.7) + 0.15 * sin(time * 1.8)
         let active = max(0.15, min(1.0, env))
-        let idle = 0.18 + 0.08 * sin(t * 1.2)
+        let idle = 0.18 + 0.08 * sin(time * 1.2)
         audioLevel = Float(isActive ? active : idle)
 
         // 64 samples
-        samples = (0..<64).map { i in
-            let phase = t * 3 + Double(i) * 0.18
+        samples = (0..<64).map { index in
+            let phase = time * 3 + Double(index) * 0.18
             return Float(sin(phase) * 0.45 + sin(phase * 2.3) * 0.15)
         }
 
         // 8 bands
-        bands = (0..<8).map { i in
-            let phase = t * (0.8 + Double(i) * 0.25) + Double(i) * 0.7
+        bands = (0..<8).map { index in
+            let phase = time * (0.8 + Double(index) * 0.25) + Double(index) * 0.7
             let env2 = 0.4 + sin(phase) * 0.3
-            let fast = sin(t * 8 + Double(i) * 1.7) * 0.1
+            let fast = sin(time * 8 + Double(index) * 1.7) * 0.1
             return Float(max(0.05, min(1.0, env2 + fast)) * Double(audioLevel) * 1.1)
         }
 
         // Peak detection (used by Heartbeat)
-        if audioLevel > 0.55 && (t - lastPeakAt) > 0.4 {
-            lastPeakAt = t
+        if audioLevel > 0.55 && (time - lastPeakAt) > 0.4 {
+            lastPeakAt = time
         }
-        sincePeak = t - lastPeakAt
+        sincePeak = time - lastPeakAt
     }
 }
 

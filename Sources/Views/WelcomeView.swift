@@ -20,7 +20,7 @@ internal struct WelcomeView: View {
     // AW colors
     private let paper = Color(red: 0.980, green: 0.973, blue: 0.953) // #FAF8F3
     private let ink   = Color(red: 0.102, green: 0.086, blue: 0.071) // #1A1612
-    private let coral = Color(red: 0.85,  green: 0.45,  blue: 0.30)
+    private let coral = Color(red: 0.85, green: 0.45, blue: 0.30)
     private let coralDeep = Color(red: 0.70, green: 0.34, blue: 0.23)
 
     private var selectedStyle: WaveformStyle { waveformStyle }
