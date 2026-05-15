@@ -17,7 +17,7 @@ struct CircularSpectrumView: View {
         Color(red: 1.0, green: 0.8, blue: 0.2),    // Yellow
         Color(red: 1.0, green: 0.5, blue: 0.2),    // Orange
         Color(red: 0.95, green: 0.2, blue: 0.4),   // Red-pink
-        Color(red: 0.95, green: 0.2, blue: 0.8),   // Magenta
+        Color(red: 0.95, green: 0.2, blue: 0.8)   // Magenta
     ]
 
     @State private var animatedLevels: [Float] = Array(repeating: 0.1, count: 16)

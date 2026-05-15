@@ -43,7 +43,7 @@ final class RecordingButtonTests: IsolatedXCTestCase {
             onTap: {},
             onHover: { _ in }
         )
-        let _ = button.body
+        _ = button.body
         XCTAssertTrue(true, "Body should not crash")
     }
 }

@@ -149,7 +149,7 @@ final class DashboardHomeViewTests: XCTestCase {
         let records = [
             makeTestRecord(provider: "local", wordCount: 100),
             makeTestRecord(provider: "local", wordCount: 50),
-            makeTestRecord(provider: "parakeet", wordCount: 200),
+            makeTestRecord(provider: "parakeet", wordCount: 200)
         ]
 
         let stats = DashboardHomeView.testableCalculateProviderStats(from: records)
@@ -167,7 +167,7 @@ final class DashboardHomeViewTests: XCTestCase {
     func testProviderStatsIconMapping() {
         let records = [
             makeTestRecord(provider: "local", wordCount: 100),
-            makeTestRecord(provider: "parakeet", wordCount: 100),
+            makeTestRecord(provider: "parakeet", wordCount: 100)
         ]
 
         let stats = DashboardHomeView.testableCalculateProviderStats(from: records)

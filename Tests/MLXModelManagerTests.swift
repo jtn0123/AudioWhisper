@@ -9,7 +9,6 @@ final class MLXModelManagerTests: IsolatedXCTestCase {
     // re-enable isolation.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-
     // MARK: - MLXModel Tests
 
     func testMLXModelDisplayNameExtractsLastPathComponent() {

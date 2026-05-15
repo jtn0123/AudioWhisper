@@ -10,4 +10,3 @@ internal enum AppEnvironment {
         return false
     }()
 }
-

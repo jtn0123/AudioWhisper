@@ -188,12 +188,12 @@ internal enum AudioValidationError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .fileNotFound:
-            return NSLocalizedString("audio_validation.file_not_found", 
-                value: "Audio file not found", 
+            return NSLocalizedString("audio_validation.file_not_found",
+                value: "Audio file not found",
                 comment: "Error when audio file doesn't exist")
         case .emptyFile:
-            return NSLocalizedString("audio_validation.empty_file", 
-                value: "Audio file is empty", 
+            return NSLocalizedString("audio_validation.empty_file",
+                value: "Audio file is empty",
                 comment: "Error when audio file has no data")
         case .unsupportedFormat(let format):
             let template = NSLocalizedString("audio_validation.unsupported_format",
@@ -201,28 +201,28 @@ internal enum AudioValidationError: LocalizedError {
                 comment: "Error when audio format is not supported")
             return template.replacingOccurrences(of: "%@", with: format)
         case .corruptedFile:
-            return NSLocalizedString("audio_validation.corrupted_file", 
-                value: "Audio file is corrupted or unreadable", 
+            return NSLocalizedString("audio_validation.corrupted_file",
+                value: "Audio file is corrupted or unreadable",
                 comment: "Error when audio file is corrupted")
         case .noAudioTracks:
-            return NSLocalizedString("audio_validation.no_audio_tracks", 
-                value: "No audio tracks found in file", 
+            return NSLocalizedString("audio_validation.no_audio_tracks",
+                value: "No audio tracks found in file",
                 comment: "Error when file has no audio content")
         case .invalidAudioFormat:
-            return NSLocalizedString("audio_validation.invalid_audio_format", 
-                value: "Invalid audio format", 
+            return NSLocalizedString("audio_validation.invalid_audio_format",
+                value: "Invalid audio format",
                 comment: "Error when audio format is invalid")
         case .invalidSampleRate:
-            return NSLocalizedString("audio_validation.invalid_sample_rate", 
-                value: "Invalid audio sample rate", 
+            return NSLocalizedString("audio_validation.invalid_sample_rate",
+                value: "Invalid audio sample rate",
                 comment: "Error when audio sample rate is invalid")
         case .invalidChannelCount:
-            return NSLocalizedString("audio_validation.invalid_channel_count", 
-                value: "Invalid audio channel count", 
+            return NSLocalizedString("audio_validation.invalid_channel_count",
+                value: "Invalid audio channel count",
                 comment: "Error when audio channel count is invalid")
         case .emptyAudio:
-            return NSLocalizedString("audio_validation.empty_audio", 
-                value: "Audio file contains no audio data", 
+            return NSLocalizedString("audio_validation.empty_audio",
+                value: "Audio file contains no audio data",
                 comment: "Error when audio file has no actual audio content")
         }
     }

@@ -68,4 +68,3 @@ internal struct MLXEntry: ModelEntry {
         return isDownloading ? .blue : nil
     }
 }
-

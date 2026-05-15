@@ -240,7 +240,7 @@ final class AudioProcessingValidationTests: XCTestCase {
             (1.0, 16000, 16000),      // 1 second
             (0.5, 16000, 8000),       // Half second
             (10.0, 44100, 441000),    // 10 seconds at CD quality
-            (60.0, 16000, 960000),    // 1 minute
+            (60.0, 16000, 960000)    // 1 minute
         ]
 
         for testCase in testCases {

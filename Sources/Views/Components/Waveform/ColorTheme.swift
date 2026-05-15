@@ -63,7 +63,7 @@ enum ColorTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 1.0, green: 0.8, blue: 0.2),     // Yellow
                 Color(red: 1.0, green: 0.5, blue: 0.2),     // Orange
                 Color(red: 0.95, green: 0.2, blue: 0.4),    // Red-pink
-                Color(red: 0.95, green: 0.2, blue: 0.8),    // Magenta
+                Color(red: 0.95, green: 0.2, blue: 0.8)    // Magenta
             ]
         case .warmSunset:
             return [
@@ -74,7 +74,7 @@ enum ColorTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.9, green: 0.2, blue: 0.3),     // Red
                 Color(red: 0.8, green: 0.15, blue: 0.4),    // Deep red
                 Color(red: 0.6, green: 0.1, blue: 0.5),     // Purple
-                Color(red: 0.4, green: 0.1, blue: 0.5),     // Deep purple
+                Color(red: 0.4, green: 0.1, blue: 0.5)     // Deep purple
             ]
         case .ocean:
             return [
@@ -85,7 +85,7 @@ enum ColorTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.2, green: 0.4, blue: 0.8),     // Medium blue
                 Color(red: 0.15, green: 0.3, blue: 0.7),    // Deep blue
                 Color(red: 0.1, green: 0.2, blue: 0.5),     // Navy
-                Color(red: 0.05, green: 0.1, blue: 0.3),    // Deep navy
+                Color(red: 0.05, green: 0.1, blue: 0.3)    // Deep navy
             ]
         case .monochrome:
             return [
@@ -96,7 +96,7 @@ enum ColorTheme: String, CaseIterable, Identifiable, Codable {
                 Color(red: 0.6, green: 0.6, blue: 0.6),     // Gray
                 Color(red: 0.5, green: 0.5, blue: 0.5),     // Dark gray
                 Color(red: 0.4, green: 0.4, blue: 0.4),     // Darker gray
-                Color(red: 0.3, green: 0.3, blue: 0.3),     // Very dark gray
+                Color(red: 0.3, green: 0.3, blue: 0.3)     // Very dark gray
             ]
         }
     }

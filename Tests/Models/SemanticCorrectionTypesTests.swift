@@ -145,7 +145,7 @@ final class SemanticCorrectionTypesTests: XCTestCase {
 
         Task {
             // Mode can be used in async context
-            let _ = mode
+            _ = mode
         }
 
         XCTAssertTrue(true, "Mode is Sendable")

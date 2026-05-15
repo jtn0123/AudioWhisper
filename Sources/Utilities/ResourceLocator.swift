@@ -10,7 +10,7 @@ internal enum ResourceLocator {
         let candidates = [
             Bundle.main.resourceURL,
             Bundle(for: BundleFinder.self).resourceURL,
-            Bundle.main.bundleURL,
+            Bundle.main.bundleURL
         ]
         for candidate in candidates {
             let bundlePath = candidate?.appendingPathComponent(bundleName + ".bundle")
@@ -57,4 +57,3 @@ internal enum ResourceLocator {
         url(forResource: name, withExtension: "py", devRelativePath: "Sources/\(name).py")
     }
 }
-

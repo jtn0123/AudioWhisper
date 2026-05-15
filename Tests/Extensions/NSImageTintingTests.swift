@@ -28,7 +28,7 @@ final class NSImageTintingTests: XCTestCase {
             .white,
             .black,
             .systemPink,
-            .systemTeal,
+            .systemTeal
         ]
 
         for color in colors {

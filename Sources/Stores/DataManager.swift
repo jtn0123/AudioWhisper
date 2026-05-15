@@ -413,7 +413,7 @@ internal final class MockDataManager: DataManagerProtocol {
     
     var isHistoryEnabled: Bool = true
     var retentionPeriod: RetentionPeriod = .oneMonth
-    var sharedModelContainer: ModelContainer? = nil
+    var sharedModelContainer: ModelContainer?
     
     func initialize() throws {
         Logger.dataManager.info("Mock DataManager initialized")

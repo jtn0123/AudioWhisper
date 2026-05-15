@@ -366,7 +366,7 @@ final class TranscriptionHistoryViewTests: XCTestCase {
                 record.matches(searchQuery: "500")
             }
             
-            XCTAssertTrue(filtered.count > 0)
+            XCTAssertTrue(!filtered.isEmpty)
         }
     }
 }

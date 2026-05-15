@@ -696,13 +696,13 @@ final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
             
             // Task 2: Read records
             group.addTask { @MainActor in
-                let _ = try? self.modelContext.fetch(FetchDescriptor<TranscriptionRecord>())
+                _ = try? self.modelContext.fetch(FetchDescriptor<TranscriptionRecord>())
             }
             
             // Task 3: Search records
             group.addTask { @MainActor in
                 let records = try? self.modelContext.fetch(FetchDescriptor<TranscriptionRecord>())
-                let _ = records?.filter { $0.matches(searchQuery: "test") }
+                _ = records?.filter { $0.matches(searchQuery: "test") }
             }
         }
         
@@ -808,7 +808,7 @@ final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
             // Add read operations
             for _ in 0..<operationCount {
                 group.addTask { @MainActor in
-                    let _ = try? self.modelContext.fetch(FetchDescriptor<TranscriptionRecord>())
+                    _ = try? self.modelContext.fetch(FetchDescriptor<TranscriptionRecord>())
                 }
             }
         }

@@ -14,7 +14,7 @@ final class DashboardTranscriptsViewTests: XCTestCase {
 
     func testViewBodyDoesNotCrash() {
         let view = DashboardTranscriptsView()
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true, "Body should not crash")
     }
 
@@ -22,7 +22,7 @@ final class DashboardTranscriptsViewTests: XCTestCase {
         // When DataManager.shared.sharedModelContainer is nil,
         // the view should show fallback UI
         let view = DashboardTranscriptsView()
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true, "View should handle missing container gracefully")
     }
 }
@@ -38,7 +38,7 @@ final class DataManagerContainerTests: XCTestCase {
 
     func testSharedModelContainerAccessDoesNotCrash() {
         // Accessing the container should not crash even if history is disabled
-        let _ = DataManager.shared.sharedModelContainer
+        _ = DataManager.shared.sharedModelContainer
         XCTAssertTrue(true)
     }
 

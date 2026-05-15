@@ -14,4 +14,3 @@ internal extension WhisperModel {
         }
     }
 }
-

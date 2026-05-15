@@ -15,7 +15,7 @@ struct SpectrumWaveformView: View {
         Color(red: 0.2, green: 0.9, blue: 0.8),   // Third formant - Cyan
         Color(red: 0.3, green: 0.5, blue: 1.0),   // Presence - Blue
         Color(red: 0.6, green: 0.3, blue: 1.0),   // Sibilants - Purple
-        Color(red: 1.0, green: 0.4, blue: 0.8),   // Brilliance - Pink
+        Color(red: 1.0, green: 0.4, blue: 0.8)   // Brilliance - Pink
     ]
 
     // Voice-optimized labels: 80Hz-1200Hz frequency markers

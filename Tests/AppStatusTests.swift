@@ -222,8 +222,8 @@ final class AppStatusTests: XCTestCase {
     func testAppStatusCreationPerformance() {
         measure {
             for i in 0..<1000 {
-                let _ = AppStatus.processing("Processing \(i)")
-                let _ = AppStatus.error("Error \(i)")
+                _ = AppStatus.processing("Processing \(i)")
+                _ = AppStatus.error("Error \(i)")
             }
         }
     }

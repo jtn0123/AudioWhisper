@@ -134,7 +134,7 @@ class UtilityTests: IsolatedXCTestCase {
     
     func testInvalidURLs() {
         let invalidURLs = [
-            "", // Empty string
+            "" // Empty string
         ]
         
         for urlString in invalidURLs {

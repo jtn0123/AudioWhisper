@@ -66,7 +66,7 @@ internal struct UvBootstrap {
         let candidates = [
             Bundle.main.resourceURL,
             Bundle(for: BundleFinder.self).resourceURL,
-            Bundle.main.bundleURL,
+            Bundle.main.bundleURL
         ]
         for candidate in candidates {
             let bundlePath = candidate?.appendingPathComponent(bundleName + ".bundle")
@@ -94,7 +94,7 @@ internal struct UvBootstrap {
 
     // Find uv or throw precise error (too old vs not found)
     static func findUv() throws -> URL {
-        var foundButOld: (URL, String)? = nil
+        var foundButOld: (URL, String)?
         // PATH
         if let pathUv = which("uv") {
             let url = URL(fileURLWithPath: pathUv)
@@ -146,7 +146,7 @@ internal struct UvBootstrap {
     // Serialized through VenvSerializer so concurrent callers (Parakeet + MLX warmup
     // at app launch, etc.) don't race each other while creating the venv or running
     // `uv sync` on the same project directory.
-    static func ensureVenv(userPython: String? = nil, log: ((String)->Void)? = nil) async throws -> URL {
+    static func ensureVenv(userPython: String? = nil, log: ((String) -> Void)? = nil) async throws -> URL {
         try await VenvSerializer.shared.run {
             let uv = try findUv()
             // Verify the bundled uv binary the first time we pick it up. Verification

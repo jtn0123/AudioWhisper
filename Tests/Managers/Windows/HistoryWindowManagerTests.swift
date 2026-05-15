@@ -9,14 +9,6 @@ import SwiftData
 @MainActor
 final class HistoryWindowManagerTests: XCTestCase {
 
-    override func setUp() async throws {
-        try await super.setUp()
-    }
-
-    override func tearDown() async throws {
-        try await super.tearDown()
-    }
-
     // MARK: - Test Environment Detection
 
     func testIsTestEnvironmentDetected() {

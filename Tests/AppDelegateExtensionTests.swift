@@ -9,7 +9,6 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
     // re-enable isolation.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-
     // MARK: - Lifecycle Tests
 
     func testApplicationShouldTerminateAfterLastWindowClosedReturnsFalse() {
@@ -231,4 +230,3 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
         }
     }
 }
-

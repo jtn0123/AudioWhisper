@@ -12,4 +12,3 @@ internal enum Arch {
         #endif
     }
 }
-

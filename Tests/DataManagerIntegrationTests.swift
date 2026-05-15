@@ -403,7 +403,7 @@ final class DataManagerIntegrationTests: IsolatedXCTestCase {
             // Perform searches
             for _ in 0..<5 {
                 group.addTask {
-                    let _ = try? await self.dataManager.fetchRecords(matching: "record")
+                    _ = try? await self.dataManager.fetchRecords(matching: "record")
                 }
             }
             
@@ -662,7 +662,7 @@ final class DataManagerIntegrationTests: IsolatedXCTestCase {
         
         // Performance comparison - ensure predicate search is reasonably fast
         let startTime = Date()
-        let _ = try await dataManager.fetchRecords(matching: "processing", limit: 50, offset: 0)
+        _ = try await dataManager.fetchRecords(matching: "processing", limit: 50, offset: 0)
         let searchDuration = Date().timeIntervalSince(startTime)
         
         XCTAssertLessThan(searchDuration, 1.0, "Database search should complete within 1 second")

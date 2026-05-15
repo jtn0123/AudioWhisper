@@ -233,7 +233,6 @@ internal struct WelcomeView: View {
         }
     }
     
-    
     private func startWithLocalWhisper() {
         // Prevent multiple executions
         guard !isDownloadingModel && !isDismissing else { return }
@@ -249,7 +248,6 @@ internal struct WelcomeView: View {
         
         dismissWindow()
     }
-    
     
     @State private var isDismissing = false
     

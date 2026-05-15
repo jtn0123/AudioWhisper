@@ -352,7 +352,7 @@ final class PromptTemplateTests: XCTestCase {
             CategoryDefinition.chatPrompt,
             CategoryDefinition.writingPrompt,
             CategoryDefinition.emailPrompt,
-            CategoryDefinition.generalPrompt,
+            CategoryDefinition.generalPrompt
         ]
 
         for prompt in prompts {
@@ -368,7 +368,7 @@ final class PromptTemplateTests: XCTestCase {
             CategoryDefinition.chatPrompt,
             CategoryDefinition.writingPrompt,
             CategoryDefinition.emailPrompt,
-            CategoryDefinition.generalPrompt,
+            CategoryDefinition.generalPrompt
         ]
 
         for prompt in prompts {
@@ -384,7 +384,7 @@ final class PromptTemplateTests: XCTestCase {
             CategoryDefinition.chatPrompt,
             CategoryDefinition.writingPrompt,
             CategoryDefinition.emailPrompt,
-            CategoryDefinition.generalPrompt,
+            CategoryDefinition.generalPrompt
         ]
 
         for prompt in prompts {
@@ -400,7 +400,7 @@ final class PromptTemplateTests: XCTestCase {
             CategoryDefinition.chatPrompt,
             CategoryDefinition.writingPrompt,
             CategoryDefinition.emailPrompt,
-            CategoryDefinition.generalPrompt,
+            CategoryDefinition.generalPrompt
         ]
 
         for prompt in prompts {

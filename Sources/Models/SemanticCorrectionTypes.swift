@@ -11,4 +11,3 @@ internal enum SemanticCorrectionMode: String, CaseIterable, Codable, Sendable {
         }
     }
 }
-

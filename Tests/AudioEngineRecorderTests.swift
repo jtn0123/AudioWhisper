@@ -264,7 +264,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
 
 // MARK: - Mock Volume Manager
 
-fileprivate class MockMicrophoneVolumeManager: MicrophoneVolumeManaging {
+private class MockMicrophoneVolumeManager: MicrophoneVolumeManaging {
     var boostCalled = false
     var restoreCalled = false
 

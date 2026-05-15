@@ -201,7 +201,7 @@ class ParakeetServiceTests: IsolatedXCTestCase {
             let sourceDir = currentDir.deletingLastPathComponent().appendingPathComponent("Sources")
             let sourceScriptURL = sourceDir.appendingPathComponent("ml_daemon.py")
             
-            XCTAssertTrue(FileManager.default.fileExists(atPath: sourceScriptURL.path), 
+            XCTAssertTrue(FileManager.default.fileExists(atPath: sourceScriptURL.path),
                          "ML daemon script should be available in source directory during tests")
         }
     }

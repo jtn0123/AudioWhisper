@@ -13,7 +13,7 @@ final class WelcomeViewTests: XCTestCase {
 
     func testWelcomeViewBodyDoesNotCrash() {
         let view = WelcomeView()
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true)
     }
 }
@@ -36,7 +36,7 @@ final class FeatureRowTests: XCTestCase {
             title: "Settings",
             description: "Configure your preferences"
         )
-        let _ = row.body
+        _ = row.body
         XCTAssertTrue(true)
     }
 
@@ -69,7 +69,7 @@ final class InstructionRowTests: XCTestCase {
 
     func testInstructionRowBodyDoesNotCrash() {
         let row = InstructionRow(number: 2, text: "Second step")
-        let _ = row.body
+        _ = row.body
         XCTAssertTrue(true)
     }
 
@@ -133,7 +133,7 @@ final class WelcomeViewContentTests: XCTestCase {
             ("command", "Global Hotkey"),
             ("waveform", "Powerful Transcription"),
             ("clock.arrow.circlepath", "Transcription History"),
-            ("brain", "Multiple AI Models"),
+            ("brain", "Multiple AI Models")
         ]
 
         XCTAssertEqual(features.count, 4)
@@ -148,7 +148,7 @@ final class WelcomeViewContentTests: XCTestCase {
         let instructions = [
             "Enable 'Smart Paste' in Settings → General",
             "Grant Accessibility permission when prompted",
-            "Transcribed text will automatically paste into the active app",
+            "Transcribed text will automatically paste into the active app"
         ]
 
         XCTAssertEqual(instructions.count, 3)
@@ -211,7 +211,7 @@ final class DownloadStageTextTests: XCTestCase {
             "Downloading model...",
             "Processing model files...",
             "Almost done...",
-            "Model ready!",
+            "Model ready!"
         ]
 
         for stage in stages {

@@ -342,7 +342,6 @@ except Exception as e:
 
                 let exitStatus = process.terminationStatus
 
-
                 await MainActor.run { [weak self] in
                     self?.isDownloading[repo] = false
                     if exitStatus != 0 {

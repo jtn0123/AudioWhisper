@@ -12,7 +12,7 @@ final class ShowAudioFileButtonTest: XCTestCase {
         let testCases = [
             // Transcription errors - should be classified as transcription type
             ("Transcription failed: network timeout", true),
-            ("Local transcription failed: model error", true), 
+            ("Local transcription failed: model error", true),
             ("Transcription service unavailable", true),
             ("transcription processing error", true), // lowercase test
             ("Failed transcription due to timeout", true),
@@ -27,7 +27,7 @@ final class ShowAudioFileButtonTest: XCTestCase {
             ("Generic error message", false),
             ("Audio recording failed", false),
             ("Recording failed to start", false),
-            ("File upload error", false),
+            ("File upload error", false)
         ]
         
         for (errorMessage, shouldBeTranscriptionError) in testCases {

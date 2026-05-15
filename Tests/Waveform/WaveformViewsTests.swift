@@ -11,7 +11,6 @@ final class WaveformViewsTests: IsolatedXCTestCase {
     // re-enable isolation.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-
     // MARK: - CircularSpectrumView Tests
 
     func testCircularSpectrumViewInitialization() {

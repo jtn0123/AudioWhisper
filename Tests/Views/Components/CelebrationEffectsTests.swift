@@ -372,7 +372,7 @@ final class CelebrationColorsTests: XCTestCase {
             (0.4, 0.9, 0.5),     // Green
             (0.45, 0.75, 0.55),  // Success green
             (1.0, 0.6, 0.4),     // Coral
-            (0.6, 0.4, 1.0),     // Purple
+            (0.6, 0.4, 1.0)     // Purple
         ]
 
         XCTAssertEqual(colors.count, 7)

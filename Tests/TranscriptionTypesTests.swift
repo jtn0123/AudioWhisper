@@ -191,7 +191,7 @@ class TranscriptionTypesTests: XCTestCase {
     func testDisplayNamesContainSizeInfo() {
         for model in WhisperModel.allCases {
             let displayName = model.displayName
-            XCTAssertTrue(displayName.contains("MB") || displayName.contains("GB"), 
+            XCTAssertTrue(displayName.contains("MB") || displayName.contains("GB"),
                          "Display name for \(model) should contain size information")
         }
     }
@@ -216,7 +216,7 @@ class TranscriptionTypesTests: XCTestCase {
             let description = model.description.lowercased()
             let hasSpeedInfo = description.contains("fast") || description.contains("slow") || description.contains("speed")
             let hasAccuracyInfo = description.contains("accuracy") || description.contains("accurate")
-            XCTAssertTrue(hasSpeedInfo || hasAccuracyInfo, 
+            XCTAssertTrue(hasSpeedInfo || hasAccuracyInfo,
                          "Description for \(model) should contain speed or accuracy information")
         }
     }
@@ -280,7 +280,7 @@ class TranscriptionTypesTests: XCTestCase {
             let string = String(describing: model)
             XCTAssertFalse(string.isEmpty)
             // String representation contains the case name, not necessarily the raw value
-            XCTAssertTrue(string.count > 0)
+            XCTAssertTrue(!string.isEmpty)
         }
     }
     
@@ -289,7 +289,7 @@ class TranscriptionTypesTests: XCTestCase {
             let string = String(describing: provider)
             XCTAssertFalse(string.isEmpty)
             // String representation contains the case name, not necessarily the raw value
-            XCTAssertTrue(string.count > 0)
+            XCTAssertTrue(!string.isEmpty)
         }
     }
 

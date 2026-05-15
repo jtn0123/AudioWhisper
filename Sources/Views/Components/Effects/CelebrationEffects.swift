@@ -211,7 +211,7 @@ struct ConfettiView: View {
         Color(red: 0.4, green: 0.9, blue: 0.5),    // Green
         Color(red: 0.45, green: 0.75, blue: 0.55), // Success green
         Color(red: 1.0, green: 0.6, blue: 0.4),    // Coral
-        Color(red: 0.6, green: 0.4, blue: 1.0),    // Purple
+        Color(red: 0.6, green: 0.4, blue: 1.0)    // Purple
     ]
 
     var body: some View {

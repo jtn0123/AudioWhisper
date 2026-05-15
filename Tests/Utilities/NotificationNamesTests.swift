@@ -146,7 +146,7 @@ final class AllNotificationNamesTests: XCTestCase {
             .showAudioFileRequested,
             .transcribeAudioFile,
             .pasteOperationFailed,
-            .pasteOperationSucceeded,
+            .pasteOperationSucceeded
         ]
 
         let uniqueNames = Set(allNames.map { $0.rawValue })
@@ -172,7 +172,7 @@ final class AllNotificationNamesTests: XCTestCase {
             .showAudioFileRequested,
             .transcribeAudioFile,
             .pasteOperationFailed,
-            .pasteOperationSucceeded,
+            .pasteOperationSucceeded
         ]
 
         for name in allNames {

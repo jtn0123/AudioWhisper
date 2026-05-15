@@ -61,7 +61,7 @@ final class LoggerExtensionTests: XCTestCase {
             ("app", Logger.app),
             ("settings", Logger.settings),
             ("dataManager", Logger.dataManager),
-            ("paste", Logger.paste),
+            ("paste", Logger.paste)
         ]
 
         // Verify each logger exists
@@ -103,7 +103,7 @@ final class LoggerCategoryTests: XCTestCase {
             "App",
             "Settings",
             "DataManager",
-            "Paste",
+            "Paste"
         ]
 
         XCTAssertEqual(expectedCategories.count, 9)

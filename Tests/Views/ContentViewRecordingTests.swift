@@ -354,7 +354,7 @@ final class ContentViewRecordingTests: XCTestCase {
             ("Hello, world! How are you?", 5),
             ("Don't worry", 2),  // Contractions count as single words
             ("test-driven development", 3),  // Hyphens split words
-            ("one two three four five", 5),
+            ("one two three four five", 5)
         ]
 
         for (text, expectedCount) in testCases {

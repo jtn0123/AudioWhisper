@@ -8,7 +8,6 @@ final class HotkeyIntegrationTests: IsolatedXCTestCase {
     // an injected UserDefaults, switch to a UUID-scoped suite and re-enable.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-
     // MARK: - Notification Tests
 
     func testSpaceKeyNotificationPosted() {

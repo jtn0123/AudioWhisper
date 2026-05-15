@@ -139,7 +139,7 @@ class MockModelManager {
         try? await Task.sleep(for: .milliseconds(100)) // 100ms
         
         // Simulate download completion
-        let destination = await MainActor.run { 
+        let destination = await MainActor.run {
             self.modelsDirectory.appendingPathComponent(model.fileName)
         }
         

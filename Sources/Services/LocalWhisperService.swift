@@ -192,7 +192,6 @@ internal final class LocalWhisperService: Sendable {
         return transcription.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
     
-    
     // Method to clear cached instances if needed (for memory management)
     func clearCache() async {
         await cache.clear()

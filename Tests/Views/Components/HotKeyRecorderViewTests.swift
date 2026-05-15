@@ -56,7 +56,7 @@ final class HotKeyRecorderViewTests: XCTestCase {
             onComplete: { _ in }
         )
 
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true, "Body should not crash")
     }
 }

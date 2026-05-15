@@ -40,7 +40,7 @@ final class TranscriptionRecordRowTests: XCTestCase {
             onDelete: {}
         )
 
-        let _ = row.body
+        _ = row.body
         XCTAssertTrue(true, "Body should not crash")
     }
 
@@ -59,7 +59,7 @@ final class TranscriptionRecordRowTests: XCTestCase {
             onDelete: {}
         )
 
-        let _ = row.body
+        _ = row.body
         XCTAssertTrue(true, "Expanded body should not crash")
     }
 }

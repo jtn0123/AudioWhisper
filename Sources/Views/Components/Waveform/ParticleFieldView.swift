@@ -74,7 +74,7 @@ struct ParticleFieldView: View {
         Color(red: 0.0, green: 0.9, blue: 0.95),   // Cyan
         Color(red: 0.95, green: 0.2, blue: 0.8),   // Magenta
         Color(red: 1.0, green: 0.85, blue: 0.0),   // Yellow
-        Color(red: 0.4, green: 0.9, blue: 0.5),    // Green
+        Color(red: 0.4, green: 0.9, blue: 0.5)    // Green
     ]
 
     struct Particle: Identifiable {
@@ -91,7 +91,7 @@ struct ParticleFieldView: View {
     var body: some View {
         GeometryReader { geometry in
             TimelineView(.animation(minimumInterval: 0.033, paused: !isViewActive)) { timeline in
-                Canvas { context, size in
+                Canvas { context, _ in
                     for particle in particles {
                         let rect = CGRect(
                             x: particle.x - particle.size / 2,
@@ -253,7 +253,7 @@ struct ParticleFieldView: View {
 /// Deterministic xorshift64 PRNG used to make particle-field snapshots
 /// reproducible. Only used when `ParticleFieldView` is constructed with a
 /// non-nil `seed`; production callers continue to use the system RNG.
-fileprivate struct SeededRandomNumberGenerator: RandomNumberGenerator {
+private struct SeededRandomNumberGenerator: RandomNumberGenerator {
     private var state: UInt64
 
     init(seed: UInt64) {

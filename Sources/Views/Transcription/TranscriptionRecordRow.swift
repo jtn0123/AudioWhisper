@@ -9,7 +9,7 @@ internal struct TranscriptionRecordRow: View {
     let onDelete: () -> Void
 
     @State private var isHovered = false
-    @State private var hoveredButton: String? = nil
+    @State private var hoveredButton: String?
 
     var body: some View {
         Button(action: onToggleExpand) {

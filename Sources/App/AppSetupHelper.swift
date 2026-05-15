@@ -79,7 +79,7 @@ internal class AppSetupHelper {
         cacheLock.lock()
         if let cached = _cachedIconSize,
            let lastFrame = _lastMainScreenFrame,
-           NSEqualRects(lastFrame, currentFrame) {
+           lastFrame == currentFrame {
             cacheLock.unlock()
             return cached
         }
@@ -130,7 +130,6 @@ internal class AppSetupHelper {
         // For older macOS versions, assume no notch
         return false
     }
-    
     
     static func checkFirstRun() -> Bool {
         let hasExistingProvider = AppDefaults.hasValue(for: .transcriptionProvider)

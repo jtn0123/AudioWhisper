@@ -197,7 +197,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     func testMultipleModifiers() {
         let combinations = [
             "⌘⇧A",
-            "⌘⌥A", 
+            "⌘⌥A",
             "⌘⌃A",
             "⇧⌥A",
             "⇧⌃A",

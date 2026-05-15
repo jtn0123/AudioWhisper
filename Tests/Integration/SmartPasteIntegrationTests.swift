@@ -302,4 +302,3 @@ final class SmartPasteIntegrationTests: IsolatedXCTestCase {
         XCTAssertEqual(pasteboard.string(forType: .string), "Second transcription")
     }
 }
-

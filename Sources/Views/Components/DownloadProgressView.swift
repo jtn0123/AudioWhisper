@@ -29,8 +29,8 @@ public enum DownloadState: Equatable {
 
 public struct DownloadProgressView: View {
     let state: DownloadState
-    var onRetry: (() -> Void)? = nil
-    var onCancel: (() -> Void)? = nil
+    var onRetry: (() -> Void)?
+    var onCancel: (() -> Void)?
 
     public init(state: DownloadState,
                 onRetry: (() -> Void)? = nil,
