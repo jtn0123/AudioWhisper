@@ -41,6 +41,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      - name: Generate VersionInfo.swift
+        run: |
+          # VersionInfo.swift is gitignored and normally produced by
+          # scripts/build.sh. Bare `swift build`/`swift test` need it too.
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "ci-build")
+          BUILD_DATE=$(date -u +%Y-%m-%d)
+          # BUNDLED_UV_* placeholders must be substituted before VERSION_PLACEHOLDER,
+          # which is a substring of BUNDLED_UV_VERSION_PLACEHOLDER.
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$BUILD_DATE/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+          echo "Generated Sources/Utilities/VersionInfo.swift"
+
       - name: Build
         run: swift build
 

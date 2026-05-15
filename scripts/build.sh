@@ -66,11 +66,13 @@ rm -f Sources/AudioProcessorCLI
 
 # Create version file from template
 if [ -f "Sources/VersionInfo.swift.template" ]; then
-  sed -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+  # BUNDLED_UV_* placeholders must be substituted before VERSION_PLACEHOLDER,
+  # which is a substring of BUNDLED_UV_VERSION_PLACEHOLDER.
+  sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER/$BUNDLED_UV_VERSION/g" \
+    -e "s/BUNDLED_UV_SHA256_PLACEHOLDER/$BUNDLED_UV_SHA256/g" \
+    -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
     -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
     -e "s/BUILD_DATE_PLACEHOLDER/$BUILD_DATE/g" \
-    -e "s/BUNDLED_UV_VERSION_PLACEHOLDER/$BUNDLED_UV_VERSION/g" \
-    -e "s/BUNDLED_UV_SHA256_PLACEHOLDER/$BUNDLED_UV_SHA256/g" \
     Sources/VersionInfo.swift.template >Sources/Utilities/VersionInfo.swift
   echo "Generated VersionInfo.swift from template"
 else
