@@ -44,25 +44,44 @@ final class DiskMutationSerializerTests: XCTestCase {
     }
 
     func test_serializer_differentKeysRunInParallel() async throws {
-        // Different keys should not block each other.
+        // Different keys must not block each other. Proven deterministically
+        // rather than with a wall-clock threshold (which is flaky on loaded
+        // CI runners): both operation bodies must be able to sit inside run()
+        // at the same time. If the serializer wrongly serialized different
+        // keys, only one body could be inside at once, `inside` would never
+        // reach 2, and the safety cap below would fail the test.
         let serializer = DiskMutationSerializer<String>()
         let counter = Counter()
+        let inside = Counter()
+        let release = Latch()
 
         async let firstRun: Void = try serializer.run(key: "one") {
-            try await Task.sleep(nanoseconds: 50_000_000)
+            await inside.increment()
+            await release.wait()
             await counter.increment()
         }
         async let secondRun: Void = try serializer.run(key: "two") {
-            try await Task.sleep(nanoseconds: 50_000_000)
+            await inside.increment()
+            await release.wait()
             await counter.increment()
         }
 
-        let start = Date()
+        // Wait until both bodies are concurrently inside run().
+        var waitedMs = 0
+        while await inside.value < 2 {
+            try await Task.sleep(nanoseconds: 5_000_000) // 5ms
+            waitedMs += 5
+            if waitedMs > 5_000 {
+                await release.open()
+                _ = try? await (firstRun, secondRun)
+                XCTFail("Different-keyed callers did not run in parallel")
+                return
+            }
+        }
+        await release.open()
         _ = try await (firstRun, secondRun)
-        let elapsed = Date().timeIntervalSince(start)
         let final = await counter.value
         XCTAssertEqual(final, 2)
-        XCTAssertLessThan(elapsed, 0.15, "Different-keyed callers should run in parallel, not be serialized")
     }
 
     func test_serializer_propagatesErrors() async {
@@ -186,4 +205,21 @@ final class DiskMutationSerializerTests: XCTestCase {
 private actor Counter {
     private(set) var value: Int = 0
     func increment() { value += 1 }
+}
+
+/// One-shot latch: `wait()` suspends until someone calls `open()`.
+private actor Latch {
+    private var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func open() {
+        isOpen = true
+        for waiter in waiters { waiter.resume() }
+        waiters.removeAll()
+    }
+
+    func wait() async {
+        if isOpen { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
 }
