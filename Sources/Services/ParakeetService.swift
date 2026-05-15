@@ -102,9 +102,12 @@ internal class ParakeetService {
                 return false
             }
 
+            // The file holds a Hugging Face commit hash; require pure hex so
+            // it cannot carry path separators into appendingPathComponent.
             let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let rev = rawRev, !rev.isEmpty else {
+            guard let rev = rawRev, !rev.isEmpty,
+                  rev.allSatisfy({ $0.isHexDigit }) else {
                 return false
             }
             let snap = base.appendingPathComponent("snapshots/\(rev)")
