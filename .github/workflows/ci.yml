@@ -63,10 +63,14 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Run tests and filter out macOS system framework noise
+          # Run tests sequentially. A number of tests still read/write
+          # UserDefaults.standard directly; under --parallel they observe each
+          # other's writes and fail nondeterministically. --no-parallel is the
+          # reliable mode until the IsolatedXCTestCase migration is complete
+          # enough to enforce strict isolation.
           # Use a temp file to preserve exit code while filtering output
           set +e
-          swift test --parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
+          swift test --no-parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           # Filter and display cleaned output
           grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" /tmp/test_output.txt || true

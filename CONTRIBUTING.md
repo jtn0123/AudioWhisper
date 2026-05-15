@@ -75,8 +75,8 @@ swift run --verbose
 # Run all tests (recommended - uses make)
 make test
 
-# Run all tests directly in parallel (matches CI)
-swift test --parallel
+# Run all tests directly, sequentially (matches CI)
+swift test --no-parallel
 
 # Run specific test suite
 swift test --filter AudioRecorderTests
@@ -84,25 +84,23 @@ swift test --filter SpeechToTextServiceTests
 swift test --filter SettingsViewTests
 
 # Run tests with verbose output
-swift test --parallel --verbose
+swift test --no-parallel --verbose
 
 # Run tests with code coverage (matches CI exactly)
-swift test --parallel --enable-code-coverage
-
-# Run tests sequentially when debugging a flaky test
-swift test --no-parallel
+swift test --no-parallel --enable-code-coverage
 ```
 
-**Note**: Tests run in parallel by default to match CI
-(`.github/workflows/ci.yml` invokes `swift test --parallel
---enable-code-coverage`). Tests that touch `UserDefaults.standard` should
-subclass `IsolatedXCTestCase` (see
+**Note**: Tests run sequentially (`--no-parallel`) to match CI
+(`.github/workflows/ci.yml`). A number of tests still read and write
+`UserDefaults.standard` directly; under `--parallel` they observe each
+other's writes and fail nondeterministically. Tests that touch
+`UserDefaults.standard` should subclass `IsolatedXCTestCase` (see
 `Tests/Utilities/IsolatedXCTestCase.swift`) and store their settings in a
 UUID-scoped suite via `UserDefaults(suiteName: UUID().uuidString)!`. The
 base class can be put in strict mode
-(`AUDIOWHISPER_TEST_ISOLATION=strict swift test --parallel`) to fail any
-test that leaks state into `.standard`, keeping parallel runs deterministic.
-Use `swift test --no-parallel` only when you need to diagnose a flake.
+(`AUDIOWHISPER_TEST_ISOLATION=strict swift test`) to fail any test that
+leaks state into `.standard`. Once enough tests are isolated, `--parallel`
+can become the default.
 
 ### Code Quality Checks
 

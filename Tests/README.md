@@ -42,8 +42,8 @@ Tests/
 # Run all tests (recommended - uses make)
 make test
 
-# Run all tests directly in parallel (matches CI)
-swift test --parallel
+# Run all tests directly, sequentially (matches CI)
+swift test --no-parallel
 
 # Run specific test file
 swift test --filter AudioRecorderTests
@@ -52,18 +52,16 @@ swift test --filter AudioRecorderTests
 swift test --filter AudioRecorderTests.testStartRecordingUpdatesState
 
 # Run tests with verbose output
-swift test --parallel --verbose
-
-# Run tests sequentially when debugging a flaky test
-swift test --no-parallel
+swift test --no-parallel --verbose
 ```
 
-**Note**: Tests run in parallel by default to match CI
-(`.github/workflows/ci.yml` invokes `swift test --parallel
---enable-code-coverage`). Tests that touch `UserDefaults.standard` should
-subclass `IsolatedXCTestCase` (see the [Test isolation](#test-isolation)
-section below) and use a UUID-scoped suite so parallel runs stay
-deterministic. Use `swift test --no-parallel` only when diagnosing a flake.
+**Note**: Tests run sequentially (`--no-parallel`) to match CI
+(`.github/workflows/ci.yml`). A number of tests still read and write
+`UserDefaults.standard` directly; under `--parallel` they observe each
+other's writes and fail nondeterministically. Tests that touch
+`UserDefaults.standard` should subclass `IsolatedXCTestCase` (see the
+[Test isolation](#test-isolation) section below) and use a UUID-scoped
+suite. Once enough tests are isolated, `--parallel` can become the default.
 
 ## Test isolation
 
@@ -73,11 +71,11 @@ and manager tests now inherit from it. The default enforcement mode is
 **warn**: a test that leaks/mutates `.standard` prints
 `[IsolatedXCTestCase] WARNING:` but does not fail. Tests can override:
 
-- `AUDIOWHISPER_TEST_ISOLATION=off swift test --parallel` — silence the
+- `AUDIOWHISPER_TEST_ISOLATION=off swift test` — silence the
   warning entirely (use only when debugging unrelated output noise).
-- `AUDIOWHISPER_TEST_ISOLATION=warn swift test --parallel` — explicit
+- `AUDIOWHISPER_TEST_ISOLATION=warn swift test` — explicit
   warn mode (same as default).
-- `AUDIOWHISPER_TEST_ISOLATION=strict swift test --parallel` — `XCTFail`
+- `AUDIOWHISPER_TEST_ISOLATION=strict swift test` — `XCTFail`
   on leaks/mutations and roll `.standard` back to its pre-test value. This
   is the target mode for CI once every offender has been migrated to a
   UUID-scoped suite or explicitly opted out.

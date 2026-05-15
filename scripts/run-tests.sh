@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Run the AudioWhisper test suite with macOS framework noise filtered out.
-# Runs in parallel by default to match CI. Tests that touch
-# UserDefaults.standard should subclass IsolatedXCTestCase
-# (Tests/Utilities/IsolatedXCTestCase.swift). Pass --no-parallel to debug
-# flakes locally.
+# Runs sequentially by default to match CI: some tests still read/write
+# UserDefaults.standard directly and fail nondeterministically under
+# --parallel. Tests that touch UserDefaults.standard should subclass
+# IsolatedXCTestCase (Tests/Utilities/IsolatedXCTestCase.swift); once that
+# migration enforces strict isolation, parallel can become the default.
+# Pass --parallel to opt in anyway.
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   sed -n 's/^# //p' "$0" | head -n 20
   exit 0
@@ -17,12 +19,12 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # These errors occur because xctest runs outside the app sandbox
 export OS_ACTIVITY_MODE=disable
 
-# Run all tests in parallel by default (matches CI). Pass --no-parallel
-# as a script arg to fall back to sequential execution when debugging flakes.
-PARALLEL_FLAG="--parallel"
+# Run sequentially by default (matches CI). Pass --parallel as a script arg
+# to opt into parallel execution (currently nondeterministic — see above).
+PARALLEL_FLAG="--no-parallel"
 for arg in "$@"; do
-  if [[ "$arg" == "--no-parallel" ]]; then
-    PARALLEL_FLAG="--no-parallel"
+  if [[ "$arg" == "--parallel" ]]; then
+    PARALLEL_FLAG="--parallel"
   fi
 done
 
