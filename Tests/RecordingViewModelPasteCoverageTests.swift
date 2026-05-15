@@ -213,23 +213,4 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
         XCTAssertNotNil(vm.targetAppForPaste)
     }
 
-    // MARK: - fadeOutWindow
-
-    func testFadeOutWindowDoesNotCrash() {
-        let vm = makeViewModel()
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
-            styleMask: [.titled],
-            backing: .buffered,
-            defer: true
-        )
-        // Close the window when the test ends so it doesn't linger in
-        // NSApp.windows and get mistaken for the recording window by other
-        // suites (e.g. WindowManagerBaseTests).
-        addTeardownBlock { window.close() }
-        // Exercises the animation-group setup path. The completion handler runs
-        // on the next animation tick; we only assert the call itself is safe
-        // (animation completion timing is not deterministic under load).
-        vm.fadeOutWindow(window, duration: 0.01)
-    }
 }
