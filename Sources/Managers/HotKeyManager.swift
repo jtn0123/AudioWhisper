@@ -50,9 +50,9 @@ internal class HotKeyManager {
     private func registerKeyDownHandler() {
         // Remove any handler previously installed by another instance so we
         // don't accumulate them when multiple managers are created (e.g. in
-        // tests). The handler we install below is the only one for the
-        // `.toggleRecording` name afterwards.
-        KeyboardShortcuts.removeHandler(for: .toggleRecording)
+        // tests). AudioWhisper registers only the `.toggleRecording` name, so
+        // removing all handlers is equivalent to a per-name removal here.
+        KeyboardShortcuts.removeAllHandlers()
         KeyboardShortcuts.onKeyDown(for: .toggleRecording) { [weak self] in
             self?.onHotKeyPressed()
         }
