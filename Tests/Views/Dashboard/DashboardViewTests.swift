@@ -8,14 +8,12 @@ final class DashboardThemeTests: XCTestCase {
     // MARK: - Color Tests
 
     func testSidebarColorsAreDefined() {
-        XCTAssertNotNil(DashboardTheme.sidebarDark)
-        XCTAssertNotNil(DashboardTheme.sidebarLight)
         XCTAssertNotNil(DashboardTheme.sidebarText)
         XCTAssertNotNil(DashboardTheme.sidebarTextMuted)
         XCTAssertNotNil(DashboardTheme.sidebarTextFaint)
         XCTAssertNotNil(DashboardTheme.sidebarDivider)
-        XCTAssertNotNil(DashboardTheme.sidebarAccent)
-        XCTAssertNotNil(DashboardTheme.sidebarAccentSubtle)
+        XCTAssertNotNil(DashboardTheme.sidebarHover)
+        XCTAssertNotNil(DashboardTheme.sidebarActive)
     }
 
     func testContentColorsAreDefined() {
