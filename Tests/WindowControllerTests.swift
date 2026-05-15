@@ -163,7 +163,7 @@ final class WindowControllerTests: IsolatedXCTestCase {
     // MARK: - Memory Management Tests
     
     func testWindowControllerDeallocation() {
-        weak let weakController: WindowController? = windowController
+        weak var weakController: WindowController? = windowController
 
         windowController = nil
 
