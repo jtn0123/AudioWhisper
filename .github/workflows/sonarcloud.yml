@@ -9,12 +9,65 @@ on:
 jobs:
   sonarcloud:
     name: SonarCloud Scan
-    runs-on: ubuntu-latest
+    # macOS: Swift coverage requires building/testing on an Apple toolchain.
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          # Need Xcode 16+ (Swift 6 tooling) for swift-jinja 2.x.
+          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then
+            sudo xcode-select -s "$latest/Contents/Developer"
+          fi
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Generate VersionInfo.swift
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "ci-build")
+          # BUNDLED_UV_* must be substituted before VERSION_PLACEHOLDER (substring).
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+
+      - name: Run tests with coverage
+        run: swift test --no-parallel --enable-code-coverage
+        env:
+          OS_ACTIVITY_MODE: disable
+
+      - name: Export coverage for SonarCloud
+        run: |
+          set -e
+          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
+          XCTEST=$(find .build -type d -name '*.xctest' | head -n 1)
+          BIN="$XCTEST/Contents/MacOS/$(basename "$XCTEST" .xctest)"
+          if [ -z "$PROFDATA" ] || [ ! -f "$BIN" ]; then
+            echo "::warning::Coverage artifacts not found; emitting empty report"
+            printf '<coverage version="1">\n</coverage>\n' > sonar-coverage.xml
+            exit 0
+          fi
+          xcrun llvm-cov export -format=lcov "$BIN" -instr-profile "$PROFDATA" \
+            --ignore-filename-regex='(\.build|/checkouts/|Tests/)' > coverage.lcov
+          python3 scripts/lcov-to-sonar.py coverage.lcov sonar-coverage.xml "$PWD"
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v7
+        with:
+          args: >
+            -Dsonar.coverageReportPaths=sonar-coverage.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
