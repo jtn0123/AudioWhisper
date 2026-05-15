@@ -145,8 +145,6 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
         defer {
             appDelegate.pressAndHoldMonitor?.stop()
             appDelegate.pressAndHoldMonitor = nil
-            appDelegate.recordingAnimationTimer?.cancel()
-            appDelegate.recordingAnimationTimer = nil
         }
 
         UserDefaults.standard.set(true, forKey: "immediateRecording")
@@ -167,8 +165,6 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
         defer {
             appDelegate.pressAndHoldMonitor?.stop()
             appDelegate.pressAndHoldMonitor = nil
-            appDelegate.recordingAnimationTimer?.cancel()
-            appDelegate.recordingAnimationTimer = nil
         }
 
         UserDefaults.standard.set(true, forKey: "immediateRecording")

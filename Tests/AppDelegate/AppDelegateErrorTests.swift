@@ -56,25 +56,11 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         XCTAssertFalse(hasKey)
     }
 
-    // MARK: - Animation Timer Cleanup
+    // MARK: - Termination
 
-    func testTerminationWithNilAnimationTimer() {
-        appDelegate.recordingAnimationTimer = nil
+    func testTerminationDoesNotCrash() {
         let notification = Notification(name: NSApplication.willTerminateNotification)
         appDelegate.applicationWillTerminate(notification)
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
-    }
-
-    func testAnimationTimerCancellationOnTerminate() {
-        let timer = DispatchSource.makeTimerSource()
-        timer.schedule(deadline: .now() + 100, repeating: .seconds(1))
-        timer.resume()
-        appDelegate.recordingAnimationTimer = timer
-
-        let notification = Notification(name: NSApplication.willTerminateNotification)
-        appDelegate.applicationWillTerminate(notification)
-
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
     }
 
     func testMultipleTerminationCallsSafe() {

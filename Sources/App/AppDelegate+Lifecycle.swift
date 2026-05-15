@@ -42,11 +42,15 @@ internal extension AppDelegate {
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
-            button.image = AppSetupHelper.createMenuBarIcon()
+            iconRenderer = MenuBarIconRenderer(button: button)
+            iconRenderer?.setState(.idle)
             button.action = #selector(toggleRecordWindow)
             button.target = self
         }
         statusItem?.menu = makeStatusMenu()
+
+        // Warm the menu's "Recent" cache so the first open has data.
+        Task { await DashboardWindowManager.shared.refreshRecentRecordsCache() }
 
         hotKeyManager = HotKeyManager { [weak self] in
             self?.handleHotkey(source: .standardHotkey)
@@ -96,8 +100,6 @@ internal extension AppDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         Task { await MLDaemonManager.shared.shutdown() }
-        recordingAnimationTimer?.cancel()
-        recordingAnimationTimer = nil
 
         recordingWindow = nil
         recordingWindowDelegate = nil

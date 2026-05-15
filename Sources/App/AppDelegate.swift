@@ -9,7 +9,7 @@ internal class AppDelegate: NSObject, NSApplicationDelegate {
     weak var recordingWindow: NSWindow?
     var recordingWindowDelegate: RecordingWindowDelegate?
     var audioRecorder: AudioEngineRecorder?
-    var recordingAnimationTimer: DispatchSourceTimer?
+    var iconRenderer: MenuBarIconRenderer?
     var pressAndHoldMonitor: PressAndHoldKeyMonitor?
     var pressAndHoldConfiguration = PressAndHoldSettings.configuration()
     var isHoldRecordingActive = false

@@ -77,12 +77,11 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
         // Check for expected menu items
         let itemTitles = menu.items.map { $0.title }
 
-        XCTAssertTrue(itemTitles.contains(LocalizedStrings.Menu.record), "Menu should contain Record item")
-        XCTAssertTrue(itemTitles.contains("Transcribe Audio File..."), "Menu should contain Transcribe Audio File item")
-        XCTAssertTrue(itemTitles.contains("Dashboard..."), "Menu should contain Dashboard item")
-        XCTAssertTrue(itemTitles.contains(LocalizedStrings.Menu.history), "Menu should contain History item")
+        XCTAssertTrue(itemTitles.contains("Start Recording"), "Menu should contain Start Recording item")
+        XCTAssertTrue(itemTitles.contains("Transcribe a File…"), "Menu should contain Transcribe a File item")
+        XCTAssertTrue(itemTitles.contains("Dashboard"), "Menu should contain Dashboard item")
         XCTAssertTrue(itemTitles.contains("Help"), "Menu should contain Help item")
-        XCTAssertTrue(itemTitles.contains(LocalizedStrings.Menu.quit), "Menu should contain Quit item")
+        XCTAssertTrue(itemTitles.contains("Quit AudioWhisper"), "Menu should contain Quit item")
     }
 
     func testMakeStatusMenuHasSeparators() {
@@ -97,7 +96,7 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
         let appDelegate = AppDelegate()
         let menu = appDelegate.makeStatusMenu()
 
-        let quitItem = menu.items.first { $0.title == LocalizedStrings.Menu.quit }
+        let quitItem = menu.items.first { $0.title == "Quit AudioWhisper" }
         XCTAssertNotNil(quitItem)
         XCTAssertEqual(quitItem?.action, #selector(NSApplication.terminate(_:)))
     }

@@ -79,21 +79,6 @@ final class AppDelegateLifecycleTests: IsolatedXCTestCase {
 
     // MARK: - applicationWillTerminate Tests
 
-    func testApplicationWillTerminateCancelsAnimationTimer() {
-        // Set up a mock animation timer
-        let timer = DispatchSource.makeTimerSource()
-        timer.schedule(deadline: .now() + 100, repeating: .seconds(1))
-        timer.resume()
-        appDelegate.recordingAnimationTimer = timer
-
-        // Terminate
-        let notification = Notification(name: NSApplication.willTerminateNotification)
-        appDelegate.applicationWillTerminate(notification)
-
-        // Timer should be nil after termination
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
-    }
-
     func testApplicationWillTerminateCleanupsTempFiles() {
         // Create a temporary file in the temp directory
         let tempDir = FileManager.default.temporaryDirectory
@@ -166,7 +151,7 @@ final class AppDelegateLifecycleTests: IsolatedXCTestCase {
         XCTAssertNil(appDelegate.statusItem)
         XCTAssertNil(appDelegate.hotKeyManager)
         XCTAssertNil(appDelegate.audioRecorder)
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
+        XCTAssertNil(appDelegate.iconRenderer)
         XCTAssertNil(appDelegate.pressAndHoldMonitor)
         XCTAssertFalse(appDelegate.isHoldRecordingActive)
         XCTAssertNotNil(appDelegate.windowController)
