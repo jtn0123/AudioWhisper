@@ -20,6 +20,6 @@ internal enum LayoutMetrics {
     }
     
     enum Welcome {
-        static let windowSize = CGSize(width: 600, height: 650)
+        static let windowSize = CGSize(width: 600, height: 720)
     }
 }

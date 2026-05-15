@@ -1,331 +1,310 @@
 import SwiftUI
 import AppKit
 
+/// Consolidated single-page welcome.
+///
+/// Replaces the previous multi-section onboarding (welcome header + privacy
+/// card + feature grid + setup section + smart-paste instructions + button).
+///
+/// Layout:
+///   • Hero recording window — live-rendering the user's selected style
+///   • Headline + subtitle
+///   • 2×4 grid of visual style tiles
+///   • Selected style name + description (italic NY serif)
+///   • Footer: "Change anything later" + "Get started" CTA
 internal struct WelcomeView: View {
-    @State private var modelManager = ModelManager()
-    @AppDefault(\.transcriptionProvider) private var transcriptionProvider
-    @AppDefault(\.selectedWhisperModel) private var selectedWhisperModel
-    @State private var isDownloadingModel = false
-    @Environment(\.dismiss) private var dismiss
-    
-    private var downloadProgress: Double {
-        modelManager.downloadProgress[selectedWhisperModel] ?? 0
-    }
-    
-    private var downloadStage: DownloadStage {
-        modelManager.downloadStages[selectedWhisperModel] ?? .preparing
-    }
-    
+    @AppDefault(\.waveformStyle) private var waveformStyle
+    @State private var isDismissing = false
+    @StateObject private var sampler = LivePreviewSampler()
+
+    // AW colors
+    private let paper = Color(red: 0.980, green: 0.973, blue: 0.953) // #FAF8F3
+    private let ink   = Color(red: 0.102, green: 0.086, blue: 0.071) // #1A1612
+    private let coral = Color(red: 0.85,  green: 0.45,  blue: 0.30)
+    private let coralDeep = Color(red: 0.70, green: 0.34, blue: 0.23)
+
+    private var selectedStyle: WaveformStyle { waveformStyle }
+
     var body: some View {
-        VStack(spacing: 0) {
-            headerSection
-            
-            ScrollView {
-                VStack(spacing: 24) {
-                    welcomeSection
-                    featuresList
-                    setupSection
+        ZStack {
+            // Background flourish
+            paper.ignoresSafeArea()
+            RadialGradient(
+                colors: [coral.opacity(0.06), .clear],
+                center: .center,
+                startRadius: 0,
+                endRadius: 320
+            )
+            .frame(maxWidth: 600, maxHeight: 500)
+            .offset(y: -120)
+            .allowsHitTesting(false)
+
+            VStack(spacing: 0) {
+                // Hero
+                hero
+                    .padding(.top, 12)
+
+                Spacer().frame(height: 24)
+
+                // Picker label
+                HStack(spacing: 10) {
+                    Text("Your visual")
+                        .font(.system(size: 10, weight: .semibold))
+                        .tracking(1.0)
+                        .textCase(.uppercase)
+                        .foregroundStyle(ink.opacity(0.5))
+                    Rectangle()
+                        .fill(ink.opacity(0.12))
+                        .frame(height: 0.5)
                 }
-                .padding(.vertical, 20)
-                .padding(.horizontal, 30)
+                .padding(.horizontal, 36)
+                .padding(.bottom, 10)
+
+                // Grid
+                styleGrid
+                    .padding(.horizontal, 36)
+
+                // Selected readout
+                selectedReadout
+                    .padding(.horizontal, 36)
+                    .padding(.top, 12)
+
+                Spacer()
+
+                // Footer
+                footer
+                    .padding(.horizontal, 36)
+                    .padding(.bottom, 22)
             }
-            
-            Divider()
-            
-            actionButtons
-                .padding(20)
         }
         .frame(
             width: LayoutMetrics.Welcome.windowSize.width,
             height: LayoutMetrics.Welcome.windowSize.height
         )
-        .background(Color(NSColor.windowBackgroundColor))
-    }
-    
-    private var headerSection: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "mic.circle.fill")
-                .font(.system(.largeTitle))
-                .foregroundStyle(Color.accentColor)
-                .symbolRenderingMode(.hierarchical)
-            
-            Text("Welcome to AudioWhisper")
-                .font(.largeTitle)
-                .fontWeight(.semibold)
-            
-            Text("Your AI-powered audio transcription assistant")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            
-            Text(VersionInfo.fullVersionInfo)
-                .font(.caption)
-                .foregroundStyle(Color(NSColor.tertiaryLabelColor))
+        .onAppear {
+            sampler.isActive = false   // hero idle, breathing
+            sampler.start()
         }
-        .padding(.top, 30)
-        .padding(.bottom, 8)
+        .onDisappear { sampler.stop() }
     }
-    
-    private var welcomeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Privacy-First Local Transcription")
-                        .font(.headline)
-                    Text(
-                        "AudioWhisper uses Apple's Neural Engine to transcribe audio locally "
-                        + "on your Mac. Your audio never leaves your device."
-                    )
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
-            } icon: {
-                Image(systemName: "lock.shield.fill")
-                    .font(.title2)
-                    .foregroundStyle(.green)
-            }
-        }
-        .padding()
-        .background(Color.green.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-    
-    private var featuresList: some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 20),
-            GridItem(.flexible(), spacing: 20)
-        ]
-        
-        return LazyVGrid(columns: columns, spacing: 16) {
-            FeatureRow(icon: "command", title: "Global Hotkey", description: "Press ⌘⇧Space anywhere (configurable) to record")
-            FeatureRow(
-                icon: "waveform",
-                title: "Powerful Transcription",
-                description: "With semantic correction to fix transcription errors intelligently"
-            )
-            FeatureRow(
-                icon: "clock.arrow.circlepath",
-                title: "Transcription History",
-                description: "Keep track of all your transcriptions with searchable history"
-            )
-            FeatureRow(
-                icon: "brain",
-                title: "Multiple AI Models",
-                description: "Choose from offline and online models based on your needs"
-            )
-        }
-        .padding(.horizontal, 20) // Add padding to move it right
-    }
-    
-    private var setupSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Quick Setup")
-                .font(.headline)
-            
-            if isDownloadingModel {
-                modelDownloadProgress
-            } else {
-                setupOptions
-            }
-            
-            smartPasteInstructions
-        }
-        .padding()
-        .background(Color(NSColor.controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-    
-    private var modelDownloadProgress: some View {
+
+    // MARK: - Hero
+
+    private var hero: some View {
         VStack(spacing: 16) {
-            HStack {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.accentColor)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Downloading Base Model")
-                        .font(.headline)
-                    Text("This will take about 30-60 seconds...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-            }
-            
-            ProgressView(value: downloadProgress) {
-                HStack {
-                    Text(downloadStageText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            // Recording window (live, idle-breathing the selected style)
+            ZStack {
+                Color(red: 0.04, green: 0.04, blue: 0.04)
+                WaveformStylePreview(style: selectedStyle, sampler: sampler)
+                    .frame(
+                        width: selectedStyle.isRadial ? 155 : 270,
+                        height: selectedStyle.isRadial ? 155 : 130
+                    )
+
+                // Status row
+                VStack {
                     Spacer()
-                    if downloadProgress > 0 {
-                        Text("\(Int(downloadProgress * 100))%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    HStack {
+                        HStack(spacing: 7) {
+                            Circle()
+                                .fill(Color(red: 0.85, green: 0.83, blue: 0.80))
+                                .opacity(0.45)
+                                .frame(width: 5, height: 5)
+                            Text("TAP TO RECORD")
+                                .font(.system(size: 9, weight: .semibold))
+                                .tracking(1.5)
+                                .foregroundStyle(Color.white.opacity(0.45))
+                        }
+                        Spacer()
+                        Text("⌘⇧Space")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(Color.white.opacity(0.32))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1.5)
+                            .background(
+                                RoundedRectangle(cornerRadius: 3)
+                                    .fill(Color.white.opacity(0.06))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 3)
+                                            .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                                    )
+                            )
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 11)
                 }
             }
-            
-            Text("The Base model (142MB) provides good accuracy with fast performance.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            .frame(width: 300, height: 175)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.22), radius: 20, y: 12)
+            .shadow(color: coral.opacity(0.12), radius: 56)
+
+            // Headline
+            Text("Hold a key. Speak. Paste.")
+                .font(.system(size: 30, weight: .medium, design: .serif))
+                .tracking(-0.8)
+                .foregroundStyle(ink)
+
+            // Sub
+            Text("Voice in, text out. Nothing leaves your Mac.")
+                .font(.system(size: 13, design: .serif))
+                .italic()
+                .foregroundStyle(ink.opacity(0.55))
         }
     }
-    
-    private var downloadStageText: String {
-        switch downloadStage {
-        case .preparing:
-            return "Preparing download..."
-        case .downloading:
-            return "Downloading model..."
-        case .processing:
-            return "Processing model files..."
-        case .completing:
-            return "Almost done..."
-        case .ready:
-            return "Model ready!"
-        case .failed(let error):
-            return "Download failed: \(error)"
-        }
-    }
-    
-    private var setupOptions: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label {
-                Text("AudioWhisper will use local AI transcription by default. No API keys or internet connection required!")
-                    .font(.callout)
-            } icon: {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-            }
-            
-            Label {
-                Text("Want to use cloud services instead? You can switch to OpenAI or Google Gemini in Settings.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } icon: {
-                Image(systemName: "info.circle")
-                    .foregroundStyle(.secondary)
+
+    // MARK: - Grid
+
+    private var styleGrid: some View {
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 4),
+            spacing: 7
+        ) {
+            ForEach(WaveformStyle.allCases) { style in
+                StyleTile(
+                    style: style,
+                    selected: waveformStyle == style,
+                    sampler: sampler
+                ) {
+                    waveformStyle = style
+                }
             }
         }
     }
-    
-    private var smartPasteInstructions: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Smart Paste Feature", systemImage: "accessibility")
-                .font(.headline)
-                .foregroundStyle(.green)
-            
-            Text("AudioWhisper can automatically paste transcribed text using CGEvent-based automation:")
-                .font(.callout)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                InstructionRow(number: 1, text: "Enable 'Smart Paste' in Settings → General")
-                InstructionRow(number: 2, text: "Grant Accessibility permission when prompted")
-                InstructionRow(number: 3, text: "Transcribed text will automatically paste into the active app")
+
+    // MARK: - Selected readout
+
+    private var selectedReadout: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(selectedStyle.rawValue)
+                .font(.system(size: 14, weight: .medium, design: .serif))
+                .foregroundStyle(ink)
+
+            Text("— \(selectedStyle.description.lowercased())")
+                .font(.system(size: 12, design: .serif))
+                .italic()
+                .foregroundStyle(ink.opacity(0.55))
+
+            if selectedStyle.isNew {
+                Text("NEW")
+                    .font(.system(size: 8.5, weight: .bold))
+                    .tracking(0.5)
+                    .foregroundStyle(coral)
+                    .padding(.leading, 4)
             }
-            
-            Text("You can enable this later in Settings if you prefer manual pasting.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
-        }
-        .padding()
-        .background(Color.green.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-    
-    private var actionButtons: some View {
-        HStack(spacing: 12) {
+
             Spacer()
-            
-            Button("Get Started") {
-                startWithLocalWhisper()
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(isDownloadingModel)
         }
     }
-    
-    private func startWithLocalWhisper() {
-        // Prevent multiple executions
-        guard !isDownloadingModel && !isDismissing else { return }
-        
-        // Set the settings
-        AppDefaults.transcriptionProvider = .local
-        AppDefaults.hasCompletedWelcome = true
-        AppDefaults.lastWelcomeVersion = "1.1" // Match version in AppSetupHelper
-        
-        // Notify that welcome is complete and show dashboard
+
+    // MARK: - Footer
+
+    private var footer: some View {
+        HStack {
+            Text("Change anything later in settings.")
+                .font(.system(size: 11.5, design: .serif))
+                .italic()
+                .foregroundStyle(ink.opacity(0.45))
+
+            Spacer()
+
+            Button(action: startApp) {
+                Text("Get started")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 9)
+                    .background(
+                        LinearGradient(
+                            colors: [coral, coralDeep],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .shadow(color: coral.opacity(0.3), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+            .disabled(isDismissing)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func startApp() {
+        guard !isDismissing else { return }
+        isDismissing = true
+
+        // Default to local provider (preserved from old WelcomeView behavior)
+        UserDefaults.standard.set(TranscriptionProvider.local.rawValue, forKey: "transcriptionProvider")
+        UserDefaults.standard.set(true, forKey: "hasCompletedWelcome")
+        UserDefaults.standard.set("1.1", forKey: "lastWelcomeVersion")
+
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
         DashboardWindowManager.shared.showDashboardWindow()
-        
-        dismissWindow()
-    }
-    
-    @State private var isDismissing = false
-    
-    private func dismissWindow() {
-        // Prevent multiple dismiss attempts
-        guard !isDismissing else { return }
-        
-        isDismissing = true
-        
-        // Stop the modal - this will return control to WelcomeWindow.showWelcomeDialog()
         NSApplication.shared.stopModal(withCode: .OK)
     }
 }
 
-internal struct FeatureRow: View {
-    let icon: String
-    let title: String
-    let description: String
-    
+// MARK: - StyleTile
+
+private struct StyleTile: View {
+    let style: WaveformStyle
+    let selected: Bool
+    @ObservedObject var sampler: LivePreviewSampler
+    let onSelect: () -> Void
+
+    private let coral = Color(red: 0.85, green: 0.45, blue: 0.30)
+
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Fixed-size icon container with centered content
+        Button(action: onSelect) {
             ZStack {
-                Color.clear
-                    .frame(width: 28, height: 28)
-                
-                Image(systemName: icon)
-                    .font(.title3.weight(.medium))
-                    .foregroundStyle(Color.accentColor)
-                    .symbolRenderingMode(.monochrome)
+                Color(red: 0.04, green: 0.04, blue: 0.04)
+                WaveformStylePreview(style: style, sampler: sampler)
+                    .frame(
+                        width: style.isRadial ? 64 : 108,
+                        height: style.isRadial ? 64 : 60
+                    )
+
+                if style.isNew {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Text("NEW")
+                                .font(.system(size: 7, weight: .bold))
+                                .tracking(0.4)
+                                .foregroundStyle(coral)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color(red: 0.04, green: 0.04, blue: 0.04).opacity(0.55))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 2)
+                                                .stroke(coral.opacity(0.4), lineWidth: 0.5)
+                                        )
+                                )
+                        }
+                        Spacer()
+                    }
+                    .padding(3)
+                }
             }
-            
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(description)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 70)
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .stroke(selected ? coral : Color(red: 0.235, green: 0.176, blue: 0.118).opacity(0.14),
+                            lineWidth: 1)
+            )
+            .shadow(
+                color: selected ? coral.opacity(0.25) : .clear,
+                radius: selected ? 3 : 0
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(minHeight: 50) // Ensure consistent height
+        .buttonStyle(.plain)
     }
 }
 
-internal struct InstructionRow: View {
-    let number: Int
-    let text: String
-    
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("\(number).")
-                .font(.callout)
-                .fontWeight(.medium)
-                .foregroundStyle(.orange)
-                .frame(width: 20, alignment: .trailing)
-            
-            Text(text)
-                .font(.callout)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
+#Preview("Welcome · consolidated") {
+    WelcomeView()
 }
