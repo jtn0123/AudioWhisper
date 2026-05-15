@@ -48,12 +48,17 @@ final class WindowManagerBaseTests: XCTestCase {
     }
 
     func testSetupRecordingWindowAsyncVersion() async {
-        // This should complete without crashing
+        // This should complete without crashing.
         await windowManager.setupRecordingWindow()
 
-        // In test environment without NSApp, window will be nil
-        // This is expected behavior
-        XCTAssertNil(windowManager.recordWindow)
+        // Whether a window is actually created depends on whether AppKit
+        // windowing has been initialized in this process — other test suites
+        // (e.g. SwiftUI NSHostingView render tests) may have done so. Both
+        // outcomes are valid; just clean up any window that was created so it
+        // doesn't leak into sibling suites.
+        if let window = windowManager.recordWindow {
+            window.close()
+        }
     }
 
     // MARK: - Show/Hide Window Tests
