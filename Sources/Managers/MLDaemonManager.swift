@@ -275,4 +275,29 @@ internal extension MLDaemonManager {
         isShuttingDown = false
         testResponder = nil
     }
+
+    /// Inserts a pending request directly so tests can drive `handle(line:)`
+    /// and `completeAllPending(with:)` without a live subprocess.
+    func injectPending(id: Int, completion: @escaping (Result<Data, Error>) -> Void) {
+        pending[id] = PendingRequest(
+            completion: completion,
+            deadline: Date().addingTimeInterval(60)
+        )
+    }
+
+    /// Number of currently pending requests — test introspection only.
+    func pendingCountForTesting() -> Int { pending.count }
+
+    /// Whether a process handle is currently running — test introspection only.
+    func isProcessRunningForTesting() -> Bool { process?.isRunning ?? false }
+
+    /// Drives `restartAttempts` to the configured maximum for tests that need
+    /// to exercise the restart-limit guard paths.
+    func bumpRestartAttemptsToLimitForTesting() { restartAttempts = maxRestartAttempts }
+
+    /// Marks the manager as shutting down so tests can exercise that guard.
+    func markShuttingDownForTesting() { isShuttingDown = true }
+
+    /// Test seam over the file-private `resolvedScript()` lookup.
+    func resolvedScriptForTesting() throws -> URL { try resolvedScript() }
 }

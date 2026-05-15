@@ -315,6 +315,11 @@ internal struct UvBootstrap {
         return versionOutput
     }
 
+    /// Test seam over the file-private version comparison.
+    static func isVersionForTesting(_ version: String, greaterOrEqualThan minimum: String) -> Bool {
+        isVersion(version, greaterOrEqualThan: minimum)
+    }
+
     private static func isVersion(_ version: String, greaterOrEqualThan minimum: String) -> Bool {
         func parse(_ text: String) -> [Int] { text.split(separator: ".").compactMap { Int($0) } }
         let versionParts = parse(version)
