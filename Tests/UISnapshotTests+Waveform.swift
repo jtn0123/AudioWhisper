@@ -320,8 +320,11 @@ extension UISnapshotTests {
         )
     }
 
-    func testWaveformContainerCircularDarkSnapshot() {
-        defaults.set(WaveformStyle.circular.rawValue, forKey: "waveformStyle")
+    // The redesign replaced the old circular/pulseRings/particles styles with
+    // halo/heartbeat/stream. These exercise the new renderers through the
+    // WaveformContainer's style switch so visual regressions are caught.
+    func testWaveformContainerHaloDarkSnapshot() {
+        defaults.set(WaveformStyle.halo.rawValue, forKey: "waveformStyle")
         defaults.set(VisualIntensity.balanced.rawValue, forKey: "visualIntensity")
 
         let view = WaveformContainer(
@@ -335,14 +338,14 @@ extension UISnapshotTests {
 
         assertSnapshot(
             view,
-            named: "Waveform-circular-dark",
+            named: "Waveform-halo-dark",
             size: CGSize(width: 320, height: 200),
             colorScheme: .dark
         )
     }
 
-    func testWaveformContainerPulseRingsDarkSnapshot() {
-        defaults.set(WaveformStyle.pulseRings.rawValue, forKey: "waveformStyle")
+    func testWaveformContainerHeartbeatDarkSnapshot() {
+        defaults.set(WaveformStyle.heartbeat.rawValue, forKey: "waveformStyle")
         defaults.set(VisualIntensity.balanced.rawValue, forKey: "visualIntensity")
 
         let view = WaveformContainer(
@@ -356,36 +359,28 @@ extension UISnapshotTests {
 
         assertSnapshot(
             view,
-            named: "Waveform-pulseRings-dark",
+            named: "Waveform-heartbeat-dark",
             size: CGSize(width: 320, height: 200),
             colorScheme: .dark
         )
     }
 
-    // The `particles` style is snapshot-tested by exercising ParticleFieldView
-    // directly with an explicit `seed`, which makes the particle positions /
-    // velocities / colors reproducible across runs. The parent
-    // WaveformContainer's `.particles` branch still uses the system RNG
-    // (no seed) so production behavior is unchanged.
-    func testWaveformContainerParticleDarkSnapshot() {
-        defaults.set(WaveformStyle.particles.rawValue, forKey: "waveformStyle")
+    func testWaveformContainerStreamDarkSnapshot() {
+        defaults.set(WaveformStyle.stream.rawValue, forKey: "waveformStyle")
         defaults.set(VisualIntensity.balanced.rawValue, forKey: "visualIntensity")
 
-        // Render ParticleFieldView directly with a fixed seed so the
-        // initial particle layout is deterministic. We exercise the same
-        // visualization the `.particles` branch of WaveformContainer uses.
-        let view = ParticleFieldView(
+        let view = WaveformContainer(
+            status: .recording,
             audioLevel: 0.5,
+            waveformSamples: Self.sampleWaveformSamples,
             frequencyBands: Self.sampleFrequencyBands,
-            isActive: true,
-            seed: 42
+            onTap: {}
         )
         .frame(width: 280, height: 160)
-        .background(Color.black)
 
         assertSnapshot(
             view,
-            named: "Waveform-particles-dark",
+            named: "Waveform-stream-dark",
             size: CGSize(width: 320, height: 200),
             colorScheme: .dark
         )

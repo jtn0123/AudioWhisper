@@ -153,6 +153,11 @@ enum WaveformPalette {
     static var muted: Color { classic[2] }
     static var success: Color { classic[3] }
     static var accent: Color { classic[4] }
+
+    /// Dimmed cream used for the ready-state breathing bars and idle dot.
+    static let creamDim = Color(red: 0.55, green: 0.53, blue: 0.51)
+    /// Amber used for the processing state's dot and shimmer.
+    static let amber = Color(red: 0.89, green: 0.65, blue: 0.27)
 }
 
 // MARK: - Particle Palette

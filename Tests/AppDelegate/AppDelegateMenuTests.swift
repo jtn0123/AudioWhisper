@@ -23,59 +23,52 @@ final class AppDelegateMenuTests: XCTestCase {
 
     // MARK: - Menu Structure Tests
 
-    func testMakeStatusMenuContainsAllItems() {
+    /// The menu leads with a branded header item (a hosted SwiftUI view with
+    /// no title and no action). The action items follow.
+    func testMakeStatusMenuActionItemTitles() {
         let menu = appDelegate.makeStatusMenu()
-
-        // Count menu items (including separators)
-        XCTAssertEqual(menu.items.count, 8, "Menu should have 8 items including separators")
-
-        // Verify non-separator items
-        let nonSeparatorItems = menu.items.filter { !$0.isSeparatorItem }
-        XCTAssertEqual(nonSeparatorItems.count, 6, "Menu should have 6 non-separator items")
-    }
-
-    func testMakeStatusMenuItemTitles() {
-        let menu = appDelegate.makeStatusMenu()
-        let nonSeparatorItems = menu.items.filter { !$0.isSeparatorItem }
+        let actionItems = menu.items.filter { !$0.isSeparatorItem && $0.action != nil }
 
         let expectedTitles = [
-            LocalizedStrings.Menu.record,
-            "Transcribe Audio File...",
-            "Dashboard...",
-            LocalizedStrings.Menu.history,
+            "Start Recording",
+            "Transcribe a File…",
+            "Dashboard",
             "Help",
-            LocalizedStrings.Menu.quit
+            "Quit AudioWhisper"
         ]
 
-        for (index, expectedTitle) in expectedTitles.enumerated() {
-            XCTAssertEqual(nonSeparatorItems[index].title, expectedTitle,
-                          "Menu item at index \(index) should have title '\(expectedTitle)'")
-        }
+        XCTAssertEqual(actionItems.map { $0.title }, expectedTitles)
     }
 
-    func testMakeStatusMenuItemActions() {
+    func testMakeStatusMenuHasBrandedHeader() {
         let menu = appDelegate.makeStatusMenu()
-        let nonSeparatorItems = menu.items.filter { !$0.isSeparatorItem }
+        // First item is the hosted header: a view item, disabled, no action.
+        let header = menu.items.first
+        XCTAssertNotNil(header?.view, "First item should host the branded header view")
+        XCTAssertNil(header?.action)
+        XCTAssertFalse(header?.isEnabled ?? true)
+    }
 
-        // Verify actions are set (not nil)
-        for (index, item) in nonSeparatorItems.enumerated() {
-            XCTAssertNotNil(item.action, "Menu item at index \(index) should have an action")
+    func testMakeStatusMenuActionItemsHaveActions() {
+        let menu = appDelegate.makeStatusMenu()
+        let actionItems = menu.items.filter { !$0.isSeparatorItem && $0.view == nil }
+        XCTAssertEqual(actionItems.count, 5, "Menu should have 5 plain action items")
+        for item in actionItems {
+            XCTAssertNotNil(item.action, "Action item '\(item.title)' should have an action")
         }
     }
 
     func testMakeStatusMenuHasSeparators() {
         let menu = appDelegate.makeStatusMenu()
-
-        // Count separators
         let separators = menu.items.filter { $0.isSeparatorItem }
-        XCTAssertEqual(separators.count, 2, "Menu should have 2 separators")
+        XCTAssertEqual(separators.count, 3, "Menu should have 3 separators")
     }
 
     func testMakeStatusMenuQuitItemIsLast() {
         let menu = appDelegate.makeStatusMenu()
         let lastItem = menu.items.last
 
-        XCTAssertEqual(lastItem?.title, LocalizedStrings.Menu.quit,
+        XCTAssertEqual(lastItem?.title, "Quit AudioWhisper",
                       "Last menu item should be Quit")
         XCTAssertEqual(lastItem?.action, #selector(NSApplication.terminate(_:)),
                       "Quit action should be terminate")

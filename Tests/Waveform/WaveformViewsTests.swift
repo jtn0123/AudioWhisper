@@ -11,65 +11,39 @@ final class WaveformViewsTests: IsolatedXCTestCase {
     // re-enable isolation.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-    // MARK: - CircularSpectrumView Tests
+    // MARK: - New Renderer View Smoke Tests
 
-    func testCircularSpectrumViewInitialization() {
-        let view = CircularSpectrumView(
-            frequencyBands: [0.5, 0.6, 0.7, 0.8, 0.7, 0.6, 0.5, 0.4],
-            isActive: true
-        )
-
+    func testStreamWaveformViewInitialization() {
+        let view = StreamWaveformView(audioLevel: 0.6, isActive: true)
         XCTAssertNotNil(view)
     }
 
-    func testCircularSpectrumViewBarCount() {
-        // CircularSpectrumView uses 16 bars (mirrored from 8 bands)
-        let barCount = 16
-        XCTAssertEqual(barCount, 16)
+    func testConstellationWaveformViewInitialization() {
+        let view = ConstellationWaveformView(audioLevel: 0.5, isActive: true)
+        XCTAssertNotNil(view)
     }
 
-    func testCircularSpectrumBandIndexMapping() {
-        // Test the band index calculation for mirrored bars
-        // First 8 bars map directly: 0-7
-        // Last 8 bars mirror: 15-0 -> 0-7
-
-        XCTAssertEqual(CircularSpectrumView.testableBandIndex(for: 0), 0)
-        XCTAssertEqual(CircularSpectrumView.testableBandIndex(for: 7), 7)
-        XCTAssertEqual(CircularSpectrumView.testableBandIndex(for: 8), 7)
-        XCTAssertEqual(CircularSpectrumView.testableBandIndex(for: 15), 0)
+    func testHaloWaveformViewInitialization() {
+        let view = HaloWaveformView(
+            frequencyBands: [0.7, 0.5, 0.4, 0.6, 0.3, 0.45, 0.25, 0.35],
+            audioLevel: 0.5,
+            isActive: true
+        )
+        XCTAssertNotNil(view)
     }
 
-    func testCircularSpectrumIdleBreathValue() {
-        let phase = 0.0
-        let barIndex = 0
-
-        let breathValue = CircularSpectrumView.testableIdleBreathValue(phase: phase, barIndex: barIndex)
-
-        // Should be between 0.05 and 0.20 (baseline + breathing range)
-        XCTAssertGreaterThanOrEqual(breathValue, 0.05)
-        XCTAssertLessThanOrEqual(breathValue, 0.20)
+    func testDialWaveformViewInitialization() {
+        let view = DialWaveformView(
+            frequencyBands: [0.8, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15],
+            audioLevel: 0.5,
+            isActive: true
+        )
+        XCTAssertNotNil(view)
     }
 
-    func testCircularSpectrumSmoothedLevelFastRise() {
-        let current: Float = 0.2
-        let target: Float = 0.8
-
-        let smoothed = CircularSpectrumView.testableSmoothedLevel(current: current, target: target)
-
-        // Fast rise: current * 0.3 + target * 0.7
-        let expected = current * 0.3 + target * 0.7
-        XCTAssertEqual(smoothed, expected, accuracy: 0.001)
-    }
-
-    func testCircularSpectrumSmoothedLevelSlowDecay() {
-        let current: Float = 0.8
-        let target: Float = 0.2
-
-        let smoothed = CircularSpectrumView.testableSmoothedLevel(current: current, target: target)
-
-        // Slow decay: current * 0.9 + target * 0.1
-        let expected = current * 0.9 + target * 0.1
-        XCTAssertEqual(smoothed, expected, accuracy: 0.001)
+    func testHeartbeatPulseViewInitialization() {
+        let view = HeartbeatPulseView(audioLevel: 0.5, isActive: true)
+        XCTAssertNotNil(view)
     }
 
     // MARK: - NeonWaveformView Tests
@@ -185,21 +159,26 @@ final class WaveformViewsTests: IsolatedXCTestCase {
     func testWaveformStyleAllCases() {
         let styles = WaveformStyle.allCases
 
+        XCTAssertEqual(styles.count, 8)
         XCTAssertTrue(styles.contains(.classic))
         XCTAssertTrue(styles.contains(.neon))
         XCTAssertTrue(styles.contains(.spectrum))
-        XCTAssertTrue(styles.contains(.circular))
-        XCTAssertTrue(styles.contains(.pulseRings))
-        XCTAssertTrue(styles.contains(.particles))
+        XCTAssertTrue(styles.contains(.stream))
+        XCTAssertTrue(styles.contains(.constellation))
+        XCTAssertTrue(styles.contains(.halo))
+        XCTAssertTrue(styles.contains(.dial))
+        XCTAssertTrue(styles.contains(.heartbeat))
     }
 
     func testWaveformStyleRawValues() {
         XCTAssertEqual(WaveformStyle.classic.rawValue, "Classic")
         XCTAssertEqual(WaveformStyle.neon.rawValue, "Neon")
         XCTAssertEqual(WaveformStyle.spectrum.rawValue, "Spectrum")
-        XCTAssertEqual(WaveformStyle.circular.rawValue, "Circular")
-        XCTAssertEqual(WaveformStyle.pulseRings.rawValue, "Pulse Rings")
-        XCTAssertEqual(WaveformStyle.particles.rawValue, "Particles")
+        XCTAssertEqual(WaveformStyle.stream.rawValue, "Stream")
+        XCTAssertEqual(WaveformStyle.constellation.rawValue, "Constellation")
+        XCTAssertEqual(WaveformStyle.halo.rawValue, "Halo")
+        XCTAssertEqual(WaveformStyle.dial.rawValue, "Dial")
+        XCTAssertEqual(WaveformStyle.heartbeat.rawValue, "Heartbeat")
     }
 
     func testWaveformStyleDescriptions() {
@@ -209,15 +188,32 @@ final class WaveformViewsTests: IsolatedXCTestCase {
     }
 
     func testWaveformStyleRequiresEnhancedAudio() {
-        // Classic and pulseRings don't require enhanced audio
+        // Classic and heartbeat don't require enhanced audio
         XCTAssertFalse(WaveformStyle.classic.requiresEnhancedAudio)
-        XCTAssertFalse(WaveformStyle.pulseRings.requiresEnhancedAudio)
+        XCTAssertFalse(WaveformStyle.heartbeat.requiresEnhancedAudio)
 
         // Others require enhanced audio
         XCTAssertTrue(WaveformStyle.neon.requiresEnhancedAudio)
         XCTAssertTrue(WaveformStyle.spectrum.requiresEnhancedAudio)
-        XCTAssertTrue(WaveformStyle.circular.requiresEnhancedAudio)
-        XCTAssertTrue(WaveformStyle.particles.requiresEnhancedAudio)
+        XCTAssertTrue(WaveformStyle.stream.requiresEnhancedAudio)
+        XCTAssertTrue(WaveformStyle.constellation.requiresEnhancedAudio)
+        XCTAssertTrue(WaveformStyle.halo.requiresEnhancedAudio)
+        XCTAssertTrue(WaveformStyle.dial.requiresEnhancedAudio)
+    }
+
+    func testWaveformStyleRadialAndNewMembers() {
+        // Radial styles render in a square
+        XCTAssertTrue(WaveformStyle.halo.isRadial)
+        XCTAssertTrue(WaveformStyle.dial.isRadial)
+        XCTAssertTrue(WaveformStyle.heartbeat.isRadial)
+        XCTAssertFalse(WaveformStyle.classic.isRadial)
+
+        // New styles introduced in the redesign
+        XCTAssertTrue(WaveformStyle.stream.isNew)
+        XCTAssertTrue(WaveformStyle.constellation.isNew)
+        XCTAssertFalse(WaveformStyle.classic.isNew)
+        XCTAssertFalse(WaveformStyle.neon.isNew)
+        XCTAssertFalse(WaveformStyle.spectrum.isNew)
     }
 
     // MARK: - VisualIntensity Tests

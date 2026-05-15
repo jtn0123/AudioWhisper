@@ -132,69 +132,10 @@ internal extension AppDelegate {
         }
     }
 
-    private func updateMenuBarIcon(isRecording: Bool) {
-        guard let button = statusItem?.button else { return }
-
-        if isRecording {
-            startRecordingAnimation()
-        } else {
-            stopRecordingAnimation()
-            button.image = AppSetupHelper.createMenuBarIcon()
-        }
-    }
-
-    private func startRecordingAnimation() {
-        guard let button = statusItem?.button else { return }
-
-        stopRecordingAnimation()
-
-        let iconSize = AppSetupHelper.getAdaptiveMenuBarIconSize()
-        let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
-
-        // Ensure images are created successfully before starting animation
-        guard let redImage = NSImage(
-                  systemSymbolName: "microphone.circle",
-                  accessibilityDescription: "Recording"
-              )?.withSymbolConfiguration(config),
-              let blackImage = NSImage(
-                  systemSymbolName: "microphone.circle",
-                  accessibilityDescription: "Recording"
-              )?.withSymbolConfiguration(config) else {
-            return
-        }
-        redImage.isTemplate = false
-        let redOutlineImage = redImage.tinted(with: .systemRed)
-        blackImage.isTemplate = true
-
-        button.image = redOutlineImage
-
-        // Use reference type to safely share mutable state across closure captures
-        final class AnimationState { var isRedState = true }
-        let animState = AnimationState()
-
-        let queue = DispatchQueue(label: "com.audiowhisper.animation", qos: .background)
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-
-        timer.schedule(deadline: .now(), repeating: 0.5)
-
-        timer.setEventHandler { [weak button, animState] in
-            guard let button = button else { return }
-
-            animState.isRedState.toggle()
-            let showRed = animState.isRedState  // Capture value before async dispatch
-
-            Task { @MainActor in
-                button.image = showRed ? redOutlineImage : blackImage
-            }
-        }
-
-        recordingAnimationTimer = timer
-        timer.resume()
-    }
-
-    private func stopRecordingAnimation() {
-        recordingAnimationTimer?.cancel()
-        recordingAnimationTimer = nil
+    /// Drives the menu bar icon state. The renderer owns its own timer and
+    /// produces a smooth coral pulse while recording.
+    func updateMenuBarIcon(isRecording: Bool) {
+        iconRenderer?.setState(isRecording ? .recording : .idle)
     }
 
     @objc func onRecordingStopped() {

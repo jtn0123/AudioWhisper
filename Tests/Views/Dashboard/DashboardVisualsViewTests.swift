@@ -3,39 +3,33 @@ import XCTest
 
 final class DashboardVisualsViewTests: XCTestCase {
 
-    // MARK: - Waveform Style Icons
-
-    func testStyleIconForAllStyles() {
-        XCTAssertEqual(DashboardVisualsView.testableStyleIcon(for: .classic), "waveform")
-        XCTAssertEqual(DashboardVisualsView.testableStyleIcon(for: .neon), "sparkles")
-        XCTAssertEqual(DashboardVisualsView.testableStyleIcon(for: .spectrum), "chart.bar.fill")
-        XCTAssertEqual(DashboardVisualsView.testableStyleIcon(for: .circular), "sun.max.fill")
-        XCTAssertEqual(DashboardVisualsView.testableStyleIcon(for: .pulseRings), "dot.radiowaves.left.and.right")
-        XCTAssertEqual(DashboardVisualsView.testableStyleIcon(for: .particles), "sparkle")
-    }
-
-    func testAllStylesHaveUniqueIcons() {
-        let icons = WaveformStyle.allCases.map { DashboardVisualsView.testableStyleIcon(for: $0) }
-        let uniqueIcons = Set(icons)
-
-        XCTAssertEqual(icons.count, uniqueIcons.count, "Each waveform style should have a unique icon")
-    }
-
     // MARK: - Waveform Style Parsing
 
     func testWaveformStyleFromValidValues() {
         XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Classic"), .classic)
         XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Neon"), .neon)
         XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Spectrum"), .spectrum)
-        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Circular"), .circular)
-        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Pulse Rings"), .pulseRings)
-        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Particles"), .particles)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Stream"), .stream)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Constellation"), .constellation)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Halo"), .halo)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Dial"), .dial)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Heartbeat"), .heartbeat)
+    }
+
+    func testWaveformStyleFromAllRawValuesRoundTrips() {
+        for style in WaveformStyle.allCases {
+            XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: style.rawValue), style)
+        }
     }
 
     func testWaveformStyleFromInvalidValue() {
         // Should default to classic
         XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "invalid"), .classic)
         XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: ""), .classic)
+        // Legacy raw values are no longer recognized and fall back to classic.
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Circular"), .classic)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Pulse Rings"), .classic)
+        XCTAssertEqual(DashboardVisualsView.testableWaveformStyle(from: "Particles"), .classic)
     }
 
     // MARK: - Visual Intensity Parsing

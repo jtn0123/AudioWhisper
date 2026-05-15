@@ -1,81 +1,138 @@
 import SwiftUI
 
-/// Neon-style waveform visualization with glowing bezier curves and color gradients.
-/// Features layered waveform trails for motion blur effect.
+/// Neon waveform — refined to lock to the AW coral palette.
+///
+/// What changed vs the previous version:
+/// - Dropped the cyan / magenta / yellow color cycling. The waveform now
+///   uses one coral palette across all audio levels.
+/// - Glow intensity (line width + opacity) scales with audio level instead
+///   of changing hue. Reads as "the sound got louder" not "the slot machine
+///   landed on yellow."
+/// - Core gradient stroke goes from coral-deep through coral to coral-lite,
+///   so the curve still feels three-dimensional but in one hue family.
 struct NeonWaveformView: View {
     let waveformSamples: [Float]
     let audioLevel: Float
     let isActive: Bool
 
-    // Neon color palette
-    private let cyanGlow = Color(red: 0.0, green: 0.9, blue: 0.95)
-    private let magentaGlow = Color(red: 0.95, green: 0.2, blue: 0.8)
-    private let yellowGlow = Color(red: 1.0, green: 0.85, blue: 0.0)
-    private let bgColor = Color(red: 0.02, green: 0.02, blue: 0.04)
+    // AW coral palette
+    private let coralDeep = Color(red: 0.70, green: 0.34, blue: 0.23)
+    private let coral     = Color(red: 0.85, green: 0.45, blue: 0.30)
+    private let coralLite = Color(red: 0.91, green: 0.60, blue: 0.47)
 
-    // Trail history (stores previous waveform frames)
     private let trailCount = 3
     @State private var waveformHistory: [[Float]] = []
     @State private var smoothedSamples: [Float] = []
     @State private var phase: CGFloat = 0
-    @State private var colorPhase: CGFloat = 0
     @State private var isViewActive = false
 
-    // Decay factor for response speed (lower = slower, higher = snappier)
     private let decayFactor: Float = 0.55
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background glow
                 if isActive && audioLevel > 0.1 {
                     backgroundGlow(in: geometry.size)
                 }
 
-                // Trail waveforms (oldest to newest, behind main)
                 ForEach(0..<waveformHistory.count, id: \.self) { index in
-                    let opacity = 0.15 + Double(index) * 0.1 // 0.15, 0.25, 0.35
-                    let offset = CGFloat(waveformHistory.count - 1 - index) * 2 // slight vertical offset
+                    let opacity = 0.12 + Double(index) * 0.08
+                    let offset = CGFloat(waveformHistory.count - 1 - index) * 2
                     trailWaveform(samples: waveformHistory[index], in: geometry.size)
                         .opacity(opacity)
                         .offset(y: offset)
                 }
 
-                // Main waveform with glow layers
                 waveformStack(in: geometry.size)
 
-                // Reflection
                 waveformReflection(in: geometry.size)
             }
         }
-        .onAppear {
-            isViewActive = true
-        }
-        .onDisappear {
-            isViewActive = false
-        }
+        .onAppear { isViewActive = true }
+        .onDisappear { isViewActive = false }
         .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
             guard isViewActive else { return }
             phase += 0.05
-            colorPhase += 0.02
             updateSmoothedSamples()
             updateHistory()
         }
     }
 
-    private func updateSmoothedSamples() {
-        let targetSamples = rawEffectiveSamples
+    // MARK: - Layers
 
-        // Initialize if needed
-        if smoothedSamples.count != targetSamples.count {
-            smoothedSamples = targetSamples
+    private func waveformStack(in size: CGSize) -> some View {
+        let glowAlpha = 0.30 + Double(audioLevel) * 0.40
+        let coreWidth = 1.5 + CGFloat(audioLevel) * 1.0
+        return ZStack {
+            // Outer glow
+            waveformPath(in: size)
+                .stroke(coral.opacity(glowAlpha), lineWidth: 14)
+                .blur(radius: 16)
+
+            waveformPath(in: size)
+                .stroke(coral.opacity(glowAlpha + 0.2), lineWidth: 5)
+                .blur(radius: 6)
+
+            waveformPath(in: size)
+                .stroke(coral.opacity(0.9), lineWidth: 2)
+                .blur(radius: 2)
+
+            // Core gradient line
+            waveformPath(in: size)
+                .stroke(
+                    LinearGradient(
+                        colors: [coralDeep, coral, coralLite],
+                        startPoint: .leading, endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: coreWidth, lineCap: .round)
+                )
+        }
+    }
+
+    private func trailWaveform(samples: [Float], in size: CGSize) -> some View {
+        waveformPathFrom(samples: samples, in: size)
+            .stroke(coral.opacity(0.45), lineWidth: 3)
+            .blur(radius: 4)
+    }
+
+    private func waveformReflection(in size: CGSize) -> some View {
+        waveformPath(in: size)
+            .stroke(coralLite.opacity(0.18), lineWidth: 2)
+            .blur(radius: 4)
+            .scaleEffect(x: 1, y: -0.3)
+            .offset(y: size.height * 0.6)
+            .mask(
+                LinearGradient(
+                    colors: [.white.opacity(0.5), .clear],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+    }
+
+    private func backgroundGlow(in size: CGSize) -> some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [coral.opacity(0.35 * Double(audioLevel)), .clear],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: size.width * 0.7
+                )
+            )
+            .scaleEffect(1.0 + CGFloat(audioLevel) * 0.5)
+            .animation(.easeOut(duration: 0.08), value: audioLevel)
+    }
+
+    // MARK: - Sample handling (unchanged)
+
+    private func updateSmoothedSamples() {
+        let target = rawEffectiveSamples
+        if smoothedSamples.count != target.count {
+            smoothedSamples = target
             return
         }
-
-        // Interpolate toward target with decay for slower response
-        for sampleIndex in 0..<targetSamples.count {
-            smoothedSamples[sampleIndex] = smoothedSamples[sampleIndex] * decayFactor
-                + targetSamples[sampleIndex] * (1 - decayFactor)
+        for index in 0..<target.count {
+            smoothedSamples[index] = smoothedSamples[index] * decayFactor + target[index] * (1 - decayFactor)
         }
     }
 
@@ -87,75 +144,6 @@ struct NeonWaveformView: View {
         }
     }
 
-    private func trailWaveform(samples: [Float], in size: CGSize) -> some View {
-        waveformPathFrom(samples: samples, in: size)
-            .stroke(currentColor.opacity(0.6), lineWidth: 3)
-            .blur(radius: 4)
-    }
-
-    // MARK: - Waveform Components
-
-    private func waveformStack(in size: CGSize) -> some View {
-        ZStack {
-            // Outer glow (largest, most diffuse)
-            waveformPath(in: size)
-                .stroke(currentColor.opacity(0.45), lineWidth: 12)
-                .blur(radius: 18)
-
-            // Middle glow
-            waveformPath(in: size)
-                .stroke(currentColor.opacity(0.65), lineWidth: 5)
-                .blur(radius: 8)
-
-            // Inner glow
-            waveformPath(in: size)
-                .stroke(currentColor.opacity(0.9), lineWidth: 3)
-                .blur(radius: 3)
-
-            // Core line
-            waveformPath(in: size)
-                .stroke(
-                    LinearGradient(
-                        colors: [cyanGlow, magentaGlow, yellowGlow],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    lineWidth: 2
-                )
-        }
-    }
-
-    private func waveformReflection(in size: CGSize) -> some View {
-        waveformPath(in: size)
-            .stroke(currentColor.opacity(0.2), lineWidth: 2)
-            .blur(radius: 4)
-            .scaleEffect(x: 1, y: -0.3)
-            .offset(y: size.height * 0.6)
-            .mask(
-                LinearGradient(
-                    colors: [.white.opacity(0.5), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-    }
-
-    private func backgroundGlow(in size: CGSize) -> some View {
-        Circle()
-            .fill(
-                RadialGradient(
-                    colors: [currentColor.opacity(0.35 * Double(audioLevel)), .clear],
-                    center: .center,
-                    startRadius: 0,
-                    endRadius: size.width * 0.7
-                )
-            )
-            .scaleEffect(1.0 + CGFloat(audioLevel) * 0.5)
-            .animation(.easeOut(duration: 0.08), value: audioLevel)
-    }
-
-    // MARK: - Path Generation
-
     private func waveformPath(in size: CGSize) -> Path {
         waveformPathFrom(samples: effectiveSamples, in: size)
     }
@@ -164,97 +152,60 @@ struct NeonWaveformView: View {
         Path { path in
             let centerY = size.height / 2
             let stepX = size.width / CGFloat(max(1, samples.count - 1))
-            let maxAmplitude = size.height * 0.70
+            let maxAmp = size.height * 0.70
 
             guard !samples.isEmpty else {
-                // Flat line when no samples
                 path.move(to: CGPoint(x: 0, y: centerY))
                 path.addLine(to: CGPoint(x: size.width, y: centerY))
                 return
             }
 
-            // Start point
-            let firstY = centerY - CGFloat(samples[0]) * maxAmplitude
+            let firstY = centerY - CGFloat(samples[0]) * maxAmp
             path.move(to: CGPoint(x: 0, y: firstY))
 
-            // Draw smooth bezier curve through sample points
-            for sampleIndex in 1..<samples.count {
-                let posX = CGFloat(sampleIndex) * stepX
-                let posY = centerY - CGFloat(samples[sampleIndex]) * maxAmplitude
-
-                let prevX = CGFloat(sampleIndex - 1) * stepX
-                let prevY = centerY - CGFloat(samples[sampleIndex - 1]) * maxAmplitude
-
-                let controlX1 = prevX + stepX * 0.5
-                let controlX2 = posX - stepX * 0.5
-
+            for index in 1..<samples.count {
+                let posX = CGFloat(index) * stepX
+                let posY = centerY - CGFloat(samples[index]) * maxAmp
+                let prevX = CGFloat(index - 1) * stepX
+                let prevY = centerY - CGFloat(samples[index - 1]) * maxAmp
+                let c1x = prevX + stepX * 0.5
+                let c2x = posX - stepX * 0.5
                 path.addCurve(
                     to: CGPoint(x: posX, y: posY),
-                    control1: CGPoint(x: controlX1, y: prevY),
-                    control2: CGPoint(x: controlX2, y: posY)
+                    control1: CGPoint(x: c1x, y: prevY),
+                    control2: CGPoint(x: c2x, y: posY)
                 )
             }
         }
     }
 
-    // MARK: - Computed Properties
-
-    /// Smoothed samples for display (slower response)
     private var effectiveSamples: [Float] {
         smoothedSamples.isEmpty ? rawEffectiveSamples : smoothedSamples
     }
 
-    /// Raw target samples before smoothing
     private var rawEffectiveSamples: [Float] {
         if isActive && !waveformSamples.isEmpty {
-            // Boost samples so waveform fills out more - especially quiet signals
             return waveformSamples.map { sample in
                 let sign: Float = sample >= 0 ? 1 : -1
-                let magnitude = abs(sample)
-                // Aggressive boost for more reactive, vibrant waveform
-                let boosted = magnitude + 0.12 + magnitude * 0.6
+                let mag = abs(sample)
+                let boosted = mag + 0.12 + mag * 0.6
                 return sign * min(boosted, 1.0)
             }
         } else {
-            // Generate idle breathing wave
-            return (0..<64).map { sampleIndex in
-                let fraction = Float(sampleIndex) / 64.0
-                let breathe = sin(Float(phase) + fraction * .pi * 4) * 0.08
-                return breathe
+            return (0..<64).map { index in
+                let fraction = Float(index) / 64.0
+                return sin(Float(phase) + fraction * .pi * 4) * 0.08
             }
-        }
-    }
-
-    private var currentColor: Color {
-        // Color shifts based on audio intensity
-        if audioLevel > 0.7 {
-            return yellowGlow
-        } else if audioLevel > 0.4 {
-            return magentaGlow
-        } else {
-            return cyanGlow
         }
     }
 }
 
-#Preview("Neon - Active") {
+#Preview("Neon · refined") {
     NeonWaveformView(
         waveformSamples: (0..<64).map { _ in Float.random(in: -0.5...0.5) },
         audioLevel: 0.6,
         isActive: true
     )
-    .frame(height: 120)
-    .padding()
-    .background(Color(red: 0.02, green: 0.02, blue: 0.04))
-}
-
-#Preview("Neon - Idle") {
-    NeonWaveformView(
-        waveformSamples: [],
-        audioLevel: 0,
-        isActive: false
-    )
-    .frame(height: 120)
-    .padding()
-    .background(Color(red: 0.02, green: 0.02, blue: 0.04))
+    .frame(width: 320, height: 140)
+    .background(Color(red: 0.04, green: 0.04, blue: 0.04))
 }

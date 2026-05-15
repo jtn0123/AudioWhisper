@@ -54,8 +54,8 @@ final class AppDelegateBaseTests: XCTestCase {
         XCTAssertNil(appDelegate.recordingWindowDelegate)
     }
 
-    func testAppDelegateRecordingAnimationTimerInitiallyNil() {
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
+    func testAppDelegateIconRendererInitiallyNil() {
+        XCTAssertNil(appDelegate.iconRenderer)
     }
 
     func testAppDelegatePressAndHoldMonitorInitiallyNil() {

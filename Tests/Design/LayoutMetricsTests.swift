@@ -100,7 +100,7 @@ final class LayoutMetricsWelcomeTests: XCTestCase {
     func testWelcomeWindowSize() {
         let size = LayoutMetrics.Welcome.windowSize
         XCTAssertEqual(size.width, 600)
-        XCTAssertEqual(size.height, 650)
+        XCTAssertEqual(size.height, 720)
     }
 
     func testWelcomeWindowSizeIsReasonable() {

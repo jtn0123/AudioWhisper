@@ -17,12 +17,31 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     private weak var dashboardWindow: NSWindow?
     private var windowDelegate: DashboardWindowDelegate?
     private let isTestEnvironment: Bool
-    
+
+    /// Most-recent transcripts, newest first. Read synchronously by the status
+    /// menu's "Recent" section; refreshed via `refreshRecentRecordsCache()`.
+    private(set) var recentRecordsCache: [TranscriptionRecord] = []
+
     private override init() {
         isTestEnvironment = AppEnvironment.isRunningTests
         super.init()
     }
-    
+
+    /// Returns up to `limit` most-recent cached records. Empty until the
+    /// cache is first populated — callers degrade gracefully.
+    func cachedRecentRecords(limit: Int) -> [TranscriptionRecord] {
+        Array(recentRecordsCache.prefix(limit))
+    }
+
+    /// Reloads the recent-records cache from the data layer.
+    func refreshRecentRecordsCache() async {
+        let records = await DataManager.shared.fetchAllRecordsQuietly()
+        recentRecordsCache = records
+            .sorted { $0.date > $1.date }
+            .prefix(10)
+            .map { $0 }
+    }
+
     /// Shows the dashboard window, creating it if necessary or bringing existing one to front
     func showDashboardWindow() {
         if isTestEnvironment {

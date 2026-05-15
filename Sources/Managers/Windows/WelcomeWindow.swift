@@ -9,8 +9,8 @@ internal class WelcomeWindow {
         
         // Get the main screen dimensions for proper centering
         let screenFrame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1920, height: 1080)
-        let windowWidth: CGFloat = 600
-        let windowHeight: CGFloat = 650
+        let windowWidth = LayoutMetrics.Welcome.windowSize.width
+        let windowHeight = LayoutMetrics.Welcome.windowSize.height
         
         let window = NSWindow(
             contentRect: NSRect(

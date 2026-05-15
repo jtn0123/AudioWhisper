@@ -23,8 +23,6 @@ final class AppDelegateHotkeysTests: IsolatedXCTestCase {
     override func tearDown() {
         appDelegate.pressAndHoldMonitor?.stop()
         appDelegate.pressAndHoldMonitor = nil
-        appDelegate.recordingAnimationTimer?.cancel()
-        appDelegate.recordingAnimationTimer = nil
         appDelegate = nil
         if let suiteName = suiteName {
             testDefaults?.removePersistentDomain(forName: suiteName)
@@ -153,8 +151,8 @@ final class AppDelegateHotkeysTests: IsolatedXCTestCase {
         XCTAssertFalse(appDelegate.isHoldRecordingActive)
     }
 
-    func testRecordingAnimationTimerInitiallyNil() {
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
+    func testIconRendererInitiallyNil() {
+        XCTAssertNil(appDelegate.iconRenderer)
     }
 
     // MARK: - onRecordingStopped Tests
@@ -163,31 +161,11 @@ final class AppDelegateHotkeysTests: IsolatedXCTestCase {
         // Verify no status item initially
         XCTAssertNil(appDelegate.statusItem)
 
-        // Call onRecordingStopped - should handle nil status item gracefully
+        // Call onRecordingStopped - should handle a nil icon renderer gracefully
         appDelegate.onRecordingStopped()
 
-        // Should not crash with nil status item
+        // Should not crash with no status item / icon renderer
         XCTAssertNil(appDelegate.statusItem)
-    }
-
-    // MARK: - Recording Animation Tests
-
-    func testRecordingAnimationTimerCleanup() {
-        // Create a mock timer
-        let timer = DispatchSource.makeTimerSource()
-        timer.schedule(deadline: .now() + 100, repeating: .seconds(1))
-        timer.resume()
-        appDelegate.recordingAnimationTimer = timer
-
-        // Verify timer exists
-        XCTAssertNotNil(appDelegate.recordingAnimationTimer)
-
-        // Cancel timer
-        appDelegate.recordingAnimationTimer?.cancel()
-        appDelegate.recordingAnimationTimer = nil
-
-        // Verify cleanup
-        XCTAssertNil(appDelegate.recordingAnimationTimer)
     }
 
     // MARK: - HotkeyTriggerSource Tests

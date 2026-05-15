@@ -1,25 +1,30 @@
 import SwiftUI
 
-/// Frequency spectrum analyzer visualization with 8 color-coded bands.
-/// Shows bass through treble frequencies with peak hold indicators.
+/// Spectrum — frequency-band visualizer, refined.
+///
+/// What changed vs the previous version:
+/// - Replaced the 8-color rainbow with a single-hue ember-to-cream gradient
+///   ramp. Adjacent bands now relate to each other instead of competing.
+/// - Removed the Hz frequency labels by default. The visualizer is the point;
+///   the analyzer labels were lab-equipment noise.
+/// - Bars use a vertical gradient on each bar (top brighter than bottom) for
+///   a hint of dimension.
+/// - Peak indicator becomes a thin coral cap on top of each active bar.
 struct SpectrumWaveformView: View {
     let frequencyBands: [Float]
     let isActive: Bool
 
-    // Band colors (voice-optimized frequency ranges)
+    // Ember → cream gradient. Bar i picks color i.
     private let bandColors: [Color] = [
-        Color(red: 1.0, green: 0.3, blue: 0.3),   // Male fundamental - Red
-        Color(red: 1.0, green: 0.5, blue: 0.2),   // Female fundamental - Orange
-        Color(red: 1.0, green: 0.8, blue: 0.2),   // First formant - Yellow
-        Color(red: 0.4, green: 0.9, blue: 0.3),   // Second formant - Green
-        Color(red: 0.2, green: 0.9, blue: 0.8),   // Third formant - Cyan
-        Color(red: 0.3, green: 0.5, blue: 1.0),   // Presence - Blue
-        Color(red: 0.6, green: 0.3, blue: 1.0),   // Sibilants - Purple
-        Color(red: 1.0, green: 0.4, blue: 0.8)   // Brilliance - Pink
+        Color(red: 0.48, green: 0.16, blue: 0.08),  // #7A2A14
+        Color(red: 0.63, green: 0.23, blue: 0.11),  // #A03A1C
+        Color(red: 0.76, green: 0.31, blue: 0.16),  // #C24E29
+        Color(red: 0.85, green: 0.45, blue: 0.30),  // #D9734D
+        Color(red: 0.91, green: 0.60, blue: 0.47),  // #E89A77
+        Color(red: 0.95, green: 0.75, blue: 0.63),  // #F2BFA0
+        Color(red: 0.94, green: 0.84, blue: 0.76),  // #F0D7C2
+        Color(red: 0.90, green: 0.85, blue: 0.80)  // #E6D9CC
     ]
-
-    // Voice-optimized labels: 80Hz-1200Hz frequency markers
-    private let bandLabels = ["80", "120", "180", "260", "380", "550", "750", "950"]
 
     @State private var peakLevels: [Float] = Array(repeating: 0, count: 8)
     @State private var animatedLevels: [Float] = Array(repeating: 0, count: 8)
@@ -32,52 +37,41 @@ struct SpectrumWaveformView: View {
     var body: some View {
         GeometryReader { geometry in
             let barWidth = (geometry.size.width - barSpacing * CGFloat(bandColors.count - 1)) / CGFloat(bandColors.count)
-            let maxHeight = geometry.size.height - 20 // Leave room for labels
+            let maxHeight = geometry.size.height - 6
 
             HStack(spacing: barSpacing) {
                 ForEach(0..<bandColors.count, id: \.self) { index in
+                    ZStack(alignment: .bottom) {
+                        // Background track
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(bandColors[index].opacity(0.10))
+                            .frame(width: barWidth, height: maxHeight)
 
-                    VStack(spacing: 4) {
-                        ZStack(alignment: .bottom) {
-                            // Background bar
-                            RoundedRectangle(cornerRadius: cornerRadius)
-                                .fill(bandColors[index].opacity(0.15))
-                                .frame(width: barWidth, height: maxHeight)
-
-                            // Active bar with gradient
-                            RoundedRectangle(cornerRadius: cornerRadius)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            bandColors[index],
-                                            bandColors[index].opacity(0.85)
-                                        ],
-                                        startPoint: .bottom,
-                                        endPoint: .top
-                                    )
+                        // Active bar
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        bandColors[index],
+                                        bandColors[index].opacity(0.78)
+                                    ],
+                                    startPoint: .top, endPoint: .bottom
                                 )
-                                .frame(
-                                    width: barWidth,
-                                    height: max(minHeight, CGFloat(animatedLevels[safe: index] ?? 0) * maxHeight)
-                                )
-                                .shadow(color: bandColors[index].opacity(0.7), radius: 12, x: 0, y: 0)
+                            )
+                            .frame(
+                                width: barWidth,
+                                height: max(minHeight, CGFloat(animatedLevels[safe: index] ?? 0) * maxHeight)
+                            )
 
-                            // Peak indicator
-                            if peakLevels[safe: index] ?? 0 > 0.05 {
-                                RoundedRectangle(cornerRadius: 1)
-                                    .fill(bandColors[index])
-                                    .frame(width: barWidth, height: 3)
-                                    .offset(y: -CGFloat(peakLevels[safe: index] ?? 0) * maxHeight + 1.5)
-                                    .shadow(color: bandColors[index], radius: 4, x: 0, y: 0)
-                            }
+                        // Peak cap
+                        if (peakLevels[safe: index] ?? 0) > 0.05 {
+                            RoundedRectangle(cornerRadius: 1)
+                                .fill(bandColors[index])
+                                .frame(width: barWidth, height: 2.5)
+                                .offset(y: -CGFloat(peakLevels[safe: index] ?? 0) * maxHeight + 1.25)
                         }
-                        .frame(height: maxHeight)
-
-                        // Label
-                        Text(bandLabels[index])
-                            .font(.system(size: 7, weight: .medium, design: .monospaced))
-                            .foregroundStyle(bandColors[index].opacity(0.7))
                     }
+                    .frame(height: maxHeight)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -89,32 +83,25 @@ struct SpectrumWaveformView: View {
 
     private func updateLevels() {
         idlePhase += 0.05
-
-        // Update animated levels with smoothing
-        for bandIndex in 0..<min(animatedLevels.count, frequencyBands.count) {
+        for index in 0..<min(animatedLevels.count, frequencyBands.count) {
             let target: Float
             if isActive {
-                // Apply 138% gain boost for highly reactive bars
-                target = min(1.0, frequencyBands[bandIndex] * 2.38)
+                target = min(1.0, frequencyBands[index] * 2.38)
             } else {
-                // Idle animation
-                let breathe = Float(sin(idlePhase + Double(bandIndex) * 0.3) * 0.5 + 0.5) * 0.08
+                let breathe = Float(sin(idlePhase + Double(index) * 0.3) * 0.5 + 0.5) * 0.08
                 target = breathe
             }
 
-            // Smooth animation (fast attack, snappier decay)
-            if target > animatedLevels[bandIndex] {
-                animatedLevels[bandIndex] = target
+            if target > animatedLevels[index] {
+                animatedLevels[index] = target
             } else {
-                animatedLevels[bandIndex] = animatedLevels[bandIndex] * 0.75 + target * 0.25
+                animatedLevels[index] = animatedLevels[index] * 0.75 + target * 0.25
             }
 
-            // Update peak hold
-            if animatedLevels[bandIndex] > peakLevels[bandIndex] {
-                peakLevels[bandIndex] = animatedLevels[bandIndex]
+            if animatedLevels[index] > peakLevels[index] {
+                peakLevels[index] = animatedLevels[index]
             } else {
-                // Slow peak decay
-                peakLevels[bandIndex] = max(0, peakLevels[bandIndex] - 0.01)
+                peakLevels[index] = max(0, peakLevels[index] - 0.01)
             }
         }
     }
@@ -129,54 +116,11 @@ private extension Array {
     }
 }
 
-#Preview("Spectrum - Active") {
+#Preview("Spectrum · refined") {
     SpectrumWaveformView(
-        frequencyBands: [0.8, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15],
+        frequencyBands: [0.85, 0.55, 0.7, 0.4, 0.5, 0.25, 0.3, 0.18],
         isActive: true
     )
-    .frame(height: 120)
-    .padding()
+    .frame(width: 320, height: 120)
     .background(Color(red: 0.04, green: 0.04, blue: 0.04))
-}
-
-#Preview("Spectrum - Idle") {
-    SpectrumWaveformView(
-        frequencyBands: Array(repeating: 0, count: 8),
-        isActive: false
-    )
-    .frame(height: 120)
-    .padding()
-    .background(Color(red: 0.04, green: 0.04, blue: 0.04))
-}
-
-// MARK: - Testable Helpers
-
-extension SpectrumWaveformView {
-    /// Applies gain boost to frequency band value (138% boost for reactive bars)
-    static func testableApplyGainBoost(_ value: Float) -> Float {
-        min(1.0, value * 2.38)
-    }
-
-    /// Calculates idle breathing animation value
-    static func testableIdleBreathValue(phase: Double, bandIndex: Int) -> Float {
-        Float(sin(phase + Double(bandIndex) * 0.3) * 0.5 + 0.5) * 0.08
-    }
-
-    /// Calculates smoothed level transition (instant attack, gradual decay)
-    static func testableSmoothedLevel(current: Float, target: Float) -> Float {
-        if target > current {
-            return target  // Instant attack
-        } else {
-            return current * 0.75 + target * 0.25  // Gradual decay
-        }
-    }
-
-    /// Calculates peak decay
-    static func testablePeakDecay(current: Float, level: Float) -> Float {
-        if level > current {
-            return level  // New peak
-        } else {
-            return max(0, current - 0.01)  // Slow decay
-        }
-    }
 }
