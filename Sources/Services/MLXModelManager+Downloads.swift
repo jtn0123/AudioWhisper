@@ -265,8 +265,7 @@ extension MLXModelManager {
         }
 
         // Check for refs/main to confirm download completed. The file holds a
-        // Hugging Face commit hash; require it to be pure hex so it cannot
-        // carry path separators into the appendingPathComponent below.
+        // Hugging Face commit hash; require it to be pure hex.
         let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let rev = rawRev, !rev.isEmpty,
@@ -274,8 +273,15 @@ extension MLXModelManager {
             return false
         }
 
-        // Check snapshot directory exists
-        let snap = cacheDir.appendingPathComponent("snapshots/\(rev)")
+        // Resolve the snapshot directory by matching `rev` against the actual
+        // directory listing rather than interpolating it into a path. `snap`
+        // is therefore built only from a name returned by the filesystem.
+        let snapshotsDir = cacheDir.appendingPathComponent("snapshots")
+        let snapshotEntries = (try? FileManager.default.contentsOfDirectory(atPath: snapshotsDir.path)) ?? []
+        guard let matchedSnapshot = snapshotEntries.first(where: { $0 == rev }) else {
+            return false
+        }
+        let snap = snapshotsDir.appendingPathComponent(matchedSnapshot)
         guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else {
             return false
         }

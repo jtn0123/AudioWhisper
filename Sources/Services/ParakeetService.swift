@@ -102,15 +102,20 @@ internal class ParakeetService {
                 return false
             }
 
-            // The file holds a Hugging Face commit hash; require pure hex so
-            // it cannot carry path separators into appendingPathComponent.
+            // The file holds a Hugging Face commit hash; require pure hex.
             let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard let rev = rawRev, !rev.isEmpty,
                   rev.allSatisfy({ $0.isHexDigit }) else {
                 return false
             }
-            let snap = base.appendingPathComponent("snapshots/\(rev)")
+            // Resolve the snapshot directory by matching `rev` against the
+            // actual directory listing rather than interpolating it into a
+            // path: `snap` is built only from a filesystem-returned name.
+            let snapshotsDir = base.appendingPathComponent("snapshots")
+            let snapshotEntries = (try? FileManager.default.contentsOfDirectory(atPath: snapshotsDir.path)) ?? []
+            guard let matchedSnapshot = snapshotEntries.first(where: { $0 == rev }) else { return false }
+            let snap = snapshotsDir.appendingPathComponent(matchedSnapshot)
             guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else { return false }
             // Look for at least one weights file under snapshot or blobs
             let snapFiles = (try? FileManager.default.contentsOfDirectory(atPath: snap.path)) ?? []
