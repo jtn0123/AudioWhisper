@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ main, 'claude/**' ]
+    branches: [ main, master, 'claude/**', 'grade-report-sweep' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   build-and-test:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
 
     steps:
@@ -20,15 +20,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Prefer newer Xcode versions for latest Swift/SDK support
-          if [ -d "/Applications/Xcode_15.4.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_15.3.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_15.2.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+          # Need Xcode 16+ (Swift 6 tooling): WhisperKit's transitive
+          # dependency swift-jinja 2.x declares swift-tools-version 6.0.
+          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then
+            sudo xcode-select -s "$latest/Contents/Developer"
           else
-            echo "Using default Xcode"
+            echo "No Xcode 16 found; using default"
             xcode-select -p
           fi
 
@@ -43,15 +41,36 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      - name: Generate VersionInfo.swift
+        run: |
+          # VersionInfo.swift is gitignored and normally produced by
+          # scripts/build.sh. Bare `swift build`/`swift test` need it too.
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          GIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "ci-build")
+          BUILD_DATE=$(date -u +%Y-%m-%d)
+          # BUNDLED_UV_* placeholders must be substituted before VERSION_PLACEHOLDER,
+          # which is a substring of BUNDLED_UV_VERSION_PLACEHOLDER.
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$BUILD_DATE/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+          echo "Generated Sources/Utilities/VersionInfo.swift"
+
       - name: Build
         run: swift build
 
       - name: Run Tests
         run: |
-          # Run tests and filter out macOS system framework noise
+          # Run tests sequentially. A number of tests still read/write
+          # UserDefaults.standard directly; under --parallel they observe each
+          # other's writes and fail nondeterministically. --no-parallel is the
+          # reliable mode until the IsolatedXCTestCase migration is complete
+          # enough to enforce strict isolation.
           # Use a temp file to preserve exit code while filtering output
           set +e
-          swift test --parallel 2>&1 | tee /tmp/test_output.txt
+          swift test --no-parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
           # Filter and display cleaned output
           grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" /tmp/test_output.txt || true
@@ -59,24 +78,129 @@ jobs:
         env:
           OS_ACTIVITY_MODE: disable
 
+      - name: Coverage summary
+        if: always()
+        run: |
+          set +e
+          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
+          BIN_DIR=$(find .build -type d -name '*.xctest' | head -n 1)
+          if [ -n "$PROFDATA" ] && [ -n "$BIN_DIR" ]; then
+            BIN=$(find "$BIN_DIR/Contents/MacOS" -type f | head -n 1)
+            xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" 2>/dev/null | tail -n 1 || true
+          else
+            echo "No coverage data found"
+          fi
+
+      - name: Coverage threshold gate
+        if: always()
+        run: |
+          set +e
+          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
+          BIN_DIR=$(find .build -type d -name '*.xctest' | head -n 1)
+          if [ -z "$PROFDATA" ] || [ -z "$BIN_DIR" ]; then
+            echo "No coverage data — skipping threshold check"
+            exit 0
+          fi
+          BIN=$(find "$BIN_DIR/Contents/MacOS" -type f | head -n 1)
+          # Pull the line-coverage percentage from the TOTAL line
+          PCT=$(xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" 2>/dev/null | tail -n 1 | awk '{print $(NF-1)}' | tr -d '%')
+          if [ -z "$PCT" ]; then
+            echo "Could not parse coverage percent; skipping"
+            exit 0
+          fi
+          echo "Line coverage: $PCT%"
+          THRESHOLD=60
+          # bash's [ ] doesn't do float comparison; cast to int for the check
+          PCT_INT=${PCT%.*}
+          if [ "$PCT_INT" -lt "$THRESHOLD" ]; then
+            echo "::error::Line coverage $PCT% below threshold $THRESHOLD%"
+            exit 1
+          fi
+          echo "Coverage $PCT% >= threshold $THRESHOLD%"
+
   lint:
-    runs-on: ubuntu-latest
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+      - name: SwiftLint (strict)
+        run: swiftlint --strict --reporter github-actions-logging
+
+      - name: No print() outside #if DEBUG
+        run: |
+          set -e
+          violations=$(grep -rn --include='*.swift' -E '^\s*print\(' Sources/ | grep -v '//.*print' || true)
+          # Filter out lines that appear inside a #if DEBUG block by checking surrounding lines
+          if [ -n "$violations" ]; then
+            echo "$violations" | while IFS=: read -r file line _rest; do
+              # Search 50 lines back for #if DEBUG, then check if a #endif came between
+              ctx=$(sed -n "1,${line}p" "$file" | tail -n 50)
+              last_debug=$(echo "$ctx" | grep -n '#if DEBUG' | tail -n 1 | cut -d: -f1 || true)
+              last_endif=$(echo "$ctx" | grep -n '#endif' | tail -n 1 | cut -d: -f1 || true)
+              if [ -z "$last_debug" ] || { [ -n "$last_endif" ] && [ "$last_endif" -gt "$last_debug" ]; }; then
+                echo "::error file=$file,line=$line::print() outside #if DEBUG"
+                exit 1
+              fi
+            done
+          fi
+          echo "No production print() found"
+
+      - name: TODO/FIXME audit (warn only)
+        run: |
+          grep -rn "TODO\|FIXME" Sources/ --include='*.swift' || echo "No TODO/FIXME comments found"
+
+  bundle-smoke-test:
+    needs: build-and-test
+    runs-on: macos-15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check for debug print statements
+      - name: Select Xcode
         run: |
-          echo "Checking for print statements in Swift source files..."
-          # Find print statements but exclude comments and Python files
-          if grep -rn "print(" Sources/ --include="*.swift" | grep -v "//.*print" | grep -v "\.py:"; then
-            echo "::warning::Found print statements that may need review"
+          # Need Xcode 16+ (Swift 6 tooling) — see build-and-test job.
+          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then
+            sudo xcode-select -s "$latest/Contents/Developer"
           else
-            echo "No problematic print statements found"
+            xcode-select -p
           fi
 
-      - name: Check for TODO/FIXME comments
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Build .app bundle via make build
+        run: make build
+
+      - name: Verify bundle structure
         run: |
-          echo "Checking for TODO/FIXME comments..."
-          grep -rn "TODO\|FIXME" Sources/ --include="*.swift" || echo "No TODO/FIXME comments found"
+          set -e
+          APP="AudioWhisper.app"
+          test -d "$APP" || { echo "::error::Missing $APP"; exit 1; }
+          test -x "$APP/Contents/MacOS/AudioWhisper" || { echo "::error::Missing executable"; exit 1; }
+          test -f "$APP/Contents/Info.plist" || { echo "::error::Missing Info.plist"; exit 1; }
+          plutil -lint "$APP/Contents/Info.plist"
+          # Confirm Python bootstrap binary made it into the bundle
+          test -f "$APP/Contents/Resources/bin/uv" -o -f "$APP/Contents/Resources/uv" \
+            || echo "::warning::uv binary not found in bundled Resources (may be missing for dev builds)"
+          # Confirm version was stamped (not left as a placeholder)
+          if grep -q "VERSION_PLACEHOLDER\|BUILD_PLACEHOLDER" "$APP/Contents/MacOS/AudioWhisper" 2>/dev/null; then
+            echo "::warning::Version placeholders found unsubstituted in binary"
+          fi
+          echo "App bundle smoke test passed."
+
+      - name: Show bundle size
+        run: |
+          du -sh AudioWhisper.app
+          ls -lh AudioWhisper.app/Contents/MacOS/AudioWhisper

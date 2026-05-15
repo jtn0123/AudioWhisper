@@ -37,20 +37,35 @@ internal extension DashboardProvidersView {
                 // Model selection
                 modelSelectionSection
                 
-                // Verification message
+                // Verification message — uses the shared DownloadProgressView
+                // when the message indicates failure so users get a Retry
+                // button consistently across providers. Informational messages
+                // continue to use the lightweight info row.
                 if let msg = parakeetVerifyMessage, !msg.isEmpty {
                     Divider().background(DashboardTheme.rule)
-                    
-                    HStack(spacing: DashboardTheme.Spacing.sm) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 12))
-                            .foregroundStyle(DashboardTheme.inkMuted)
-                        
-                        Text(msg)
-                            .font(DashboardTheme.Fonts.sans(12, weight: .regular))
-                            .foregroundStyle(DashboardTheme.inkMuted)
+
+                    if isVerifyingParakeet {
+                        DownloadProgressView(state: .verifying)
+                            .padding(DashboardTheme.Spacing.md)
+                    } else if msg.localizedCaseInsensitiveContains("fail")
+                        || msg.localizedCaseInsensitiveContains("error") {
+                        DownloadProgressView(
+                            state: .failed(message: msg),
+                            onRetry: { verifyParakeetModel() }
+                        )
+                        .padding(DashboardTheme.Spacing.md)
+                    } else {
+                        HStack(spacing: DashboardTheme.Spacing.sm) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 12))
+                                .foregroundStyle(DashboardTheme.inkMuted)
+
+                            Text(msg)
+                                .font(DashboardTheme.Fonts.sans(12, weight: .regular))
+                                .foregroundStyle(DashboardTheme.inkMuted)
+                        }
+                        .padding(DashboardTheme.Spacing.md)
                     }
-                    .padding(DashboardTheme.Spacing.md)
                 }
             }
             .background(
@@ -80,7 +95,9 @@ internal extension DashboardProvidersView {
             // Status icon
             ZStack {
                 Circle()
-                    .fill(envReady ? Color(red: 0.35, green: 0.60, blue: 0.40).opacity(0.12) : DashboardTheme.accent.opacity(0.12))
+                    .fill(envReady
+                        ? Color(red: 0.35, green: 0.60, blue: 0.40).opacity(0.12)
+                        : DashboardTheme.accent.opacity(0.12))
                     .frame(width: 44, height: 44)
                 
                 if isCheckingEnv {
@@ -169,7 +186,7 @@ internal extension DashboardProvidersView {
         }
         .padding(DashboardTheme.Spacing.md)
         .onChange(of: selectedParakeetModel) { _, _ in
-            Task { await MLXModelManager.shared.ensureParakeetModel() }
+            Task { await mlxModelManager.ensureParakeetModel() }
         }
     }
 
@@ -181,7 +198,7 @@ internal extension DashboardProvidersView {
         showSetupSheet = true
         Task {
             do {
-                _ = try UvBootstrap.ensureVenv(userPython: nil) { msg in
+                _ = try await UvBootstrap.ensureVenv(userPython: nil) { msg in
                     Task { @MainActor in
                         setupLogs += (setupLogs.isEmpty ? "" : "\n") + msg
                     }
@@ -238,7 +255,12 @@ internal extension DashboardProvidersView {
     }
 
     private func venvPythonPath() -> String {
-        let appSupport = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+        let appSupport = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
         let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
         return base ?? ""
     }
@@ -248,9 +270,7 @@ internal extension DashboardProvidersView {
         parakeetVerifyMessage = "Starting verification…"
         Task {
             do {
-                let py = try await Task.detached(priority: .userInitiated) {
-                    try UvBootstrap.ensureVenv(userPython: nil) { _ in }
-                }.value
+                let py = try await UvBootstrap.ensureVenv(userPython: nil) { _ in }
                 let pythonPath = py.path
                 await MainActor.run { parakeetVerifyMessage = "Checking model (offline)…" }
 
@@ -272,11 +292,11 @@ internal extension DashboardProvidersView {
                 // to avoid retain cycles. State is updated after process completion using messageStore.
                 out.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let s = String(data: data, encoding: .utf8) else { return }
-                    for line in s.split(separator: "\n").map(String.init) {
-                        if let d = line.data(using: .utf8),
-                           let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-                           let msg = j["message"] as? String {
+                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                    for line in output.split(separator: "\n").map(String.init) {
+                        if let lineData = line.data(using: .utf8),
+                           let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                           let msg = json["message"] as? String {
                             Task {
                                 await messageStore.updateStdout(msg)
                             }
@@ -285,8 +305,8 @@ internal extension DashboardProvidersView {
                 }
                 err.fileHandleForReading.readabilityHandler = { handle in
                     let data = handle.availableData
-                    guard !data.isEmpty, let s = String(data: data, encoding: .utf8) else { return }
-                    let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
+                    let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
                     Task {
                         await messageStore.updateStderr(trimmed)
                     }
@@ -312,7 +332,7 @@ internal extension DashboardProvidersView {
                     if process.terminationStatus == 0 {
                         parakeetVerifyMessage = (lastStdoutMessage.isEmpty ? "Model verified" : lastStdoutMessage)
                         hasSetupParakeet = true
-                        Task { await MLXModelManager.shared.refreshModelList() }
+                        Task { await mlxModelManager.refreshModelList() }
                     } else {
                         let msg = lastStdoutMessage.isEmpty ? lastStderrMessage : lastStdoutMessage
                         parakeetVerifyMessage = msg.isEmpty ? "Verification failed" : "Verification failed: \(msg)"

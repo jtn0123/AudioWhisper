@@ -53,15 +53,22 @@ internal extension DashboardProvidersView {
                     .stroke(DashboardTheme.rule, lineWidth: 1)
             )
             
-            // Error message
+            // Error message — uses the shared DownloadProgressView so retry
+            // is exposed consistently across providers. The retry target is
+            // the most recently attempted download (derived from
+            // downloadStartTime), or clears the error if no candidate exists.
             if let error = downloadError {
-                HStack(spacing: DashboardTheme.Spacing.sm) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 12))
-                    Text(error)
-                        .font(DashboardTheme.Fonts.sans(12, weight: .regular))
-                }
-                .foregroundStyle(Color(red: 0.75, green: 0.30, blue: 0.28))
+                DownloadProgressView(
+                    state: .failed(message: error),
+                    onRetry: {
+                        if let lastModel = downloadStartTime
+                            .max(by: { $0.value < $1.value })?.key {
+                            downloadModel(lastModel)
+                        } else {
+                            downloadError = nil
+                        }
+                    }
+                )
                 .padding(DashboardTheme.Spacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
@@ -123,49 +130,7 @@ internal extension DashboardProvidersView {
                 .foregroundStyle(DashboardTheme.inkMuted)
             
             // Status/Action
-            Group {
-                if isDownloading {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        
-                        if let stage = stage {
-                            Text(stage.displayText)
-                                .font(DashboardTheme.Fonts.sans(10, weight: .medium))
-                                .foregroundStyle(DashboardTheme.inkMuted)
-                        }
-                    }
-                    .frame(minWidth: 80)
-                } else if isDownloaded {
-                    HStack(spacing: 6) {
-                        Text("Installed")
-                            .font(DashboardTheme.Fonts.sans(10, weight: .medium))
-                            .foregroundStyle(Color(red: 0.35, green: 0.60, blue: 0.40))
-                        
-                        Button {
-                            deleteModel(model)
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 11))
-                                .foregroundStyle(DashboardTheme.inkMuted)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    Button {
-                        downloadModel(model)
-                    } label: {
-                        Text("Get")
-                            .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(DashboardTheme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+            whisperModelStatusAction(model, stage: stage, isDownloaded: isDownloaded, isDownloading: isDownloading)
         }
         .padding(.horizontal, DashboardTheme.Spacing.md)
         .padding(.vertical, DashboardTheme.Spacing.md)
@@ -175,6 +140,52 @@ internal extension DashboardProvidersView {
             if !isDownloaded && !isDownloading {
                 downloadModel(model)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func whisperModelStatusAction(
+        _ model: WhisperModel,
+        stage: DownloadStage?,
+        isDownloaded: Bool,
+        isDownloading: Bool
+    ) -> some View {
+        if isDownloading {
+            DownloadProgressView(
+                state: .downloading(
+                    progress: modelManager.downloadProgress[model] ?? 0,
+                    statusText: stage?.displayText
+                )
+            )
+            .frame(maxWidth: 160)
+        } else if isDownloaded {
+            HStack(spacing: 6) {
+                Text("Installed")
+                    .font(DashboardTheme.Fonts.sans(10, weight: .medium))
+                    .foregroundStyle(Color(red: 0.35, green: 0.60, blue: 0.40))
+
+                Button {
+                    deleteModel(model)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            Button {
+                downloadModel(model)
+            } label: {
+                Text("Get")
+                    .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(DashboardTheme.accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+            }
+            .buttonStyle(.plain)
         }
     }
     

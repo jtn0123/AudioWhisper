@@ -7,11 +7,11 @@ final class DataManagerPerformanceTests: XCTestCase {
 
     func testTranscriptionRecordCreationPerformance() {
         measure {
-            for i in 0..<1000 {
+            for index in 0..<1000 {
                 let record = TranscriptionRecord(
-                    text: "Test transcription text \(i)",
+                    text: "Test transcription text \(index)",
                     provider: .local,
-                    duration: Double(i) * 0.5
+                    duration: Double(index) * 0.5
                 )
                 _ = record
             }
@@ -129,8 +129,8 @@ final class WaveformCalculationPerformanceTests: XCTestCase {
     func testCircularSpectrumBandIndexPerformance() {
         measure {
             for _ in 0..<10000 {
-                for i in 0..<16 {
-                    _ = CircularSpectrumView.testableBandIndex(for: i)
+                for index in 0..<16 {
+                    _ = CircularSpectrumView.testableBandIndex(for: index)
                 }
             }
         }

@@ -28,6 +28,18 @@ done
 GIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(date '+%Y-%m-%d')
 
+# Capture bundled uv version (best effort — empty string if uv missing)
+BUNDLED_UV_VERSION=""
+if [ -x "Sources/Resources/bin/uv" ]; then
+    BUNDLED_UV_VERSION=$("Sources/Resources/bin/uv" --version 2>/dev/null | awk '{print $2}' || echo "")
+fi
+
+# Capture bundled uv SHA-256 so the app can verify the binary at runtime
+BUNDLED_UV_SHA256=""
+if [ -f "Sources/Resources/bin/uv" ]; then
+    BUNDLED_UV_SHA256=$(shasum -a 256 "Sources/Resources/bin/uv" | awk '{print $1}' || echo "")
+fi
+
 # Read version from VERSION file or use environment variable
 DEFAULT_VERSION=$(cat VERSION | tr -d '[:space:]')
 VERSION="${AUDIO_WHISPER_VERSION:-$DEFAULT_VERSION}"
@@ -54,7 +66,11 @@ rm -f Sources/AudioProcessorCLI
 
 # Create version file from template
 if [ -f "Sources/VersionInfo.swift.template" ]; then
-  sed -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+  # BUNDLED_UV_* placeholders must be substituted before VERSION_PLACEHOLDER,
+  # which is a substring of BUNDLED_UV_VERSION_PLACEHOLDER.
+  sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER/$BUNDLED_UV_VERSION/g" \
+    -e "s/BUNDLED_UV_SHA256_PLACEHOLDER/$BUNDLED_UV_SHA256/g" \
+    -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
     -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
     -e "s/BUILD_DATE_PLACEHOLDER/$BUILD_DATE/g" \
     Sources/VersionInfo.swift.template >Sources/Utilities/VersionInfo.swift
@@ -68,7 +84,9 @@ struct VersionInfo {
     static let version = "$VERSION"
     static let gitHash = "$GIT_HASH"
     static let buildDate = "$BUILD_DATE"
-    
+    static let bundledUvVersion = "$BUNDLED_UV_VERSION"
+    static let bundledUvSha256 = "$BUNDLED_UV_SHA256"
+
     static var displayVersion: String {
         if gitHash != "unknown" && !gitHash.isEmpty {
             let shortHash = String(gitHash.prefix(7))
@@ -76,7 +94,7 @@ struct VersionInfo {
         }
         return version
     }
-    
+
     static var fullVersionInfo: String {
         var info = "AudioWhisper \(version)"
         if gitHash != "unknown" && !gitHash.isEmpty {

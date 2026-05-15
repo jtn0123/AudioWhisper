@@ -5,7 +5,7 @@ import SwiftData
 /// Integration tests for DataManager <-> UsageMetricsStore interaction
 /// Verifies that saving/deleting records correctly updates metrics
 @MainActor
-final class HistoryManagementIntegrationTests: XCTestCase {
+final class HistoryManagementIntegrationTests: IsolatedXCTestCase {
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
     var metricsStore: UsageMetricsStore!
@@ -180,8 +180,8 @@ final class HistoryManagementIntegrationTests: XCTestCase {
     func testBulkDeleteMetricsConsistency() async throws {
         // Given - Create 10 records
         var allRecords: [TranscriptionRecord] = []
-        for i in 1...10 {
-            let record = createRecord(text: "Record number \(i) with some content", duration: Double(i))
+        for index in 1...10 {
+            let record = createRecord(text: "Record number \(index) with some content", duration: Double(index))
             allRecords.append(record)
             modelContext.insert(record)
 
@@ -196,8 +196,8 @@ final class HistoryManagementIntegrationTests: XCTestCase {
         XCTAssertEqual(initialSnapshot.totalSessions, 10)
 
         // When - Delete first 5 records (bulk)
-        for i in 0..<5 {
-            modelContext.delete(allRecords[i])
+        for index in 0..<5 {
+            modelContext.delete(allRecords[index])
         }
         try modelContext.save()
 
@@ -221,8 +221,8 @@ final class HistoryManagementIntegrationTests: XCTestCase {
 
     func testDeleteAllRecordsResetsMetrics() async throws {
         // Given - Create some records
-        for i in 1...5 {
-            let record = createRecord(text: "Record \(i)", duration: 5.0)
+        for index in 1...5 {
+            let record = createRecord(text: "Record \(index)", duration: 5.0)
             modelContext.insert(record)
             metricsStore.recordSession(duration: 5.0, wordCount: 2, characterCount: record.text.count)
         }

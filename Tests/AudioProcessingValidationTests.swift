@@ -176,8 +176,8 @@ final class AudioProcessingValidationTests: XCTestCase {
         let rightChannel: [Float] = [0.3, 0.5, 0.7]
 
         var monoSamples: [Float] = []
-        for i in 0..<leftChannel.count {
-            monoSamples.append((leftChannel[i] + rightChannel[i]) / 2.0)
+        for index in 0..<leftChannel.count {
+            monoSamples.append((leftChannel[index] + rightChannel[index]) / 2.0)
         }
 
         XCTAssertEqual(monoSamples[0], 0.4, accuracy: 0.001)
@@ -235,12 +235,18 @@ final class AudioProcessingValidationTests: XCTestCase {
 
     // MARK: - Sample Count Estimation Tests
 
+    private struct SampleCountCase {
+        let duration: TimeInterval
+        let sampleRate: Int
+        let expected: Int
+    }
+
     func testSampleCountFromDuration() {
-        let testCases: [(duration: TimeInterval, sampleRate: Int, expected: Int)] = [
-            (1.0, 16000, 16000),      // 1 second
-            (0.5, 16000, 8000),       // Half second
-            (10.0, 44100, 441000),    // 10 seconds at CD quality
-            (60.0, 16000, 960000),    // 1 minute
+        let testCases: [SampleCountCase] = [
+            SampleCountCase(duration: 1.0, sampleRate: 16000, expected: 16000),      // 1 second
+            SampleCountCase(duration: 0.5, sampleRate: 16000, expected: 8000),       // Half second
+            SampleCountCase(duration: 10.0, sampleRate: 44100, expected: 441000),    // 10 seconds at CD quality
+            SampleCountCase(duration: 60.0, sampleRate: 16000, expected: 960000)    // 1 minute
         ]
 
         for testCase in testCases {

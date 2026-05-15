@@ -23,9 +23,9 @@ final class CircularSpectrumViewTests: XCTestCase {
 
     func testBandIndexMappingForFirstHalf() {
         // First 8 bars (0-7) should map directly to band indices
-        for i in 0..<8 {
-            let bandIndex = CircularSpectrumView.testableBandIndex(for: i)
-            XCTAssertEqual(bandIndex, i)
+        for barIndex in 0..<8 {
+            let bandIndex = CircularSpectrumView.testableBandIndex(for: barIndex)
+            XCTAssertEqual(bandIndex, barIndex)
         }
     }
 

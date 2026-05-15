@@ -60,8 +60,24 @@ internal class ParakeetService {
         return try await transcribeWithRawPCM(pcmDataURL: pcmDataURL)
     }
 
+    /// Default Parakeet model used when the stored `selectedParakeetModel` value
+    /// is missing or doesn't match a known `ParakeetModel` case. Mirrors
+    /// `AppDefaults.selectedParakeetModel`.
+    static let defaultModel: ParakeetModel = .v3Multilingual
+
+    /// Validates the persisted `selectedParakeetModel` against the
+    /// `ParakeetModel` enum and falls back to `defaultModel` when the stored
+    /// value is empty or no longer matches a known case. Prevents stale or
+    /// hand-edited preferences from pointing the MLX daemon at a repo string
+    /// that the app no longer recognises.
+    var safeSelectedParakeetModel: ParakeetModel {
+        // `AppDefaults.selectedParakeetModel` already validates against the enum and
+        // falls back to `.v3Multilingual` (== `defaultModel`).
+        AppDefaults.selectedParakeetModel
+    }
+
     private var selectedRepo: String {
-        UserDefaults.standard.string(forKey: "selectedParakeetModel") ?? ParakeetModel.v3Multilingual.rawValue
+        safeSelectedParakeetModel.rawValue
     }
 
     /// Checks if the model is cached on disk.
@@ -86,15 +102,27 @@ internal class ParakeetService {
                 return false
             }
 
-            guard let rev = try? String(contentsOf: refsMain, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !rev.isEmpty else {
+            // The file holds a Hugging Face commit hash; require pure hex.
+            let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let rev = rawRev, !rev.isEmpty,
+                  rev.allSatisfy({ $0.isHexDigit }) else {
                 return false
             }
-            let snap = base.appendingPathComponent("snapshots/\(rev)")
+            // Resolve the snapshot directory by matching `rev` against the
+            // actual directory listing rather than interpolating it into a
+            // path: `snap` is built only from a filesystem-returned name.
+            let snapshotsDir = base.appendingPathComponent("snapshots")
+            let snapshotEntries = (try? FileManager.default.contentsOfDirectory(atPath: snapshotsDir.path)) ?? []
+            guard let matchedSnapshot = snapshotEntries.first(where: { $0 == rev }) else { return false }
+            let snap = snapshotsDir.appendingPathComponent(matchedSnapshot)
             guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else { return false }
             // Look for at least one weights file under snapshot or blobs
             let snapFiles = (try? FileManager.default.contentsOfDirectory(atPath: snap.path)) ?? []
-            let blobsFiles = (try? FileManager.default.contentsOfDirectory(atPath: base.appendingPathComponent("blobs").path)) ?? []
-            let hasWeights = snapFiles.contains { $0.hasSuffix(".safetensors") } || blobsFiles.contains { $0.hasSuffix(".safetensors") }
+            let blobsPath = base.appendingPathComponent("blobs").path
+            let blobsFiles = (try? FileManager.default.contentsOfDirectory(atPath: blobsPath)) ?? []
+            let hasWeights = snapFiles.contains { $0.hasSuffix(".safetensors") }
+                || blobsFiles.contains { $0.hasSuffix(".safetensors") }
             return hasWeights
         }.value
     }

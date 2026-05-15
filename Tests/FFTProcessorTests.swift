@@ -74,8 +74,8 @@ final class FFTProcessorTests: XCTestCase {
     func testBandsAreNormalized() {
         // Generate a loud sine wave
         var samples = [Float](repeating: 0, count: 2048)
-        for i in 0..<2048 {
-            samples[i] = sin(Float(i) * 0.1) * 0.9
+        for index in 0..<2048 {
+            samples[index] = sin(Float(index) * 0.1) * 0.9
         }
 
         let bands = processor.process(samples)
@@ -92,8 +92,8 @@ final class FFTProcessorTests: XCTestCase {
         let frequency: Float = 440.0
         let sampleRate: Float = 44100.0
 
-        for i in 0..<2048 {
-            samples[i] = sin(2.0 * .pi * frequency * Float(i) / sampleRate) * 0.5
+        for index in 0..<2048 {
+            samples[index] = sin(2.0 * .pi * frequency * Float(index) / sampleRate) * 0.5
         }
 
         let bands = processor.process(samples)
@@ -130,8 +130,8 @@ final class FFTProcessorTests: XCTestCase {
 
     func testCalculateLevelIsNormalized() {
         var samples = [Float](repeating: 0, count: 1024)
-        for i in 0..<1024 {
-            samples[i] = sin(Float(i) * 0.1) * 0.8
+        for index in 0..<1024 {
+            samples[index] = sin(Float(index) * 0.1) * 0.8
         }
 
         let level = processor.calculateLevel(from: samples)
@@ -200,8 +200,8 @@ final class FFTProcessorTests: XCTestCase {
         let frequency: Float = 50.0
         let sampleRate: Float = 44100.0
 
-        for i in 0..<2048 {
-            samples[i] = sin(2.0 * .pi * frequency * Float(i) / sampleRate) * 0.8
+        for index in 0..<2048 {
+            samples[index] = sin(2.0 * .pi * frequency * Float(index) / sampleRate) * 0.8
         }
 
         let bands = processor.process(samples)
@@ -219,8 +219,8 @@ final class FFTProcessorTests: XCTestCase {
         let frequency: Float = 10000.0
         let sampleRate: Float = 44100.0
 
-        for i in 0..<2048 {
-            samples[i] = sin(2.0 * .pi * frequency * Float(i) / sampleRate) * 0.8
+        for index in 0..<2048 {
+            samples[index] = sin(2.0 * .pi * frequency * Float(index) / sampleRate) * 0.8
         }
 
         let bands = processor.process(samples)

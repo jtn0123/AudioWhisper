@@ -364,15 +364,21 @@ final class ConfettiPhysicsTests: XCTestCase {
 // MARK: - Celebration Colors Tests
 final class CelebrationColorsTests: XCTestCase {
 
+    private struct RGBComponents {
+        let red: CGFloat
+        let green: CGFloat
+        let blue: CGFloat
+    }
+
     func testConfettiColors() {
-        let colors: [(CGFloat, CGFloat, CGFloat)] = [
-            (0.0, 0.9, 0.95),    // Cyan
-            (0.95, 0.2, 0.8),    // Magenta
-            (1.0, 0.85, 0.0),    // Yellow
-            (0.4, 0.9, 0.5),     // Green
-            (0.45, 0.75, 0.55),  // Success green
-            (1.0, 0.6, 0.4),     // Coral
-            (0.6, 0.4, 1.0),     // Purple
+        let colors: [RGBComponents] = [
+            RGBComponents(red: 0.0, green: 0.9, blue: 0.95),    // Cyan
+            RGBComponents(red: 0.95, green: 0.2, blue: 0.8),    // Magenta
+            RGBComponents(red: 1.0, green: 0.85, blue: 0.0),    // Yellow
+            RGBComponents(red: 0.4, green: 0.9, blue: 0.5),     // Green
+            RGBComponents(red: 0.45, green: 0.75, blue: 0.55),  // Success green
+            RGBComponents(red: 1.0, green: 0.6, blue: 0.4),     // Coral
+            RGBComponents(red: 0.6, green: 0.4, blue: 1.0)      // Purple
         ]
 
         XCTAssertEqual(colors.count, 7)
@@ -399,27 +405,27 @@ final class CelebrationBoundsCheckingTests: XCTestCase {
     }
 
     func testParticleInBounds() {
-        let x: CGFloat = 100
-        let y: CGFloat = 100
+        let pointX: CGFloat = 100
+        let pointY: CGFloat = 100
         let width: CGFloat = 200
         let height: CGFloat = 150
         let margin: CGFloat = 40
 
-        let inBounds = x >= -margin && x <= width + margin &&
-                       y >= -margin && y <= height + margin
+        let inBounds = pointX >= -margin && pointX <= width + margin &&
+                       pointY >= -margin && pointY <= height + margin
 
         XCTAssertTrue(inBounds)
     }
 
     func testParticleOutOfBounds() {
-        let x: CGFloat = 300
-        let y: CGFloat = 100
+        let pointX: CGFloat = 300
+        let pointY: CGFloat = 100
         let width: CGFloat = 200
         let height: CGFloat = 150
         let margin: CGFloat = 40
 
-        let inBounds = x >= -margin && x <= width + margin &&
-                       y >= -margin && y <= height + margin
+        let inBounds = pointX >= -margin && pointX <= width + margin &&
+                       pointY >= -margin && pointY <= height + margin
 
         XCTAssertFalse(inBounds)
     }

@@ -1,9 +1,12 @@
 import XCTest
-import HotKey
 @testable import AudioWhisper
 
-final class HotKeyManagerTests: XCTestCase {
-    
+final class HotKeyManagerTests: IsolatedXCTestCase {
+    // Deferred(D1): HotKeyManager reads `globalHotkey` from UserDefaults.standard
+    // directly. Once it accepts an injected UserDefaults, route writes
+    // through a UUID-scoped suite and re-enable isolation.
+    override var enforcesStandardUserDefaultsIsolation: Bool { false }
+
     var hotKeyManager: HotKeyManager!
     var hotkeyPressedCount: Int = 0
     
@@ -194,7 +197,7 @@ final class HotKeyManagerTests: XCTestCase {
     func testMultipleModifiers() {
         let combinations = [
             "⌘⇧A",
-            "⌘⌥A", 
+            "⌘⌥A",
             "⌘⌃A",
             "⇧⌥A",
             "⇧⌃A",
@@ -257,7 +260,7 @@ final class HotKeyManagerTests: XCTestCase {
     // MARK: - Memory Management Tests
     
     func testDeinitCleanup() {
-        weak let weakManager: HotKeyManager? = hotKeyManager
+        weak var weakManager: HotKeyManager? = hotKeyManager
 
         hotKeyManager = nil
 
@@ -269,7 +272,7 @@ final class HotKeyManagerTests: XCTestCase {
 
     func testNotificationObserverCleanup() {
         let manager = HotKeyManager { }
-        weak let weakManager: HotKeyManager? = manager
+        weak var weakManager: HotKeyManager? = manager
 
         // Create a reference and then nil it
         var strongManager: HotKeyManager? = manager
@@ -287,8 +290,8 @@ final class HotKeyManagerTests: XCTestCase {
     
     func testHotkeyParsingPerformance() {
         measure {
-            for i in 0..<1000 {
-                let hotkeyString = i % 2 == 0 ? "⌘A" : "⌘⇧B"
+            for index in 0..<1000 {
+                let hotkeyString = index % 2 == 0 ? "⌘A" : "⌘⇧B"
                 NotificationCenter.default.post(
                     name: .updateGlobalHotkey,
                     object: hotkeyString

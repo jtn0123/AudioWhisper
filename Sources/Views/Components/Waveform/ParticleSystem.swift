@@ -18,13 +18,8 @@ struct ParticleEmitterView: View {
     let isActive: Bool
     let bounds: CGSize
 
-    // Colors for particles
-    private let particleColors: [Color] = [
-        Color(red: 0.0, green: 0.9, blue: 0.95),   // Cyan
-        Color(red: 0.95, green: 0.2, blue: 0.8),   // Magenta
-        Color(red: 1.0, green: 0.85, blue: 0.0),   // Yellow
-        Color(red: 0.4, green: 0.9, blue: 0.5),    // Green
-    ]
+    // Colors for particles (sourced from ParticlePalette)
+    private let particleColors: [Color] = ParticlePalette.defaults
 
     @State private var particles: [Particle] = []
     @State private var lastSpawnTime: Date = Date()
@@ -69,28 +64,28 @@ struct ParticleEmitterView: View {
         let deltaTime: Double = 0.016 // ~60fps
 
         particles = particles.compactMap { particle in
-            var p = particle
+            var updated = particle
 
             // Update position
-            p.position.x += p.velocity.x * deltaTime
-            p.position.y += p.velocity.y * deltaTime
+            updated.position.x += updated.velocity.x * deltaTime
+            updated.position.y += updated.velocity.y * deltaTime
 
             // Apply gravity (slight upward drift)
-            p.velocity.y -= 50 * deltaTime
+            updated.velocity.y -= 50 * deltaTime
 
             // Reduce lifetime and opacity
-            p.lifetime -= deltaTime
-            p.opacity = max(0, p.lifetime / 2.0) // Fade over 2 seconds
+            updated.lifetime -= deltaTime
+            updated.opacity = max(0, updated.lifetime / 2.0) // Fade over 2 seconds
 
             // Shrink slightly
-            p.size = max(1, p.size - 0.1)
+            updated.size = max(1, updated.size - 0.1)
 
             // Remove dead particles
-            guard p.lifetime > 0 && p.opacity > 0.01 else { return nil }
-            guard p.position.y > -50 && p.position.y < bounds.height + 50 else { return nil }
-            guard p.position.x > -50 && p.position.x < bounds.width + 50 else { return nil }
+            guard updated.lifetime > 0 && updated.opacity > 0.01 else { return nil }
+            guard updated.position.y > -50 && updated.position.y < bounds.height + 50 else { return nil }
+            guard updated.position.x > -50 && updated.position.x < bounds.width + 50 else { return nil }
 
-            return p
+            return updated
         }
     }
 
@@ -151,6 +146,7 @@ struct ParticleOverlay: View {
             )
         }
         .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

@@ -9,7 +9,7 @@ internal struct TranscriptionRecordRow: View {
     let onDelete: () -> Void
 
     @State private var isHovered = false
-    @State private var hoveredButton: String? = nil
+    @State private var hoveredButton: String?
 
     var body: some View {
         Button(action: onToggleExpand) {
@@ -53,7 +53,7 @@ internal struct TranscriptionRecordRow: View {
                             Spacer()
 
                             HStack(spacing: 4) {
-                                Button(action: { onCopy() }) {
+                                Button(action: { onCopy() }, label: {
                                     Image(systemName: "doc.on.doc")
                                         .font(.caption)
                                         .foregroundStyle(hoveredButton == "copy" ? .blue : .secondary)
@@ -62,14 +62,14 @@ internal struct TranscriptionRecordRow: View {
                                             RoundedRectangle(cornerRadius: 4)
                                                 .fill(hoveredButton == "copy" ? Color.blue.opacity(0.1) : Color.clear)
                                         )
-                                }
+                                })
                                 .buttonStyle(.plain)
                                 .help("Copy to clipboard")
                                 .onHover { isHovering in
                                     hoveredButton = isHovering ? "copy" : nil
                                 }
 
-                                Button(action: { onDelete() }) {
+                                Button(action: { onDelete() }, label: {
                                     Image(systemName: "trash")
                                         .font(.caption)
                                         .foregroundStyle(hoveredButton == "delete" ? .red : .secondary)
@@ -78,7 +78,7 @@ internal struct TranscriptionRecordRow: View {
                                             RoundedRectangle(cornerRadius: 4)
                                                 .fill(hoveredButton == "delete" ? Color.red.opacity(0.1) : Color.clear)
                                         )
-                                }
+                                })
                                 .buttonStyle(.plain)
                                 .help("Delete")
                                 .onHover { isHovering in

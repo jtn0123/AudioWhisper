@@ -7,29 +7,45 @@ struct WaveformContainer: View {
     let audioLevel: Float
     let waveformSamples: [Float]
     let frequencyBands: [Float]
+    /// When false, animations inside the `.processing` indicator are
+    /// suppressed so snapshot tests render a deterministic frame.
+    /// Production callers should leave this at the default (`true`).
+    let processingAnimated: Bool
     let onTap: () -> Void
 
-    @AppStorage("waveformStyle") private var styleRaw = WaveformStyle.classic.rawValue
-    @AppStorage("visualIntensity") private var intensityRaw = VisualIntensity.balanced.rawValue
+    init(
+        status: AppStatus,
+        audioLevel: Float,
+        waveformSamples: [Float],
+        frequencyBands: [Float],
+        processingAnimated: Bool = true,
+        onTap: @escaping () -> Void
+    ) {
+        self.status = status
+        self.audioLevel = audioLevel
+        self.waveformSamples = waveformSamples
+        self.frequencyBands = frequencyBands
+        self.processingAnimated = processingAnimated
+        self.onTap = onTap
+    }
+
+    @AppDefault(\.waveformStyle) private var waveformStyle
+    @AppDefault(\.visualIntensity) private var visualIntensity
 
     // Track previous status for transitions
     @State private var previousStatus: AppStatus?
     @State private var showError = false
 
-    // Colors
-    private let bgColor = Color(red: 0.04, green: 0.04, blue: 0.04)
-    private let barColor = Color(red: 0.85, green: 0.83, blue: 0.80)
-    private let mutedColor = Color(red: 0.35, green: 0.34, blue: 0.33)
-    private let successColor = Color(red: 0.45, green: 0.75, blue: 0.55)
-    private let accentColor = Color(red: 0.85, green: 0.45, blue: 0.40)
+    // Colors (sourced from WaveformPalette so the theme owns the literals)
+    private let bgColor = WaveformPalette.background
+    private let barColor = WaveformPalette.bar
+    private let mutedColor = WaveformPalette.muted
+    private let successColor = WaveformPalette.success
+    private let accentColor = WaveformPalette.accent
 
-    private var style: WaveformStyle {
-        WaveformStyle(rawValue: styleRaw) ?? .classic
-    }
+    private var style: WaveformStyle { waveformStyle }
 
-    private var intensity: VisualIntensity {
-        VisualIntensity(rawValue: intensityRaw) ?? .balanced
-    }
+    private var intensity: VisualIntensity { visualIntensity }
 
     var body: some View {
         Button(action: onTap) {
@@ -51,12 +67,16 @@ struct WaveformContainer: View {
                         .opacity(intensity.particleMultiplier)
                 }
 
-                // State transition effects
-                StatusTransitionOverlay(
-                    fromStatus: previousStatus,
-                    toStatus: status,
-                    intensity: intensity
-                )
+                // State transition effects. While processing, the wave
+                // animation is non-deterministic (driven by wall-clock
+                // time); allow tests to suppress it via processingAnimated.
+                if processingAnimated || !isProcessing {
+                    StatusTransitionOverlay(
+                        fromStatus: previousStatus,
+                        toStatus: status,
+                        intensity: intensity
+                    )
+                }
 
                 // Success celebration
                 if isSuccess {
@@ -75,7 +95,7 @@ struct WaveformContainer: View {
                             EnhancedStatusDot(
                                 color: dotColor,
                                 intensity: intensity,
-                                isPulsing: isRecording || isProcessing
+                                isPulsing: shouldPulseStatusDot
                             )
                         }
 
@@ -107,6 +127,9 @@ struct WaveformContainer: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Recording waveform")
+        .accessibilityValue(isRecording ? "Active" : "Idle")
     }
 
     // MARK: - Waveform View
@@ -184,6 +207,14 @@ struct WaveformContainer: View {
         default:
             return false
         }
+    }
+
+    /// Whether the status dot should pulse. Tests can disable processing
+    /// animations via `processingAnimated` to keep snapshots deterministic.
+    private var shouldPulseStatusDot: Bool {
+        if isRecording { return true }
+        if isProcessing { return processingAnimated }
+        return false
     }
 
     private var dotColor: Color {
@@ -304,7 +335,7 @@ private struct PulseModifier: ViewModifier {
     .padding(40)
     .background(Color.black)
     .onAppear {
-        UserDefaults.standard.set(WaveformStyle.neon.rawValue, forKey: "waveformStyle")
+        AppDefaults.waveformStyle = .neon
     }
 }
 
@@ -320,7 +351,7 @@ private struct PulseModifier: ViewModifier {
     .padding(40)
     .background(Color.black)
     .onAppear {
-        UserDefaults.standard.set(WaveformStyle.spectrum.rawValue, forKey: "waveformStyle")
+        AppDefaults.waveformStyle = .spectrum
     }
 }
 

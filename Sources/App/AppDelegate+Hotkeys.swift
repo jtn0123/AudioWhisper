@@ -92,7 +92,7 @@ internal extension AppDelegate {
     }
 
     func handleHotkey(source: HotkeyTriggerSource) {
-        let immediateRecording = UserDefaults.standard.bool(forKey: "immediateRecording")
+        let immediateRecording = AppDefaults.immediateRecording
 
         if immediateRecording {
             guard let recorder = audioRecorder else {
@@ -152,8 +152,14 @@ internal extension AppDelegate {
         let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
 
         // Ensure images are created successfully before starting animation
-        guard let redImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config),
-              let blackImage = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: "Recording")?.withSymbolConfiguration(config) else {
+        guard let redImage = NSImage(
+                  systemSymbolName: "microphone.circle",
+                  accessibilityDescription: "Recording"
+              )?.withSymbolConfiguration(config),
+              let blackImage = NSImage(
+                  systemSymbolName: "microphone.circle",
+                  accessibilityDescription: "Recording"
+              )?.withSymbolConfiguration(config) else {
             return
         }
         redImage.isTemplate = false

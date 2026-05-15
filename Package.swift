@@ -8,14 +8,20 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        .package(url: "https://github.com/soffes/HotKey", from: "0.2.1"),
-        .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.15.0"),
-        .package(url: "https://github.com/nalexn/ViewInspector", from: "0.10.0")
+        // Pinned below 2.0: KeyboardShortcuts 2.x requires Swift 6 language
+        // mode, which the universal release build (swift build --arch arm64
+        // --arch x86_64 via the Xcode build system) compiles as Swift 5.
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", .upToNextMajor(from: "1.10.0")),
+        .package(url: "https://github.com/argmaxinc/WhisperKit.git", .upToNextMinor(from: "0.15.0")),
+        .package(url: "https://github.com/nalexn/ViewInspector", .upToNextMinor(from: "0.10.0"))
     ],
     targets: [
         .executableTarget(
             name: "AudioWhisper",
-            dependencies: ["HotKey", "WhisperKit"],
+            dependencies: [
+                .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
+                "WhisperKit"
+            ],
             path: "Sources",
             exclude: ["VersionInfo.swift.template"],
             resources: [

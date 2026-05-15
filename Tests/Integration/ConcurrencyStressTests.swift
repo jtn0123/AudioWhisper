@@ -40,9 +40,9 @@ final class ConcurrencyStressTests: XCTestCase {
 
         // Concurrent writes from multiple tasks
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<100 {
+            for index in 0..<100 {
                 group.addTask {
-                    await cache.set("key-\(i)", value: i)
+                    await cache.set("key-\(index)", value: index)
                 }
             }
         }
@@ -56,31 +56,31 @@ final class ConcurrencyStressTests: XCTestCase {
         let cache = ConcurrentTestCache<String, Int>()
 
         // Pre-populate with some data
-        for i in 0..<10 {
-            await cache.set("key-\(i)", value: i)
+        for index in 0..<10 {
+            await cache.set("key-\(index)", value: index)
         }
 
         // Mix of reads and writes concurrently
         await withTaskGroup(of: Void.self) { group in
             // Writers
-            for i in 10..<50 {
+            for index in 10..<50 {
                 group.addTask {
-                    await cache.set("key-\(i)", value: i)
+                    await cache.set("key-\(index)", value: index)
                 }
             }
 
             // Readers
-            for i in 0..<10 {
+            for index in 0..<10 {
                 group.addTask {
-                    _ = await cache.get("key-\(i)")
+                    _ = await cache.get("key-\(index)")
                 }
             }
 
             // Updaters (read then write)
-            for i in 0..<10 {
+            for index in 0..<10 {
                 group.addTask {
-                    if let value = await cache.get("key-\(i)") {
-                        await cache.set("key-\(i)", value: value * 2)
+                    if let value = await cache.get("key-\(index)") {
+                        await cache.set("key-\(index)", value: value * 2)
                     }
                 }
             }
@@ -100,16 +100,16 @@ final class ConcurrencyStressTests: XCTestCase {
 
         // Concurrent writes to different keys
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<50 {
+            for index in 0..<50 {
                 group.addTask {
-                    defaults.set(i, forKey: "key-\(i)")
+                    defaults.set(index, forKey: "key-\(index)")
                 }
             }
         }
 
         // Verify all values
-        for i in 0..<50 {
-            XCTAssertEqual(defaults.integer(forKey: "key-\(i)"), i)
+        for index in 0..<50 {
+            XCTAssertEqual(defaults.integer(forKey: "key-\(index)"), index)
         }
     }
 
@@ -159,8 +159,8 @@ final class ConcurrencyStressTests: XCTestCase {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
 
-        let dates = (0..<100).map { i in
-            Calendar.current.date(byAdding: .day, value: -i, to: Date())!
+        let dates = (0..<100).map { dayOffset in
+            Calendar.current.date(byAdding: .day, value: -dayOffset, to: Date())!
         }
 
         // Concurrent formatting
@@ -208,8 +208,8 @@ final class ConcurrencyStressTests: XCTestCase {
         await withTaskGroup(of: Void.self) { group in
             // Background writer
             group.addTask {
-                for i in 0..<100 {
-                    await store.add(item: "item-\(i)")
+                for index in 0..<100 {
+                    await store.add(item: "item-\(index)")
                 }
             }
 
@@ -233,9 +233,9 @@ final class ConcurrencyStressTests: XCTestCase {
         let completedTasks = AtomicCounter()
 
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<10 {
+            for index in 0..<10 {
                 group.addTask {
-                    if i % 2 == 0 {
+                    if index % 2 == 0 {
                         // Simulate some work
                         try? await Task.sleep(nanoseconds: 1_000_000)
                     }
@@ -280,11 +280,11 @@ final class ConcurrencyStressTests: XCTestCase {
 
         // Create some memory pressure with large values
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<20 {
+            for index in 0..<20 {
                 group.addTask {
                     // 1000 floats = 4KB per entry
-                    let data = [Float](repeating: Float(i), count: 1000)
-                    await cache.set(i, value: data)
+                    let data = [Float](repeating: Float(index), count: 1000)
+                    await cache.set(index, value: data)
                 }
             }
         }
@@ -295,16 +295,16 @@ final class ConcurrencyStressTests: XCTestCase {
         // Concurrent access and eviction simulation
         await withTaskGroup(of: Void.self) { group in
             // Readers
-            for i in 0..<20 {
+            for index in 0..<20 {
                 group.addTask {
-                    _ = await cache.get(i)
+                    _ = await cache.get(index)
                 }
             }
 
             // Eviction
             group.addTask {
-                for i in 0..<10 {
-                    await cache.remove(i)
+                for index in 0..<10 {
+                    await cache.remove(index)
                 }
             }
         }

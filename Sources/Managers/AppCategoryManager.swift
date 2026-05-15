@@ -60,7 +60,7 @@ internal final class AppCategoryManager {
         "com.google.Chrome": "general",
         "com.apple.Safari": "general",
         "company.thebrowser.Browser": "general", // Arc
-        "org.mozilla.firefox": "general",
+        "org.mozilla.firefox": "general"
     ]
 
     private(set) var userMappings: [String: String] = [:]

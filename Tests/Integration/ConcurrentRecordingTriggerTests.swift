@@ -5,7 +5,13 @@ import XCTest
 /// cannot start duplicate recordings. Both paths route through @MainActor-isolated
 /// methods, ensuring serialization. These tests document and verify that guarantee.
 @MainActor
-final class ConcurrentRecordingTriggerTests: XCTestCase {
+final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
+
+    // Deferred(D2): This test currently writes "immediateRecording" to
+    // UserDefaults.standard because AppDelegate.handleHotkey reads it directly
+    // from `.standard`. Refactor (alongside A1 PreferencesService) so the
+    // hotkey path can take an injected UserDefaults, then re-enable isolation.
+    override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
     // MARK: - PressAndHoldKeyMonitor Concurrent Trigger Tests
 
@@ -99,11 +105,9 @@ final class ConcurrentRecordingTriggerTests: XCTestCase {
         // Since we're on @MainActor, these execute serially
         var startResults: [Bool] = []
 
-        for _ in 0..<10 {
-            if !mockRecorder.isRecording {
-                let result = mockRecorder.startRecording()
-                startResults.append(result)
-            }
+        for _ in 0..<10 where !mockRecorder.isRecording {
+            let result = mockRecorder.startRecording()
+            startResults.append(result)
         }
 
         // Only the first call should have actually started recording
@@ -171,8 +175,8 @@ final class ConcurrentRecordingTriggerTests: XCTestCase {
         defer { UserDefaults.standard.removeObject(forKey: "immediateRecording") }
 
         // Alternate between hotkey sources rapidly
-        for i in 0..<20 {
-            let source: AppDelegate.HotkeyTriggerSource = i % 2 == 0 ? .standardHotkey : .pressAndHold
+        for index in 0..<20 {
+            let source: AppDelegate.HotkeyTriggerSource = index % 2 == 0 ? .standardHotkey : .pressAndHold
             appDelegate.handleHotkey(source: source)
         }
 
@@ -202,9 +206,9 @@ final class ConcurrentRecordingTriggerTests: XCTestCase {
 
         // Rapid state changes on @MainActor are serialized
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<100 {
+            for index in 0..<100 {
                 group.addTask { @MainActor in
-                    appDelegate.isHoldRecordingActive = (i % 2 == 0)
+                    appDelegate.isHoldRecordingActive = (index % 2 == 0)
                 }
             }
         }

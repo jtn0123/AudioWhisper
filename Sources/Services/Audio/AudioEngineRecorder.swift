@@ -2,6 +2,7 @@ import Accelerate
 import AVFoundation
 import Combine
 import Foundation
+import QuartzCore
 import os.log
 
 /// Audio recorder using AVAudioEngine for real-time sample access.
@@ -23,17 +24,28 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - Audio Engine
 
     private var audioEngine: AVAudioEngine?
-    private var audioFile: AVAudioFile?
+    // audioFile is read on the audio thread (in processAudioBuffer) and mutated on the main thread.
+    // Mutations always happen after removeTap + engine.stop (in stopEngine), so the audio thread
+    // cannot observe a torn-down file reference while the tap is still firing.
+    private nonisolated(unsafe) var audioFile: AVAudioFile?
     private var recordingURL: URL?
 
     // MARK: - Processing
 
     private let fftProcessor: FFTProcessor?
-    private var sampleBuffer: [Float] = []
+    private nonisolated(unsafe) var sampleBuffer: [Float] = []  // Access under sampleBufferLock (audio thread + main)
     private let sampleBufferSize = 2048
     private let dateProvider: () -> Date
-    private let sampleBufferLock = NSLock()  // Lock for thread-safe sampleBuffer and writeErrorCount access from audio thread
+    private let sampleBufferLock = NSLock()  // Guards sampleBuffer, _writeErrorCount, and _lastLevelPublishTime
     private nonisolated(unsafe) var _writeErrorCount = 0  // Track write errors for diagnostics (access under sampleBufferLock)
+
+    // MARK: - Level Meter Throttle (60 Hz)
+    // Audio callbacks fire much faster than SwiftUI can render (e.g. ~86 Hz at 16 kHz / 1024-frame buffers,
+    // higher at 44.1/48 kHz). Throttle published-level updates to ~60 Hz to avoid wasted MainActor hops
+    // and unnecessary SwiftUI invalidations. Uses CACurrentMediaTime() — a monotonic clock that's
+    // immune to wall-clock jumps.
+    nonisolated private static let levelPublishInterval: TimeInterval = 1.0 / 60.0
+    private nonisolated(unsafe) var _lastLevelPublishTime: TimeInterval = 0  // Access under sampleBufferLock
 
     // MARK: - Volume Management
 
@@ -72,7 +84,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
 
         // Boost microphone volume if enabled
-        if UserDefaults.standard.autoBoostMicrophoneVolume {
+        if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.boostMicrophoneVolume()
             }
@@ -122,6 +134,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             lastRecordingDuration = nil
             sampleBufferLock.lock()
             _writeErrorCount = 0  // Reset error count for new session
+            _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
             sampleBufferLock.unlock()
             isRecording = true
 
@@ -134,7 +147,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             recordingURL = nil
 
             // Restore volume if recording failed
-            if UserDefaults.standard.autoBoostMicrophoneVolume {
+            if AppDefaults.autoBoostMicrophoneVolume {
                 Task {
                     await volumeManager.restoreMicrophoneVolume()
                 }
@@ -163,7 +176,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         stopEngine()
 
         // Restore microphone volume if it was boosted
-        if UserDefaults.standard.autoBoostMicrophoneVolume {
+        if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.restoreMicrophoneVolume()
             }
@@ -182,7 +195,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         stopEngine()
 
         // Restore microphone volume
-        if UserDefaults.standard.autoBoostMicrophoneVolume {
+        if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.restoreMicrophoneVolume()
             }
@@ -235,7 +248,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         sampleBufferLock.unlock()
     }
 
-    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+    /// Called on the AVAudioEngine audio thread (NOT main). Stays `nonisolated` so the audio
+    /// path does no MainActor hops for the data path itself — only the throttled level/waveform
+    /// publish hops to main.
+    nonisolated private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
         guard let channelData = buffer.floatChannelData else { return }
 
         let frameLength = Int(buffer.frameLength)
@@ -249,12 +265,12 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             monoSamples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
         } else {
             // Average channels
-            for i in 0..<frameLength {
+            for frameIndex in 0..<frameLength {
                 var sum: Float = 0
                 for channel in 0..<channelCount {
-                    sum += channelData[channel][i]
+                    sum += channelData[channel][frameIndex]
                 }
-                monoSamples[i] = sum / Float(channelCount)
+                monoSamples[frameIndex] = sum / Float(channelCount)
             }
         }
 
@@ -280,6 +296,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // - Append new samples
         // - If buffer exceeds max size, remove oldest samples to maintain fixed size
         // - Maximum size is sampleBufferSize (2048 samples = ~128ms at 16kHz)
+        // Also gates the level-meter publish to ~60 Hz under the same lock.
+        let now = CACurrentMediaTime()
         sampleBufferLock.lock()
         sampleBuffer.append(contentsOf: monoSamples)
         let overflow = sampleBuffer.count - sampleBufferSize
@@ -288,7 +306,15 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             sampleBuffer = Array(sampleBuffer.suffix(sampleBufferSize))
         }
         let currentBuffer = sampleBuffer
+        let shouldPublish = (now - _lastLevelPublishTime) >= Self.levelPublishInterval
+        if shouldPublish {
+            _lastLevelPublishTime = now
+        }
         sampleBufferLock.unlock()
+
+        // Throttle the *publish* to 60 Hz. Buffer accumulation + file write above
+        // are intentionally NOT throttled — we must never drop audio frames.
+        guard shouldPublish else { return }
 
         // Calculate audio level and frequency bands (graceful fallback if FFT unavailable)
         let level = fftProcessor?.calculateLevel(from: monoSamples) ?? 0.0
@@ -306,21 +332,21 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
     }
 
-    private func downsampleForDisplay(_ samples: [Float], targetCount: Int) -> [Float] {
+    nonisolated private func downsampleForDisplay(_ samples: [Float], targetCount: Int) -> [Float] {
         guard targetCount > 0, samples.count > targetCount else { return samples }
 
         let chunkSize = samples.count / targetCount
         var result = [Float](repeating: 0, count: targetCount)
 
-        for i in 0..<targetCount {
-            let startIndex = i * chunkSize
+        for chunkIndex in 0..<targetCount {
+            let startIndex = chunkIndex * chunkSize
             let endIndex = min(startIndex + chunkSize, samples.count)
             let chunk = Array(samples[startIndex..<endIndex])
 
             // Use RMS for each chunk
             var rms: Float = 0
             vDSP_rmsqv(chunk, 1, &rms, vDSP_Length(chunk.count))
-            result[i] = rms
+            result[chunkIndex] = rms
         }
 
         return result
@@ -330,5 +356,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 // MARK: - Logger Extension
 
 private extension Logger {
-    static let audioEngineRecorder = Logger(subsystem: Bundle.main.bundleIdentifier ?? "AudioWhisper", category: "AudioEngineRecorder")
+    static let audioEngineRecorder = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "AudioWhisper",
+        category: "AudioEngineRecorder"
+    )
 }

@@ -143,8 +143,8 @@ struct ExpandingRingsView: View {
                 let center = CGPoint(x: size.width / 2, y: size.height / 2)
                 let maxRadius = max(size.width, size.height)
 
-                for i in 0..<ringCount {
-                    let delay = Double(i) * 0.12
+                for ringIndex in 0..<ringCount {
+                    let delay = Double(ringIndex) * 0.12
                     let ringDuration = 1.0
                     let progress = min(1.0, max(0, (elapsed - delay) / ringDuration))
 
@@ -211,7 +211,7 @@ struct ConfettiView: View {
         Color(red: 0.4, green: 0.9, blue: 0.5),    // Green
         Color(red: 0.45, green: 0.75, blue: 0.55), // Success green
         Color(red: 1.0, green: 0.6, blue: 0.4),    // Coral
-        Color(red: 0.6, green: 0.4, blue: 1.0),    // Purple
+        Color(red: 0.6, green: 0.4, blue: 1.0)    // Purple
     ]
 
     var body: some View {
@@ -228,8 +228,8 @@ struct ConfettiView: View {
 
                     // Physics: initial burst velocity + gravity
                     let gravity: Double = 200
-                    let x = center.x + particle.velocity.x * CGFloat(age) * 55
-                    let y = center.y + particle.velocity.y * CGFloat(age) * 55 + 0.5 * CGFloat(gravity) * CGFloat(age * age)
+                    let posX = center.x + particle.velocity.x * CGFloat(age) * 55
+                    let posY = center.y + particle.velocity.y * CGFloat(age) * 55 + 0.5 * CGFloat(gravity) * CGFloat(age * age)
 
                     // Fade out and shrink
                     let opacity = 1.0 - progress * 0.6
@@ -238,11 +238,11 @@ struct ConfettiView: View {
                     // Rotation
                     let rotation = Angle.degrees(particle.rotation + particle.rotationSpeed * age * 60)
 
-                    guard x >= -40, x <= size.width + 40,
-                          y >= -40, y <= size.height + 40 else { continue }
+                    guard posX >= -40, posX <= size.width + 40,
+                          posY >= -40, posY <= size.height + 40 else { continue }
 
                     context.opacity = opacity
-                    context.translateBy(x: x, y: y)
+                    context.translateBy(x: posX, y: posY)
                     context.rotate(by: rotation)
 
                     // Draw confetti piece
@@ -265,7 +265,7 @@ struct ConfettiView: View {
                     }
 
                     context.rotate(by: -rotation)
-                    context.translateBy(x: -x, y: -y)
+                    context.translateBy(x: -posX, y: -posY)
                     context.opacity = 1.0
                 }
             }
@@ -278,7 +278,7 @@ struct ConfettiView: View {
 
     private func spawnParticles() {
         startTime = Date()
-        particles = (0..<particleCount).map { i in
+        particles = (0..<particleCount).map { particleIndex in
             // Wider angle for more spread (-160° to -20°)
             let angle = Double.random(in: (-Double.pi * 0.9)...(-Double.pi * 0.1))
             let speed = Double.random(in: speedRange)
@@ -292,7 +292,7 @@ struct ConfettiView: View {
                 rotation: Double.random(in: 0...360),
                 rotationSpeed: Double.random(in: -8...8),
                 lifetime: Double.random(in: 1.2...1.8),
-                delay: Double(i) * 0.012,
+                delay: Double(particleIndex) * 0.012,
                 isCircle: Bool.random()
             )
         }

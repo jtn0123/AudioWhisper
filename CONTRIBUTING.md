@@ -75,7 +75,7 @@ swift run --verbose
 # Run all tests (recommended - uses make)
 make test
 
-# Run all tests directly (sequential to prevent flaky tests)
+# Run all tests directly, sequentially (matches CI)
 swift test --no-parallel
 
 # Run specific test suite
@@ -86,11 +86,21 @@ swift test --filter SettingsViewTests
 # Run tests with verbose output
 swift test --no-parallel --verbose
 
-# Run tests with code coverage
+# Run tests with code coverage (matches CI exactly)
 swift test --no-parallel --enable-code-coverage
 ```
 
-**Note**: Tests run sequentially (`--no-parallel`) to prevent flaky behavior from shared UserDefaults state between test classes.
+**Note**: Tests run sequentially (`--no-parallel`) to match CI
+(`.github/workflows/ci.yml`). A number of tests still read and write
+`UserDefaults.standard` directly; under `--parallel` they observe each
+other's writes and fail nondeterministically. Tests that touch
+`UserDefaults.standard` should subclass `IsolatedXCTestCase` (see
+`Tests/Utilities/IsolatedXCTestCase.swift`) and store their settings in a
+UUID-scoped suite via `UserDefaults(suiteName: UUID().uuidString)!`. The
+base class can be put in strict mode
+(`AUDIOWHISPER_TEST_ISOLATION=strict swift test`) to fail any test that
+leaks state into `.standard`. Once enough tests are isolated, `--parallel`
+can become the default.
 
 ### Code Quality Checks
 
@@ -343,3 +353,38 @@ These warnings from Apple's frameworks can be safely ignored:
 ## License
 
 By contributing to AudioWhisper, you agree that your contributions will be licensed under the same license as the project.
+
+## Embedded Python Dependencies
+
+AudioWhisper bundles a Python environment (managed via `uv`) for Parakeet and MLX semantic correction. The lockfile is committed at `Sources/Resources/uv.lock` and is the single source of truth for those deps.
+
+To upgrade:
+```bash
+cd Sources/Resources
+uv lock --upgrade        # or `uv lock --upgrade-package <name>` for one package
+git add uv.lock pyproject.toml
+```
+
+Test by running the app and verifying Parakeet/MLX still load successfully. Both `uv.lock` and `pyproject.toml` must always be committed together.
+
+## Refreshing the Bundled `uv` Binary
+
+The app ships a copy of [Astral's `uv`](https://github.com/astral-sh/uv) at
+`Sources/Resources/bin/uv` so first-launch Python bootstrap doesn't depend on
+the user's environment. `scripts/build.sh` captures the binary's SHA-256 at
+build time; `UvBootstrap` verifies that hash once per launch.
+
+To upgrade `uv`:
+
+1. Download the new `uv` release for `aarch64-apple-darwin` from
+   https://github.com/astral-sh/uv/releases.
+2. Verify the download against Astral's published `SHA256SUMS`.
+3. Replace `Sources/Resources/bin/uv` with the new binary; ensure it is
+   executable (`chmod +x`).
+4. Run `make build`. The build script automatically captures the new SHA-256
+   and stamps it into `VersionInfo.swift` for runtime verification.
+5. Commit the new binary along with whatever `Sources/Resources/uv.lock`
+   changes flow from running Python deps against the newer `uv`.
+
+If a user's installed `uv` is newer than the bundled one, AudioWhisper uses
+the bundled copy regardless — verification gates the bundled path only.

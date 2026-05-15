@@ -5,7 +5,7 @@ import AppKit
 /// Integration tests for SmartPaste flow:
 /// Transcription -> PasteManager -> Clipboard -> Notification
 @MainActor
-final class SmartPasteIntegrationTests: XCTestCase {
+final class SmartPasteIntegrationTests: IsolatedXCTestCase {
     var testDefaults: UserDefaults!
 
     override func setUp() async throws {
@@ -130,7 +130,7 @@ final class SmartPasteIntegrationTests: XCTestCase {
         // Use actor to safely capture notification in @Sendable closure
         actor NotificationCapture {
             var notification: Notification?
-            func set(_ n: Notification) { notification = n }
+            func set(_ value: Notification) { notification = value }
             func get() -> Notification? { notification }
         }
         let capture = NotificationCapture()
@@ -161,7 +161,7 @@ final class SmartPasteIntegrationTests: XCTestCase {
         // Use actor to safely capture notification in @Sendable closure
         actor NotificationCapture {
             var notification: Notification?
-            func set(_ n: Notification) { notification = n }
+            func set(_ value: Notification) { notification = value }
             func get() -> Notification? { notification }
         }
         let capture = NotificationCapture()
@@ -302,4 +302,3 @@ final class SmartPasteIntegrationTests: XCTestCase {
         XCTAssertEqual(pasteboard.string(forType: .string), "Second transcription")
     }
 }
-

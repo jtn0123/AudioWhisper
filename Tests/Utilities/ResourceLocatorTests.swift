@@ -97,7 +97,7 @@ final class ResourceLocatorPythonScriptTests: XCTestCase {
             "parakeet_transcribe_pcm",
             "mlx_semantic_correct",
             "verify_parakeet",
-            "verify_mlx",
+            "verify_mlx"
         ]
 
         for script in knownScripts {

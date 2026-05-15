@@ -4,25 +4,19 @@ import AppKit
 import os.log
 
 internal struct DashboardPreferencesView: View {
-    @AppStorage("startAtLogin") private var startAtLogin = true
-    @AppStorage("immediateRecording") private var immediateRecording = true
-    @AppStorage("autoBoostMicrophoneVolume") private var autoBoostMicrophoneVolume = false
-    @AppStorage("enableSmartPaste") private var enableSmartPaste = true
-    @AppStorage("playCompletionSound") private var playCompletionSound = true
-    @AppStorage("transcriptionHistoryEnabled") private var transcriptionHistoryEnabled = false
-    @AppStorage("transcriptionRetentionPeriod") private var transcriptionRetentionPeriodRaw = RetentionPeriod.oneMonth.rawValue
-    @AppStorage("maxModelStorageGB") private var maxModelStorageGB = 5.0
+    @Environment(PermissionManager.self) private var permissionManager
+    @AppDefault(\.startAtLogin) private var startAtLogin
+    @AppDefault(\.immediateRecording) private var immediateRecording
+    @AppDefault(\.autoBoostMicrophoneVolume) private var autoBoostMicrophoneVolume
+    @AppDefault(\.enableSmartPaste) private var enableSmartPaste
+    @AppDefault(\.playCompletionSound) private var playCompletionSound
+    @AppDefault(\.transcriptionHistoryEnabled) private var transcriptionHistoryEnabled
+    @AppDefault(\.transcriptionRetentionPeriod) private var transcriptionRetentionPeriod
+    @AppDefault(\.maxModelStorageGB) private var maxModelStorageGB
 
     @State private var loginItemError: String?
 
     private let storageOptions: [Double] = [1, 2, 5, 10, 20]
-
-    private var retentionBinding: Binding<RetentionPeriod> {
-        Binding(
-            get: { RetentionPeriod(rawValue: transcriptionRetentionPeriodRaw) ?? .oneMonth },
-            set: { transcriptionRetentionPeriodRaw = $0.rawValue }
-        )
-    }
 
     var body: some View {
         ScrollView {
@@ -92,8 +86,8 @@ internal struct DashboardPreferencesView: View {
                 .onChange(of: enableSmartPaste) { _, newValue in
                     if newValue {
                         // Check if accessibility is granted, if not show modal
-                        if PermissionManager.shared.accessibilityPermissionState != .granted {
-                            PermissionManager.shared.showAccessibilityModal = true
+                        if permissionManager.accessibilityPermissionState != .granted {
+                            permissionManager.showAccessibilityModal = true
                         }
                     }
                 }
@@ -136,7 +130,7 @@ internal struct DashboardPreferencesView: View {
                     SettingsPickerRow(
                         title: "Retention Period",
                         subtitle: "How long to keep transcriptions",
-                        selection: retentionBinding,
+                        selection: $transcriptionRetentionPeriod,
                         options: RetentionPeriod.allCases,
                         display: { $0.displayName }
                     )

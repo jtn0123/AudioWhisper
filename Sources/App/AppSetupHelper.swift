@@ -15,8 +15,8 @@ internal class AppSetupHelper {
     }
     
     static func setupLoginItem() {
-        let startAtLogin = UserDefaults.standard.object(forKey: "startAtLogin") as? Bool ?? true // Default to true
-        
+        let startAtLogin = AppDefaults.startAtLogin
+
         if startAtLogin {
             // Only try to register if we're in a real app context, not in tests
             if Bundle.main.bundleIdentifier != nil && !AppEnvironment.isRunningTests {
@@ -28,21 +28,24 @@ internal class AppSetupHelper {
     static func createMenuBarIcon() -> NSImage {
         let iconSize = getAdaptiveMenuBarIconSize()
         let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
-        let image = NSImage(systemSymbolName: "microphone.circle", accessibilityDescription: LocalizedStrings.Accessibility.microphoneIcon)?.withSymbolConfiguration(config)
+        let image = NSImage(
+            systemSymbolName: "microphone.circle",
+            accessibilityDescription: LocalizedStrings.Accessibility.microphoneIcon
+        )?.withSymbolConfiguration(config)
         image?.isTemplate = true // This makes it adapt to menu bar appearance
         return image ?? NSImage()
     }
     
     // MARK: - Menu Bar Icon Constants
-    private static let STANDARD_MENU_BAR_HEIGHT: CGFloat = 24.0
-    private static let NOTCHED_MENU_BAR_THRESHOLD: CGFloat = 26.0
-    private static let STANDARD_ICON_SIZE: CGFloat = 16.0  // For regular displays
-    private static let NOTCHED_ICON_SIZE: CGFloat = 20.0   // For notched displays (taller menu bar)
-    
+    private static let standardMenuBarHeight: CGFloat = 24.0
+    private static let notchedMenuBarThreshold: CGFloat = 26.0
+    private static let standardIconSize: CGFloat = 16.0  // For regular displays
+    private static let notchedIconSize: CGFloat = 20.0   // For notched displays (taller menu bar)
+
     // Display detection constants
-    private static let NOTCHED_ASPECT_RATIO_MIN: CGFloat = 1.5
-    private static let NOTCHED_ASPECT_RATIO_MAX: CGFloat = 1.6
-    private static let NOTCHED_MIN_HEIGHT: CGFloat = 1900.0
+    private static let notchedAspectRatioMin: CGFloat = 1.5
+    private static let notchedAspectRatioMax: CGFloat = 1.6
+    private static let notchedMinHeight: CGFloat = 1900.0
     
     // Cache for icon size to avoid repeated calculations
     // Thread-safe access via lock to prevent data races
@@ -60,7 +63,7 @@ internal class AppSetupHelper {
 
     static func getAdaptiveMenuBarIconSize() -> CGFloat {
         // Check for user override first
-        if let overrideSize = UserDefaults.standard.object(forKey: "menuBarIconSize") as? Double,
+        if let overrideSize = AppDefaults.menuBarIconSize,
            overrideSize > 0 {
             return CGFloat(overrideSize)
         }
@@ -69,7 +72,7 @@ internal class AppSetupHelper {
         // not necessarily the main screen
         guard let statusItemScreen = getStatusItemScreen() else {
             // Fallback to standard size if we can't detect the screen
-            return STANDARD_ICON_SIZE
+            return standardIconSize
         }
 
         // Check if screen configuration has changed by comparing frame
@@ -79,7 +82,7 @@ internal class AppSetupHelper {
         cacheLock.lock()
         if let cached = _cachedIconSize,
            let lastFrame = _lastMainScreenFrame,
-           NSEqualRects(lastFrame, currentFrame) {
+           lastFrame == currentFrame {
             cacheLock.unlock()
             return cached
         }
@@ -89,7 +92,7 @@ internal class AppSetupHelper {
         let hasNotch = detectDisplayNotchForScreen(statusItemScreen)
 
         // Adaptive sizing based on menu bar height
-        let iconSize: CGFloat = hasNotch ? NOTCHED_ICON_SIZE : STANDARD_ICON_SIZE
+        let iconSize: CGFloat = hasNotch ? notchedIconSize : standardIconSize
 
         // Cache the result (thread-safe)
         cacheLock.lock()
@@ -103,11 +106,9 @@ internal class AppSetupHelper {
     private static func getStatusItemScreen() -> NSScreen? {
         // Try to get the screen where the menu bar is displayed
         // In most cases, this is the screen with menu bar
-        for screen in NSScreen.screens {
-            // The screen with the menu bar typically has y origin at 0
-            if screen.frame.origin.y == 0 {
-                return screen
-            }
+        // The screen with the menu bar typically has y origin at 0
+        for screen in NSScreen.screens where screen.frame.origin.y == 0 {
+            return screen
         }
         // Fallback to main screen
         return NSScreen.main
@@ -131,29 +132,28 @@ internal class AppSetupHelper {
         return false
     }
     
-    
     static func checkFirstRun() -> Bool {
-        let hasExistingProvider = UserDefaults.standard.string(forKey: "transcriptionProvider") != nil
-        let hasCompletedWelcome = UserDefaults.standard.bool(forKey: "hasCompletedWelcome")
-        let lastWelcomeVersion = UserDefaults.standard.string(forKey: "lastWelcomeVersion") ?? "0"
-        
+        let hasExistingProvider = AppDefaults.hasValue(for: .transcriptionProvider)
+        let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
+        let lastWelcomeVersion = AppDefaults.lastWelcomeVersion
+
         // Current version that includes SmartPaste feature
         let currentWelcomeVersion = "1.1" // Update this when SmartPaste feature is released
-        
+
         // Show welcome for new users OR existing users who haven't seen the SmartPaste welcome
         let shouldShowWelcome = (!hasExistingProvider && !hasCompletedWelcome) || (lastWelcomeVersion != currentWelcomeVersion)
-        
+
         if shouldShowWelcome {
             if !hasExistingProvider {
                 // First run - default to LocalWhisper
-                UserDefaults.standard.set(TranscriptionProvider.local.rawValue, forKey: "transcriptionProvider")
+                AppDefaults.transcriptionProvider = .local
             }
             return true
         } else if !hasExistingProvider {
             // Provider was somehow reset - default to LocalWhisper
-            UserDefaults.standard.set(TranscriptionProvider.local.rawValue, forKey: "transcriptionProvider")
+            AppDefaults.transcriptionProvider = .local
         }
-        
+
         return false
     }
     
@@ -161,7 +161,11 @@ internal class AppSetupHelper {
         let tempDirectory = FileManager.default.temporaryDirectory
         
         do {
-            let files = try FileManager.default.contentsOfDirectory(at: tempDirectory, includingPropertiesForKeys: [.creationDateKey], options: [])
+            let files = try FileManager.default.contentsOfDirectory(
+                at: tempDirectory,
+                includingPropertiesForKeys: [.creationDateKey],
+                options: []
+            )
             let audioFiles = files.filter { $0.lastPathComponent.hasPrefix("recording_") && $0.pathExtension == "m4a" }
             
             let cutoffDate = Date().addingTimeInterval(-24 * 60 * 60) // 24 hours ago
@@ -201,10 +205,10 @@ internal class AppSetupHelper {
                 ("cloud_gemini_prompt.txt", defaultCloudPrompt)
             ]
 
-            for f in files {
-                let url = base.appendingPathComponent(f.name)
+            for promptFile in files {
+                let url = base.appendingPathComponent(promptFile.name)
                 if !FileManager.default.fileExists(atPath: url.path) {
-                    try f.content.write(to: url, atomically: true, encoding: .utf8)
+                    try promptFile.content.write(to: url, atomically: true, encoding: .utf8)
                 }
             }
         } catch {
@@ -212,7 +216,14 @@ internal class AppSetupHelper {
         }
     }
 
-    private static let defaultCloudPrompt = "You are a transcription corrector. Fix grammar, casing, punctuation, and obvious mis-hearings that do not change meaning. Remove filler words and transcribed pauses that add no meaning (e.g., 'um', 'uh', 'erm', 'you know', 'like' as filler; '[pause]', '(pause)', ellipses for hesitations). Do not remove meaningful words. Do not summarize or add content. Output only the corrected text."
+    private static let defaultCloudPrompt = """
+        You are a transcription corrector. Fix grammar, casing, punctuation, \
+        and obvious mis-hearings that do not change meaning. Remove filler \
+        words and transcribed pauses that add no meaning (e.g., 'um', 'uh', \
+        'erm', 'you know', 'like' as filler; '[pause]', '(pause)', ellipses \
+        for hesitations). Do not remove meaningful words. Do not summarize \
+        or add content. Output only the corrected text.
+        """
 
     private static let defaultLocalMLXPrompt = defaultCloudPrompt
 }

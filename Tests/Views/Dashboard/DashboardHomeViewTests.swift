@@ -149,7 +149,7 @@ final class DashboardHomeViewTests: XCTestCase {
         let records = [
             makeTestRecord(provider: "local", wordCount: 100),
             makeTestRecord(provider: "local", wordCount: 50),
-            makeTestRecord(provider: "parakeet", wordCount: 200),
+            makeTestRecord(provider: "parakeet", wordCount: 200)
         ]
 
         let stats = DashboardHomeView.testableCalculateProviderStats(from: records)
@@ -167,7 +167,7 @@ final class DashboardHomeViewTests: XCTestCase {
     func testProviderStatsIconMapping() {
         let records = [
             makeTestRecord(provider: "local", wordCount: 100),
-            makeTestRecord(provider: "parakeet", wordCount: 100),
+            makeTestRecord(provider: "parakeet", wordCount: 100)
         ]
 
         let stats = DashboardHomeView.testableCalculateProviderStats(from: records)
@@ -224,8 +224,10 @@ final class DashboardHomeViewTests: XCTestCase {
         let calendar = Calendar.current
 
         for week in weeks {
-            for i in 1..<week.count {
-                let daysDiff = calendar.dateComponents([.day], from: week[i-1], to: week[i]).day
+            for dayIndex in 1..<week.count {
+                let daysDiff = calendar.dateComponents(
+                    [.day], from: week[dayIndex - 1], to: week[dayIndex]
+                ).day
                 XCTAssertEqual(daysDiff, 1, "Days within a week should be consecutive")
             }
         }

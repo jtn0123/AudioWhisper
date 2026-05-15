@@ -1,6 +1,5 @@
 import XCTest
 import SwiftUI
-import HotKey
 import AppKit
 @testable import AudioWhisper
 
@@ -57,7 +56,7 @@ final class HotKeyRecorderViewTests: XCTestCase {
             onComplete: { _ in }
         )
 
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true, "Body should not crash")
     }
 }
@@ -146,86 +145,24 @@ final class KeyCodeMappingTests: XCTestCase {
     }
 
     // Helper matching HotKeyRecorderView implementation
+    private static let keyCodeMap: [UInt16: Key] = [
+        0: .a, 1: .s, 2: .d, 3: .f, 4: .h, 5: .g, 6: .z, 7: .x, 8: .c, 9: .v,
+        11: .b, 12: .q, 13: .w, 14: .e, 15: .r, 16: .y, 17: .t, 18: .one,
+        19: .two, 20: .three, 21: .four, 22: .six, 23: .five, 24: .equal,
+        25: .nine, 26: .seven, 27: .minus, 28: .eight, 29: .zero,
+        30: .rightBracket, 31: .o, 32: .u, 33: .leftBracket, 34: .i, 35: .p,
+        36: .return, 37: .l, 38: .j, 39: .quote, 40: .k, 41: .semicolon,
+        42: .backslash, 43: .comma, 44: .slash, 45: .n, 46: .m, 47: .period,
+        48: .tab, 49: .space, 50: .grave, 51: .delete, 53: .escape,
+        122: .f1, 120: .f2, 99: .f3, 118: .f4, 96: .f5, 97: .f6, 98: .f7,
+        100: .f8, 101: .f9, 109: .f10, 103: .f11, 111: .f12, 105: .f13,
+        107: .f14, 113: .f15, 106: .f16, 64: .f17, 79: .f18, 80: .f19,
+        90: .f20, 126: .upArrow, 125: .downArrow, 123: .leftArrow,
+        124: .rightArrow
+    ]
+
     private func keyFromKeyCode(_ keyCode: UInt16) -> Key? {
-        switch keyCode {
-        case 0: return .a
-        case 1: return .s
-        case 2: return .d
-        case 3: return .f
-        case 4: return .h
-        case 5: return .g
-        case 6: return .z
-        case 7: return .x
-        case 8: return .c
-        case 9: return .v
-        case 11: return .b
-        case 12: return .q
-        case 13: return .w
-        case 14: return .e
-        case 15: return .r
-        case 16: return .y
-        case 17: return .t
-        case 18: return .one
-        case 19: return .two
-        case 20: return .three
-        case 21: return .four
-        case 22: return .six
-        case 23: return .five
-        case 24: return .equal
-        case 25: return .nine
-        case 26: return .seven
-        case 27: return .minus
-        case 28: return .eight
-        case 29: return .zero
-        case 30: return .rightBracket
-        case 31: return .o
-        case 32: return .u
-        case 33: return .leftBracket
-        case 34: return .i
-        case 35: return .p
-        case 36: return .return
-        case 37: return .l
-        case 38: return .j
-        case 39: return .quote
-        case 40: return .k
-        case 41: return .semicolon
-        case 42: return .backslash
-        case 43: return .comma
-        case 44: return .slash
-        case 45: return .n
-        case 46: return .m
-        case 47: return .period
-        case 48: return .tab
-        case 49: return .space
-        case 50: return .grave
-        case 51: return .delete
-        case 53: return .escape
-        case 122: return .f1
-        case 120: return .f2
-        case 99: return .f3
-        case 118: return .f4
-        case 96: return .f5
-        case 97: return .f6
-        case 98: return .f7
-        case 100: return .f8
-        case 101: return .f9
-        case 109: return .f10
-        case 103: return .f11
-        case 111: return .f12
-        case 105: return .f13
-        case 107: return .f14
-        case 113: return .f15
-        case 106: return .f16
-        case 64: return .f17
-        case 79: return .f18
-        case 80: return .f19
-        case 90: return .f20
-        case 126: return .upArrow
-        case 125: return .downArrow
-        case 123: return .leftArrow
-        case 124: return .rightArrow
-        default: return nil
-        }
+        Self.keyCodeMap[keyCode]
     }
 }
 
@@ -267,86 +204,26 @@ final class KeyToStringTests: XCTestCase {
     }
 
     // Helper matching HotKeyRecorderView implementation
+    private static let keyStringMap: [Key: String] = [
+        .f1: "F1", .f2: "F2", .f3: "F3", .f4: "F4", .f5: "F5", .f6: "F6",
+        .f7: "F7", .f8: "F8", .f9: "F9", .f10: "F10", .f11: "F11", .f12: "F12",
+        .f13: "F13", .f14: "F14", .f15: "F15", .f16: "F16", .f17: "F17",
+        .f18: "F18", .f19: "F19", .f20: "F20",
+        .a: "A", .s: "S", .d: "D", .f: "F", .h: "H", .g: "G", .z: "Z", .x: "X",
+        .c: "C", .v: "V", .b: "B", .q: "Q", .w: "W", .e: "E", .r: "R", .y: "Y",
+        .t: "T", .o: "O", .u: "U", .i: "I", .p: "P", .l: "L", .j: "J", .k: "K",
+        .n: "N", .m: "M",
+        .one: "1", .two: "2", .three: "3", .four: "4", .five: "5", .six: "6",
+        .seven: "7", .eight: "8", .nine: "9", .zero: "0",
+        .equal: "=", .minus: "-", .rightBracket: "]", .leftBracket: "[",
+        .quote: "'", .semicolon: ";", .backslash: "\\", .comma: ",",
+        .slash: "/", .period: ".", .grave: "`",
+        .return: "⏎", .tab: "⇥", .space: "Space", .delete: "⌫", .escape: "⎋",
+        .upArrow: "↑", .downArrow: "↓", .leftArrow: "←", .rightArrow: "→"
+    ]
+
     private func keyToString(_ key: Key) -> String {
-        switch key {
-        case .f1: return "F1"
-        case .f2: return "F2"
-        case .f3: return "F3"
-        case .f4: return "F4"
-        case .f5: return "F5"
-        case .f6: return "F6"
-        case .f7: return "F7"
-        case .f8: return "F8"
-        case .f9: return "F9"
-        case .f10: return "F10"
-        case .f11: return "F11"
-        case .f12: return "F12"
-        case .f13: return "F13"
-        case .f14: return "F14"
-        case .f15: return "F15"
-        case .f16: return "F16"
-        case .f17: return "F17"
-        case .f18: return "F18"
-        case .f19: return "F19"
-        case .f20: return "F20"
-        case .a: return "A"
-        case .s: return "S"
-        case .d: return "D"
-        case .f: return "F"
-        case .h: return "H"
-        case .g: return "G"
-        case .z: return "Z"
-        case .x: return "X"
-        case .c: return "C"
-        case .v: return "V"
-        case .b: return "B"
-        case .q: return "Q"
-        case .w: return "W"
-        case .e: return "E"
-        case .r: return "R"
-        case .y: return "Y"
-        case .t: return "T"
-        case .one: return "1"
-        case .two: return "2"
-        case .three: return "3"
-        case .four: return "4"
-        case .six: return "6"
-        case .five: return "5"
-        case .equal: return "="
-        case .nine: return "9"
-        case .seven: return "7"
-        case .minus: return "-"
-        case .eight: return "8"
-        case .zero: return "0"
-        case .rightBracket: return "]"
-        case .o: return "O"
-        case .u: return "U"
-        case .leftBracket: return "["
-        case .i: return "I"
-        case .p: return "P"
-        case .return: return "⏎"
-        case .l: return "L"
-        case .j: return "J"
-        case .quote: return "'"
-        case .k: return "K"
-        case .semicolon: return ";"
-        case .backslash: return "\\"
-        case .comma: return ","
-        case .slash: return "/"
-        case .n: return "N"
-        case .m: return "M"
-        case .period: return "."
-        case .tab: return "⇥"
-        case .space: return "Space"
-        case .grave: return "`"
-        case .delete: return "⌫"
-        case .escape: return "⎋"
-        case .upArrow: return "↑"
-        case .downArrow: return "↓"
-        case .leftArrow: return "←"
-        case .rightArrow: return "→"
-        default: return ""
-        }
+        Self.keyStringMap[key] ?? ""
     }
 }
 

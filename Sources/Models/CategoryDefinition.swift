@@ -80,10 +80,13 @@ internal extension CategoryDefinition {
             Clean up this speech transcription for a terminal/command-line context.
             - Fix typos, grammar, and punctuation while preserving command structure
             - Remove filler words (um, uh, like, you know)
-            - Preserve technical terms: CLI, sudo, grep, awk, sed, bash, zsh, tmux, vim, git, ssh, curl, wget, ls, cd, rm, mkdir, echo, apt, brew
+            - Preserve technical terms: CLI, sudo, grep, awk, sed, bash, zsh, tmux, vim, \
+            git, ssh, curl, wget, ls, cd, rm, mkdir, echo, apt, brew
             - Preserve app names: Ghostty, iTerm, Kitty, Wezterm, Hyper
-            - Preserve flags, paths, syntax, and multi-line elements (e.g., -v, --verbose, ~/Documents, |, >, &&, $VAR, \\ for line continuation)
-            - Infer and correct common homophones, misrecognitions, or fragments based on context (e.g., 'eye term' -> 'iTerm', 'suit oh' -> 'sudo', 'see dee' -> 'cd', incomplete 'pipe to' -> '|')
+            - Preserve flags, paths, syntax, and multi-line elements \
+            (e.g., -v, --verbose, ~/Documents, |, >, &&, $VAR, \\ for line continuation)
+            - Infer and correct common homophones, misrecognitions, or fragments based on context \
+            (e.g., 'eye term' -> 'iTerm', 'suit oh' -> 'sudo', 'see dee' -> 'cd', incomplete 'pipe to' -> '|')
             - Handle fragmented sentences by connecting logically without adding content
             - Do not add or invent commands; keep original intent
             Output only the corrected text.
@@ -93,11 +96,14 @@ internal extension CategoryDefinition {
             Clean up this speech transcription for a coding/programming context.
             - Fix typos, grammar, and punctuation while preserving code integrity
             - Remove filler words (um, uh, like, you know)
-            - Preserve programming terms: function, class, method, variable, const, let, var, async, await, if, for, while, return, import, export
+            - Preserve programming terms: function, class, method, variable, const, let, var, \
+            async, await, if, for, while, return, import, export
             - Preserve naming conventions: camelCase, snake_case, PascalCase, kebab-case
             - Preserve common abbreviations: API, SDK, CLI, UI, UX, JSON, XML, SQL, HTTP, REST, GraphQL
-            - Preserve code-related words, symbols, and blocks intact (e.g., useState, onClick, handleSubmit, ==, !=, +=, ```code blocks```, // comments)
-            - Infer and correct common homophones, misrecognitions, or fragments based on context (e.g., 'you state' -> 'useState', 'a sink' -> 'async', 'four loop' -> 'for loop')
+            - Preserve code-related words, symbols, and blocks intact \
+            (e.g., useState, onClick, handleSubmit, ==, !=, +=, ```code blocks```, // comments)
+            - Infer and correct common homophones, misrecognitions, or fragments based on context \
+            (e.g., 'you state' -> 'useState', 'a sink' -> 'async', 'four loop' -> 'for loop')
             - Handle mixed code and prose by separating logically if fragmented
             - Do not add or invent code; keep original intent
             Output only the corrected text.
@@ -108,9 +114,11 @@ internal extension CategoryDefinition {
             - Fix obvious typos and unclear words
             - Light punctuation cleanup
             - Remove excessive filler words but keep casual tone and rhythm
-            - Preserve informal language, expressions, slang, abbreviations, and tone (e.g., lol, brb, btw, imo, sarcasm like "sure thing /s")
+            - Preserve informal language, expressions, slang, abbreviations, and tone \
+            (e.g., lol, brb, btw, imo, sarcasm like "sure thing /s")
             - Preserve emoji references (e.g., "smiley face", "thumbs up")
-            - Infer and correct common homophones, misrecognitions, or fragments based on context (e.g., 'wreck' -> 'rec' for recommendation, 'you are ell' -> 'URL')
+            - Infer and correct common homophones, misrecognitions, or fragments based on context \
+            (e.g., 'wreck' -> 'rec' for recommendation, 'you are ell' -> 'URL')
             - Handle short, fragmented messages by keeping them concise
             - Do not add or invent content; maintain original casual intent
             Output only the corrected text.
@@ -122,7 +130,8 @@ internal extension CategoryDefinition {
             - Remove all filler words (um, uh, like, you know, basically, actually)
             - Improve sentence structure for clarity, flow, and completeness if fragmented
             - Ensure proper capitalization and formal tone where appropriate
-            - Infer and correct common homophones, misrecognitions, or fragments based on context (e.g., 'there' -> 'their', 'right a function' -> 'write a function')
+            - Infer and correct common homophones, misrecognitions, or fragments based on context \
+            (e.g., 'there' -> 'their', 'right a function' -> 'write a function')
             - Keep phrasing close to original without changing meaning
             - Do not add or invent ideas; keep original intent
             Output only the corrected text.
@@ -134,7 +143,8 @@ internal extension CategoryDefinition {
             - Remove filler words (um, uh, like, you know)
             - Preserve key elements: greetings (e.g., Hi [Name]), sign-offs (e.g., Best regards), attachments mentions
             - Improve sentence structure for politeness and clarity if needed
-            - Infer and correct common homophones or misrecognitions based on context (e.g., 'sand' -> 'send', 'attach meant' -> 'attachment')
+            - Infer and correct common homophones or misrecognitions based on context \
+            (e.g., 'sand' -> 'send', 'attach meant' -> 'attachment')
             - Handle fragmented thoughts by forming coherent paragraphs
             - Do not add or invent content; keep original intent
             Output only the corrected text.

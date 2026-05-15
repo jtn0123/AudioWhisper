@@ -142,7 +142,8 @@ final class TextCleaningTests: XCTestCase {
     }
     
     func testRealWorldExample() {
-        let input = "So I was thinking [laughter] about this problem (coughing) and then [background music] I realized [applause] the solution was simple (whispers)"
+        let input = "So I was thinking [laughter] about this problem (coughing) and then "
+            + "[background music] I realized [applause] the solution was simple (whispers)"
         let expected = "So I was thinking about this problem and then I realized the solution was simple"
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)

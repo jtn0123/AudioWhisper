@@ -18,7 +18,7 @@ final class InkRippleViewTests: XCTestCase {
             audioLevel: 0.5,
             isActive: true
         )
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true)
     }
 
@@ -65,7 +65,7 @@ final class InkRippleRecordingViewTests: XCTestCase {
             audioLevel: 0,
             onTap: {}
         )
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true)
     }
 

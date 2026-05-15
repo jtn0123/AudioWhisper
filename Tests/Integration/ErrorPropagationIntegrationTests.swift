@@ -5,7 +5,7 @@ import SwiftData
 /// Integration tests for cross-service error propagation
 /// Verifies that errors flow correctly through the service chain
 @MainActor
-final class ErrorPropagationIntegrationTests: XCTestCase {
+final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
     var mockKeychain: MockKeychainService!
     var speechService: SpeechToTextService!
     var testDefaults: UserDefaults!
@@ -151,9 +151,9 @@ final class ErrorPropagationIntegrationTests: XCTestCase {
 
     // MARK: - Error Recovery Tests
 
-    func testErrorDoesNotCorruptKeychain() {
+    func testErrorDoesNotCorruptKeychain() throws {
         // Given - Save a valid key
-        try! mockKeychain.save("valid-key", service: "AudioWhisper", account: "OpenAI")
+        try mockKeychain.save("valid-key", service: "AudioWhisper", account: "OpenAI")
 
         // When - Attempt an operation that fails
         mockKeychain.shouldThrow = true
@@ -205,11 +205,11 @@ final class ErrorPropagationIntegrationTests: XCTestCase {
 
     func testNormalizedEditDistanceIdenticalStrings() {
         // Given
-        let a = "Hello world"
-        let b = "Hello world"
+        let lhs = "Hello world"
+        let rhs = "Hello world"
 
         // When
-        let distance = SemanticCorrectionService.normalizedEditDistance(a: a, b: b)
+        let distance = SemanticCorrectionService.normalizedEditDistance(a: lhs, b: rhs)
 
         // Then
         XCTAssertEqual(distance, 0.0)
@@ -217,11 +217,11 @@ final class ErrorPropagationIntegrationTests: XCTestCase {
 
     func testNormalizedEditDistanceCompletelyDifferent() {
         // Given
-        let a = "abc"
-        let b = "xyz"
+        let lhs = "abc"
+        let rhs = "xyz"
 
         // When
-        let distance = SemanticCorrectionService.normalizedEditDistance(a: a, b: b)
+        let distance = SemanticCorrectionService.normalizedEditDistance(a: lhs, b: rhs)
 
         // Then - Should be 1.0 (completely different)
         XCTAssertEqual(distance, 1.0)
@@ -229,11 +229,11 @@ final class ErrorPropagationIntegrationTests: XCTestCase {
 
     func testNormalizedEditDistanceEmptyString() {
         // Given
-        let a = ""
-        let b = "hello"
+        let lhs = ""
+        let rhs = "hello"
 
         // When
-        let distance = SemanticCorrectionService.normalizedEditDistance(a: a, b: b)
+        let distance = SemanticCorrectionService.normalizedEditDistance(a: lhs, b: rhs)
 
         // Then
         XCTAssertEqual(distance, 1.0)
@@ -241,7 +241,7 @@ final class ErrorPropagationIntegrationTests: XCTestCase {
 
     // MARK: - Concurrent Error Handling Tests
 
-    func testConcurrentErrorsAreIsolated() async {
+    func testConcurrentErrorsAreIsolated() async throws {
         // Given - Multiple concurrent operations
         let mockKeychains = (0..<5).map { _ in MockKeychainService() }
 
@@ -260,7 +260,7 @@ final class ErrorPropagationIntegrationTests: XCTestCase {
 
         // Then - Errors in some don't affect others
         let successKeychain = mockKeychains[0]
-        try! successKeychain.save("key", service: "test", account: "test")
+        try successKeychain.save("key", service: "test", account: "test")
         let retrieved = successKeychain.getQuietly(service: "test", account: "test")
         XCTAssertEqual(retrieved, "key")
     }

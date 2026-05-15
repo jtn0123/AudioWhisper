@@ -1,10 +1,16 @@
 import XCTest
 import SwiftUI
+import AppKit
 @testable import AudioWhisper
 
 // MARK: - DashboardPermissionsView Tests
 @MainActor
-final class DashboardPermissionsViewTests: XCTestCase {
+final class DashboardPermissionsViewTests: IsolatedXCTestCase {
+    // NOTE(D1): DashboardPermissionsView reads `enableSmartPaste` from
+    // UserDefaults.standard via AppStorage. Once the view accepts an
+    // injected UserDefaults, route writes through a UUID-scoped suite and
+    // re-enable isolation.
+    override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
     override func setUp() {
         super.setUp()
@@ -24,22 +30,25 @@ final class DashboardPermissionsViewTests: XCTestCase {
 
     func testViewBodyDoesNotCrash() {
         let view = DashboardPermissionsView()
-        let _ = view.body
-        XCTAssertTrue(true, "Body should not crash")
+            .environment(PermissionManager.shared)
+        let hosting = NSHostingView(rootView: view)
+        XCTAssertNotNil(hosting)
     }
 
     func testViewWithSmartPasteEnabled() {
         UserDefaults.standard.set(true, forKey: "enableSmartPaste")
         let view = DashboardPermissionsView()
-        let _ = view.body
-        XCTAssertTrue(true, "View should render with SmartPaste enabled")
+            .environment(PermissionManager.shared)
+        let hosting = NSHostingView(rootView: view)
+        XCTAssertNotNil(hosting)
     }
 
     func testViewWithSmartPasteDisabled() {
         UserDefaults.standard.set(false, forKey: "enableSmartPaste")
         let view = DashboardPermissionsView()
-        let _ = view.body
-        XCTAssertTrue(true, "View should render with SmartPaste disabled")
+            .environment(PermissionManager.shared)
+        let hosting = NSHostingView(rootView: view)
+        XCTAssertNotNil(hosting)
     }
 }
 

@@ -12,4 +12,3 @@ final class MockRunningApplication: NSRunningApplication, @unchecked Sendable {
         return true
     }
 }
-

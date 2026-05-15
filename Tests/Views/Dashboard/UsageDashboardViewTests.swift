@@ -6,19 +6,10 @@ import SwiftUI
 @MainActor
 final class UsageDashboardViewTests: XCTestCase {
 
-    override func setUp() {
-        super.setUp()
-    }
-
-    override func tearDown() {
-        super.tearDown()
-    }
-
     func testViewCanBeCreated() {
         let view = UsageDashboardView()
         XCTAssertNotNil(view)
     }
-
 
 }
 

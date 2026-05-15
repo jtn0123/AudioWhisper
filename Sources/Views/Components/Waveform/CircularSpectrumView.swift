@@ -17,7 +17,7 @@ struct CircularSpectrumView: View {
         Color(red: 1.0, green: 0.8, blue: 0.2),    // Yellow
         Color(red: 1.0, green: 0.5, blue: 0.2),    // Orange
         Color(red: 0.95, green: 0.2, blue: 0.4),   // Red-pink
-        Color(red: 0.95, green: 0.2, blue: 0.8),   // Magenta
+        Color(red: 0.95, green: 0.2, blue: 0.8)   // Magenta
     ]
 
     @State private var animatedLevels: [Float] = Array(repeating: 0.1, count: 16)
@@ -56,9 +56,9 @@ struct CircularSpectrumView: View {
                 Canvas { context, canvasSize in
                     let centerPoint = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
 
-                    for i in 0..<barCount {
-                        let angle = (CGFloat(i) / CGFloat(barCount)) * 2 * .pi - .pi / 2
-                        let level = CGFloat(animatedLevels[i])
+                    for barIndex in 0..<barCount {
+                        let angle = (CGFloat(barIndex) / CGFloat(barCount)) * 2 * .pi - .pi / 2
+                        let level = CGFloat(animatedLevels[barIndex])
                         let barLength = innerRadius + (maxBarLength * level)
 
                         // Start and end points
@@ -68,7 +68,7 @@ struct CircularSpectrumView: View {
                         let endY = centerPoint.y + sin(angle) * barLength
 
                         // Color based on position
-                        let colorIndex = i % colors.count
+                        let colorIndex = barIndex % colors.count
                         let barColor = colors[colorIndex]
 
                         // Draw glow
@@ -121,24 +121,24 @@ struct CircularSpectrumView: View {
         idlePhase += 0.04
         rotationPhase += 0.01
 
-        for i in 0..<barCount {
+        for barIndex in 0..<barCount {
             // Map 16 bars to 8 frequency bands (mirrored)
-            let bandIndex = i < 8 ? i : (15 - i)
+            let bandIndex = barIndex < 8 ? barIndex : (15 - barIndex)
             let target: Float
 
             if isActive && bandIndex < frequencyBands.count {
                 target = frequencyBands[bandIndex]
             } else {
                 // Idle breathing animation
-                let breathe = Float(sin(idlePhase + Double(i) * 0.4) * 0.5 + 0.5) * 0.15
+                let breathe = Float(sin(idlePhase + Double(barIndex) * 0.4) * 0.5 + 0.5) * 0.15
                 target = breathe + 0.05
             }
 
             // Smooth animation
-            if target > animatedLevels[i] {
-                animatedLevels[i] = animatedLevels[i] * 0.3 + target * 0.7
+            if target > animatedLevels[barIndex] {
+                animatedLevels[barIndex] = animatedLevels[barIndex] * 0.3 + target * 0.7
             } else {
-                animatedLevels[i] = animatedLevels[i] * 0.9 + target * 0.1
+                animatedLevels[barIndex] = animatedLevels[barIndex] * 0.9 + target * 0.1
             }
         }
     }

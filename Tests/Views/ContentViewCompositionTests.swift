@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import AppKit
 @testable import AudioWhisper
 
 /// Tests for ContentView composition and subview assembly
@@ -44,7 +45,7 @@ final class ContentViewCompositionTests: XCTestCase {
         )
         let view = ContentView(viewModel: viewModel, audioRecorder: recorder)
 
-        XCTAssertNotNil(view.speechService)
+        XCTAssertNotNil(view.viewModel.speechService)
     }
 
     func testContentViewForwardsPasteManager() {
@@ -59,7 +60,7 @@ final class ContentViewCompositionTests: XCTestCase {
         )
         let view = ContentView(viewModel: viewModel, audioRecorder: recorder)
 
-        XCTAssertNotNil(view.pasteManager)
+        XCTAssertNotNil(view.viewModel.pasteManager)
     }
 
     func testContentViewForwardsStatusViewModel() {
@@ -74,7 +75,7 @@ final class ContentViewCompositionTests: XCTestCase {
         )
         let view = ContentView(viewModel: viewModel, audioRecorder: recorder)
 
-        XCTAssertNotNil(view.statusViewModel)
+        XCTAssertNotNil(view.viewModel.statusViewModel)
     }
 
     // MARK: - Body Composition Tests
@@ -84,20 +85,20 @@ final class ContentViewCompositionTests: XCTestCase {
         // This is a structural test
         let recorder = AudioEngineRecorder()
         let view = ContentView(audioRecorder: recorder)
+            .environmentObject(WindowCoordinator.shared)
+            .environment(PermissionManager.shared)
 
-        // View body can be accessed without crashing
-        _ = view.body
-        XCTAssertTrue(true, "Body composed successfully")
+        // View can be hosted without crashing
+        let hosting = NSHostingView(rootView: view)
+        XCTAssertNotNil(hosting)
     }
 
     // MARK: - Permission Manager Access Tests
 
     func testContentViewAccessesSharedPermissionManager() {
-        let recorder = AudioEngineRecorder()
-        let view = ContentView(audioRecorder: recorder)
-
-        // Should access the shared PermissionManager
-        XCTAssertNotNil(view.permissionManager)
+        // PermissionManager is provided via @Environment; verify the shared
+        // instance used by the wiring exists and is accessible.
+        XCTAssertNotNil(PermissionManager.shared)
     }
 
     // MARK: - State Property Tests
@@ -165,7 +166,7 @@ final class ContentViewCompositionTests: XCTestCase {
         let view = ContentView(viewModel: viewModel, audioRecorder: recorder)
 
         // Should have some default value
-        XCTAssertNotNil(view.progressMessage)
+        XCTAssertNotNil(view.viewModel.progressMessage)
     }
 
     func testShowErrorComputedProperty() {
@@ -180,7 +181,7 @@ final class ContentViewCompositionTests: XCTestCase {
         let view = ContentView(viewModel: viewModel, audioRecorder: recorder)
 
         // Initially false
-        XCTAssertFalse(view.showError)
+        XCTAssertFalse(view.viewModel.showError)
     }
 
     func testShowSuccessComputedProperty() {
@@ -195,7 +196,7 @@ final class ContentViewCompositionTests: XCTestCase {
         let view = ContentView(viewModel: viewModel, audioRecorder: recorder)
 
         // Initially false
-        XCTAssertFalse(view.showSuccess)
+        XCTAssertFalse(view.viewModel.showSuccess)
     }
 
     // MARK: - Sheet Presentation Logic Tests

@@ -12,8 +12,8 @@ internal enum WhisperModelError: Error, LocalizedError, Sendable {
 }
 
 internal enum TranscriptionProvider: String, CaseIterable, Codable, Sendable {
-    case local = "local"
-    case parakeet = "parakeet"
+    case local
+    case parakeet
 
     var displayName: String {
         switch self {

@@ -21,34 +21,56 @@ internal enum SpeechToTextError: Error, LocalizedError {
     }
 }
 
+/// Routes a transcription request to the correct provider (WhisperKit or
+/// Parakeet) based on user settings.
+///
+/// As of audit item B1, this service ALWAYS returns the provider's raw
+/// transcript. Semantic correction now lives exclusively in
+/// `TranscriptionPipeline`, which is the sole orchestrator that should call
+/// `SemanticCorrectionService`. Tests and rare callers that explicitly want
+/// the raw output may still invoke this service directly.
 @Observable
 internal class SpeechToTextService {
     // Use shared singleton to avoid multiple WhisperKit caches
     private let localWhisperService = LocalWhisperService.shared
     private let parakeetService = ParakeetService.shared
-    private let correctionService = SemanticCorrectionService()
 
     init(keychainService: KeychainServiceProtocol = KeychainService.shared) {
         // keychainService parameter kept for API compatibility but no longer used
     }
 
-    // Raw transcription without semantic correction
-    func transcribeRaw(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel? = nil) async throws -> String {
-        // Validate audio file before processing
-        let validationResult = await AudioValidator.validateAudioFile(at: audioURL)
+    /// Runs `AudioValidator` on `url` and surfaces any failure as
+    /// `SpeechToTextError.transcriptionFailed(...)`. Returns the URL unchanged
+    /// so callers can chain. Centralising the validation here ensures both
+    /// `transcribe(audioURL:provider:model:)` and `transcribeRaw(...)` apply the
+    /// same checks even if `AudioValidator` evolves.
+    @discardableResult
+    private func validatedAudioURL(_ url: URL) async throws -> URL {
+        let validationResult = await AudioValidator.validateAudioFile(at: url)
         switch validationResult {
-        case .valid(_): break
+        case .valid:
+            return url
         case .invalid(let error):
             throw SpeechToTextError.transcriptionFailed(error.localizedDescription)
         }
+    }
+
+    /// Raw transcription without semantic correction.
+    /// Validates the audio file then delegates to the selected provider.
+    /// Throws `SpeechToTextError` on validation or transcription failure.
+    /// As of audit item B1, `transcribe(_:)` is also raw — this method
+    /// remains the explicit/preferred name when callers want to make that
+    /// expectation obvious at the call site.
+    func transcribeRaw(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel? = nil) async throws -> String {
+        let validated = try await validatedAudioURL(audioURL)
         switch provider {
         case .local:
             guard let model = model else {
                 throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
             }
-            return try await transcribeWithLocal(audioURL: audioURL, model: model)
+            return try await transcribeWithLocal(audioURL: validated, model: model)
         case .parakeet:
-            return try await transcribeWithParakeet(audioURL: audioURL)
+            return try await transcribeWithParakeet(audioURL: validated)
         }
     }
 
@@ -59,29 +81,22 @@ internal class SpeechToTextService {
         return try await transcribe(audioURL: audioURL, provider: provider, model: nil)
     }
 
+    /// Transcribes an audio file and returns the raw provider output.
+    ///
+    /// As of audit item B1, this method NO LONGER applies semantic correction.
+    /// Callers that want correction must route through `TranscriptionPipeline`,
+    /// which is the sole orchestrator of `SemanticCorrectionService`. This
+    /// method's signature is retained for compatibility with existing tests
+    /// and the `SpeechToTextServiceProtocol` mock surface; functionally it now
+    /// behaves identically to `transcribeRaw(audioURL:provider:model:)`.
+    /// Throws `SpeechToTextError` on validation or transcription failure.
     func transcribe(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel? = nil) async throws -> String {
-        // Validate audio file before processing
-        let validationResult = await AudioValidator.validateAudioFile(at: audioURL)
-        switch validationResult {
-        case .valid(_):
-            break // Audio file validated successfully
-        case .invalid(let error):
-            throw SpeechToTextError.transcriptionFailed(error.localizedDescription)
-        }
-
-        switch provider {
-        case .local:
-            guard let model = model else {
-                throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
-            }
-            let text = try await transcribeWithLocal(audioURL: audioURL, model: model)
-            return await correctionService.correct(text: text, providerUsed: .local)
-        case .parakeet:
-            let text = try await transcribeWithParakeet(audioURL: audioURL)
-            return await correctionService.correct(text: text, providerUsed: .parakeet)
-        }
+        return try await transcribeRaw(audioURL: audioURL, provider: provider, model: model)
     }
 
+    /// Delegates to `LocalWhisperService` (WhisperKit / CoreML). Returns the
+    /// provider's raw output; semantic correction is applied by
+    /// `TranscriptionPipeline` (see audit item B1).
     private func transcribeWithLocal(audioURL: URL, model: WhisperModel) async throws -> String {
         do {
             let text = try await localWhisperService.transcribe(audioFileURL: audioURL, model: model) { progress in
@@ -93,19 +108,30 @@ internal class SpeechToTextService {
         }
     }
 
+    /// Delegates to `ParakeetService` (Parakeet-MLX, Apple-Silicon only) and warms up
+    /// the MLX correction daemon in parallel when correction is enabled.
+    /// Returns the provider's raw output; semantic correction is applied by
+    /// `TranscriptionPipeline` (see audit item B1). The warmup remains here so
+    /// the MLX daemon can spin up in parallel with the transcription itself.
     private func transcribeWithParakeet(audioURL: URL) async throws -> String {
         guard Arch.isAppleSilicon else {
             throw SpeechToTextError.transcriptionFailed("Parakeet requires an Apple Silicon Mac.")
         }
-        let modeRaw = UserDefaults.standard.string(forKey: "semanticCorrectionMode") ?? SemanticCorrectionMode.off.rawValue
-        let semanticCorrectionMode = SemanticCorrectionMode(rawValue: modeRaw) ?? .off
+        let semanticCorrectionMode = AppDefaults.semanticCorrectionMode
         let shouldWarmup = semanticCorrectionMode != .off
         // Ensure managed Python environment with uv
-        let pyURL = try UvBootstrap.ensureVenv(userPython: nil)
+        let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
         let pythonPath = pyURL.path
         do {
             if shouldWarmup {
-                let modelRepo = UserDefaults.standard.string(forKey: "semanticCorrectionModelRepo") ?? "mlx-community/Llama-3.2-1B-Instruct-4bit"
+                // Note: this falls back to "mlx-community/Llama-3.2-1B-Instruct-4bit"
+                // (the legacy default), while `AppDefaults.semanticCorrectionModelRepo`
+                // defaults to "mlx-community/Qwen3-1.7B-4bit". Preserve the legacy
+                // warmup-default by reading raw and only using AppDefaults when the
+                // key is set explicitly.
+                let modelRepo = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
+                    ? AppDefaults.semanticCorrectionModelRepo
+                    : "mlx-community/Llama-3.2-1B-Instruct-4bit"
                 async let warmupTask: Void = MLDaemonManager.shared.warmup(type: "mlx", repo: modelRepo)
                 async let transcription = parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
                 let (text, _) = try await (transcription, warmupTask)

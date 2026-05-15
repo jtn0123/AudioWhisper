@@ -29,10 +29,10 @@ internal enum DataManagerError: Error, LocalizedError {
 }
 
 internal enum RetentionPeriod: String, CaseIterable, Codable {
-    case oneWeek = "oneWeek"
-    case oneMonth = "oneMonth"
-    case threeMonths = "threeMonths"
-    case forever = "forever"
+    case oneWeek
+    case oneMonth
+    case threeMonths
+    case forever
     
     var displayName: String {
         switch self {
@@ -69,9 +69,22 @@ internal protocol DataManagerProtocol {
     
     func initialize() throws
     func saveTranscription(_ record: TranscriptionRecord) async throws
+    /// Fetches every record. Reserved for export / counter-rebuild flows; list
+    /// views should use `fetchRecords(limit:offset:search:)` to avoid loading
+    /// the whole history into memory.
     func fetchAllRecords() async throws -> [TranscriptionRecord]
     func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord]
     func fetchRecords(matching searchQuery: String, limit: Int?, offset: Int?) async throws -> [TranscriptionRecord]
+    /// Fetches a paginated, optionally search-filtered slice of records, sorted
+    /// by date descending. Use this from list views. `fetchAllRecords()` is
+    /// reserved for export / counter rebuild flows.
+    ///
+    /// - Parameters:
+    ///   - limit: Max records to return.
+    ///   - offset: Number of records to skip (for paging).
+    ///   - search: Case-insensitive substring filter over the transcript text;
+    ///             `nil` or empty disables filtering.
+    func fetchRecords(limit: Int, offset: Int, search: String?) async throws -> [TranscriptionRecord]
     func deleteRecord(_ record: TranscriptionRecord) async throws
     func deleteAllRecords() async throws
     func cleanupExpiredRecords() async throws
@@ -96,17 +109,12 @@ internal final class DataManager: DataManagerProtocol {
     }
     
     var isHistoryEnabled: Bool {
-        return UserDefaults.standard.bool(forKey: "transcriptionHistoryEnabled")
+        return AppDefaults.transcriptionHistoryEnabled
     }
-    
+
     var retentionPeriod: RetentionPeriod {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "transcriptionRetentionPeriod") ?? RetentionPeriod.oneMonth.rawValue
-            return RetentionPeriod(rawValue: rawValue) ?? .oneMonth
-        }
-        set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "transcriptionRetentionPeriod")
-        }
+        get { AppDefaults.transcriptionRetentionPeriod }
+        set { AppDefaults.transcriptionRetentionPeriod = newValue }
     }
     
     private init() {}
@@ -239,6 +247,35 @@ internal final class DataManager: DataManagerProtocol {
         }
     }
     
+    func fetchRecords(limit: Int, offset: Int, search: String?) async throws -> [TranscriptionRecord] {
+        guard let container = modelContainer else {
+            throw DataManagerError.modelContainerUnavailable
+        }
+
+        do {
+            let context = ModelContext(container)
+            var descriptor = FetchDescriptor<TranscriptionRecord>(
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            descriptor.fetchLimit = limit
+            descriptor.fetchOffset = offset
+
+            if let term = search, !term.isEmpty {
+                let lowered = term
+                descriptor.predicate = #Predicate<TranscriptionRecord> { record in
+                    record.text.localizedStandardContains(lowered)
+                }
+            }
+
+            let records = try context.fetch(descriptor)
+            Logger.dataManager.debug("Paginated fetch: \(records.count) records (limit: \(limit), offset: \(offset), search: '\(search ?? "")')")
+            return records
+        } catch {
+            Logger.dataManager.error("Failed to paginate transcription records: \(error.localizedDescription)")
+            throw DataManagerError.fetchFailed(error)
+        }
+    }
+
     func deleteRecord(_ record: TranscriptionRecord) async throws {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
@@ -305,19 +342,18 @@ internal final class DataManager: DataManagerProtocol {
     }
     
     func cleanupExpiredRecords() async throws {
-        guard let timeInterval = retentionPeriod.timeInterval else {
+        guard let cutoffDate = RetentionPolicy.cutoffDate(for: retentionPeriod) else {
             Logger.dataManager.debug("Retention period is forever, no cleanup needed")
             return
         }
-        
+
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
         }
-        
+
         do {
             let context = ModelContext(container)
-            let cutoffDate = Date().addingTimeInterval(-timeInterval)
-            
+
             // Use SwiftData predicate for database-level filtering
             let predicate = #Predicate<TranscriptionRecord> { record in
                 record.date < cutoffDate
@@ -377,7 +413,7 @@ internal final class MockDataManager: DataManagerProtocol {
     
     var isHistoryEnabled: Bool = true
     var retentionPeriod: RetentionPeriod = .oneMonth
-    var sharedModelContainer: ModelContainer? = nil
+    var sharedModelContainer: ModelContainer?
     
     func initialize() throws {
         Logger.dataManager.info("Mock DataManager initialized")
@@ -417,6 +453,15 @@ internal final class MockDataManager: DataManagerProtocol {
         return results
     }
     
+    func fetchRecords(limit: Int, offset: Int, search: String?) async throws -> [TranscriptionRecord] {
+        var slice = try await fetchAllRecords()
+        if let term = search, !term.isEmpty {
+            slice = slice.filter { $0.text.localizedStandardContains(term) }
+        }
+        guard offset < slice.count else { return [] }
+        return Array(slice.dropFirst(offset).prefix(limit))
+    }
+
     func deleteRecord(_ record: TranscriptionRecord) async throws {
         records.removeAll { $0.id == record.id }
 
@@ -438,9 +483,8 @@ internal final class MockDataManager: DataManagerProtocol {
     }
     
     func cleanupExpiredRecords() async throws {
-        guard let timeInterval = retentionPeriod.timeInterval else { return }
-        
-        let cutoffDate = Date().addingTimeInterval(-timeInterval)
+        guard let cutoffDate = RetentionPolicy.cutoffDate(for: retentionPeriod) else { return }
+
         let initialCount = records.count
         records.removeAll { $0.date < cutoffDate }
         let removedCount = initialCount - records.count

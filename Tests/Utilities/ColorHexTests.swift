@@ -168,7 +168,7 @@ final class ColorHexRoundtripTests: XCTestCase {
             "#00FFFF", // Cyan
             "#000000", // Black
             "#FFFFFF", // White
-            "#808080", // Gray
+            "#808080" // Gray
         ]
 
         for hex in testCases {

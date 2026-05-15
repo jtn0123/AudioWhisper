@@ -129,7 +129,7 @@ final class ParticleOverlayTests: XCTestCase {
             audioLevel: 0.7,
             isActive: true
         )
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true)
     }
 

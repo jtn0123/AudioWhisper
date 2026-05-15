@@ -135,3 +135,7 @@ Sources/Resources/bin/uv
 AudioWhisper.iconset/
 .build-uv/
 .beads/
+
+# CI coverage artifacts
+coverage.lcov
+sonar-coverage.xml

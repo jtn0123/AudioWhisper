@@ -2,8 +2,13 @@ import XCTest
 import Foundation
 @testable import AudioWhisper
 
-class ParakeetServiceTests: XCTestCase {
-    
+class ParakeetServiceTests: IsolatedXCTestCase {
+    // Deferred(D1): ParakeetService reads `selectedParakeetModel` from
+    // UserDefaults.standard via AppDefaults. Once AppDefaults accepts an
+    // injected UserDefaults, route writes through a UUID-scoped suite and
+    // re-enable isolation.
+    override var enforcesStandardUserDefaultsIsolation: Bool { false }
+
     var parakeetService: ParakeetService!
     var originalRepo: String?
     
@@ -24,9 +29,28 @@ class ParakeetServiceTests: XCTestCase {
     }
     
     // MARK: - Initialization Tests
-    
+
     func testParakeetServiceInitialization() {
         XCTAssertNotNil(parakeetService)
+    }
+
+    // MARK: - B4: Persisted model validation
+
+    func test_invalidStoredModelName_fallsBackToDefault() {
+        let key = "selectedParakeetModel"
+
+        // Bogus stored value should resolve to the documented default model.
+        UserDefaults.standard.set("nonexistent-model-name", forKey: key)
+        XCTAssertEqual(parakeetService.safeSelectedParakeetModel, ParakeetService.defaultModel)
+
+        // Empty/missing value should likewise fall back to the default.
+        UserDefaults.standard.removeObject(forKey: key)
+        XCTAssertEqual(parakeetService.safeSelectedParakeetModel, ParakeetService.defaultModel)
+
+        // A valid stored value round-trips back to the matching enum case.
+        UserDefaults.standard.set(ParakeetModel.v2English.rawValue, forKey: key)
+        XCTAssertEqual(parakeetService.safeSelectedParakeetModel, .v2English)
+        // tearDown restores the original value captured in setUp.
     }
     
     // MARK: - Error Tests
@@ -49,10 +73,17 @@ class ParakeetServiceTests: XCTestCase {
     
     // MARK: - Validation Tests
     
-    func testValidateSetupRequiresCachedModel() async {
-        let missingRepo = "example.com/missing-repo-\(UUID().uuidString)"
-        UserDefaults.standard.set(missingRepo, forKey: "selectedParakeetModel")
-        
+    func testValidateSetupRequiresCachedModel() async throws {
+        // The persisted preference is now validated against `ParakeetModel`, so we
+        // must pick a real enum case that isn't cached locally instead of using a
+        // random throw-away repo string. If both supported models happen to be
+        // cached on this machine, the precondition can't be met — skip rather
+        // than fail spuriously.
+        guard let uncachedModel = Self.firstUncachedParakeetModel() else {
+            throw XCTSkip("Both Parakeet models appear cached locally; cannot exercise modelNotReady path.")
+        }
+        UserDefaults.standard.set(uncachedModel.rawValue, forKey: "selectedParakeetModel")
+
         do {
             try await parakeetService.validateSetup(pythonPath: "/usr/bin/python3")
             XCTFail("Should have thrown modelNotReady when cache is missing")
@@ -99,11 +130,16 @@ class ParakeetServiceTests: XCTestCase {
     
     // MARK: - File Path Tests
     
-    func testTranscribeRequiresCachedModel() async {
-        let missingRepo = "example.com/missing-repo-\(UUID().uuidString)"
-        UserDefaults.standard.set(missingRepo, forKey: "selectedParakeetModel")
+    func testTranscribeRequiresCachedModel() async throws {
+        // See note on testValidateSetupRequiresCachedModel — must pick a real
+        // enum case that isn't cached locally, since the persisted preference
+        // is now validated against `ParakeetModel`.
+        guard let uncachedModel = Self.firstUncachedParakeetModel() else {
+            throw XCTSkip("Both Parakeet models appear cached locally; cannot exercise modelNotReady path.")
+        }
+        UserDefaults.standard.set(uncachedModel.rawValue, forKey: "selectedParakeetModel")
         let testAudioURL = URL(fileURLWithPath: "/tmp/test.m4a")
-        
+
         do {
             _ = try await parakeetService.transcribe(audioFileURL: testAudioURL, pythonPath: "/usr/bin/python3")
             XCTFail("Expected modelNotReady when model cache is missing")
@@ -111,6 +147,17 @@ class ParakeetServiceTests: XCTestCase {
             XCTAssertEqual(error, .modelNotReady)
         } catch {
             XCTFail("Should have thrown ParakeetError, got \(error)")
+        }
+    }
+
+    /// Returns the first `ParakeetModel` whose Hugging Face cache directory is
+    /// not present on disk, or `nil` if all supported models appear cached.
+    private static func firstUncachedParakeetModel() -> ParakeetModel? {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return ParakeetModel.allCases.first { model in
+            let escaped = model.rawValue.replacingOccurrences(of: "/", with: "--")
+            let dir = home.appendingPathComponent(".cache/huggingface/hub/models--\(escaped)")
+            return !FileManager.default.fileExists(atPath: dir.path)
         }
     }
     
@@ -154,7 +201,7 @@ class ParakeetServiceTests: XCTestCase {
             let sourceDir = currentDir.deletingLastPathComponent().appendingPathComponent("Sources")
             let sourceScriptURL = sourceDir.appendingPathComponent("ml_daemon.py")
             
-            XCTAssertTrue(FileManager.default.fileExists(atPath: sourceScriptURL.path), 
+            XCTAssertTrue(FileManager.default.fileExists(atPath: sourceScriptURL.path),
                          "ML daemon script should be available in source directory during tests")
         }
     }

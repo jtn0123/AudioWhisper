@@ -123,7 +123,7 @@ final class LayoutMetricsConsistencyTests: XCTestCase {
             LayoutMetrics.DashboardWindow.previewSize,
             LayoutMetrics.TranscriptionHistory.minimumSize,
             LayoutMetrics.TranscriptionHistory.previewSize,
-            LayoutMetrics.Welcome.windowSize,
+            LayoutMetrics.Welcome.windowSize
         ]
 
         for size in sizes {
@@ -139,7 +139,7 @@ final class LayoutMetricsConsistencyTests: XCTestCase {
             LayoutMetrics.DashboardWindow.minimumSize.width,
             LayoutMetrics.DashboardWindow.sidebarWidth,
             LayoutMetrics.TranscriptionHistory.minimumSize.width,
-            LayoutMetrics.Welcome.windowSize.width,
+            LayoutMetrics.Welcome.windowSize.width
         ]
 
         for width in widths {
@@ -154,7 +154,7 @@ final class LayoutMetricsConsistencyTests: XCTestCase {
             LayoutMetrics.DashboardWindow.initialSize.height,
             LayoutMetrics.DashboardWindow.minimumSize.height,
             LayoutMetrics.TranscriptionHistory.minimumSize.height,
-            LayoutMetrics.Welcome.windowSize.height,
+            LayoutMetrics.Welcome.windowSize.height
         ]
 
         for height in heights {

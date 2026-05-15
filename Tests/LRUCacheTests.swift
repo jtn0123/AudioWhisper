@@ -114,11 +114,9 @@ final class LRUCacheTests: XCTestCase {
         // Simulate clearExceptMostRecent
         let sortedByAccess = accessTimes.sorted { $0.value > $1.value }
 
-        for (index, model) in sortedByAccess.enumerated() {
-            if index > 0 {
-                instances.removeValue(forKey: model.key)
-                accessTimes.removeValue(forKey: model.key)
-            }
+        for (index, model) in sortedByAccess.enumerated() where index > 0 {
+            instances.removeValue(forKey: model.key)
+            accessTimes.removeValue(forKey: model.key)
         }
 
         XCTAssertEqual(instances.count, 1)
@@ -183,9 +181,9 @@ final class LRUCacheTests: XCTestCase {
 
         // Simulate concurrent access from multiple tasks
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<10 {
+            for index in 0..<10 {
                 group.addTask {
-                    await cache.access("model-\(i % 3)")
+                    await cache.access("model-\(index % 3)")
                 }
             }
         }
@@ -202,9 +200,9 @@ final class LRUCacheTests: XCTestCase {
 
         // Fill cache with more items than max
         await withTaskGroup(of: Void.self) { group in
-            for i in 0..<20 {
+            for index in 0..<20 {
                 group.addTask {
-                    await cache.addAndEvictIfNeeded("model-\(i)", maxCached: 5)
+                    await cache.addAndEvictIfNeeded("model-\(index)", maxCached: 5)
                 }
             }
         }

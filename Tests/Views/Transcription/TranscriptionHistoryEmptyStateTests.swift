@@ -18,7 +18,7 @@ final class TranscriptionHistoryEmptyStateTests: XCTestCase {
             searchText: "",
             onClearSearch: {}
         )
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true, "Body should not crash")
     }
 
@@ -27,7 +27,7 @@ final class TranscriptionHistoryEmptyStateTests: XCTestCase {
             searchText: "query",
             onClearSearch: {}
         )
-        let _ = view.body
+        _ = view.body
         XCTAssertTrue(true, "Body with search text should not crash")
     }
 }

@@ -79,9 +79,9 @@ final class SourceUsageStoreTests: XCTestCase {
     }
 
     func testTrimKeepsMostUsedWhenExceedingLimit() {
-        for i in 0...50 { // 51 sources
-            let info = makeInfo(bundleId: "com.test.\(i)", name: "App \(i)")
-            store.recordUsage(for: info, words: i + 1, characters: 1)
+        for index in 0...50 { // 51 sources
+            let info = makeInfo(bundleId: "com.test.\(index)", name: "App \(index)")
+            store.recordUsage(for: info, words: index + 1, characters: 1)
         }
 
         let all = store.allSources()
@@ -90,7 +90,7 @@ final class SourceUsageStoreTests: XCTestCase {
         XCTAssertTrue(all.contains { $0.bundleIdentifier == "com.test.50" }, "Most-used source should remain")
     }
 
-    func testInitRestoresFromPersistedDefaults() {
+    func testInitRestoresFromPersistedDefaults() throws {
         let now = Date()
         let older = now.addingTimeInterval(-100)
         let stats: [String: SourceUsageStats] = [
@@ -118,7 +118,7 @@ final class SourceUsageStoreTests: XCTestCase {
 
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        let data = try! encoder.encode(stats)
+        let data = try encoder.encode(stats)
         defaults.set(data, forKey: "sourceUsage.stats")
 
         store = SourceUsageStore(defaults: defaults)
@@ -246,7 +246,10 @@ final class SourceUsageStoreTests: XCTestCase {
         XCTAssertTrue(store.allSources().isEmpty)
     }
 
-    private func makeInfo(bundleId: String, name: String, iconByte: UInt8? = nil, fallbackSymbol: String? = nil) -> SourceAppInfo {
+    private func makeInfo(bundleId: String,
+                          name: String,
+                          iconByte: UInt8? = nil,
+                          fallbackSymbol: String? = nil) -> SourceAppInfo {
         let iconData = iconByte.map { Data([$0]) }
         return SourceAppInfo(
             bundleIdentifier: bundleId,

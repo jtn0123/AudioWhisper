@@ -3,8 +3,8 @@ import AppKit
 
 internal struct WelcomeView: View {
     @State private var modelManager = ModelManager()
-    @AppStorage("transcriptionProvider") private var transcriptionProvider = TranscriptionProvider.local.rawValue
-    @AppStorage("selectedWhisperModel") private var selectedWhisperModel = WhisperModel.base
+    @AppDefault(\.transcriptionProvider) private var transcriptionProvider
+    @AppDefault(\.selectedWhisperModel) private var selectedWhisperModel
     @State private var isDownloadingModel = false
     @Environment(\.dismiss) private var dismiss
     
@@ -71,7 +71,10 @@ internal struct WelcomeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Privacy-First Local Transcription")
                         .font(.headline)
-                    Text("AudioWhisper uses Apple's Neural Engine to transcribe audio locally on your Mac. Your audio never leaves your device.")
+                    Text(
+                        "AudioWhisper uses Apple's Neural Engine to transcribe audio locally "
+                        + "on your Mac. Your audio never leaves your device."
+                    )
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -94,9 +97,21 @@ internal struct WelcomeView: View {
         
         return LazyVGrid(columns: columns, spacing: 16) {
             FeatureRow(icon: "command", title: "Global Hotkey", description: "Press ⌘⇧Space anywhere (configurable) to record")
-            FeatureRow(icon: "waveform", title: "Powerful Transcription", description: "With semantic correction to fix transcription errors intelligently")
-            FeatureRow(icon: "clock.arrow.circlepath", title: "Transcription History", description: "Keep track of all your transcriptions with searchable history")
-            FeatureRow(icon: "brain", title: "Multiple AI Models", description: "Choose from offline and online models based on your needs")
+            FeatureRow(
+                icon: "waveform",
+                title: "Powerful Transcription",
+                description: "With semantic correction to fix transcription errors intelligently"
+            )
+            FeatureRow(
+                icon: "clock.arrow.circlepath",
+                title: "Transcription History",
+                description: "Keep track of all your transcriptions with searchable history"
+            )
+            FeatureRow(
+                icon: "brain",
+                title: "Multiple AI Models",
+                description: "Choose from offline and online models based on your needs"
+            )
         }
         .padding(.horizontal, 20) // Add padding to move it right
     }
@@ -233,15 +248,14 @@ internal struct WelcomeView: View {
         }
     }
     
-    
     private func startWithLocalWhisper() {
         // Prevent multiple executions
         guard !isDownloadingModel && !isDismissing else { return }
         
         // Set the settings
-        UserDefaults.standard.set(TranscriptionProvider.local.rawValue, forKey: "transcriptionProvider")
-        UserDefaults.standard.set(true, forKey: "hasCompletedWelcome")
-        UserDefaults.standard.set("1.1", forKey: "lastWelcomeVersion") // Match version in AppSetupHelper
+        AppDefaults.transcriptionProvider = .local
+        AppDefaults.hasCompletedWelcome = true
+        AppDefaults.lastWelcomeVersion = "1.1" // Match version in AppSetupHelper
         
         // Notify that welcome is complete and show dashboard
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
@@ -249,7 +263,6 @@ internal struct WelcomeView: View {
         
         dismissWindow()
     }
-    
     
     @State private var isDismissing = false
     

@@ -73,7 +73,8 @@ internal enum PasteError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .accessibilityPermissionDenied:
-            return "Accessibility permission is required for SmartPaste. Please enable it in System Settings > Privacy & Security > Accessibility."
+            return "Accessibility permission is required for SmartPaste. "
+                + "Please enable it in System Settings > Privacy & Security > Accessibility."
         case .eventSourceCreationFailed:
             return "Could not create event source for paste operation."
         case .keyboardEventCreationFailed:
@@ -121,8 +122,8 @@ internal class PasteManager {
     /// Attempts to paste text to the currently active application
     /// Uses CGEvent to simulate ⌘V
     func pasteToActiveApp() {
-        let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
-        
+        let enableSmartPaste = AppDefaults.enableSmartPaste
+
         if enableSmartPaste {
             // Use CGEvent to simulate ⌘V
             performCGEventPaste()
@@ -139,9 +140,9 @@ internal class PasteManager {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
-        
-        let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
-        
+
+        let enableSmartPaste = AppDefaults.enableSmartPaste
+
         guard enableSmartPaste else {
             // SmartPaste is disabled in settings - fail with appropriate error
             handlePasteResult(.failure(PasteError.targetAppNotAvailable))

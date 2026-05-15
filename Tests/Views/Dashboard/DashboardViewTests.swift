@@ -202,7 +202,6 @@ final class DashboardViewTests: XCTestCase {
         XCTAssertNotNil(view)
     }
 
-
 }
 
 // MARK: - DashboardNavItem Navigation Tests

@@ -27,7 +27,12 @@ final class KeyboardEventHandlerTests: XCTestCase {
 
     // MARK: - Helper
 
-    private func keyEvent(characters: String, charactersIgnoringModifiers: String? = nil, modifiers: NSEvent.ModifierFlags = [], keyCode: UInt16 = 0) -> NSEvent? {
+    private func keyEvent(
+        characters: String,
+        charactersIgnoringModifiers: String? = nil,
+        modifiers: NSEvent.ModifierFlags = [],
+        keyCode: UInt16 = 0
+    ) -> NSEvent? {
         return NSEvent.keyEvent(
             with: .keyDown,
             location: .zero,

@@ -1,17 +1,43 @@
 import Foundation
 import AppKit
-import HotKey
+import KeyboardShortcuts
 
+// MARK: - KeyboardShortcuts Name
+extension KeyboardShortcuts.Name {
+    /// Global toggle-recording shortcut. The default value is set the first
+    /// time `HotKeyManager` boots from `AppDefaults.globalHotkey` so that the
+    /// user's stored preference always wins.
+    static let toggleRecording = Self("audioWhisper.toggleRecording")
+}
+
+// MARK: - Parsed Hotkey
+/// Result of parsing a hotkey string such as "⌘⇧Space".
+internal struct ParsedHotkey {
+    let key: Key?
+    let modifiers: NSEvent.ModifierFlags
+}
+
+// MARK: - HotKeyManager
+//
+// Preserves the public surface of the original HotKey-backed manager:
+//   - `init(onHotKeyPressed:)`
+//   - listens for `.updateGlobalHotkey` notifications carrying a string
+//   - reads `AppDefaults.globalHotkey` on initialization
+//
+// Internally, the manager parses the string ("⌘⇧Space" etc.) into a
+// `KeyboardShortcuts.Shortcut` and registers a key-down handler with the
+// KeyboardShortcuts library. AppDefaults remains the canonical store; the
+// KeyboardShortcuts UserDefaults entry is a runtime mirror.
 internal class HotKeyManager {
-    private var hotKey: HotKey?
     private let onHotKeyPressed: () -> Void
-    
+
     init(onHotKeyPressed: @escaping () -> Void) {
         self.onHotKeyPressed = onHotKeyPressed
         setupObservers()
+        registerKeyDownHandler()
         setupInitialHotKey()
     }
-    
+
     private func setupObservers() {
         NotificationCenter.default.addObserver(
             self,
@@ -20,146 +46,98 @@ internal class HotKeyManager {
             object: nil
         )
     }
-    
-    private func setupInitialHotKey() {
-        let savedHotkey = UserDefaults.standard.string(forKey: "globalHotkey") ?? "⌘⇧Space"
-        setupHotKeyFromString(savedHotkey)
+
+    private func registerKeyDownHandler() {
+        // Remove any handler previously installed by another instance so we
+        // don't accumulate them when multiple managers are created (e.g. in
+        // tests). AudioWhisper registers only the `.toggleRecording` name, so
+        // removing all handlers is equivalent to a per-name removal here.
+        KeyboardShortcuts.removeAllHandlers()
+        KeyboardShortcuts.onKeyDown(for: .toggleRecording) { [weak self] in
+            self?.onHotKeyPressed()
+        }
     }
-    
+
+    private func setupInitialHotKey() {
+        setupHotKeyFromString(AppDefaults.globalHotkey)
+    }
+
     @objc private func updateHotKey(_ notification: Notification) {
         if let newHotkeyString = notification.object as? String {
             setupHotKeyFromString(newHotkeyString)
         }
     }
-    
+
     private func setupHotKeyFromString(_ hotkeyString: String) {
-        // Clear existing hotkey
-        hotKey = nil
-        
-        // Parse the hotkey string and set up new hotkey
-        let (key, modifiers) = parseHotkeyString(hotkeyString)
-        
-        if let key = key {
-            hotKey = HotKey(key: key, modifiers: modifiers)
-            hotKey?.keyDownHandler = { [weak self] in
-                self?.onHotKeyPressed()
-            }
+        let parsed = Self.parseHotkeyString(hotkeyString)
+
+        guard let key = parsed.key else {
+            // Invalid / empty: clear the active shortcut so nothing fires.
+            KeyboardShortcuts.setShortcut(nil, for: .toggleRecording)
+            return
         }
+
+        let shortcut = KeyboardShortcuts.Shortcut(
+            key.keyboardShortcutsKey,
+            modifiers: parsed.modifiers
+        )
+        KeyboardShortcuts.setShortcut(shortcut, for: .toggleRecording)
     }
-    
-    private func parseHotkeyString(_ hotkeyString: String) -> (Key?, NSEvent.ModifierFlags) {
+
+    // MARK: - Parsing
+    //
+    // Same string format as before ("⌘⇧Space", "⌘A", "F5", etc.). Extracted
+    // as a static helper so callers (e.g. tests, future migrations) can use
+    // it without instantiating the manager.
+    internal static func parseHotkeyString(_ hotkeyString: String) -> ParsedHotkey {
         var modifiers: NSEvent.ModifierFlags = []
         var keyString = hotkeyString
-        
-        // Parse modifiers
-        if keyString.contains("⌘") {
-            modifiers.insert(.command)
-            keyString = keyString.replacingOccurrences(of: "⌘", with: "")
+
+        let modifierSymbols: [(symbol: String, flag: NSEvent.ModifierFlags)] = [
+            ("⌘", .command),
+            ("⇧", .shift),
+            ("⌥", .option),
+            ("⌃", .control)
+        ]
+        for entry in modifierSymbols where keyString.contains(entry.symbol) {
+            modifiers.insert(entry.flag)
+            keyString = keyString.replacingOccurrences(of: entry.symbol, with: "")
         }
-        if keyString.contains("⇧") {
-            modifiers.insert(.shift)
-            keyString = keyString.replacingOccurrences(of: "⇧", with: "")
-        }
-        if keyString.contains("⌥") {
-            modifiers.insert(.option)
-            keyString = keyString.replacingOccurrences(of: "⌥", with: "")
-        }
-        if keyString.contains("⌃") {
-            modifiers.insert(.control)
-            keyString = keyString.replacingOccurrences(of: "⌃", with: "")
-        }
-        
-        // Parse key
-        let key = stringToKey(keyString)
-        
-        return (key, modifiers)
+
+        return ParsedHotkey(key: stringToKey(keyString), modifiers: modifiers)
     }
-    
-    private func stringToKey(_ keyString: String) -> Key? {
-        switch keyString.uppercased() {
-        // Function keys
-        case "F1": return .f1
-        case "F2": return .f2
-        case "F3": return .f3
-        case "F4": return .f4
-        case "F5": return .f5
-        case "F6": return .f6
-        case "F7": return .f7
-        case "F8": return .f8
-        case "F9": return .f9
-        case "F10": return .f10
-        case "F11": return .f11
-        case "F12": return .f12
-        case "F13": return .f13
-        case "F14": return .f14
-        case "F15": return .f15
-        case "F16": return .f16
-        case "F17": return .f17
-        case "F18": return .f18
-        case "F19": return .f19
-        case "F20": return .f20
-        case "A": return .a
-        case "S": return .s
-        case "D": return .d
-        case "F": return .f
-        case "H": return .h
-        case "G": return .g
-        case "Z": return .z
-        case "X": return .x
-        case "C": return .c
-        case "V": return .v
-        case "B": return .b
-        case "Q": return .q
-        case "W": return .w
-        case "E": return .e
-        case "R": return .r
-        case "Y": return .y
-        case "T": return .t
-        case "1": return .one
-        case "2": return .two
-        case "3": return .three
-        case "4": return .four
-        case "6": return .six
-        case "5": return .five
-        case "=": return .equal
-        case "9": return .nine
-        case "7": return .seven
-        case "-": return .minus
-        case "8": return .eight
-        case "0": return .zero
-        case "]": return .rightBracket
-        case "O": return .o
-        case "U": return .u
-        case "[": return .leftBracket
-        case "I": return .i
-        case "P": return .p
-        case "⏎": return .return
-        case "L": return .l
-        case "J": return .j
-        case "'": return .quote
-        case "K": return .k
-        case ";": return .semicolon
-        case "\\": return .backslash
-        case ",": return .comma
-        case "/": return .slash
-        case "N": return .n
-        case "M": return .m
-        case ".": return .period
-        case "⇥": return .tab
-        case "SPACE": return .space
-        case "`": return .grave
-        case "⌫": return .delete
-        case "⎋": return .escape
-        case "↑": return .upArrow
-        case "↓": return .downArrow
-        case "←": return .leftArrow
-        case "→": return .rightArrow
-        default: return nil
-        }
+
+    /// Lookup table mapping the uppercased hotkey string fragment to a `Key`.
+    /// Using a dictionary keeps `stringToKey` simple and avoids a large
+    /// switch statement.
+    private static let keyLookup: [String: Key] = [
+        "F1": .f1, "F2": .f2, "F3": .f3, "F4": .f4, "F5": .f5,
+        "F6": .f6, "F7": .f7, "F8": .f8, "F9": .f9, "F10": .f10,
+        "F11": .f11, "F12": .f12, "F13": .f13, "F14": .f14, "F15": .f15,
+        "F16": .f16, "F17": .f17, "F18": .f18, "F19": .f19, "F20": .f20,
+        "A": .a, "B": .b, "C": .c, "D": .d, "E": .e, "F": .f, "G": .g,
+        "H": .h, "I": .i, "J": .j, "K": .k, "L": .l, "M": .m, "N": .n,
+        "O": .o, "P": .p, "Q": .q, "R": .r, "S": .s, "T": .t, "U": .u,
+        "V": .v, "W": .w, "X": .x, "Y": .y, "Z": .z,
+        "0": .zero, "1": .one, "2": .two, "3": .three, "4": .four,
+        "5": .five, "6": .six, "7": .seven, "8": .eight, "9": .nine,
+        "=": .equal, "-": .minus, "]": .rightBracket, "[": .leftBracket,
+        "'": .quote, ";": .semicolon, "\\": .backslash, ",": .comma,
+        "/": .slash, ".": .period, "`": .grave,
+        "⏎": .return, "⇥": .tab, "SPACE": .space, "⌫": .delete,
+        "⎋": .escape, "↑": .upArrow, "↓": .downArrow,
+        "←": .leftArrow, "→": .rightArrow
+    ]
+
+    private static func stringToKey(_ keyString: String) -> Key? {
+        keyLookup[keyString.uppercased()]
     }
-    
+
     deinit {
-        hotKey = nil
         NotificationCenter.default.removeObserver(self)
+        // Note: we intentionally do NOT call removeHandler here. The handler
+        // captures `self` weakly, so it will no-op after deallocation. Tests
+        // create many managers in sequence and the next instance's
+        // `registerKeyDownHandler` will overwrite the slot.
     }
 }

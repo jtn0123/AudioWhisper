@@ -256,10 +256,8 @@ final class ContentViewPasteCoordinationTests: XCTestCase {
                 }
             }
 
-            for await result in group {
-                if result {
-                    successCount += 1
-                }
+            for await result in group where result {
+                successCount += 1
             }
         }
 

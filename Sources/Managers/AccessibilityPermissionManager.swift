@@ -161,18 +161,25 @@ internal class AccessibilityPermissionManager {
         }
     }
 
+    /// Detailed status information for debugging and user support.
+    struct DetailedPermissionStatus {
+        let isGranted: Bool
+        let statusMessage: String
+        let troubleshootingInfo: String?
+    }
+
     /// Returns detailed status information for debugging and user support
-    var detailedPermissionStatus: (isGranted: Bool, statusMessage: String, troubleshootingInfo: String?) {
+    var detailedPermissionStatus: DetailedPermissionStatus {
         let isGranted = checkPermission()
 
         if isGranted {
-            return (
+            return DetailedPermissionStatus(
                 isGranted: true,
                 statusMessage: "Accessibility permission is properly configured",
                 troubleshootingInfo: nil
             )
         } else {
-            return (
+            return DetailedPermissionStatus(
                 isGranted: false,
                 statusMessage: "Accessibility permission is not granted",
                 troubleshootingInfo: """
