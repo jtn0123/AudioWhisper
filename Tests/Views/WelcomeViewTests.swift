@@ -23,8 +23,8 @@ final class WelcomeViewLayoutTests: XCTestCase {
 
     func testWelcomeWindowSize() {
         let expectedSize = LayoutMetrics.Welcome.windowSize
-        XCTAssertEqual(expectedSize.width, 600)
-        XCTAssertEqual(expectedSize.height, 720)
+        XCTAssertEqual(expectedSize.width, 580)
+        XCTAssertEqual(expectedSize.height, 700)
     }
 
     func testStyleGridColumns() {

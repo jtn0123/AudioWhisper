@@ -70,4 +70,54 @@ final class DashboardVisualsViewTests: XCTestCase {
             XCTAssertFalse(intensity.description.isEmpty, "Visual intensity \(intensity) should have a description")
         }
     }
+
+    // MARK: - Mic Test Banner / Sampler Mic Mode
+
+    @MainActor
+    func testMicTestBannerConstructs() {
+        let sampler = LivePreviewSampler()
+        let capture = MicTestCapture(sampler: sampler)
+        _ = MicTestBanner(style: .classic, sampler: sampler, capture: capture)
+        XCTAssertEqual(capture.state, .off)
+    }
+
+    @MainActor
+    func testSamplerMicModeTogglesAndResetsOnDisable() {
+        let sampler = LivePreviewSampler()
+        XCTAssertFalse(sampler.isMicMode)
+
+        sampler.setMicMode(true)
+        XCTAssertTrue(sampler.isMicMode)
+
+        // Real mic frames drive the published values while mic mode is on.
+        sampler.publishMicFrame(level: 0.8, samples: [0.5, -0.5], bands: [0.3, 0.6])
+        XCTAssertEqual(sampler.audioLevel, 0.8, accuracy: 0.0001)
+        XCTAssertEqual(sampler.samples.count, 2)
+        XCTAssertEqual(sampler.bands.count, 2)
+
+        // Disabling mic mode restores the idle defaults.
+        sampler.setMicMode(false)
+        XCTAssertFalse(sampler.isMicMode)
+        XCTAssertEqual(sampler.audioLevel, 0.2, accuracy: 0.0001)
+        XCTAssertTrue(sampler.samples.isEmpty)
+        XCTAssertTrue(sampler.bands.isEmpty)
+    }
+
+    @MainActor
+    func testSamplerIgnoresMicFrameWhenMicModeOff() {
+        let sampler = LivePreviewSampler()
+        sampler.publishMicFrame(level: 0.9, samples: [1], bands: [1])
+        // Mic mode is off — frame is ignored, idle default preserved.
+        XCTAssertEqual(sampler.audioLevel, 0.2, accuracy: 0.0001)
+    }
+
+    @MainActor
+    func testMicCaptureStopReturnsToOffState() {
+        let sampler = LivePreviewSampler()
+        let capture = MicTestCapture(sampler: sampler)
+        capture.stop()
+        XCTAssertEqual(capture.state, .off)
+        XCTAssertEqual(capture.level, 0, accuracy: 0.0001)
+        XCTAssertFalse(capture.speaking)
+    }
 }

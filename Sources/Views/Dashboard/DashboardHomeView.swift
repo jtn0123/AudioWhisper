@@ -130,7 +130,7 @@ extension DashboardHomeView {
 
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(formatNumber(metricsStore.snapshot.totalWords))
-                        .font(DashboardTheme.Fonts.serif(52, weight: .medium))
+                        .font(DashboardTheme.Fonts.serif(48, weight: .medium))
                         .monospacedDigit()
                         .tracking(-1.5)
                         .foregroundStyle(DashboardTheme.ink)

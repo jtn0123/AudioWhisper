@@ -80,7 +80,7 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
         XCTAssertTrue(itemTitles.contains("Start Recording"), "Menu should contain Start Recording item")
         XCTAssertTrue(itemTitles.contains("Transcribe a File…"), "Menu should contain Transcribe a File item")
         XCTAssertTrue(itemTitles.contains("Dashboard"), "Menu should contain Dashboard item")
-        XCTAssertTrue(itemTitles.contains("Help"), "Menu should contain Help item")
+        XCTAssertTrue(itemTitles.contains("Help / Welcome"), "Menu should contain Help item")
         XCTAssertTrue(itemTitles.contains("Quit AudioWhisper"), "Menu should contain Quit item")
     }
 

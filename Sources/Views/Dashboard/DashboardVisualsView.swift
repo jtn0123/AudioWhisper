@@ -7,12 +7,20 @@ internal struct DashboardVisualsView: View {
     @AppDefault(\.waveformStyle) private var waveformStyle
     @AppDefault(\.visualIntensity) private var visualIntensity
 
-    @StateObject private var sampler = LivePreviewSampler()
+    @StateObject private var sampler: LivePreviewSampler
+    @StateObject private var micCapture: MicTestCapture
+
+    init() {
+        let sharedSampler = LivePreviewSampler()
+        _sampler = StateObject(wrappedValue: sharedSampler)
+        _micCapture = StateObject(wrappedValue: MicTestCapture(sampler: sharedSampler))
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                 pageHeader
+                MicTestBanner(style: waveformStyle, sampler: sampler, capture: micCapture)
                 waveformSection
                 previewSection
                 celebrationSection
@@ -21,7 +29,10 @@ internal struct DashboardVisualsView: View {
         }
         .background(DashboardTheme.pageBg)
         .onAppear { sampler.start() }
-        .onDisappear { sampler.stop() }
+        .onDisappear {
+            micCapture.stop()
+            sampler.stop()
+        }
     }
 
     // MARK: - Page header
