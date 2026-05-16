@@ -140,12 +140,13 @@ extension UserDefaults {
 /// Kept separate from per-style `ColorTheme` gradients (which apply *inside* each visualizer).
 enum WaveformPalette {
     /// Classic monochrome chrome (background, primary bar, muted state, success, accent/error).
+    /// Accent is the app's coral #D9734D — shared with the dashboard and the waveform renderers.
     static let classic: [Color] = [
         Color(red: 0.04, green: 0.04, blue: 0.04),
         Color(red: 0.85, green: 0.83, blue: 0.80),
         Color(red: 0.35, green: 0.34, blue: 0.33),
         Color(red: 0.45, green: 0.75, blue: 0.55),
-        Color(red: 0.85, green: 0.45, blue: 0.40)
+        Color(red: 0.85, green: 0.45, blue: 0.30)
     ]
 
     static var background: Color { classic[0] }
