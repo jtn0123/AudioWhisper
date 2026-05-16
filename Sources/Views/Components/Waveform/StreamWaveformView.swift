@@ -8,7 +8,7 @@ struct StreamWaveformView: View {
     let isActive: Bool
 
     @State private var time: CGFloat = 0
-    @State private var isViewActive = false
+    @State private var frameTimer = FrameTimer(interval: 0.033)
 
     // AW palette
     private let coral     = Color(red: 0.85, green: 0.45, blue: 0.30)
@@ -61,10 +61,9 @@ struct StreamWaveformView: View {
                     with: .color(color.opacity(0.45 + Double(level) * 0.4)))
             }
         }
-        .onAppear { isViewActive = true }
-        .onDisappear { isViewActive = false }
-        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
-            guard isViewActive else { return }
+        .onAppear { frameTimer.start() }
+        .onDisappear { frameTimer.stop() }
+        .onReceive(frameTimer.publisher) { _ in
             time += 0.033
         }
     }

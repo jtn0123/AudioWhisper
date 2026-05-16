@@ -24,7 +24,7 @@ struct NeonWaveformView: View {
     @State private var waveformHistory: [[Float]] = []
     @State private var smoothedSamples: [Float] = []
     @State private var phase: CGFloat = 0
-    @State private var isViewActive = false
+    @State private var frameTimer = FrameTimer(interval: 0.033)
 
     private let decayFactor: Float = 0.55
 
@@ -48,10 +48,9 @@ struct NeonWaveformView: View {
                 waveformReflection(in: geometry.size)
             }
         }
-        .onAppear { isViewActive = true }
-        .onDisappear { isViewActive = false }
-        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
-            guard isViewActive else { return }
+        .onAppear { frameTimer.start() }
+        .onDisappear { frameTimer.stop() }
+        .onReceive(frameTimer.publisher) { _ in
             phase += 0.05
             updateSmoothedSamples()
             updateHistory()

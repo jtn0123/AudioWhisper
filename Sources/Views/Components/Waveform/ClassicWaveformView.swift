@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 /// Classic level-based waveform visualization with animated bars.
 /// Features gravity-based physics: bars rise quickly, fall with acceleration, and bounce.
@@ -20,6 +21,10 @@ struct ClassicWaveformView: View {
     @State private var velocities: [CGFloat] = []
     @State private var idlePhase: CGFloat = 0
 
+    // Stoppable per-frame timer: only runs while the view is on-screen so
+    // idle/off-screen tiles don't burn main-thread cycles.
+    @State private var frameTimer = FrameTimer(interval: 0.033)
+
     var body: some View {
         GeometryReader { geometry in
             let totalSpacing = barSpacing * CGFloat(barCount - 1)
@@ -38,8 +43,10 @@ struct ClassicWaveformView: View {
         .onAppear {
             barHeights = Array(repeating: minHeight, count: barCount)
             velocities = Array(repeating: 0, count: barCount)
+            frameTimer.start()
         }
-        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
+        .onDisappear { frameTimer.stop() }
+        .onReceive(frameTimer.publisher) { _ in
             updatePhysics()
         }
     }
