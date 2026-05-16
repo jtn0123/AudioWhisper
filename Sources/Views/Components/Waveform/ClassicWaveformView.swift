@@ -7,7 +7,7 @@ struct ClassicWaveformView: View {
     let isActive: Bool
     let barColor: Color
 
-    private let barCount = 64
+    private let barCount = 56
     private let barSpacing: CGFloat = 2
     private let minHeight: CGFloat = 2
 

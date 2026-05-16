@@ -33,7 +33,7 @@ final class AppDelegateMenuTests: XCTestCase {
             "Start Recording",
             "Transcribe a File…",
             "Dashboard",
-            "Help",
+            "Help / Welcome",
             "Quit AudioWhisper"
         ]
 

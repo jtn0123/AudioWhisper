@@ -58,7 +58,7 @@ struct WaveformContainer: View {
     private var style: WaveformStyle { waveformStyle }
     private var intensity: VisualIntensity { visualIntensity }
 
-    private let cornerRadius: CGFloat = 18
+    private let cornerRadius: CGFloat = 22
 
     var body: some View {
         Button(action: onTap) {

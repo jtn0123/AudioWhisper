@@ -289,7 +289,7 @@ private struct StyleTile: View {
                     .padding(3)
                 }
             }
-            .frame(height: 70)
+            .frame(height: 64)
             .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)

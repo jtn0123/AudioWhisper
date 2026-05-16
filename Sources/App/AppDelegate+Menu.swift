@@ -66,7 +66,7 @@ internal extension AppDelegate {
             modifiers: [.command]
         ))
         menu.addItem(makeActionItem(
-            title: "Help",
+            title: "Help / Welcome",
             selector: #selector(showHelp),
             keyEquivalent: ""
         ))
@@ -146,7 +146,7 @@ internal extension AppDelegate {
         return item
     }
 
-    private var menuWidth: CGFloat { 300 }
+    private var menuWidth: CGFloat { 320 }
 
     private static let menuTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
