@@ -68,12 +68,11 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
     }
 
     func testShowRecordingWindowForProcessingHidesDashboard() {
-        // This tests the behavior of hiding dashboard when showing recording window
-        // Dashboard visibility check happens in the method
+        // With no audio recorder configured, showRecordingWindowForProcessing
+        // must not create a recording window.
+        XCTAssertNil(appDelegate.audioRecorder)
         appDelegate.showRecordingWindowForProcessing()
-
-        // Just verify no crash
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.recordingWindow)
     }
 
     // MARK: - createRecordingWindow Tests
@@ -168,11 +167,11 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
     // MARK: - restoreFocusToPreviousApp Tests
 
     func testRestoreFocusToPreviousAppCallsWindowController() {
-        // Just verify the method can be called
+        // restoreFocusToPreviousApp restores app focus; it must not create
+        // or mutate the recording window.
+        XCTAssertNil(appDelegate.recordingWindow)
         appDelegate.restoreFocusToPreviousApp()
-
-        // No crash is success
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.recordingWindow)
     }
 
     // MARK: - Fallback Model Container Tests
@@ -194,10 +193,18 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
 
     // MARK: - ChromelessWindow Tests
 
-    func testChromelessWindowTypeExists() {
-        // Verify the ChromelessWindow type exists (compile-time check)
-        // Actual window creation/closing in tests can cause stability issues
-        XCTAssertTrue(true)
+    func testChromelessWindowOverridesResponderBehavior() {
+        // ChromelessWindow is borderless; it overrides NSWindow so it can
+        // still become key/main and accept first responder.
+        let window = ChromelessWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: true
+        )
+        XCTAssertTrue(window.canBecomeKey)
+        XCTAssertTrue(window.canBecomeMain)
+        XCTAssertTrue(window.acceptsFirstResponder)
     }
 
     // MARK: - Window State Tests

@@ -51,12 +51,6 @@ final class ArchUtilityTests: XCTestCase {
         XCTAssertEqual(result1, result2)
     }
 
-    func testArchEnumExists() {
-        // Verify the Arch enum can be accessed
-        _ = Arch.self
-        XCTAssertTrue(true)
-    }
-
     #if arch(arm64)
     func testIsAppleSiliconOnARM64() {
         // On ARM64, should return true

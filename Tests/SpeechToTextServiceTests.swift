@@ -120,9 +120,19 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
                                  errorMessage.contains("corrupted") ||
                                  errorMessage.contains("unreadable")
             XCTAssertTrue(hasExpectedError, "Error should indicate audio or Python issue: \(errorMessage)")
+        } catch let error as ParakeetError {
+            // Also acceptable: a Parakeet-specific failure (e.g. model not ready).
+            XCTAssertFalse(
+                error.localizedDescription.isEmpty,
+                "ParakeetError should carry a descriptive message"
+            )
         } catch {
-            // Also acceptable - might be ParakeetError or other
-            XCTAssertTrue(true)
+            // Any other thrown error must still be a real, described error —
+            // an empty/placeholder error here would indicate a broken path.
+            XCTAssertFalse(
+                error.localizedDescription.isEmpty,
+                "Unexpected error type \(type(of: error)) should be descriptive"
+            )
         }
 
         // Clean up

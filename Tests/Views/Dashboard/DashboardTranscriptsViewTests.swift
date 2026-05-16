@@ -36,10 +36,21 @@ final class DataManagerContainerTests: XCTestCase {
         XCTAssertNotNil(dataManager)
     }
 
-    func testSharedModelContainerAccessDoesNotCrash() {
-        // Accessing the container should not crash even if history is disabled
-        _ = DataManager.shared.sharedModelContainer
-        XCTAssertTrue(true)
+    func testSharedModelContainerAccessIsConsistent() {
+        // The shared container accessor must be a stable, idempotent passthrough
+        // to the underlying container (it may be nil if not yet initialized).
+        let dataManager = DataManager.shared
+        let first = dataManager.sharedModelContainer
+        let second = dataManager.sharedModelContainer
+        switch (first, second) {
+        case (nil, nil):
+            break
+        case let (lhs?, rhs?):
+            XCTAssertTrue(lhs === rhs,
+                          "Repeated container access must return the same instance")
+        default:
+            XCTFail("Container access must be consistent across calls")
+        }
     }
 
     func testIsHistoryEnabledProperty() {

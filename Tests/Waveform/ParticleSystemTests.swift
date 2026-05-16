@@ -129,8 +129,10 @@ final class ParticleOverlayTests: XCTestCase {
             audioLevel: 0.7,
             isActive: true
         )
+        // Evaluating body must not crash; the view retains its inputs.
         _ = view.body
-        XCTAssertTrue(true)
+        XCTAssertEqual(view.audioLevel, 0.7)
+        XCTAssertTrue(view.isActive)
     }
 
     func testParticleOverlayInactiveState() {

@@ -71,22 +71,19 @@ final class LoggerExtensionTests: XCTestCase {
     }
 
     func testLoggerCanLog() {
-        // This test verifies that logging doesn't crash
-        Logger.app.info("Test log message")
-        Logger.app.debug("Debug message")
-        Logger.app.error("Error message")
-
-        // If we get here without crashing, the test passes
-        XCTAssertTrue(true)
+        // Logging at every level must complete without throwing or crashing.
+        XCTAssertNoThrow(Logger.app.info("Test log message"))
+        XCTAssertNoThrow(Logger.app.debug("Debug message"))
+        XCTAssertNoThrow(Logger.app.error("Error message"))
     }
 
     func testLoggerWithInterpolation() {
         let value = 42
         let message = "Test value: \(value)"
+        XCTAssertEqual(message, "Test value: 42")
 
-        // This should not crash
-        Logger.app.info("\(message)")
-        XCTAssertTrue(true)
+        // Interpolated logging must complete without throwing or crashing.
+        XCTAssertNoThrow(Logger.app.info("\(message)"))
     }
 }
 

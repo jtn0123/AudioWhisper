@@ -18,8 +18,10 @@ final class InkRippleViewTests: XCTestCase {
             audioLevel: 0.5,
             isActive: true
         )
+        // Evaluating body must not crash; the view retains its inputs.
         _ = view.body
-        XCTAssertTrue(true)
+        XCTAssertEqual(view.audioLevel, 0.5)
+        XCTAssertTrue(view.isActive)
     }
 
     func testInkRippleViewInactiveState() {
@@ -65,8 +67,9 @@ final class InkRippleRecordingViewTests: XCTestCase {
             audioLevel: 0,
             onTap: {}
         )
+        // Evaluating body must not crash; the view retains its inputs.
         _ = view.body
-        XCTAssertTrue(true)
+        XCTAssertEqual(view.audioLevel, 0)
     }
 
     func testRecordingViewWithRecordingStatus() {

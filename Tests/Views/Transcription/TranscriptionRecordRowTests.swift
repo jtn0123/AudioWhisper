@@ -123,10 +123,12 @@ final class TranscriptionRecordDisplayTests: XCTestCase {
             provider: .parakeet,
             duration: 0.0
         )
-        // Zero duration might return nil or a valid string
-        // Just verify it doesn't crash
-        _ = record.formattedDuration
-        XCTAssertTrue(true)
+        // A non-nil 0.0 duration is under a minute, so it is formatted as a
+        // seconds string (locale-formatted number followed by "s").
+        let formatted = record.formattedDuration
+        XCTAssertNotNil(formatted)
+        XCTAssertTrue(formatted?.hasSuffix("s") ?? false,
+                      "Sub-minute duration should be formatted in seconds, got \(formatted ?? "nil")")
     }
 
     func testTranscriptionProviderProperty() {

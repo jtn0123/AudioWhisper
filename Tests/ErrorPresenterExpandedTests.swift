@@ -175,11 +175,17 @@ final class ErrorPresenterExpandedTests: XCTestCase {
         // Verify test environment is set
         XCTAssertTrue(ErrorPresenter.shared.isTestEnvironment)
 
-        // Show error - should not cause any UI issues in test mode
+        // An unclassified error (no api_key/microphone/connection/transcription
+        // keyword) must not post any retry notification in test mode.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
+
         ErrorPresenter.shared.showError("Test error message")
 
-        // If we get here without crashing, the test passes
-        XCTAssertTrue(true)
+        wait(for: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     func testIsTestEnvironmentIsThreadSafe() async {
