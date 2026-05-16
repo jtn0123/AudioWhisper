@@ -162,12 +162,13 @@ enum WaveformPalette {
 }
 
 // MARK: - Particle Palette
-/// Default colors used by the neon-style particle overlay.
+/// Colors used by the neon-style particle overlay. Locked to the app's
+/// coral/cream family so the neon style reads as one brand, not a rainbow.
 enum ParticlePalette {
     static let defaults: [Color] = [
-        Color(red: 0.0, green: 0.9, blue: 0.95),   // Cyan
-        Color(red: 0.95, green: 0.2, blue: 0.8),   // Magenta
-        Color(red: 1.0, green: 0.85, blue: 0.0),   // Yellow
-        Color(red: 0.4, green: 0.9, blue: 0.5)     // Green
+        Color(red: 0.85, green: 0.45, blue: 0.30),  // Coral #D9734D
+        Color(red: 0.91, green: 0.60, blue: 0.47),  // Coral light #E89A77
+        Color(red: 0.89, green: 0.65, blue: 0.27),  // Amber #E2A745
+        Color(red: 0.85, green: 0.83, blue: 0.80)   // Cream #D9D4CC
     ]
 }
