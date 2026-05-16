@@ -22,6 +22,10 @@ final class LivePreviewSampler: ObservableObject {
     /// When false, audio level stays low. When true, full envelope.
     var isActive: Bool = true
 
+    /// When true, the synthetic envelope is suppressed and values are driven
+    /// by real microphone audio via `publishMicFrame(level:samples:bands:)`.
+    @Published private(set) var isMicMode: Bool = false
+
     private var timer: AnyCancellable?
     private var time: Double = 0
     private var lastPeakAt: Double = -10
@@ -39,7 +43,38 @@ final class LivePreviewSampler: ObservableObject {
         timer = nil
     }
 
+    // MARK: - Mic Mode
+
+    /// Toggle live-mic mode. While enabled the synthetic envelope is skipped;
+    /// disabling it resets the published values back to their idle defaults.
+    func setMicMode(_ enabled: Bool) {
+        guard isMicMode != enabled else { return }
+        isMicMode = enabled
+        if !enabled {
+            audioLevel = 0.2
+            samples = []
+            bands = []
+            sincePeak = 10
+        }
+    }
+
+    /// Publish a frame of real microphone-derived data. No-op unless mic mode
+    /// is active, so a stray buffer after `stop()` can't disturb the preview.
+    func publishMicFrame(level: Float, samples micSamples: [Float], bands micBands: [Float]) {
+        guard isMicMode else { return }
+        audioLevel = level
+        samples = micSamples
+        bands = micBands
+        time += 0.033
+        if level > 0.55 && (time - lastPeakAt) > 0.4 {
+            lastPeakAt = time
+        }
+        sincePeak = time - lastPeakAt
+    }
+
     private func tick() {
+        // In mic mode the real audio frames drive the published values.
+        guard !isMicMode else { return }
         time += 0.033
 
         // Envelope — slow varying
