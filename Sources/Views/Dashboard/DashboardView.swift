@@ -162,6 +162,7 @@ internal enum DashboardNavItem: String, CaseIterable, Identifiable {
 internal struct DashboardView: View {
     @State private var selectedNav: DashboardNavItem = .dashboard
     @State private var metricsStore = UsageMetricsStore.shared
+    @State private var showBreakdown = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -308,10 +309,118 @@ internal struct DashboardView: View {
                         .font(DashboardTheme.Fonts.sans(11, weight: .regular))
                         .foregroundStyle(DashboardTheme.sidebarTextMuted)
                 }
+
+                if let delta = monthDeltaPercent {
+                    HStack(spacing: 6) {
+                        Text("\(delta >= 0 ? "↑" : "↓") \(abs(delta))%")
+                            .font(DashboardTheme.Fonts.sans(10.5, weight: .semibold))
+                            .foregroundStyle(delta >= 0 ? DashboardTheme.success : DashboardTheme.accentDeep)
+                        Text("this month")
+                            .font(DashboardTheme.Fonts.sans(10.5, weight: .regular))
+                            .foregroundStyle(DashboardTheme.sidebarTextMuted)
+                    }
+                    .padding(.top, 2)
+                }
             }
             .padding(.horizontal, DashboardTheme.Spacing.md)
             .padding(.vertical, DashboardTheme.Spacing.md)
         }
+        .contentShape(Rectangle())
+        .onHover { showBreakdown = $0 }
+        .overlay(alignment: .bottomLeading) {
+            if showBreakdown {
+                breakdownPopover
+                    .offset(x: LayoutMetrics.DashboardWindow.sidebarWidth + 8, y: -8)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: showBreakdown)
+    }
+
+    /// Hover popover: a lifetime breakdown of recording activity.
+    private var breakdownPopover: some View {
+        let ink = Color(red: 0.102, green: 0.086, blue: 0.071) // #1A1612 — always dark
+        return VStack(alignment: .leading, spacing: 3) {
+            Text("Lifetime breakdown")
+                .font(DashboardTheme.Fonts.sans(10, weight: .semibold))
+                .tracking(0.6)
+                .textCase(.uppercase)
+                .foregroundStyle(.white.opacity(0.55))
+                .padding(.bottom, 3)
+
+            popRow("This month", DashboardHomeView.numberString(wordsInLast(28)))
+            popRow("Last 7 days", DashboardHomeView.numberString(wordsInLast(7)))
+            popRow("Avg / day", DashboardHomeView.numberString(dailyAverage))
+
+            Rectangle()
+                .fill(.white.opacity(0.12))
+                .frame(height: 1)
+                .padding(.vertical, 3)
+
+            popRow("Time saved", DashboardHomeView.durationString(metricsStore.snapshot.estimatedTimeSaved), subtle: true)
+            popRow("Sessions", DashboardHomeView.numberString(metricsStore.snapshot.totalSessions), subtle: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(width: 220)
+        .background(RoundedRectangle(cornerRadius: 8).fill(ink))
+        .shadow(color: .black.opacity(0.3), radius: 14, y: 8)
+    }
+
+    private func popRow(_ label: String, _ value: String, subtle: Bool = false) -> some View {
+        HStack {
+            Text(label)
+                .font(DashboardTheme.Fonts.sans(11, weight: .regular))
+                .foregroundStyle(.white.opacity(0.7))
+            Spacer()
+            Text(value)
+                .font(DashboardTheme.Fonts.mono(11, weight: .regular))
+                .monospacedDigit()
+                .foregroundStyle(.white)
+        }
+        .opacity(subtle ? 0.7 : 1)
+    }
+
+    // MARK: - Sidebar stat computations
+
+    /// Word counts for the last `days` days, summed.
+    private func wordsInLast(_ days: Int) -> Int {
+        let activity = metricsStore.getDailyActivity(days: max(days, 28))
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var total = 0
+        for offset in 0..<days {
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
+            total += activity[calendar.startOfDay(for: date)] ?? 0
+        }
+        return total
+    }
+
+    /// Average words across active (non-zero) days in the last 28.
+    private var dailyAverage: Int {
+        let activity = metricsStore.getDailyActivity(days: 28)
+        let active = activity.values.filter { $0 > 0 }
+        guard !active.isEmpty else { return 0 }
+        return active.reduce(0, +) / active.count
+    }
+
+    /// Percent change of the last 28 days vs the prior 28. Nil when the
+    /// prior window has too little data to be meaningful.
+    private var monthDeltaPercent: Int? {
+        let activity = metricsStore.getDailyActivity(days: 56)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        var recent = 0
+        var prior = 0
+        for offset in 0..<56 {
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: today) else { continue }
+            let words = activity[calendar.startOfDay(for: date)] ?? 0
+            if offset < 28 { recent += words } else { prior += words }
+        }
+        guard prior > 50 else { return nil }
+        let delta = Double(recent - prior) / Double(prior) * 100
+        return Int(delta.rounded())
     }
 
     // MARK: - Content switcher
