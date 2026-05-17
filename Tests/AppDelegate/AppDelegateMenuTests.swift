@@ -76,17 +76,25 @@ final class AppDelegateMenuTests: XCTestCase {
 
     // MARK: - Menu Action Tests
 
-    func testShowHistoryDoesNotCrash() {
-        // Just verify the method can be called without crashing
-        // Actual window verification would require UI testing
+    func testShowHistoryDoesNotMutateStatusItem() {
+        // showHistory delegates to HistoryWindowManager, which no-ops in the
+        // test environment; it must not create or mutate the status item.
+        XCTAssertNil(appDelegate.statusItem)
         appDelegate.showHistory()
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.statusItem)
     }
 
-    func testShowDashboardDoesNotCrash() {
-        // Just verify the method can be called without crashing
+    func testDashboardMenuItemTargetsShowDashboard() {
+        // The Dashboard menu item must be wired to the showDashboard selector.
+        let menu = appDelegate.makeStatusMenu()
+        let dashboardItem = menu.items.first { $0.title == "Dashboard" }
+        XCTAssertNotNil(dashboardItem, "Menu should contain a Dashboard item")
+        XCTAssertEqual(dashboardItem?.action, #selector(AppDelegate.showDashboard))
+
+        // Invoking the action must not mutate the status item (no-op in tests).
+        XCTAssertNil(appDelegate.statusItem)
         appDelegate.showDashboard()
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.statusItem)
     }
 
     func testShowHelpDoesNotCrash() {

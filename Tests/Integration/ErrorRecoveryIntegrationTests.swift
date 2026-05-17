@@ -97,71 +97,91 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
         // Given - A permission denied error
         let permissionError = TranscriptionError.microphonePermissionDenied
 
+        // Then - A microphone error must NOT trigger a retry notification.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
+
         // When - Error is presented
         ErrorPresenter.shared.showError(permissionError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - System settings should be triggered
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     func testRecoveryFromMicrophonePermissionRestricted() async throws {
         // Given - A restricted permission error
         let restrictedError = TranscriptionError.microphonePermissionRestricted
 
+        // Then - A microphone error must NOT trigger a retry notification.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
+
         // When - Error is presented
         ErrorPresenter.shared.showError(restrictedError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - System settings should be triggered
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     // MARK: - Audio Processing Error Recovery Tests
 
     func testRecoveryFromAudioProcessingError() async throws {
-        // Given - An audio processing error
+        // Given - An audio processing error (not a retryable error type)
         let audioError = TranscriptionError.audioProcessingError
+
+        // Then - No retry notification should be posted for this error type.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
 
         // When - Error is presented
         ErrorPresenter.shared.showError(audioError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - User informed, no crash
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     // MARK: - Model Error Recovery Tests
 
     func testRecoveryFromModelLoadFailure() async throws {
-        // Given - A model not found error
+        // Given - A model not found error (not a retryable error type)
         let modelError = TranscriptionError.modelNotFound(model: "large-v3")
+
+        // Then - No retry notification should be posted for this error type.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
 
         // When - Error is presented
         ErrorPresenter.shared.showError(modelError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - Dashboard should be shown for model download
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     // MARK: - Python Configuration Error Recovery Tests
 
     func testRecoveryFromPythonConfigurationError() async throws {
-        // Given - A Python configuration error
+        // Given - A Python configuration error (not a retryable error type)
         let pythonError = TranscriptionError.pythonConfigurationError
+
+        // Then - No retry notification should be posted for this error type.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
 
         // When - Error is presented
         ErrorPresenter.shared.showError(pythonError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - Settings should be triggered for Python configuration
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     // MARK: - Retry Mechanism Tests
@@ -261,23 +281,26 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
 
         for testCase in testCases {
             let message = testCase.message
-            let expectsConnection = testCase.expectsConnection
-            let expectsTranscription = testCase.expectsTranscription
             let error = TranscriptionError.from(errorMessage: message)
 
-            if expectsConnection {
-                if case .networkConnectionError = error {
-                    XCTAssertTrue(true)
-                } else if case .networkTimeout = error {
-                    XCTAssertTrue(true)
-                } else {
-                    // Check if it's actually a connection-related message
+            if testCase.expectsConnection {
+                let isConnectionError: Bool
+                switch error {
+                case .networkConnectionError, .networkTimeout:
+                    isConnectionError = true
+                default:
+                    isConnectionError = false
                 }
+                XCTAssertTrue(
+                    isConnectionError,
+                    "Expected connection-class error for '\(message)', got \(error)"
+                )
             }
 
-            if expectsTranscription {
-                if case .transcriptionFailed = error {
-                    XCTAssertTrue(true)
+            if testCase.expectsTranscription {
+                guard case .transcriptionFailed = error else {
+                    XCTFail("Expected .transcriptionFailed for '\(message)', got \(error)")
+                    continue
                 }
             }
         }
@@ -286,30 +309,38 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
     // MARK: - Storage Error Tests
 
     func testRecoveryFromInsufficientStorageError() async throws {
-        // Given - A storage error
+        // Given - A storage error (not a retryable error type)
         let storageError = TranscriptionError.insufficientStorage
+
+        // Then - No retry notification should be posted for this error type.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
 
         // When - Error is presented
         ErrorPresenter.shared.showError(storageError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - User is informed about storage issue
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 
     // MARK: - General Error Tests
 
     func testRecoveryFromGeneralError() async throws {
-        // Given - A general error
+        // Given - A general error with no retry/connection/transcription keyword
         let generalError = TranscriptionError.generalError(message: "Something unexpected happened")
+
+        // Then - No retry notification should be posted for an unclassified error.
+        let noRetry = expectation(forNotification: .retryRequested, object: nil)
+        noRetry.isInverted = true
+        let noRetryTranscription = expectation(
+            forNotification: .retryTranscriptionRequested, object: nil)
+        noRetryTranscription.isInverted = true
 
         // When - Error is presented
         ErrorPresenter.shared.showError(generalError.userMessage)
 
-        await waitForAsyncOperation()
-
-        // Then - Error is displayed without crash
-        XCTAssertTrue(true)
+        await fulfillment(of: [noRetry, noRetryTranscription], timeout: 0.5)
     }
 }

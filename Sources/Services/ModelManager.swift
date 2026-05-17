@@ -57,7 +57,7 @@ internal class ModelManager {
         // missing and a redownload can be triggered.
         guard let representative = ModelManager.representativeFileURL(for: model) else { return true }
         do {
-            try ModelIntegrity.verify(at: representative)
+            try ModelIntegrity.verify(at: representative, modelIdentifier: model.rawValue)
             return true
         } catch {
             Logger.modelManager.error("Integrity check failed for cached \(model.rawValue): \(error.localizedDescription)")

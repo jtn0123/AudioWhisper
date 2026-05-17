@@ -434,6 +434,11 @@ private struct ProcessingShimmerView: View {
                 phase = 1
             }
         }
+        .onDisappear {
+            // Halt the repeating shimmer animation when off-screen so it
+            // doesn't keep driving re-renders for a hidden view.
+            withAnimation(.linear(duration: 0)) { phase = 0 }
+        }
     }
 
     private func dotOpacity(for index: Int) -> Double {

@@ -187,8 +187,16 @@ final class MLXRefreshStateTests: XCTestCase {
     func testRefreshModelListAsync() async {
         let manager = MLXModelManager.shared
         await manager.refreshModelList()
-        // Should complete without crash
-        XCTAssertTrue(true)
+
+        // After a refresh, the model registry must be internally consistent:
+        // every downloaded model has a recorded size, and the cache size is
+        // non-negative.
+        XCTAssertEqual(manager.downloadedModels.count, manager.modelSizes.count)
+        XCTAssertGreaterThanOrEqual(manager.totalCacheSize, 0)
+        for model in manager.downloadedModels {
+            XCTAssertNotNil(manager.modelSizes[model],
+                            "Downloaded model \(model) must have a recorded size")
+        }
     }
 }
 

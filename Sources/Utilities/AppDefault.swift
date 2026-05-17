@@ -14,7 +14,7 @@ import Combine
 ///
 /// See ADR 0004 for the migration plan from `@AppStorage`.
 @propertyWrapper
-struct AppDefault<Value>: DynamicProperty {
+struct AppDefault<Value: Equatable>: DynamicProperty {
     private let keyPath: ReferenceWritableKeyPath<AppDefaults.Type, Value>
     @State private var value: Value
     @StateObject private var observer: AppDefaultObserver
@@ -45,14 +45,9 @@ struct AppDefault<Value>: DynamicProperty {
         // Re-read once per body invocation in case the underlying store changed
         // out from under us (e.g. user toggled a setting in another window).
         let current = AppDefaults.self[keyPath: keyPath]
-        if !valuesEqual(current, value) {
+        if current != value {
             DispatchQueue.main.async { self.value = current }
         }
-    }
-
-    private func valuesEqual(_ lhsValue: Value, _ rhsValue: Value) -> Bool {
-        guard let lhs = lhsValue as? AnyHashable, let rhs = rhsValue as? AnyHashable else { return false }
-        return lhs == rhs
     }
 }
 

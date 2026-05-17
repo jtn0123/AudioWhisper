@@ -261,21 +261,18 @@ final class ErrorPropagationLayerTests: XCTestCase {
         let errorMessage = "Whisper model 'large' not found"
         let error = TranscriptionError.from(errorMessage: errorMessage)
 
-        if case .modelNotFound = error {
-            XCTAssertTrue(true)
-        } else {
-            XCTFail("Expected modelNotFound for Whisper")
+        guard case .modelNotFound(let model) = error else {
+            return XCTFail("Expected modelNotFound for Whisper, got \(error)")
         }
+        XCTAssertEqual(model, "large")
     }
 
     func testParakeetErrorPropagation() {
         let errorMessage = "Parakeet transcription failed - Python not configured"
         let error = TranscriptionError.from(errorMessage: errorMessage)
 
-        if case .pythonConfigurationError = error {
-            XCTAssertTrue(true)
-        } else {
-            XCTFail("Expected pythonConfigurationError for Parakeet")
+        guard case .pythonConfigurationError = error else {
+            return XCTFail("Expected pythonConfigurationError for Parakeet, got \(error)")
         }
     }
 }

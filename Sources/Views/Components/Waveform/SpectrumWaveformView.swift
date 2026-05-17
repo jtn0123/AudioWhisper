@@ -29,6 +29,7 @@ struct SpectrumWaveformView: View {
     @State private var peakLevels: [Float] = Array(repeating: 0, count: 8)
     @State private var animatedLevels: [Float] = Array(repeating: 0, count: 8)
     @State private var idlePhase: CGFloat = 0
+    @State private var frameTimer = FrameTimer(interval: 0.033)
 
     private let barSpacing: CGFloat = 6
     private let minHeight: CGFloat = 4
@@ -76,7 +77,9 @@ struct SpectrumWaveformView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
+        .onAppear { frameTimer.start() }
+        .onDisappear { frameTimer.stop() }
+        .onReceive(frameTimer.publisher) { _ in
             updateLevels()
         }
     }

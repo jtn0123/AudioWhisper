@@ -61,8 +61,8 @@ final class UsageMetricsStoreViewTests: XCTestCase {
     func testResetMethod() {
         let store = UsageMetricsStore.shared
         store.reset()
-        // Should complete without crash
-        XCTAssertTrue(true)
+        // After reset, the snapshot must equal the empty snapshot.
+        XCTAssertEqual(store.snapshot, .empty)
     }
 }
 
@@ -332,9 +332,11 @@ final class RebuildFromHistoryTests: XCTestCase {
 
     func testUsageMetricsStoreRebuild() {
         let store = UsageMetricsStore.shared
-        // Rebuild with empty records should not crash
+        // Rebuilding from no records yields a zeroed snapshot.
         store.rebuild(using: [])
-        XCTAssertTrue(true)
+        XCTAssertEqual(store.snapshot.totalWords, 0)
+        XCTAssertEqual(store.snapshot.totalSessions, 0)
+        XCTAssertEqual(store.snapshot.totalDuration, 0)
     }
 }
 
@@ -350,6 +352,7 @@ final class SourceUsageStoreUsageTests: XCTestCase {
     func testSourceUsageStoreReset() {
         let store = SourceUsageStore.shared
         store.reset()
-        XCTAssertTrue(true)
+        // After reset, no ordered stats remain.
+        XCTAssertTrue(store.orderedStats.isEmpty)
     }
 }

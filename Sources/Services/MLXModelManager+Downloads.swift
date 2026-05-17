@@ -289,7 +289,7 @@ extension MLXModelManager {
         // Best-effort integrity verification. TOFU on first hit; failures
         // are logged at the call site that triggers a re-download.
         do {
-            try ModelIntegrity.verify(at: refsMain)
+            try ModelIntegrity.verify(at: refsMain, modelIdentifier: repo)
             return true
         } catch {
             logger.error(

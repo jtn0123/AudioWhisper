@@ -11,10 +11,11 @@ final class WelcomeViewTests: XCTestCase {
         XCTAssertNotNil(view)
     }
 
-    func testWelcomeViewBodyDoesNotCrash() {
+    func testWelcomeViewBodyProducesAView() {
         let view = WelcomeView()
-        _ = view.body
-        XCTAssertTrue(true)
+        // Evaluating body must not crash and must yield a concrete view value.
+        let body = view.body
+        XCTAssertFalse(String(describing: type(of: body)).isEmpty)
     }
 }
 

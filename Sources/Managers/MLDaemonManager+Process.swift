@@ -24,7 +24,7 @@ internal extension MLDaemonManager {
         let proc = Process()
         proc.executableURL = python
         proc.arguments = [script.path]
-        proc.environment = ProcessInfo.processInfo.environment.merging(["PYTHONUNBUFFERED": "1"]) { _, new in new }
+        proc.environment = Self.daemonEnvironment()
 
         let stdin = Pipe()
         let stdout = Pipe()
@@ -57,6 +57,46 @@ internal extension MLDaemonManager {
         stderrPipe = stderr
         isShuttingDown = false
         startStdoutReader(pipe: stdout)
+    }
+
+    /// Builds a minimal, allowlisted environment for the Python daemon instead
+    /// of inheriting the user's entire process environment (security hardening,
+    /// audit item E3). The daemon gets exactly what it needs to run Parakeet/MLX
+    /// transcription and nothing more.
+    ///
+    /// Always-present keys: `PATH` (subprocess resolution), `HOME` (HuggingFace
+    /// cache root `~/.cache/huggingface`), and `PYTHONUNBUFFERED` (line-buffered
+    /// stdout so JSON-RPC responses flush immediately).
+    ///
+    /// Pass-through-if-set keys: locale (`LANG`/`LC_ALL` — Python text codec),
+    /// `TMPDIR` (macOS per-user temp many ML libs use), `AUDIOWHISPER_APP_SUPPORT_DIR`
+    /// (test/override path resolution shared with `UvBootstrap`), virtualenv vars
+    /// (`VIRTUAL_ENV`, `PYTHONPATH` — keep tooling consistent even though the venv
+    /// python is invoked directly), `uv` vars (`UV_CACHE_DIR`, `UV_PYTHON`), and
+    /// HuggingFace cache overrides (`HF_HOME`, `HF_HUB_CACHE`, `HUGGINGFACE_HUB_CACHE`,
+    /// `XDG_CACHE_HOME`) so the daemon finds models the user already downloaded.
+    static func daemonEnvironment() -> [String: String] {
+        let parent = ProcessInfo.processInfo.environment
+
+        var env: [String: String] = [
+            "PATH": parent["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin",
+            "HOME": parent["HOME"] ?? NSHomeDirectory(),
+            "PYTHONUNBUFFERED": "1"
+        ]
+
+        let passThroughIfSet = [
+            "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR",
+            "AUDIOWHISPER_APP_SUPPORT_DIR",
+            "VIRTUAL_ENV", "PYTHONPATH",
+            "UV_CACHE_DIR", "UV_PYTHON",
+            "HF_HOME", "HF_HUB_CACHE", "HUGGINGFACE_HUB_CACHE", "XDG_CACHE_HOME"
+        ]
+        for key in passThroughIfSet {
+            if let value = parent[key], !value.isEmpty {
+                env[key] = value
+            }
+        }
+        return env
     }
 
     func startStdoutReader(pipe: Pipe) {

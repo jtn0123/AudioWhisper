@@ -163,10 +163,11 @@ internal final class DataManager: DataManagerProtocol {
             try context.save()
             
             Logger.dataManager.info("Saved transcription record with ID: \(record.id)")
-            
-            // Perform cleanup after save to maintain retention policy
-            await cleanupExpiredRecordsQuietly()
-            
+
+            // Retention cleanup runs off the save critical path — the caller
+            // (and the UI) shouldn't wait on a full predicate fetch + delete.
+            Task { await cleanupExpiredRecordsQuietly() }
+
         } catch {
             Logger.dataManager.error("Failed to save transcription record: \(error.localizedDescription)")
             throw DataManagerError.saveFailed(error)

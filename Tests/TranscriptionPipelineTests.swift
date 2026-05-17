@@ -1,6 +1,31 @@
 import XCTest
 @testable import AudioWhisper
 
+/// Test-only stub that lets `TranscriptionPipeline` exercise a real success
+/// path without hitting WhisperKit / Parakeet. `SpeechToTextService` is a
+/// non-final class and `TranscriptionPipeline` injects it via its initializer,
+/// so overriding `transcribeRaw(...)` is a legitimate seam.
+private final class StubSpeechToTextService: SpeechToTextService, @unchecked Sendable {
+    /// Result returned by `transcribeRaw`. Defaults to a fixed transcript.
+    var rawResult: Result<String, Error> = .success("hello world")
+    private(set) var transcribeRawCallCount = 0
+    private(set) var lastAudioURL: URL?
+    private(set) var lastProvider: TranscriptionProvider?
+    private(set) var lastModel: WhisperModel?
+
+    override func transcribeRaw(
+        audioURL: URL,
+        provider: TranscriptionProvider,
+        model: WhisperModel? = nil
+    ) async throws -> String {
+        transcribeRawCallCount += 1
+        lastAudioURL = audioURL
+        lastProvider = provider
+        lastModel = model
+        return try rawResult.get()
+    }
+}
+
 final class TranscriptionPipelineTests: XCTestCase {
 
     // MARK: - Configuration Tests
@@ -84,6 +109,111 @@ final class TranscriptionPipelineTests: XCTestCase {
         XCTAssertEqual(receivedStep, "Transcribing...")
     }
 
+    // MARK: - Happy Path Tests (real success path via injected stub)
+
+    /// Drives a full successful `transcribe(...)` with semantic correction
+    /// disabled and asserts the pipeline returns the stub provider's raw
+    /// transcript with a `nil` correction outcome.
+    @MainActor
+    func testTranscribeSuccessReturnsRawTextWhenCorrectionDisabled() async throws {
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .success("the quick brown fox")
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let tempURL = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        let config = TranscriptionPipelineConfig(
+            provider: .parakeet,
+            applySemanticCorrection: false
+        )
+
+        let result = try await pipeline.transcribe(audioURL: tempURL, config: config)
+
+        XCTAssertEqual(result.text, "the quick brown fox")
+        XCTAssertNil(result.correctionOutcome,
+                     "Correction outcome must be nil when correction is disabled")
+        XCTAssertEqual(stub.transcribeRawCallCount, 1)
+        XCTAssertEqual(stub.lastProvider, .parakeet)
+        XCTAssertEqual(stub.lastAudioURL, tempURL)
+    }
+
+    /// Drives a full successful `transcribe(...)` with semantic correction
+    /// enabled but `semanticCorrectionMode == .off` so the real
+    /// `SemanticCorrectionService` deterministically returns `.skipped`.
+    /// Asserts both the final transcript text and the correction outcome.
+    @MainActor
+    func testTranscribeSuccessReturnsSkippedOutcomeWhenModeOff() async throws {
+        let previousMode = UserDefaults.standard.string(forKey: "semanticCorrectionMode")
+        UserDefaults.standard.set(SemanticCorrectionMode.off.rawValue,
+                                  forKey: "semanticCorrectionMode")
+        defer {
+            if let previousMode = previousMode {
+                UserDefaults.standard.set(previousMode, forKey: "semanticCorrectionMode")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "semanticCorrectionMode")
+            }
+        }
+
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .success("transcribed text")
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let tempURL = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        let config = TranscriptionPipelineConfig(
+            provider: .parakeet,
+            applySemanticCorrection: true
+        )
+
+        let result = try await pipeline.transcribe(audioURL: tempURL, config: config)
+
+        XCTAssertEqual(result.text, "transcribed text")
+        guard case .skipped(let skippedText)? = result.correctionOutcome else {
+            return XCTFail("Expected .skipped outcome, got \(String(describing: result.correctionOutcome))")
+        }
+        XCTAssertEqual(skippedText, "transcribed text")
+        XCTAssertEqual(stub.transcribeRawCallCount, 1)
+    }
+
+    /// `transcribeRaw(...)` convenience wrapper returns the provider transcript
+    /// unchanged and never attempts correction.
+    @MainActor
+    func testTranscribeRawSuccessReturnsProviderText() async throws {
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .success("raw provider output")
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let tempURL = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let text = try await pipeline.transcribeRaw(audioURL: tempURL, provider: .parakeet)
+
+        XCTAssertEqual(text, "raw provider output")
+        XCTAssertEqual(stub.transcribeRawCallCount, 1)
+        XCTAssertEqual(stub.lastProvider, .parakeet)
+    }
+
+    /// A provider failure must propagate out of the pipeline rather than being
+    /// silently swallowed.
+    @MainActor
+    func testTranscribePropagatesProviderError() async {
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .failure(SpeechToTextError.transcriptionFailed("boom"))
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let tempURL = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        let config = TranscriptionPipelineConfig(provider: .parakeet)
+
+        do {
+            _ = try await pipeline.transcribe(audioURL: tempURL, config: config)
+            XCTFail("Expected provider error to propagate")
+        } catch let error as SpeechToTextError {
+            guard case .transcriptionFailed(let message) = error else {
+                return XCTFail("Expected .transcriptionFailed, got \(error)")
+            }
+            XCTAssertEqual(message, "boom")
+        } catch {
+            XCTFail("Expected SpeechToTextError, got \(error)")
+        }
+    }
+
     // MARK: - Audio Validation Integration Tests
 
     @MainActor
@@ -113,26 +243,25 @@ final class TranscriptionPipelineTests: XCTestCase {
         }
     }
 
+    /// `.local` with no `WhisperModel` must fail with the model-required error.
+    /// Using the real `SpeechToTextService` so the model guard is exercised.
     @MainActor
-    func testTranscribeRawLocalRequiresModel() async {
+    func testTranscribeRawLocalWithoutModelThrowsModelRequiredError() async {
         let pipeline = TranscriptionPipeline()
         let tempURL = createTemporaryAudioFile()
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
         do {
-            // Calling transcribeRaw with .local but no model should fail
             _ = try await pipeline.transcribeRaw(audioURL: tempURL, provider: .local, model: nil)
             XCTFail("Expected failure when no model provided for local provider")
         } catch let error as SpeechToTextError {
-            if case .transcriptionFailed(let message) = error {
-                XCTAssertTrue(message.contains("model required"), "Error should mention model requirement")
-            } else {
-                // Other SpeechToTextError types are acceptable
-                XCTAssertTrue(true)
+            guard case .transcriptionFailed(let message) = error else {
+                return XCTFail("Expected .transcriptionFailed, got \(error)")
             }
+            XCTAssertTrue(message.contains("model required"),
+                          "Error should mention model requirement, got: \(message)")
         } catch {
-            // Other error types are acceptable in test environment
-            XCTAssertTrue(true)
+            XCTFail("Expected SpeechToTextError, got \(error)")
         }
     }
 

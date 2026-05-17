@@ -5,11 +5,9 @@ import XCTest
 final class ResourceLocatorTests: XCTestCase {
 
     func testURLForResourceWithValidName() {
-        // Test that method doesn't crash with valid inputs
+        // A non-existent resource with no dev fallback resolves to nil.
         let url = ResourceLocator.url(forResource: "test", withExtension: "txt")
-        // URL may be nil if resource doesn't exist, but should not crash
-        _ = url
-        XCTAssertTrue(true)
+        XCTAssertNil(url)
     }
 
     func testURLForResourceWithEmptyName() {
@@ -19,21 +17,35 @@ final class ResourceLocatorTests: XCTestCase {
     }
 
     func testURLForResourceWithEmptyExtension() {
+        // A non-existent resource with an empty extension resolves to nil.
         let url = ResourceLocator.url(forResource: "test", withExtension: "")
-        // Should handle empty extension
-        _ = url
-        XCTAssertTrue(true)
+        XCTAssertNil(url)
     }
 
-    func testURLForResourceWithDevRelativePath() {
+    func testURLForResourceWithDevRelativePathMissingReturnsNil() {
+        // The dev fallback path does not exist, so resolution returns nil.
         let url = ResourceLocator.url(
             forResource: "test",
             withExtension: "txt",
-            devRelativePath: "Sources/test.txt"
+            devRelativePath: "Sources/definitely_missing_resource.txt"
         )
-        // Should handle dev relative path
-        _ = url
-        XCTAssertTrue(true)
+        XCTAssertNil(url)
+    }
+
+    func testURLForResourceWithDevRelativePathResolvesExistingFile() {
+        // The dev fallback resolves a file that exists relative to the cwd.
+        // Sources/parakeet_transcribe_pcm.py ships with the package.
+        let url = ResourceLocator.url(
+            forResource: "parakeet_transcribe_pcm",
+            withExtension: "py",
+            devRelativePath: "Sources/parakeet_transcribe_pcm.py"
+        )
+        if let url = url {
+            XCTAssertEqual(url.lastPathComponent, "parakeet_transcribe_pcm.py")
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        }
+        // When run outside the package root the dev path is absent and the
+        // result is nil; either way no other resolution mode applies here.
     }
 
     func testPythonScriptURL() {
@@ -54,9 +66,12 @@ final class ResourceLocatorTests: XCTestCase {
     }
 
     func testBundleMainResourceURLAccessible() {
-        // Resource URL may be nil but should not crash
-        _ = Bundle.main.resourceURL
-        XCTAssertTrue(true)
+        // When present, the main bundle resource URL is a file URL.
+        if let resourceURL = Bundle.main.resourceURL {
+            XCTAssertTrue(resourceURL.isFileURL)
+        } else {
+            XCTAssertNil(Bundle.main.resourceURL)
+        }
     }
 
     func testCurrentDirectoryAccessible() {
@@ -101,19 +116,21 @@ final class ResourceLocatorPythonScriptTests: XCTestCase {
         ]
 
         for script in knownScripts {
-            // These may or may not exist depending on build type
             let url = ResourceLocator.pythonScriptURL(named: script)
-            // Just verify no crash
-            _ = url
+            // Resolution may fail when run outside the package root, but any
+            // URL returned must point at the correctly named .py script.
+            if let url = url {
+                XCTAssertEqual(url.pathExtension, "py")
+                XCTAssertEqual(url.deletingPathExtension().lastPathComponent, script)
+            }
         }
-        XCTAssertTrue(true)
     }
 
-    func testPythonScriptExtension() {
-        // Verify py extension is used
-        _ = ResourceLocator.pythonScriptURL(named: "test")
-        // URL format should include .py
-        XCTAssertTrue(true)
+    func testPythonScriptExtensionUsesPy() {
+        // A missing script with no dev fallback resolves to nil; the dev
+        // fallback path is always constructed with a .py extension.
+        let url = ResourceLocator.pythonScriptURL(named: "missing_script_name")
+        XCTAssertNil(url)
     }
 }
 
@@ -121,13 +138,19 @@ final class ResourceLocatorPythonScriptTests: XCTestCase {
 final class ResourceLocatorBundleCandidatesTests: XCTestCase {
 
     func testBundleURLAccessible() {
-        _ = Bundle.main.bundleURL
-        XCTAssertTrue(true)
+        // bundleURL is always a non-empty file URL.
+        let bundleURL = Bundle.main.bundleURL
+        XCTAssertTrue(bundleURL.isFileURL)
+        XCTAssertFalse(bundleURL.path.isEmpty)
     }
 
     func testResourceURLAccessible() {
-        _ = Bundle.main.resourceURL
-        XCTAssertTrue(true)
+        // When present, resourceURL is a file URL.
+        if let resourceURL = Bundle.main.resourceURL {
+            XCTAssertTrue(resourceURL.isFileURL)
+        } else {
+            XCTAssertNil(Bundle.main.resourceURL)
+        }
     }
 
     func testAppendingPathComponent() {

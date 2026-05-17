@@ -44,23 +44,6 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         )
     }
 
-    // MARK: - Protocol Conformance Tests
-
-    func testConformsToAudioRecordingProtocol() {
-        recorder = makeRecorder()
-
-        // Verify all required properties exist
-        _ = recorder.isRecording
-        _ = recorder.audioLevel
-        _ = recorder.waveformSamples
-        _ = recorder.frequencyBands
-        _ = recorder.currentSessionStart
-        _ = recorder.lastRecordingDuration
-
-        // This test passes if it compiles - protocol conformance is verified at compile time
-        XCTAssertTrue(true)
-    }
-
     // MARK: - Initial State Tests
 
     func testInitialState() {

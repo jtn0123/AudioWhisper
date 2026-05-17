@@ -32,12 +32,9 @@ final class WindowControllerTests: IsolatedXCTestCase {
     
     func testToggleRecordWindowBlockedDuringWelcome() {
         UserDefaults.standard.set(false, forKey: "hasCompletedWelcome")
-        
-        // Should not show window during welcome
+
+        // During welcome, toggling the record window must be a safe no-op.
         XCTAssertNoThrow(windowController.toggleRecordWindow())
-        
-        // Just verify no crash occurs
-        XCTAssertTrue(true)
     }
     
     func testToggleRecordWindowAllowedAfterWelcome() {

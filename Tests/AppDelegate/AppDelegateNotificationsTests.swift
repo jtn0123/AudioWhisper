@@ -21,65 +21,74 @@ final class AppDelegateNotificationsTests: XCTestCase {
 
     // MARK: - Notification Observer Setup Tests
 
-    func testSetupNotificationObserversDoesNotCrash() {
-        // Just verify the method can be called without crashing
+    /// Posts `.pressAndHoldSettingsChanged` and waits for the observer to run.
+    private func awaitNotificationProcessed(name: Notification.Name, object: Any?) {
+        NotificationCenter.default.post(name: name, object: object)
+        let processed = expectation(description: "Notification processed")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { processed.fulfill() }
+        wait(for: [processed], timeout: 1.0)
+    }
+
+    func testSetupNotificationObserversWiresPressAndHoldObserver() {
         appDelegate.setupNotificationObservers()
-        XCTAssertTrue(true)
+
+        // Posting the settings-changed notification must reach the observer,
+        // which runs `configureShortcutMonitors()` and updates the stored
+        // configuration. Use an enabled config so the effect is observable.
+        let newConfig = PressAndHoldConfiguration(enabled: true, key: .leftOption, mode: .toggle)
+        awaitNotificationProcessed(name: .pressAndHoldSettingsChanged, object: newConfig)
+
+        // configureShortcutMonitors() reads PressAndHoldSettings.configuration()
+        // and assigns it to pressAndHoldConfiguration. After the observer runs,
+        // the stored configuration must match the freshly read settings value.
+        XCTAssertEqual(appDelegate.pressAndHoldConfiguration,
+                       PressAndHoldSettings.configuration())
     }
 
     func testSetupNotificationObserversRegistersAllObservers() {
-        // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Verify by posting notifications and checking no crash
-        // We can't easily verify observer registration without mocking NotificationCenter
-
-        // The notifications being observed are:
-        // - .welcomeCompleted
-        // - .restoreFocusToPreviousApp
-        // - .recordingStopped
-        // - .pressAndHoldSettingsChanged
-
-        // Just verify setup completed
-        XCTAssertTrue(true)
+        // Each observed notification must be handled without crashing. The
+        // recordingStopped handler is the one with an inspectable post-state:
+        // with no status item it must leave statusItem nil.
+        XCTAssertNil(appDelegate.statusItem)
+        NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
+        NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
+        NotificationCenter.default.post(name: .recordingStopped, object: nil)
+        XCTAssertNil(appDelegate.statusItem,
+                     "recordingStopped must handle a nil status item gracefully")
     }
 
     // MARK: - Notification Response Tests
 
     func testWelcomeCompletedNotificationShowsDashboard() {
-        // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Post notification
+        // The welcomeCompleted handler must not mutate the status item.
+        XCTAssertNil(appDelegate.statusItem)
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
-
-        // Dashboard opening would happen - verify no crash
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.statusItem)
     }
 
     func testRestoreFocusToPreviousAppNotificationCallsWindowController() {
-        // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Post notification
+        // The restore-focus handler must not mutate the status item.
+        XCTAssertNil(appDelegate.statusItem)
         NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-
-        // Window controller method would be called - verify no crash
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.statusItem)
     }
 
     func testRecordingStoppedNotificationCallsHandler() {
         // Initially no status item
         XCTAssertNil(appDelegate.statusItem)
 
-        // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Post notification - should handle nil status item gracefully
+        // Posting recordingStopped with a nil status item must be handled
+        // gracefully and must not create a status item.
         NotificationCenter.default.post(name: .recordingStopped, object: nil)
-
-        // Verify no crash with nil status item
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.statusItem)
     }
 
     func testPressAndHoldSettingsChangedReconfiguresMonitors() {
@@ -129,44 +138,41 @@ final class AppDelegateNotificationsTests: XCTestCase {
     // MARK: - Observer Cleanup Tests
 
     func testNotificationObserversAreCleanedUpOnDeinit() {
-        // Create a temporary delegate
+        // Create a temporary delegate and register observers.
         var tempDelegate: AppDelegate? = AppDelegate()
         tempDelegate?.setupNotificationObservers()
 
-        // Set to nil to trigger deinit
+        // Set to nil to trigger deinit (which removes observers).
         tempDelegate = nil
+        XCTAssertNil(tempDelegate)
 
-        // If observers weren't cleaned up properly, posting might cause issues
-        // But NotificationCenter uses weak references, so this should be fine
+        // Posting after deinit must not dispatch to the deallocated delegate;
+        // a use-after-free would crash the test runner here.
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
-
-        XCTAssertTrue(true)
     }
 
     // MARK: - Integration Tests
 
     func testMultipleNotificationsInSequence() {
-        // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Post multiple notifications
+        // A burst of notifications must all be handled without mutating the
+        // status item (no status item exists in this test setup).
         NotificationCenter.default.post(name: .recordingStopped, object: nil)
         NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
-
-        // All should be handled without crash
-        XCTAssertTrue(true)
+        XCTAssertNil(appDelegate.statusItem)
     }
 
     func testNotificationWithPayload() {
-        // Set up observers
         appDelegate.setupNotificationObservers()
 
-        // Post notification with configuration payload
+        // A settings-changed notification carrying a configuration payload
+        // must reach the handler, which runs configureShortcutMonitors() and
+        // assigns a non-nil stored configuration.
         let config = PressAndHoldConfiguration(enabled: true, key: .rightCommand, mode: .hold)
-        NotificationCenter.default.post(name: .pressAndHoldSettingsChanged, object: config)
-
-        // Should process without crash
-        XCTAssertTrue(true)
+        awaitNotificationProcessed(name: .pressAndHoldSettingsChanged, object: config)
+        XCTAssertEqual(appDelegate.pressAndHoldConfiguration,
+                       PressAndHoldSettings.configuration())
     }
 }

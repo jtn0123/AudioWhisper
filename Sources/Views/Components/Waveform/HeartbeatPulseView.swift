@@ -10,7 +10,7 @@ struct HeartbeatPulseView: View {
     @State private var rings: [Ring] = []
     @State private var lastPeakTime: Date = .distantPast
     @State private var idlePhase: CGFloat = 0
-    @State private var isViewActive = false
+    @State private var frameTimer = FrameTimer(interval: 0.033)
 
     private let coral     = Color(red: 0.85, green: 0.45, blue: 0.30)
     private let coralDeep = Color(red: 0.70, green: 0.34, blue: 0.23)
@@ -77,10 +77,9 @@ struct HeartbeatPulseView: View {
             }
             .position(center)
         }
-        .onAppear { isViewActive = true }
-        .onDisappear { isViewActive = false }
-        .onReceive(Timer.publish(every: 0.033, on: .main, in: .common).autoconnect()) { _ in
-            guard isViewActive else { return }
+        .onAppear { frameTimer.start() }
+        .onDisappear { frameTimer.stop() }
+        .onReceive(frameTimer.publisher) { _ in
             updateRings()
         }
     }
