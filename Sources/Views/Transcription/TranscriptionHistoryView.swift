@@ -4,33 +4,27 @@ import AppKit
 
 @MainActor
 internal struct TranscriptionHistoryView: View {
-    @Environment(\.modelContext) private var modelContext
+    // Data loading + pagination is owned by the view model (audit item A2);
+    // the view no longer touches `DataManager` directly.
+    @State private var viewModel: TranscriptionHistoryViewModel
 
-    // Paged record state — replaces the previous `@Query` so we don't materialize
-    // the entire history. Records are loaded via
-    // `DataManager.fetchRecords(limit:offset:search:)` in pages of `pageSize`.
-    @State private var records: [TranscriptionRecord] = []
-    @State private var page: Int = 0
-    @State private var hasMore: Bool = true
-    @State private var isLoading: Bool = false
-    @State private var hasLoadedOnce: Bool = false
-
+    // Purely-UI state stays in the view.
     @State private var searchText = ""
-    @State private var showError = false
-    @State private var errorMessage = ""
     @State private var recordToDelete: TranscriptionRecord?
     @State private var showDeleteConfirmation = false
     @State private var expandedRecords: Set<TranscriptionRecord.ID> = []
     @FocusState private var isSearchFocused: Bool
 
-    private let pageSize = 50
+    init(viewModel: TranscriptionHistoryViewModel? = nil) {
+        self._viewModel = State(initialValue: viewModel ?? TranscriptionHistoryViewModel())
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             TranscriptionHistoryHeader(
                 title: "Transcription History",
                 subtitle: subtitleText,
-                showClearAll: !records.isEmpty,
+                showClearAll: !viewModel.records.isEmpty,
                 onClearAll: showClearAllConfirmation
             )
 
@@ -41,9 +35,9 @@ internal struct TranscriptionHistoryView: View {
                 isFocused: $isSearchFocused
             )
 
-            if isLoading && records.isEmpty {
+            if viewModel.isLoading && viewModel.records.isEmpty {
                 TranscriptionHistoryLoadingView()
-            } else if records.isEmpty && hasLoadedOnce {
+            } else if viewModel.records.isEmpty && viewModel.hasLoadedOnce {
                 TranscriptionHistoryEmptyState(
                     searchText: searchText,
                     onClearSearch: {
@@ -53,39 +47,39 @@ internal struct TranscriptionHistoryView: View {
                 )
             } else {
                 TranscriptionRecordsList(
-                    records: records,
+                    records: viewModel.records,
                     expandedRecords: expandedRecords,
                     onToggleExpand: toggleExpansion(for:),
                     onCopy: { copyToClipboard($0.text) },
                     onDelete: confirmDelete,
                     onLastRowAppear: {
-                        if hasMore && !isLoading {
-                            Task { await loadRecords() }
+                        if viewModel.hasMore && !viewModel.isLoading {
+                            Task { await viewModel.loadRecords(search: searchText) }
                         }
                     }
                 )
             }
         }
         .task {
-            await loadRecords(reset: true)
+            await viewModel.loadRecords(reset: true, search: searchText)
         }
-        .onChange(of: searchText) { _, _ in
-            Task { await loadRecords(reset: true) }
+        .onChange(of: searchText) { _, newValue in
+            Task { await viewModel.loadRecords(reset: true, search: newValue) }
         }
         .alert("Delete Record", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
                 if let record = recordToDelete {
-                    deleteRecord(record)
+                    Task { await viewModel.deleteRecord(record, search: searchText) }
                 }
             }
         } message: {
             Text("Are you sure you want to delete this transcription record? This action cannot be undone.")
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Error", isPresented: $viewModel.showError) {
             Button("OK") { }
         } message: {
-            Text(errorMessage)
+            Text(viewModel.errorMessage)
         }
         .frame(
             minWidth: LayoutMetrics.TranscriptionHistory.minimumSize.width,
@@ -102,48 +96,6 @@ internal struct TranscriptionHistoryView: View {
         }
     }
 
-    // MARK: - Paginated Loading
-
-    @MainActor
-    private func loadRecords(reset: Bool = false) async {
-        guard !isLoading else { return }
-        isLoading = true
-        defer {
-            isLoading = false
-            hasLoadedOnce = true
-        }
-
-        if reset {
-            page = 0
-            hasMore = true
-        }
-
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let searchTerm: String? = trimmed.isEmpty ? nil : trimmed
-
-        do {
-            let offset = page * pageSize
-            let batch = try await DataManager.shared.fetchRecords(
-                limit: pageSize,
-                offset: offset,
-                search: searchTerm
-            )
-
-            if reset {
-                records = batch
-            } else {
-                records.append(contentsOf: batch)
-            }
-
-            hasMore = batch.count == pageSize
-            page += 1
-        } catch {
-            errorMessage = "Failed to load transcription history: \(error.localizedDescription)"
-            showError = true
-            hasMore = false
-        }
-    }
-
     private func copyToClipboard(_ text: String) {
         PasteManager.copyToClipboard(text)
     }
@@ -151,20 +103,6 @@ internal struct TranscriptionHistoryView: View {
     private func confirmDelete(_ record: TranscriptionRecord) {
         recordToDelete = record
         showDeleteConfirmation = true
-    }
-
-    private func deleteRecord(_ record: TranscriptionRecord) {
-        Task {
-            do {
-                try await DataManager.shared.deleteRecord(record)
-                await loadRecords(reset: true)
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to delete record: \(error.localizedDescription)"
-                    showError = true
-                }
-            }
-        }
     }
 
     private func showClearAllConfirmation() {
@@ -177,25 +115,7 @@ internal struct TranscriptionHistoryView: View {
 
         let response = alert.runModal()
         if response == .alertSecondButtonReturn {
-            clearAllRecords()
-        }
-    }
-
-    private func clearAllRecords() {
-        Task {
-            isLoading = true
-            do {
-                try await DataManager.shared.deleteAllRecords()
-            } catch {
-                await MainActor.run {
-                    errorMessage = "Failed to clear all records: \(error.localizedDescription)"
-                    showError = true
-                }
-            }
-            await MainActor.run {
-                isLoading = false
-            }
-            await loadRecords(reset: true)
+            Task { await viewModel.clearAllRecords(search: searchText) }
         }
     }
 
@@ -208,14 +128,14 @@ internal struct TranscriptionHistoryView: View {
     }
 
     private var subtitleText: String {
-        let loadedCount = records.count
+        let loadedCount = viewModel.records.count
 
         if loadedCount == 0 {
             return "No records"
         }
 
         let noun = loadedCount == 1 ? "record" : "records"
-        let suffix = hasMore ? "+" : ""
+        let suffix = viewModel.hasMore ? "+" : ""
 
         if searchText.isEmpty {
             return "\(loadedCount)\(suffix) \(noun)"
