@@ -95,9 +95,17 @@ internal struct MenuHeaderView: View {
 //
 // Single recent-transcript line in the menu. Click copies the text to the
 // clipboard. Used via NSMenuItem.view + NSHostingView.
+//
+// NOTE: AppKit does NOT invoke an NSMenuItem's `action` selector when the item
+// has a custom `view`, so the click handling lives here via `.onTapGesture`.
 internal struct RecentTranscriptMenuRow: View {
     let timeString: String
     let text: String
+    /// Invoked when the row is clicked (copies the transcript). Optional so
+    /// existing previews/tests that only render the row still compile.
+    var onTap: (() -> Void)?
+
+    @State private var isHovering = false
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -118,6 +126,14 @@ internal struct RecentTranscriptMenuRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .background(
+            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                .fill(isHovering ? Color.accentColor.opacity(0.15) : Color.clear)
+                .padding(.horizontal, 5)
+        )
+        .onHover { isHovering = $0 }
+        .onTapGesture { onTap?() }
     }
 }
 

@@ -174,6 +174,10 @@ extension RecordingViewModel {
         // Use actor for thread-safe resume coordination
         let coordinator = ActivationCoordinator()
 
+        // NSWorkspace posts activation notifications on its own notification
+        // center, not NotificationCenter.default — observe the correct one.
+        let workspaceCenter = NSWorkspace.shared.notificationCenter
+
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let timeoutTask = Task {
                 try? await Task.sleep(for: .milliseconds(500))
@@ -183,7 +187,7 @@ extension RecordingViewModel {
                 }
             }
 
-            let observer = NotificationCenter.default.addObserver(
+            let observer = workspaceCenter.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification,
                 object: nil,
                 queue: .main
@@ -203,7 +207,7 @@ extension RecordingViewModel {
             // Clean up observer after a delay
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(1))
-                NotificationCenter.default.removeObserver(observer)
+                workspaceCenter.removeObserver(observer)
             }
         }
     }

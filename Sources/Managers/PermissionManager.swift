@@ -166,20 +166,6 @@ internal class PermissionManager {
         }
     }
     
-    private func requestAccessibilityPermission() {
-        if accessibilityPermissionState.needsRequest {
-            accessibilityPermissionState = .requesting
-            
-            // Use dedicated AccessibilityPermissionManager for proper explanation and handling
-            accessibilityManager.requestPermissionWithExplanation { [weak self] granted in
-                Task { @MainActor [weak self] in
-                    self?.accessibilityPermissionState = granted ? .granted : .denied
-                    self?.checkIfAllPermissionsHandled()
-                }
-            }
-        }
-    }
-    
     private func checkIfAllPermissionsHandled() {
         let hasFailures = microphonePermissionState == .denied || accessibilityPermissionState == .denied
         if hasFailures && !showRecoveryModal {

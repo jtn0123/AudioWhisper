@@ -92,12 +92,16 @@ internal extension ContentView {
             viewModel.showError = true
         }
 
-        // Window focus - ensure proper first responder
-        notificationCoordinator.observe(NSWindow.didBecomeKeyNotification) { _ in
+        // Window focus - ensure proper first responder, but ONLY for the
+        // recording window. The observer fires for every window, so the
+        // handler verifies the notification's window is the recording window
+        // before forcing first responder — otherwise it would clobber focus
+        // on unrelated windows (e.g. a search field in History/Settings).
+        notificationCoordinator.observe(NSWindow.didBecomeKeyNotification) { notification in
+            guard let window = notification.object as? NSWindow else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                if let window = NSApp.keyWindow {
-                    window.makeFirstResponder(window.contentView)
-                }
+                guard window.title == WindowTitles.recording else { return }
+                window.makeFirstResponder(window.contentView)
             }
         }
 
