@@ -3,6 +3,7 @@ import Observation
 import SwiftUI
 import os.log
 
+@MainActor
 @Observable
 internal final class CategoryStore {
     static let shared = CategoryStore()

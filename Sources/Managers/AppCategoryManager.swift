@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 internal final class AppCategoryManager {
     static let shared = AppCategoryManager()

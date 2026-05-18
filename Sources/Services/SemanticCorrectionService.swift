@@ -39,6 +39,7 @@ internal final class SemanticCorrectionService {
     private static let chunkSizeWords = 6000
     private static let overlapSizeWords = 200 // Small overlap for context continuity
 
+    @MainActor
     private func categoryFor(bundleId: String?) -> CategoryDefinition {
         guard let id = bundleId else { return CategoryDefinition.fallback }
         return AppCategoryManager.shared.category(for: id)
@@ -77,7 +78,7 @@ internal final class SemanticCorrectionService {
     ) async -> CorrectionOutcome {
         let mode = AppDefaults.semanticCorrectionMode
 
-        let category = categoryFor(bundleId: sourceAppBundleId)
+        let category = await categoryFor(bundleId: sourceAppBundleId)
         logger.info("Correction category: \(category.id) for bundleId: \(sourceAppBundleId ?? "nil")")
 
         switch mode {
