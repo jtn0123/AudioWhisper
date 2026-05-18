@@ -119,6 +119,9 @@ internal extension AppDelegate {
                 if recorder.startRecording() {
                     updateMenuBarIcon(isRecording: true)
                     SoundManager().playRecordingStartSound()
+                    // Show the recording window so the user gets visual
+                    // feedback, mirroring the press-and-hold path.
+                    showRecordingWindowForProcessing()
                 } else {
                     toggleRecordWindow()
                     NotificationCenter.default.post(

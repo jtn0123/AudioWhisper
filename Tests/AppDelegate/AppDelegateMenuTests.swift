@@ -97,6 +97,31 @@ final class AppDelegateMenuTests: XCTestCase {
         XCTAssertNil(appDelegate.statusItem)
     }
 
+    // MARK: - Recent Transcript Copy (bug #12)
+
+    func testCopyRecentTranscriptWritesToClipboard() {
+        // Clicking a recent transcript row must copy its text to the clipboard.
+        // The row carries a custom view so the menu item has no `action`;
+        // copyRecentTranscript(text:) is invoked directly by the row's tap.
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+
+        let sample = "Recent transcript \(UUID().uuidString)"
+        appDelegate.copyRecentTranscript(text: sample)
+
+        XCTAssertEqual(pasteboard.string(forType: .string), sample)
+    }
+
+    func testRecentTranscriptMenuRowTapInvokesHandler() {
+        // The SwiftUI row exposes an onTap closure that drives the copy.
+        var tapped = false
+        let row = RecentTranscriptMenuRow(timeString: "1:23 PM", text: "hello") {
+            tapped = true
+        }
+        row.onTap?()
+        XCTAssertTrue(tapped, "onTap closure should fire when invoked")
+    }
+
     func testShowHelpDoesNotCrash() {
         // This would normally show a dialog, but in test mode it may not
         // Just verify no crash

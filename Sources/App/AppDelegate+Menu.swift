@@ -116,17 +116,19 @@ internal extension AppDelegate {
     }
 
     private func makeRecentItem(record: TranscriptionRecord) -> NSMenuItem {
-        let item = NSMenuItem(
-            title: record.text,  // Fallback for VoiceOver
-            action: #selector(copyRecentTranscript(_:)),
-            keyEquivalent: ""
-        )
-        item.target = self
+        // The item carries a custom `view`, so AppKit will NOT invoke a menu
+        // item `action` on click. The SwiftUI row handles the tap itself and
+        // calls back into `copyRecentTranscript(text:)`.
+        let item = NSMenuItem(title: record.text, action: nil, keyEquivalent: "")
         item.representedObject = record
 
         let host = NSHostingView(rootView: RecentTranscriptMenuRow(
             timeString: Self.menuTimeFormatter.string(from: record.date),
-            text: record.text
+            text: record.text,
+            onTap: { [weak self] in
+                self?.copyRecentTranscript(text: record.text)
+                self?.statusItem?.menu?.cancelTracking()
+            }
         ))
         host.frame = NSRect(x: 0, y: 0, width: menuWidth, height: 26)
         item.view = host
@@ -157,11 +159,8 @@ internal extension AppDelegate {
     // MARK: - Actions
 
     /// Copies a recent transcript's text to the clipboard when clicked.
-    @MainActor @objc func copyRecentTranscript(_ sender: NSMenuItem) {
-        guard let record = sender.representedObject as? TranscriptionRecord else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(record.text, forType: .string)
+    @MainActor func copyRecentTranscript(text: String) {
+        PasteManager.copyToClipboard(text)
         Logger.app.info("Copied recent transcript to clipboard")
     }
 
