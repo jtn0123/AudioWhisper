@@ -46,7 +46,7 @@ extension MLXModelManager {
             "Starting download for model: \(repo) with Python: \(pythonPath.redactingHomeDirectory)"
         )
 
-        let process = makeDownloadProcess(pythonPath: pythonPath, script: Self.downloadScript(for: repo))
+        let process = makeDownloadProcess(pythonPath: pythonPath, script: Self.downloadScript, repo: repo)
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
@@ -141,18 +141,20 @@ extension MLXModelManager {
     }
 
     /// Builds a configured Python process for a download script.
-    private func makeDownloadProcess(pythonPath: String, script: String) -> Process {
+    ///
+    /// `repo` is passed as a command-line argument (`sys.argv[1]`) rather than
+    /// interpolated into the Python source, so a hostile repo name cannot break
+    /// out of a string literal and execute arbitrary code (audit item: command
+    /// injection via model repo names).
+    ///
+    /// The environment is a minimal allowlist (see `daemonEnvironment()`) rather
+    /// than the full inherited process environment, so HuggingFace tokens, proxy
+    /// credentials, etc. are not leaked into the download subprocess.
+    private func makeDownloadProcess(pythonPath: String, script: String, repo: String) -> Process {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
-        process.arguments = ["-c", script]
-
-        // Inherit environment and ensure HOME is set for HuggingFace cache
-        var env = ProcessInfo.processInfo.environment
-        env["PYTHONUNBUFFERED"] = "1"
-        if env["HOME"] == nil {
-            env["HOME"] = FileManager.default.homeDirectoryForCurrentUser.path
-        }
-        process.environment = env
+        process.arguments = ["-c", script, repo]
+        process.environment = MLDaemonManager.daemonEnvironment()
         return process
     }
 
@@ -207,8 +209,10 @@ extension MLXModelManager {
         }
     }
 
-    private static func downloadScript(for repo: String) -> String {
-        """
+    /// Static Python source for the HuggingFace model download. The repo name is
+    /// read from `sys.argv[1]` — never interpolated into the source — so a
+    /// malicious repo string cannot escape a string literal and run code.
+    private static let downloadScript = """
         import sys
         import json
         import os
@@ -217,7 +221,10 @@ extension MLXModelManager {
         os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', '0')
         os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
 
-        repo = "\(repo)"
+        if len(sys.argv) < 2:
+            print(json.dumps({"status": "error", "message": "Missing repo argument"}), flush=True)
+            sys.exit(2)
+        repo = sys.argv[1]
 
         try:
             print(json.dumps({"status": "downloading", "message": "Downloading model files..."}), flush=True)
@@ -234,7 +241,6 @@ extension MLXModelManager {
             print(json.dumps({"status": "error", "message": str(e)}), flush=True)
             sys.exit(1)
         """
-    }
 
     func ensureParakeetModel() async {
         // First check filesystem directly to avoid race conditions with refreshModelList
@@ -358,7 +364,7 @@ extension MLXModelManager {
             downloadProgress[repo] = "Downloading Parakeet model..."
         }
 
-        let process = makeDownloadProcess(pythonPath: pythonPath, script: Self.parakeetScript(for: repo))
+        let process = makeDownloadProcess(pythonPath: pythonPath, script: Self.parakeetScript, repo: repo)
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
@@ -444,24 +450,29 @@ extension MLXModelManager {
         }
     }
 
-    private static func parakeetScript(for repo: String) -> String {
-        """
+    /// Static Python source for the Parakeet model download. The repo name is
+    /// read from `sys.argv[1]` — never interpolated into the source.
+    private static let parakeetScript = """
         import json, sys, traceback, os
 
         # Allow downloads; avoid implicit token usage
         os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
         os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', '0')
 
+        if len(sys.argv) < 2:
+            print(json.dumps({"status": "error", "message": "Missing repo argument"}), flush=True)
+            sys.exit(2)
+        repo = sys.argv[1]
+
         try:
             from parakeet_mlx import from_pretrained
             # Trigger download if not cached; load from cache otherwise
-            from_pretrained(\"\(repo)\")
+            from_pretrained(repo)
             print(json.dumps({"status": "complete", "message": "Model ready"}), flush=True)
         except Exception as e:
             print(json.dumps({"status": "error", "message": str(e)}), flush=True)
             sys.exit(1)
         """
-    }
 
     func deleteModel(_ repo: String) async {
         let escapedRepo = repo.replacingOccurrences(of: "/", with: "--")

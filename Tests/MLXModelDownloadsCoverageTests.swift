@@ -164,4 +164,26 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         XCTAssertFalse(manager.formatBytes(123_456_789).isEmpty)
         XCTAssertTrue(manager.formatBytes(5 * 1024 * 1024 * 1024).contains("GB"))
     }
+
+    // MARK: - Command-injection hardening (audit #1)
+
+    /// The download scripts must read the repo name from `sys.argv` and must
+    /// NOT interpolate it into the Python source — a hostile repo string with
+    /// a quote/newline would otherwise break out of the literal and run code.
+    func testDownloadScriptsReadRepoFromArgvNotInterpolation() throws {
+        let downloadsSource = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/Services/MLXModelManager+Downloads.swift")
+        let content = try String(contentsOf: downloadsSource)
+
+        // No raw interpolation of `repo` into the embedded Python literals.
+        XCTAssertFalse(content.contains("repo = \"\\(repo)\""),
+                       "downloadScript must not interpolate repo into Python source")
+        XCTAssertFalse(content.contains("from_pretrained(\\\"\\(repo)\\\")"),
+                       "parakeetScript must not interpolate repo into Python source")
+        // The scripts read the repo from argv instead.
+        XCTAssertTrue(content.contains("repo = sys.argv[1]"),
+                      "Download scripts should read the repo from sys.argv")
+    }
 }

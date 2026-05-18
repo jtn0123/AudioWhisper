@@ -11,6 +11,21 @@ os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 def main():
     try:
         from mlx_lm import load, generate
+    except (ImportError, ModuleNotFoundError) as e:
+        # Genuine missing-dependency case. Emit a structured marker so the
+        # Swift side can reliably distinguish this from a runtime error that
+        # merely mentions `mlx_lm` in a stack trace (audit #40).
+        print(
+            json.dumps(
+                {
+                    "success": False,
+                    "error": f"mlx-lm import failed: {e}",
+                    "error_kind": "dependency_missing",
+                    "missing_dependency": "mlx-lm",
+                }
+            )
+        )
+        return 1
     except Exception as e:
         print(json.dumps({"success": False, "error": f"mlx-lm import failed: {e}"}))
         return 1
@@ -59,7 +74,10 @@ def main():
                 os.environ.pop("TRANSFORMERS_OFFLINE", None)
             else:
                 os.environ["TRANSFORMERS_OFFLINE"] = prev_tr_offline
-            return print(
+            # Print the error JSON, then return a non-zero exit code. A
+            # combined print-and-return would yield None, and sys.exit(None)
+            # exits 0 — masking the failure as success (audit #28).
+            print(
                 json.dumps(
                     {
                         "success": False,
@@ -67,6 +85,7 @@ def main():
                     }
                 )
             )
+            return 5
         # Load prompt from file if provided, else use default
         default_prompt = (
             "You are a speech-to-text post-processor. Your ONLY job is to clean up transcribed speech.\n\n"

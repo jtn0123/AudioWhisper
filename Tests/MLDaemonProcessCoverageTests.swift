@@ -187,6 +187,107 @@ final class MLDaemonProcessCoverageTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Crash-loop guard (audit #8)
+
+    /// `startProcess` must count EVERY spawn attempt — restart or not — toward
+    /// the limit, and never reset the counter to 0 on a fresh (non-restart)
+    /// spawn. Otherwise a daemon that crashes on every request is respawned
+    /// forever. We point python at a non-existent path so `proc.run()` throws
+    /// without spawning a real process, but the counter still increments.
+    func testStartProcessCountsEverySpawnAndTripsRestartLimit() async {
+        let fakeScript = URL(fileURLWithPath: "/tmp/fake_ml_daemon_\(UUID().uuidString).py")
+        let missingPython = URL(fileURLWithPath: "/nonexistent/python-\(UUID().uuidString)")
+        await manager.setTestOverrides(python: missingPython, script: fakeScript)
+
+        // Three spawn attempts are permitted (maxRestartAttempts == 3); each
+        // fails to launch but is counted. The fourth must trip the limit.
+        var sawRestartLimit = false
+        for attempt in 1...4 {
+            do {
+                try await manager.startProcess(isRestart: false)
+                XCTFail("Spawn \(attempt) should not have succeeded with a missing python")
+            } catch MLDaemonError.restartLimitReached {
+                sawRestartLimit = true
+                XCTAssertEqual(attempt, 4, "Limit should trip on the 4th attempt, not earlier")
+            } catch {
+                // daemonUnavailable from a failed proc.run() — expected for 1...3.
+                XCTAssertLessThanOrEqual(attempt, 3)
+            }
+        }
+        XCTAssertTrue(sawRestartLimit, "A repeatedly-crashing daemon must eventually trip restartLimitReached")
+
+        let count = await manager.restartAttemptsForTesting()
+        let limit = await manager.maxRestartAttempts
+        XCTAssertGreaterThanOrEqual(count, limit,
+                                    "Fresh spawns must NOT reset the crash-loop counter")
+    }
+
+    /// A successful daemon reply resets the crash-loop counter (audit #8): the
+    /// daemon has proven healthy, so transient earlier restarts are forgiven.
+    func testSuccessfulReplyResetsRestartCounter() async {
+        await manager.setRestartAttemptsForTesting(2)
+        await manager.injectPending(id: 42) { _ in }
+        await manager.handle(line: #"{"jsonrpc":"2.0","id":42,"result":{"pong":true}}"#)
+
+        let count = await manager.restartAttemptsForTesting()
+        XCTAssertEqual(count, 0, "A successful reply should clear the restart counter")
+    }
+
+    /// `markDaemonStableIfHealthy` resets the counter only for the live daemon.
+    func testStabilityCheckIgnoresStaleProcessIdentity() async {
+        await manager.setRestartAttemptsForTesting(2)
+        // A process that is not the manager's current daemon must be ignored.
+        let unrelated = Process()
+        await manager.markDaemonStableIfHealthy(unrelated)
+        let count = await manager.restartAttemptsForTesting()
+        XCTAssertEqual(count, 2, "A stale/unowned process must not reset the counter")
+    }
+
+    // MARK: - Shutdown re-check (audit #25)
+
+    /// If `shutdown()` runs while `startProcess` is awaiting an async hop, the
+    /// re-check before `proc.run()` must abort the spawn rather than leak an
+    /// unowned daemon.
+    func testStartProcessAbortsWhenShuttingDown() async {
+        let fakeScript = URL(fileURLWithPath: "/tmp/fake_ml_daemon_\(UUID().uuidString).py")
+        await manager.setTestOverrides(python: URL(fileURLWithPath: "/usr/bin/true"), script: fakeScript)
+        await manager.markShuttingDownForTesting()
+
+        do {
+            try await manager.startProcess(isRestart: false)
+            XCTFail("startProcess must abort while shutting down")
+        } catch {
+            guard case MLDaemonError.daemonUnavailable = error else {
+                return XCTFail("Expected daemonUnavailable, got \(error)")
+            }
+        }
+        let running = await manager.isProcessRunningForTesting()
+        XCTAssertFalse(running, "No daemon should be spawned during shutdown")
+    }
+
+    // MARK: - Dead-daemon teardown (audit #23)
+
+    /// `teardownDeadDaemon` fails pending requests and clears the process
+    /// handle so a later `ensureDaemonRunning` can spawn fresh.
+    func testTeardownDeadDaemonFailsPendingAndClearsProcess() async {
+        let received = ResultBox()
+        await manager.injectPending(id: 5) { result in
+            Task { await received.set(result) }
+        }
+
+        await manager.teardownDeadDaemon()
+
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        let value = await received.value
+        guard case .failure = value else {
+            return XCTFail("Pending request should be failed when the daemon is torn down")
+        }
+        let running = await manager.isProcessRunningForTesting()
+        XCTAssertFalse(running)
+        let count = await manager.pendingCountForTesting()
+        XCTAssertEqual(count, 0)
+    }
 }
 
 /// Sendable holder for a `Result` captured from a completion callback.

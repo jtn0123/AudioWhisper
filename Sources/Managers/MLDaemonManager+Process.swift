@@ -14,12 +14,26 @@ internal extension MLDaemonManager {
         try await startProcess(isRestart: false)
     }
 
+    /// Spawns the daemon process.
+    ///
+    /// Crash-loop guard (audit #8): `restartAttempts` is *never* reset here.
+    /// It only counts up — both on `processTerminated`-driven restarts AND on
+    /// fresh `ensureDaemonRunning` spawns. It is reset to 0 only once the
+    /// daemon has proven STABLE (see `markDaemonStableIfHealthy()`), so a
+    /// daemon that crashes on every request eventually trips
+    /// `restartLimitReached` instead of being respawned forever.
     func startProcess(isRestart: Bool) async throws {
+        // Count every spawn attempt, restart or not, against the limit.
+        restartAttempts += 1
+        if restartAttempts > maxRestartAttempts { throw MLDaemonError.restartLimitReached }
+
         let python = try await resolvedPython()
         let script = try resolvedScript()
 
-        if isRestart { restartAttempts += 1 } else { restartAttempts = 0 }
-        if restartAttempts >= maxRestartAttempts { throw MLDaemonError.restartLimitReached }
+        // Re-check after the async hop: `shutdown()` may have run while we were
+        // awaiting `resolvedPython()`. Spawning now would leak an unowned
+        // daemon that the completed `shutdown()` never terminates (audit #25).
+        guard !isShuttingDown else { throw MLDaemonError.daemonUnavailable("shutting down") }
 
         let proc = Process()
         proc.executableURL = python
@@ -55,8 +69,30 @@ internal extension MLDaemonManager {
         stdinPipe = stdin
         stdoutPipe = stdout
         stderrPipe = stderr
-        isShuttingDown = false
+        // NOTE: do NOT clear `isShuttingDown` here — `shutdown()` owns that flag.
         startStdoutReader(pipe: stdout)
+        scheduleStabilityCheck(for: proc)
+    }
+
+    /// After the daemon has been alive and unchanged for `stableUptimeSeconds`,
+    /// treat it as stable and reset the crash-loop counter. Cancelled implicitly
+    /// because the check verifies the process identity before resetting.
+    private func scheduleStabilityCheck(for proc: Process) {
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.stableUptimeSeconds * 1_000_000_000)
+            await self?.markDaemonStableIfHealthy(proc)
+        }
+    }
+
+    /// Resets `restartAttempts` only if `proc` is still the live daemon. A
+    /// daemon that crashed before reaching stable uptime never reaches here
+    /// with a matching identity, so its crash count is preserved.
+    func markDaemonStableIfHealthy(_ proc: Process) {
+        guard !isShuttingDown, process === proc, proc.isRunning else { return }
+        if restartAttempts != 0 {
+            logger.info("ml_daemon stable; resetting restart counter")
+        }
+        restartAttempts = 0
     }
 
     /// Builds a minimal, allowlisted environment for the Python daemon instead
@@ -128,12 +164,11 @@ internal extension MLDaemonManager {
         completeAllPending(with: MLDaemonError.daemonUnavailable("exited (\(exitCode))"))
         process = nil
 
-        guard restartAttempts < maxRestartAttempts else {
-            // Complete any pending requests that arrived after the initial completeAllPending
-            completeAllPending(with: MLDaemonError.daemonUnavailable("max restarts exceeded"))
-            return
-        }
-
+        // `startProcess` itself counts the attempt and throws
+        // `restartLimitReached` once the crash-loop limit is hit, so a daemon
+        // that keeps dying eventually stops being respawned (audit #8). We do
+        // NOT pre-check the counter here — the spawn is the single source of
+        // truth for the limit.
         do {
             try await startProcess(isRestart: true)
         } catch {
@@ -189,5 +224,22 @@ internal extension MLDaemonManager {
     func handleStdoutReaderError(_ error: Error) {
         guard !isShuttingDown else { return }
         logger.error("ml_daemon stdout reader failed: \(error.localizedDescription)")
+    }
+
+    /// Tears down a daemon that failed a stdin write (audit #23). The process is
+    /// presumed dead/unwritable: terminate it, close pipes, and drop the handle
+    /// so the next `ensureDaemonRunning()` spawns a fresh daemon. Pending
+    /// requests are failed so callers don't hang on the dead process.
+    ///
+    /// Unlike `shutdown()` this does NOT set `isShuttingDown`, so a follow-up
+    /// request is allowed to respawn — subject to the crash-loop limit (#8).
+    func teardownDeadDaemon() async {
+        guard !isShuttingDown else { return }
+        logger.error("Tearing down dead ml_daemon after write failure")
+        closePipes()
+        let dead = process
+        process = nil
+        dead?.terminate()
+        completeAllPending(with: MLDaemonError.daemonUnavailable("write failed; daemon torn down"))
     }
 }
