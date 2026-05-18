@@ -70,7 +70,7 @@ final class MLXCorrectionServiceTests: XCTestCase {
             MLDaemonError.remoteError("ModuleNotFoundError: No module named 'mlx_lm'")
         )
         let service = MLXCorrectionService(daemon: daemon, promptLoader: { nil })
-        
+
         do {
             _ = try await service.correct(text: "text", modelRepo: "repo", pythonPath: "/tmp/python")
             XCTFail("Expected dependencyMissing error")
@@ -81,6 +81,79 @@ final class MLXCorrectionServiceTests: XCTestCase {
             XCTAssertEqual(dep, "mlx-lm")
             XCTAssertEqual(command, "uv add mlx-lm")
         }
+    }
+
+    /// Audit #40: a runtime error whose stack trace merely mentions the
+    /// `mlx_lm` module path must NOT be misclassified as a missing dependency.
+    func testCorrectDoesNotMisclassifyRuntimeErrorMentioningMLXLM() async {
+        let daemon = MockMLDaemon()
+        daemon.nextCorrectResult = .failure(
+            MLDaemonError.remoteError(
+                "RuntimeError: out of memory while running mlx_lm.generate at .../mlx_lm/utils.py"
+            )
+        )
+        let service = MLXCorrectionService(daemon: daemon, promptLoader: { nil })
+
+        do {
+            _ = try await service.correct(text: "text", modelRepo: "repo", pythonPath: "/tmp/python")
+            XCTFail("Expected correctionFailed, not dependencyMissing")
+        } catch {
+            guard case MLXCorrectionError.correctionFailed = error else {
+                return XCTFail("Runtime error mentioning mlx_lm must map to correctionFailed, got \(error)")
+            }
+        }
+    }
+
+    /// Audit #40: the daemon loader wraps a genuine missing import as
+    /// `mlx-lm import failed:` — that prefix must still trigger dependencyMissing.
+    func testCorrectMapsLoaderImportFailurePrefix() async {
+        let daemon = MockMLDaemon()
+        daemon.nextCorrectResult = .failure(
+            MLDaemonError.remoteError("mlx-lm import failed: No module named 'mlx_lm'")
+        )
+        let service = MLXCorrectionService(daemon: daemon, promptLoader: { nil })
+
+        do {
+            _ = try await service.correct(text: "text", modelRepo: "repo", pythonPath: "/tmp/python")
+            XCTFail("Expected dependencyMissing")
+        } catch {
+            guard case MLXCorrectionError.dependencyMissing = error else {
+                return XCTFail("Expected dependencyMissing, got \(error)")
+            }
+        }
+    }
+
+    /// Audit #40: a model-load failure must not be misread as a missing package.
+    func testCorrectModelNotAvailableOfflineMapsToCorrectionFailed() async {
+        let daemon = MockMLDaemon()
+        daemon.nextCorrectResult = .failure(
+            MLDaemonError.remoteError(
+                "MLX model not available offline. Please open Settings to download it."
+            )
+        )
+        let service = MLXCorrectionService(daemon: daemon, promptLoader: { nil })
+
+        do {
+            _ = try await service.correct(text: "text", modelRepo: "repo", pythonPath: "/tmp/python")
+            XCTFail("Expected correctionFailed")
+        } catch {
+            guard case MLXCorrectionError.correctionFailed = error else {
+                return XCTFail("Expected correctionFailed, got \(error)")
+            }
+        }
+    }
+
+    /// Audit #40: the structured Python marker is recognised directly.
+    func testIsMLXDependencyMissingDetectsStructuredMarker() {
+        XCTAssertTrue(MLXCorrectionService.isMLXDependencyMissing(
+            #"{"success": false, "error": "...", "error_kind": "dependency_missing"}"#
+        ))
+    }
+
+    func testIsMLXDependencyMissingIgnoresUnrelatedMention() {
+        XCTAssertFalse(MLXCorrectionService.isMLXDependencyMissing(
+            "Traceback: file .../mlx_lm/sample_utils.py line 10 ValueError: bad shape"
+        ))
     }
     
     func testCorrectMapsScriptNotFoundError() async {

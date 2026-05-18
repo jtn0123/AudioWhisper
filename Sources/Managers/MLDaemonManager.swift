@@ -46,6 +46,9 @@ internal actor MLDaemonManager {
 
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
     let maxRestartAttempts = 3
+    /// Uptime a daemon must accumulate before it's treated as "stable" and the
+    /// crash-loop restart counter is reset. See `markDaemonStableIfHealthy`.
+    static let stableUptimeSeconds: UInt64 = 10
     private let requestTimeoutSeconds: UInt64 = 60
 
     var process: Process?
@@ -133,21 +136,15 @@ internal actor MLDaemonManager {
             throw MLDaemonError.daemonUnavailable("stdin unavailable")
         }
 
-        // Write with error handling
-        do {
-            try writer.write(contentsOf: data)
-            try writer.write(contentsOf: Data([0x0a])) // newline
-        } catch {
-            logger.error("Failed to write to daemon stdin: \(error.localizedDescription)")
-            throw MLDaemonError.writeFailed
-        }
-
         // Use withCheckedThrowingContinuation with timeout via Task
         let timeoutNanos = requestTimeoutSeconds * 1_000_000_000
 
         let deadline = Date().addingTimeInterval(TimeInterval(requestTimeoutSeconds))
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response, Error>) in
-            // Store pending request in actor context (this is synchronous within actor)
+            // Register the pending request BEFORE writing to stdin (audit #24).
+            // If the daemon replies faster than we'd otherwise register, the
+            // stdout handler would find "no pending request" and drop the
+            // reply, leaving the caller to wait the full timeout.
             self.pending[requestID] = PendingRequest(
                 completion: { result in
                     switch result {
@@ -164,6 +161,20 @@ internal actor MLDaemonManager {
                 },
                 deadline: deadline
             )
+
+            // Write with error handling. On failure, remove the just-registered
+            // pending entry and tear down the dead daemon so the next request
+            // spawns a fresh one (audit #23 / #24).
+            do {
+                try writer.write(contentsOf: data)
+                try writer.write(contentsOf: Data([0x0a])) // newline
+            } catch {
+                self.logger.error("Failed to write to daemon stdin: \(error.localizedDescription)")
+                self.pending.removeValue(forKey: requestID)
+                Task { await self.teardownDeadDaemon() }
+                continuation.resume(throwing: MLDaemonError.writeFailed)
+                return
+            }
 
             // Start timeout task.
             // SAFETY: Race condition between timeout and response is handled by actor isolation.
@@ -229,6 +240,13 @@ internal actor MLDaemonManager {
 
         do {
             let resultData = try JSONSerialization.data(withJSONObject: result, options: [])
+            // A successful reply proves the daemon is healthy: clear the
+            // crash-loop counter so transient restarts don't accumulate
+            // toward the limit (audit #8).
+            if restartAttempts != 0 {
+                logger.info("ml_daemon answered a request; resetting restart counter")
+                restartAttempts = 0
+            }
             pendingRequest.completion(.success(resultData))
         } catch {
             pendingRequest.completion(.failure(MLDaemonError.invalidResponse(error.localizedDescription)))
@@ -294,6 +312,12 @@ internal extension MLDaemonManager {
     /// Drives `restartAttempts` to the configured maximum for tests that need
     /// to exercise the restart-limit guard paths.
     func bumpRestartAttemptsToLimitForTesting() { restartAttempts = maxRestartAttempts }
+
+    /// Current restart-attempt count — test introspection only.
+    func restartAttemptsForTesting() -> Int { restartAttempts }
+
+    /// Sets the restart-attempt count directly — test setup only.
+    func setRestartAttemptsForTesting(_ value: Int) { restartAttempts = value }
 
     /// Marks the manager as shutting down so tests can exercise that guard.
     func markShuttingDownForTesting() { isShuttingDown = true }
