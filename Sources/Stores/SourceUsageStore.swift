@@ -113,7 +113,9 @@ internal final class SourceUsageStore {
     }
     
     func recordUsage(for info: SourceAppInfo, words: Int, characters: Int) {
-        guard words > 0 else { return }
+        // Record the session even when `words == 0`: `sessionCount`, `lastUsed`
+        // and characters must still be tracked so this store agrees with
+        // `UsageMetricsStore` on session totals (bug #47).
         var existing = statsByBundle[info.bundleIdentifier] ?? SourceUsageStats(
             bundleIdentifier: info.bundleIdentifier,
             displayName: info.displayName,
@@ -155,8 +157,13 @@ internal final class SourceUsageStore {
     private func trimIfNeeded() {
         guard statsByBundle.count > maxSources else { return }
         let surplus = statsByBundle.count - maxSources
-        let candidates = orderedStats.reversed()
-        for stat in candidates.prefix(surplus) {
+        // Evict the least-recently-used apps. Trimming by lowest `totalWords`
+        // would evict a brand-new recently-active app first (it has the fewest
+        // words), which is exactly the data we want to keep (bug #46).
+        let leastRecentlyUsed = statsByBundle.values
+            .sorted { $0.lastUsed < $1.lastUsed }
+            .prefix(surplus)
+        for stat in leastRecentlyUsed {
             statsByBundle[stat.bundleIdentifier] = nil
         }
         refreshOrderedStats()

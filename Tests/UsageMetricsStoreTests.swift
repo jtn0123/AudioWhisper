@@ -75,6 +75,36 @@ final class UsageMetricsStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot.totalDuration, 12, accuracy: 0.1)
     }
 
+    func testRebuildUsesStoredCharacterCount() {
+        // Bug #45: rebuild() must use the stored `characterCount`, not
+        // `text.count`, so a rebuild matches what recordSession accumulated.
+        let records = [
+            TranscriptionRecord(
+                text: "abc",
+                provider: .local,
+                duration: 10,
+                modelUsed: nil,
+                wordCount: 3,
+                characterCount: 999
+            ),
+            TranscriptionRecord(
+                text: "de",
+                provider: .local,
+                duration: 5,
+                modelUsed: nil,
+                wordCount: 2,
+                characterCount: 1
+            )
+        ]
+
+        store.rebuild(using: records)
+
+        // 999 + 1 from characterCount, NOT 3 + 2 from text.count.
+        XCTAssertEqual(store.snapshot.totalCharacters, 1000)
+        XCTAssertEqual(store.snapshot.totalWords, 5)
+        XCTAssertEqual(store.snapshot.totalSessions, 2)
+    }
+
     func testBootstrapSkipsWhenCountersPresent() async {
         store.recordSession(duration: 5, wordCount: 10, characterCount: 50)
 

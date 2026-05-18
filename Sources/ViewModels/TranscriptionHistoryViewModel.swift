@@ -68,7 +68,10 @@ final class TranscriptionHistoryViewModel {
                 records.append(contentsOf: batch)
             }
 
-            hasMore = batch.count == pageSize
+            // A short batch means we hit the end. Also treat an empty batch as
+            // "no more" so an exact multiple of `pageSize` doesn't leave
+            // `hasMore` true and trigger one wasted empty fetch (bug #43).
+            hasMore = !batch.isEmpty && batch.count == pageSize
             page += 1
         } catch {
             errorMessage = "Failed to load transcription history: \(error.localizedDescription)"
