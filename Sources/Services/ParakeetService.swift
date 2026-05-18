@@ -10,7 +10,8 @@ internal enum ParakeetError: Error, LocalizedError, Equatable {
     case dependencyMissing(String, installCommand: String)
     case processTimedOut(TimeInterval)
     case modelNotReady
-    
+    case emptyAudio
+
     var errorDescription: String? {
         switch self {
         case .pythonNotFound(let path):
@@ -27,6 +28,8 @@ internal enum ParakeetError: Error, LocalizedError, Equatable {
             return "Transcription timed out after \(timeout) seconds\n\nTry with a shorter audio file or check system resources"
         case .modelNotReady:
             return "Parakeet model not downloaded. Open Settings ▸ Parakeet to download it."
+        case .emptyAudio:
+            return "No audio detected in the recording. Try speaking louder or closer to the microphone."
         }
     }
 }
@@ -51,13 +54,43 @@ internal class ParakeetService {
 
         // Step 1: Process audio with Swift AudioProcessor to create raw PCM data
         let pcmDataURL = try await processAudioToRawPCM(audioFileURL: audioFileURL)
-        defer {
-            // Clean up the temporary PCM file
-            try? FileManager.default.removeItem(at: pcmDataURL)
+
+        // Step 2: Call Python with the raw PCM data.
+        //
+        // The daemon runs in a SEPARATE subprocess that keeps reading the PCM
+        // file even if this Swift task is cancelled or times out. Deleting the
+        // file on a plain `defer` (which fires the instant this function
+        // returns) would yank it out from under that subprocess. Instead the
+        // daemon call runs in a detached, non-cancellable task whose completion
+        // — success, failure, OR timeout — is what triggers deletion.
+        let pcmPath = pcmDataURL.path
+        let repo = selectedRepo
+        let daemonRef = daemon
+        let loggerRef = logger
+        let daemonTask = Task.detached(priority: .userInitiated) { () -> String in
+            defer {
+                // Delete only after the daemon request has fully finished, so
+                // the subprocess can never read a file that no longer exists.
+                try? FileManager.default.removeItem(atPath: pcmPath)
+            }
+            do {
+                let text = try await daemonRef.transcribe(repo: repo, pcmPath: pcmPath)
+                loggerRef.info("Parakeet transcription successful")
+                return text
+            } catch {
+                loggerRef.error("Parakeet transcription error: \(error.localizedDescription)")
+                throw error
+            }
         }
 
-        // Step 2: Call Python with the raw PCM data instead of original audio
-        return try await transcribeWithRawPCM(pcmDataURL: pcmDataURL)
+        // Await the detached task. If THIS task is cancelled the await throws
+        // CancellationError, but the detached task keeps running and cleans up
+        // the PCM file itself once the daemon is genuinely done with it.
+        return try await withTaskCancellationHandler {
+            try await daemonTask.value
+        } onCancel: {
+            // Do not delete the file here — the detached task still owns it.
+        }
     }
 
     /// Default Parakeet model used when the stored `selectedParakeetModel` value
@@ -135,13 +168,24 @@ internal class ParakeetService {
         do {
             // Use AudioProcessor.swift logic directly
             let samples = try loadAudio(url: audioFileURL, samplingRate: 16000)
-            
+
+            // Guard against empty / near-empty audio: writing a 0-byte .raw
+            // file just hands the daemon nothing to transcribe. 1600 samples
+            // == 0.1s at 16kHz — anything shorter is effectively silence.
+            let minimumSamples = 1600
+            guard samples.count >= minimumSamples else {
+                throw ParakeetError.emptyAudio
+            }
+
             // Write raw float32 data
             let data = samples.withUnsafeBytes { Data($0) }
             try data.write(to: tempPCMURL)
-            
+
             return tempPCMURL
-            
+
+        } catch let error as ParakeetError {
+            // Preserve specific domain errors (e.g. .emptyAudio) intact.
+            throw error
         } catch {
             throw ParakeetError.transcriptionFailed("Audio processing failed: \(error.localizedDescription)")
         }
@@ -230,17 +274,6 @@ internal class ParakeetService {
         }
         
         return samples
-    }
-    
-    private func transcribeWithRawPCM(pcmDataURL: URL) async throws -> String {
-        do {
-            let text = try await daemon.transcribe(repo: selectedRepo, pcmPath: pcmDataURL.path)
-            logger.info("Parakeet transcription successful")
-            return text
-        } catch {
-            logger.error("Parakeet transcription error: \(error.localizedDescription)")
-            throw error
-        }
     }
     
     func validateSetup(pythonPath _: String? = nil) async throws {

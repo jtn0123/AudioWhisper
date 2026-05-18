@@ -70,6 +70,16 @@ class ParakeetServiceTests: IsolatedXCTestCase {
         XCTAssertTrue(dependencyMissingError.errorDescription!.contains("uv"))
         XCTAssertTrue(timeoutError.errorDescription!.contains("30.0 seconds"))
     }
+
+    // Bug #20: empty/near-empty audio surfaces a distinct, clear error
+    // instead of writing a 0-byte PCM file for the daemon.
+    func testEmptyAudioErrorHasDescriptionAndIsDistinct() {
+        let emptyAudioError = ParakeetError.emptyAudio
+        XCTAssertNotNil(emptyAudioError.errorDescription)
+        XCTAssertFalse(emptyAudioError.errorDescription!.isEmpty)
+        XCTAssertNotEqual(emptyAudioError, ParakeetError.modelNotReady)
+        XCTAssertNotEqual(emptyAudioError, ParakeetError.transcriptionFailed("x"))
+    }
     
     // MARK: - Validation Tests
     

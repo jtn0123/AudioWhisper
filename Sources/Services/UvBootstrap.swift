@@ -33,10 +33,37 @@ internal actor VenvSerializer {
     static let shared = VenvSerializer()
     private var uvVerified = false
 
-    /// Serialize an async, throwing operation. Two concurrent callers will be
-    /// queued by the actor so neither can observe the venv mid-mutation.
-    func run<T>(_ op: () async throws -> T) async rethrows -> T {
-        try await op()
+    /// Tail of the operation chain. Each new `run` call chains a task behind
+    /// the current tail and becomes the new tail — guaranteeing strict
+    /// one-after-the-other execution even though `op` is async (a plain actor
+    /// would otherwise admit a second caller at the first `await` inside `op`).
+    private var chainTail: Task<Void, Never>?
+
+    /// Serialize an async, throwing operation. Concurrent callers execute
+    /// strictly one-after-the-other: each call's work is wrapped in a `Task`
+    /// that first awaits the previous link's completion, so no two `op` bodies
+    /// ever overlap regardless of how many `await` points `op` contains.
+    func run<T>(_ op: @escaping () async throws -> T) async throws -> T {
+        let predecessor = chainTail
+        // This link captures the operation's outcome. It only starts doing real
+        // work after the predecessor link has fully completed.
+        let link = Task<Result<T, Error>, Never> {
+            await predecessor?.value
+            do {
+                return .success(try await op())
+            } catch {
+                return .failure(error)
+            }
+        }
+        // The tail tracks only completion (not the value), erased to Void.
+        let tail = Task<Void, Never> { _ = await link.value }
+        chainTail = tail
+
+        let result = await link.value
+        // Drop the tail once this is the last completed link so an idle
+        // serializer doesn't pin a finished task.
+        if chainTail == tail { chainTail = nil }
+        return try result.get()
     }
 
     /// Atomically claims the right to perform bundled-uv verification once
@@ -320,6 +347,11 @@ internal struct UvBootstrap {
         isVersion(version, greaterOrEqualThan: minimum)
     }
 
+    /// Test seam over the file-private content-aware copy.
+    static func copyIfDifferentForTesting(src: URL, dst: URL) throws {
+        try copyIfDifferent(src: src, dst: dst)
+    }
+
     private static func isVersion(_ version: String, greaterOrEqualThan minimum: String) -> Bool {
         func parse(_ text: String) -> [Int] { text.split(separator: ".").compactMap { Int($0) } }
         let versionParts = parse(version)
@@ -332,27 +364,28 @@ internal struct UvBootstrap {
         return true
     }
 
+    /// Copies `src` to `dst` only when their contents differ.
+    ///
+    /// Compares by SHA-256 of the file contents rather than size + mtime: a
+    /// same-size pyproject.toml with different bytes (and an equal/older mtime)
+    /// previously slipped through, leaving stale Python deps after an app
+    /// update. These files are tiny, so a content hash is cheap and exact.
     private static func copyIfDifferent(src: URL, dst: URL) throws {
         let fm = FileManager.default
         if fm.fileExists(atPath: dst.path) {
-            let sAttr = try fm.attributesOfItem(atPath: src.path)
-            let dAttr = try fm.attributesOfItem(atPath: dst.path)
-            let sSize = (sAttr[.size] as? NSNumber)?.intValue ?? -1
-            let dSize = (dAttr[.size] as? NSNumber)?.intValue ?? -2
-            // Also compare modification dates, not just size
-            // If pyproject.toml changes but stays same size, we'd miss the update
-            let sDate = sAttr[.modificationDate] as? Date
-            let dDate = dAttr[.modificationDate] as? Date
-            let sameSize = sSize == dSize
-            let srcNotNewer: Bool
-            if let sourceDate = sDate, let destDate = dDate {
-                srcNotNewer = sourceDate <= destDate
-            } else {
-                srcNotNewer = false
+            if let srcHash = try? fileHash(src),
+               let dstHash = try? fileHash(dst),
+               srcHash == dstHash {
+                return
             }
-            if sameSize && srcNotNewer { return }
             try fm.removeItem(at: dst)
         }
         try fm.copyItem(at: src, to: dst)
+    }
+
+    /// SHA-256 of a file's full contents, lower-case hex.
+    private static func fileHash(_ url: URL) throws -> String {
+        let data = try Data(contentsOf: url)
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }

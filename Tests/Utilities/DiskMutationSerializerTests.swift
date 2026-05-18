@@ -99,6 +99,33 @@ final class DiskMutationSerializerTests: XCTestCase {
         }
     }
 
+    func test_serializer_failedOpIsNotCachedForNextCaller() async throws {
+        // Bug #39: a failed operation must NOT linger in `inFlight` and be
+        // re-served to the next caller. After a failure, a fresh call with the
+        // same key must run a brand-new op (which can succeed).
+        let serializer = DiskMutationSerializer<String>()
+        let attempts = Counter()
+
+        do {
+            try await serializer.run(key: "retry") {
+                await attempts.increment()
+                throw NSError(domain: "FirstAttempt", code: 1)
+            }
+            XCTFail("First attempt should have thrown")
+        } catch {
+            // expected
+        }
+
+        // Immediately retry — no sleep — so we exercise the window where the
+        // old detached-clear implementation would still serve the failed task.
+        try await serializer.run(key: "retry") {
+            await attempts.increment()
+        }
+
+        let total = await attempts.value
+        XCTAssertEqual(total, 2, "Retry after failure must run a fresh op, not reuse the failed one")
+    }
+
     func test_serializer_clearsKeyAfterCompletion() async throws {
         // After an operation completes, a new call with the same key
         // should start a fresh task (not reuse the previous result).
