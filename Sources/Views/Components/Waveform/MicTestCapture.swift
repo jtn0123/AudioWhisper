@@ -37,9 +37,23 @@ final class MicTestCapture: ObservableObject {
     private var audioEngine: AVAudioEngine?
     private let fftProcessor = FFTProcessor()
 
-    /// Smoothed audio level — mutated on the audio thread, read for publishing.
-    private nonisolated(unsafe) var smoothedLevel: Float = 0
+    /// Smoothed audio level — mutated on the audio thread (`handleBuffer`) and reset
+    /// on the main actor (`stop`). All access goes through `stateLock`.
+    private nonisolated(unsafe) var _smoothedLevel: Float = 0
     private let stateLock = NSLock()
+
+    private nonisolated var smoothedLevel: Float {
+        get {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            return _smoothedLevel
+        }
+        set {
+            stateLock.lock()
+            defer { stateLock.unlock() }
+            _smoothedLevel = newValue
+        }
+    }
 
     // MARK: - Lifecycle
 
@@ -48,8 +62,15 @@ final class MicTestCapture: ObservableObject {
     }
 
     deinit {
-        audioEngine?.inputNode.removeTap(onBus: 0)
-        audioEngine?.stop()
+        // `audioEngine` is main-actor-isolated state. Capture it into a local and
+        // tear it down here without touching any other main-actor state. AVAudioEngine
+        // teardown (removeTap/stop) is thread-safe to call from `deinit`; the explicit
+        // `stop()` invoked from the view's `onDisappear` is the normal path and runs
+        // on the main actor — this is only a safety net for unbalanced lifecycles.
+        if let engine = audioEngine {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+        }
     }
 
     // MARK: - Control

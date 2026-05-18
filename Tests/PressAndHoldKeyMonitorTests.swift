@@ -210,6 +210,113 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
         XCTAssertTrue(true, "Should handle nil keyUpHandler gracefully")
     }
 
+    // MARK: - Left/Right Modifier Distinction (bug #3)
+
+    func testIsKeyDownDistinguishesLeftAndRightCommand() {
+        // Bug #3: the device-independent .command flag is identical for both
+        // command keys. Using the device-dependent NX_DEVICE*CMDKEYMASK bits,
+        // left vs. right must be told apart.
+        let leftCmdMask = NSEvent.ModifierFlags(rawValue: 0x00000008)  // NX_DEVICELCMDKEYMASK
+        let rightCmdMask = NSEvent.ModifierFlags(rawValue: 0x00000010) // NX_DEVICERCMDKEYMASK
+
+        XCTAssertTrue(PressAndHoldKey.leftCommand.isKeyDown(in: leftCmdMask))
+        XCTAssertFalse(PressAndHoldKey.leftCommand.isKeyDown(in: rightCmdMask))
+
+        XCTAssertTrue(PressAndHoldKey.rightCommand.isKeyDown(in: rightCmdMask))
+        XCTAssertFalse(PressAndHoldKey.rightCommand.isKeyDown(in: leftCmdMask))
+    }
+
+    func testRightCommandReleaseNotMaskedByHeldLeftCommand() {
+        // Core bug #3 scenario: user holds Left-Command while their configured key
+        // is Right-Command. Releasing Right-Command (only Left-Command still down)
+        // must report the configured Right-Command as NOT down.
+        let onlyLeftCmd = NSEvent.ModifierFlags(rawValue: 0x00000008)
+        XCTAssertFalse(
+            PressAndHoldKey.rightCommand.isKeyDown(in: onlyLeftCmd),
+            "Holding Left-Command must not keep Right-Command reported as down"
+        )
+
+        let bothCmd = NSEvent.ModifierFlags(rawValue: 0x00000008 | 0x00000010)
+        XCTAssertTrue(PressAndHoldKey.rightCommand.isKeyDown(in: bothCmd))
+        XCTAssertTrue(PressAndHoldKey.leftCommand.isKeyDown(in: bothCmd))
+    }
+
+    func testIsKeyDownDistinguishesLeftAndRightOptionAndControl() {
+        let leftOpt = NSEvent.ModifierFlags(rawValue: 0x00000020)
+        let rightOpt = NSEvent.ModifierFlags(rawValue: 0x00000040)
+        XCTAssertTrue(PressAndHoldKey.leftOption.isKeyDown(in: leftOpt))
+        XCTAssertFalse(PressAndHoldKey.leftOption.isKeyDown(in: rightOpt))
+        XCTAssertTrue(PressAndHoldKey.rightOption.isKeyDown(in: rightOpt))
+
+        let leftCtl = NSEvent.ModifierFlags(rawValue: 0x00000001)
+        let rightCtl = NSEvent.ModifierFlags(rawValue: 0x00002000)
+        XCTAssertTrue(PressAndHoldKey.leftControl.isKeyDown(in: leftCtl))
+        XCTAssertFalse(PressAndHoldKey.leftControl.isKeyDown(in: rightCtl))
+        XCTAssertTrue(PressAndHoldKey.rightControl.isKeyDown(in: rightCtl))
+    }
+
+    func testGlobeFallsBackToDeviceIndependentFlag() {
+        // Globe/Fn has no left/right variant — falls back to the .function flag.
+        XCTAssertNil(PressAndHoldKey.globe.deviceDependentMask)
+        XCTAssertTrue(PressAndHoldKey.globe.isKeyDown(in: .function))
+        XCTAssertFalse(PressAndHoldKey.globe.isKeyDown(in: .command))
+    }
+
+    // MARK: - Stuck-Key Watchdog (bug #4)
+
+    func testWatchdogReleasesStuckKeyWhenPhysicalStateIsUp() {
+        // Bug #4: if a key-up flagsChanged event is missed, isPressed stays true and
+        // the next press is ignored. The watchdog reconciles against the real
+        // physical modifier state and synthesizes the missed release.
+        let flagsBox = ModifierFlagsBox(value: NSEvent.ModifierFlags(rawValue: 0x00000010))
+        let keyUpExpectation = expectation(description: "watchdog synthesizes release")
+
+        let monitor = PressAndHoldKeyMonitor(
+            configuration: PressAndHoldConfiguration(enabled: true, key: .rightCommand, mode: .hold),
+            keyDownHandler: {},
+            keyUpHandler: { keyUpExpectation.fulfill() },
+            addGlobalMonitor: { _, _ in "mock" as Any },
+            removeMonitor: { _ in },
+            currentModifierFlags: { flagsBox.value }
+        )
+
+        monitor.start()
+        monitor.processTransition(isKeyDownEvent: true)  // key down -> starts watchdog
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+
+        // Simulate the missed key-up: the key is now physically released.
+        flagsBox.value = NSEvent.ModifierFlags(rawValue: 0)
+
+        // Watchdog interval is 0.25s — wait long enough for it to fire.
+        wait(for: [keyUpExpectation], timeout: 2.0)
+        monitor.stop()
+    }
+
+    func testWatchdogDoesNotReleaseWhileKeyStillHeld() {
+        // The watchdog must NOT synthesize a release while the configured key is
+        // genuinely still physically down.
+        let flagsBox = ModifierFlagsBox(value: NSEvent.ModifierFlags(rawValue: 0x00000010))
+        var keyUpCalled = false
+
+        let monitor = PressAndHoldKeyMonitor(
+            configuration: PressAndHoldConfiguration(enabled: true, key: .rightCommand, mode: .hold),
+            keyDownHandler: {},
+            keyUpHandler: { keyUpCalled = true },
+            addGlobalMonitor: { _, _ in "mock" as Any },
+            removeMonitor: { _ in },
+            currentModifierFlags: { flagsBox.value }
+        )
+
+        monitor.start()
+        monitor.processTransition(isKeyDownEvent: true)
+
+        // Let several watchdog cycles run while the key remains held.
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.7))
+
+        XCTAssertFalse(keyUpCalled, "Watchdog must not release a key that is still physically down")
+        monitor.stop()
+    }
+
     func testDifferentKeyConfigurations() {
         let keys: [PressAndHoldKey] = [
             .rightCommand, .leftCommand, .rightOption, .leftOption,
@@ -228,4 +335,29 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
         }
     }
 
+}
+
+/// Thread-safe holder for a `NSEvent.ModifierFlags` value, used to feed a mutable
+/// physical-modifier-state into the monitor's injected `currentModifierFlags` closure
+/// from tests. The closure can be invoked from the watchdog timer.
+private final class ModifierFlagsBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value: NSEvent.ModifierFlags
+
+    init(value: NSEvent.ModifierFlags) {
+        self._value = value
+    }
+
+    var value: NSEvent.ModifierFlags {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _value
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            _value = newValue
+        }
+    }
 }
