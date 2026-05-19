@@ -89,18 +89,26 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
 
     // MARK: - Volume Boost Tests
 
-    func testStartRecordingBoostsVolumeWhenEnabled() async {
+    func testStartRecordingDoesNotBoostVolumeWhenSessionDoesNotBegin() async {
+        // Bug #33 regression: the volume boost must be dispatched only AFTER the
+        // early-return checks (including the test-environment guard). When no real
+        // recording session begins, the boost must not run — otherwise the matching
+        // restore in stop/cancel never fires and the boost is left on permanently.
+        // Under tests `startRecording()` early-returns, so no boost should occur.
         UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
         recorder = makeRecorder(dates: [Date(), Date()])
         PermissionManager.shared.microphonePermissionState = .granted
 
-        // Start recording (may fail due to no audio device, but should attempt boost)
-        _ = recorder.startRecording()
+        let started = recorder.startRecording()
 
-        // Give async task time to execute
+        // Give any (incorrectly) dispatched async task time to execute.
         try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
 
-        XCTAssertTrue(mockVolumeManager.boostCalled, "Should attempt to boost volume when enabled")
+        XCTAssertFalse(started, "startRecording should early-return in the test environment")
+        XCTAssertFalse(
+            mockVolumeManager.boostCalled,
+            "Volume must not be boosted when no real recording session begins (bug #33)"
+        )
     }
 
     func testStartRecordingDoesNotBoostVolumeWhenDisabled() async {
@@ -158,6 +166,21 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         XCTAssertEqual(recorder.frequencyBands, Array(repeating: 0, count: 8))
     }
 
+    func testStopRecordingReturnsNilWhenNoFramesWereCaptured() {
+        // Bug #11 regression: stopRecording must return nil when the recording is
+        // unusable (no frames written / all writes failed) so the caller's
+        // `guard let url = stopRecording()` rejects it instead of transcribing a
+        // 0-byte/corrupt file. In the test environment no real engine starts, so
+        // no frames are ever written.
+        recorder = makeRecorder(dates: [Date(), Date(), Date()])
+        PermissionManager.shared.microphonePermissionState = .granted
+
+        _ = recorder.startRecording()
+        let url = recorder.stopRecording()
+
+        XCTAssertNil(url, "stopRecording should return nil when no audio frames were captured")
+    }
+
     // MARK: - Cleanup Tests
 
     func testCleanupRecordingClearsState() {
@@ -167,6 +190,35 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
 
         XCTAssertNil(recorder.currentSessionStart)
         XCTAssertNil(recorder.lastRecordingDuration)
+    }
+
+    // MARK: - Deinit Cleanup Tests (bug #29)
+
+    func testDeinitRestoresVolumeWhenBoostEnabled() async {
+        // Bug #29 regression: AudioEngineRecorder had no deinit, so a recorder
+        // dropped mid-recording never restored boosted mic volume. The deinit must
+        // dispatch a restore when auto-boost is enabled.
+        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+        let localManager = MockMicrophoneVolumeManager()
+
+        autoreleasepool {
+            let droppedRecorder = AudioEngineRecorder(volumeManager: localManager)
+            _ = droppedRecorder  // dropped at end of scope -> deinit runs
+        }
+
+        // deinit dispatches an async restore Task — give it time to run.
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertTrue(localManager.restoreCalled, "deinit should restore mic volume when boost is enabled")
+    }
+
+    func testDeinitDoesNotCrashWithoutActiveRecording() {
+        // Dropping a freshly-created recorder must not crash in deinit.
+        autoreleasepool {
+            let droppedRecorder = AudioEngineRecorder(volumeManager: MockMicrophoneVolumeManager())
+            _ = droppedRecorder
+        }
+        XCTAssertTrue(true, "deinit completed without crashing")
     }
 
     // MARK: - Observable Properties Tests

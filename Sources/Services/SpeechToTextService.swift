@@ -6,6 +6,7 @@ internal enum SpeechToTextError: Error, LocalizedError {
     case invalidURL
     case transcriptionFailed(String)
     case localTranscriptionFailed(Error)
+    case noSpeechDetected
 
     var errorDescription: String? {
         switch self {
@@ -17,6 +18,8 @@ internal enum SpeechToTextError: Error, LocalizedError {
         case .localTranscriptionFailed(let error):
             return LocalizedStrings.Errors.localTranscriptionFailed
                 .replacingOccurrences(of: "%@", with: error.localizedDescription)
+        case .noSpeechDetected:
+            return "No speech detected in the recording. Try speaking louder or closer to the microphone."
         }
     }
 }
@@ -102,7 +105,11 @@ internal class SpeechToTextService {
             let text = try await localWhisperService.transcribe(audioFileURL: audioURL, model: model) { progress in
                 NotificationCenter.default.post(name: .transcriptionProgress, object: progress)
             }
-            return Self.cleanTranscriptionText(text)
+            return try Self.cleanedNonEmptyTranscription(text)
+        } catch let error as SpeechToTextError {
+            // Already a domain error (e.g. .noSpeechDetected) — preserve it
+            // instead of burying it under .localTranscriptionFailed.
+            throw error
         } catch {
             throw SpeechToTextError.localTranscriptionFailed(error)
         }
@@ -132,24 +139,47 @@ internal class SpeechToTextService {
                 let modelRepo = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
                     ? AppDefaults.semanticCorrectionModelRepo
                     : "mlx-community/Llama-3.2-1B-Instruct-4bit"
+                // Warm up the MLX daemon in parallel, but treat its outcome as
+                // non-fatal: a warmup failure must NOT abort an otherwise-good
+                // transcription. Its error is swallowed (logged by the daemon).
                 async let warmupTask: Void = MLDaemonManager.shared.warmup(type: "mlx", repo: modelRepo)
-                async let transcription = parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
-                let (text, _) = try await (transcription, warmupTask)
-                return Self.cleanTranscriptionText(text)
+                let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
+                try? await warmupTask
+                return try Self.cleanedNonEmptyTranscription(text)
             } else {
                 let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
-                return Self.cleanTranscriptionText(text)
+                return try Self.cleanedNonEmptyTranscription(text)
             }
         } catch {
             // Pass through model-not-ready distinctly so UI can redirect to Settings
             if let pe = error as? ParakeetError, pe == .modelNotReady {
                 throw pe
             }
+            // Preserve domain errors (e.g. .noSpeechDetected) instead of
+            // flattening them into a generic transcription failure.
+            if let se = error as? SpeechToTextError {
+                throw se
+            }
             throw SpeechToTextError.transcriptionFailed("Parakeet error: \(error.localizedDescription)")
         }
     }
 
     // MARK: - Text Cleaning
+
+    /// Cleans transcription text and rejects empty results.
+    ///
+    /// `cleanTranscriptionText` strips bracketed/parenthesized markers such as
+    /// WhisperKit's `[BLANK_AUDIO]` silence marker. A marker-only transcript is
+    /// non-empty *before* cleaning (so it passes the provider's `isEmpty`
+    /// check) but cleans down to `""`. Returning that empty string silently
+    /// pastes nothing; instead we surface a clear no-speech error.
+    static func cleanedNonEmptyTranscription(_ text: String) throws -> String {
+        let cleaned = cleanTranscriptionText(text)
+        guard !cleaned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw SpeechToTextError.noSpeechDetected
+        }
+        return cleaned
+    }
 
     /// Cleans transcription text by removing common markers and artifacts
     static func cleanTranscriptionText(_ text: String) -> String {

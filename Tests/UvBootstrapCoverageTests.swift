@@ -207,4 +207,112 @@ final class UvBootstrapCoverageTests: XCTestCase {
         let afterReset = await serializer.claimVerification()
         XCTAssertTrue(afterReset, "Reset should re-enable claiming")
     }
+
+    /// Bug #2: two concurrent callers whose ops contain an `await` must NOT
+    /// overlap. A plain actor would admit the second caller at the first
+    /// suspension point; the chained-Task serializer must keep them disjoint.
+    func testVenvSerializerSerializesAcrossAwaitPoints() async throws {
+        let serializer = VenvSerializer()
+        let tracker = OverlapTracker()
+
+        async let firstRun: Void = serializer.run {
+            await tracker.enter()
+            // Suspend mid-operation — the danger window for a plain actor.
+            try? await Task.sleep(nanoseconds: 30_000_000)
+            await tracker.exit()
+        }
+        async let secondRun: Void = serializer.run {
+            await tracker.enter()
+            try? await Task.sleep(nanoseconds: 30_000_000)
+            await tracker.exit()
+        }
+
+        _ = try await (firstRun, secondRun)
+        let maxConcurrent = await tracker.maxConcurrent
+        XCTAssertEqual(maxConcurrent, 1, "venv-mutating ops must run strictly one-at-a-time")
+    }
+
+    /// Order is preserved: the first caller's op completes before the second's
+    /// op starts.
+    func testVenvSerializerRunsOperationsInOrder() async throws {
+        let serializer = VenvSerializer()
+        let order = OrderRecorder()
+
+        async let firstRun: Void = serializer.run {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+            await order.record("first")
+        }
+        // Tiny stagger so `first` is queued before `second`.
+        try await Task.sleep(nanoseconds: 2_000_000)
+        async let secondRun: Void = serializer.run {
+            await order.record("second")
+        }
+
+        _ = try await (firstRun, secondRun)
+        let recorded = await order.events
+        XCTAssertEqual(recorded, ["first", "second"])
+    }
+}
+
+extension UvBootstrapCoverageTests {
+    // MARK: - copyIfDifferent (bug #52)
+
+    /// Bug #52: a same-size file with different CONTENT (and equal/older mtime)
+    /// must still be copied — content, not size+mtime, decides.
+    func testCopyIfDifferentCopiesOnContentChangeWithSameSize() throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("CopyIfDiff-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let src = dir.appendingPathComponent("src.toml")
+        let dst = dir.appendingPathComponent("dst.toml")
+
+        // Same length, different bytes.
+        try Data("AAAA".utf8).write(to: src)
+        try Data("BBBB".utf8).write(to: dst)
+
+        // Make the destination's mtime NEWER so the old size+mtime logic
+        // would have skipped the copy.
+        let future = Date().addingTimeInterval(3600)
+        try FileManager.default.setAttributes([.modificationDate: future], ofItemAtPath: dst.path)
+
+        try UvBootstrap.copyIfDifferentForTesting(src: src, dst: dst)
+
+        let copied = try String(contentsOf: dst, encoding: .utf8)
+        XCTAssertEqual(copied, "AAAA", "Content change must trigger a copy even with same size + older src mtime")
+    }
+
+    /// Identical content is a no-op (no needless rewrite).
+    func testCopyIfDifferentSkipsWhenContentIdentical() throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("CopyIfDiff-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let src = dir.appendingPathComponent("src.toml")
+        let dst = dir.appendingPathComponent("dst.toml")
+        try Data("same content".utf8).write(to: src)
+        try Data("same content".utf8).write(to: dst)
+
+        let before = try FileManager.default.attributesOfItem(atPath: dst.path)[.modificationDate] as? Date
+        try UvBootstrap.copyIfDifferentForTesting(src: src, dst: dst)
+        let after = try FileManager.default.attributesOfItem(atPath: dst.path)[.modificationDate] as? Date
+
+        XCTAssertEqual(before, after, "Identical content should not rewrite the destination")
+    }
+}
+
+/// Tracks the maximum number of operation bodies running concurrently.
+private actor OverlapTracker {
+    private var current = 0
+    private(set) var maxConcurrent = 0
+    func enter() { current += 1; maxConcurrent = max(maxConcurrent, current) }
+    func exit() { current -= 1 }
+}
+
+/// Records the order in which operations complete.
+private actor OrderRecorder {
+    private(set) var events: [String] = []
+    func record(_ value: String) { events.append(value) }
 }

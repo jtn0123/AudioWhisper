@@ -102,7 +102,11 @@ internal final class DataManager: DataManagerProtocol {
     }
     
     private var modelContainer: ModelContainer?
-    
+
+    /// Tracks the single in-flight retention-cleanup task. Back-to-back saves
+    /// reuse / skip rather than each spawning an unbounded task (bug #17).
+    private var cleanupTask: Task<Void, Never>?
+
     /// Public accessor for the model container, primarily for SwiftUI integration
     var sharedModelContainer: ModelContainer? {
         return modelContainer
@@ -166,14 +170,29 @@ internal final class DataManager: DataManagerProtocol {
 
             // Retention cleanup runs off the save critical path — the caller
             // (and the UI) shouldn't wait on a full predicate fetch + delete.
-            Task { await cleanupExpiredRecordsQuietly() }
+            // Coalesce back-to-back saves into a single in-flight task instead
+            // of spawning an unbounded, untracked task per save (bug #17).
+            scheduleCleanup()
 
         } catch {
             Logger.dataManager.error("Failed to save transcription record: \(error.localizedDescription)")
             throw DataManagerError.saveFailed(error)
         }
     }
-    
+
+    /// Schedules a retention cleanup, coalescing concurrent requests: if a
+    /// cleanup task is already in flight, this is a no-op so back-to-back saves
+    /// don't each spawn a task (bug #17).
+    private func scheduleCleanup() {
+        if let cleanupTask, !cleanupTask.isCancelled {
+            return
+        }
+        cleanupTask = Task { [weak self] in
+            await self?.cleanupExpiredRecordsQuietly()
+            self?.cleanupTask = nil
+        }
+    }
+
     func fetchAllRecords() async throws -> [TranscriptionRecord] {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
@@ -215,12 +234,12 @@ internal final class DataManager: DataManagerProtocol {
                     sortBy: [SortDescriptor(\.date, order: .reverse)]
                 )
             } else {
-                // Use SwiftData predicate for database-level filtering
-                let lowercaseQuery = searchQuery.lowercased()
+                // `localizedStandardContains` is already case-insensitive, so
+                // no manual `.lowercased()` is needed (bug #49).
                 let predicate = #Predicate<TranscriptionRecord> { record in
-                    record.text.localizedStandardContains(lowercaseQuery) ||
-                    record.provider.localizedStandardContains(lowercaseQuery) ||
-                    (record.modelUsed?.localizedStandardContains(lowercaseQuery) ?? false)
+                    record.text.localizedStandardContains(searchQuery) ||
+                    record.provider.localizedStandardContains(searchQuery) ||
+                    (record.modelUsed?.localizedStandardContains(searchQuery) ?? false)
                 }
                 
                 descriptor = FetchDescriptor<TranscriptionRecord>(
@@ -262,9 +281,9 @@ internal final class DataManager: DataManagerProtocol {
             descriptor.fetchOffset = offset
 
             if let term = search, !term.isEmpty {
-                let lowered = term
+                // `localizedStandardContains` is already case-insensitive (bug #49).
                 descriptor.predicate = #Predicate<TranscriptionRecord> { record in
-                    record.text.localizedStandardContains(lowered)
+                    record.text.localizedStandardContains(term)
                 }
             }
 
@@ -303,14 +322,23 @@ internal final class DataManager: DataManagerProtocol {
 
             Logger.dataManager.info("Deleted transcription record with ID: \(record.id)")
 
-            // Rebuild usage metrics and source usage stats from remaining records
-            let remainingRecords = try context.fetch(FetchDescriptor<TranscriptionRecord>())
-            UsageMetricsStore.shared.rebuild(using: remainingRecords)
-            SourceUsageStore.shared.rebuild(using: remainingRecords)
-
         } catch {
             Logger.dataManager.error("Failed to delete transcription record: \(error.localizedDescription)")
             throw DataManagerError.deleteFailed(error)
+        }
+
+        // The delete + save above has committed. Rebuilding stats from the
+        // remaining records is a best-effort follow-up — a fetch failure here
+        // must NOT be reported as `deleteFailed`, since the delete succeeded
+        // (bug #19). Log it distinctly instead and leave the delete reported
+        // as a success.
+        do {
+            let context = ModelContext(container)
+            let remainingRecords = try context.fetch(FetchDescriptor<TranscriptionRecord>())
+            UsageMetricsStore.shared.rebuild(using: remainingRecords)
+            SourceUsageStore.shared.rebuild(using: remainingRecords)
+        } catch {
+            Logger.dataManager.error("Record deleted, but failed to rebuild usage stats: \(error.localizedDescription)")
         }
     }
     

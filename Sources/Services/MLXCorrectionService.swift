@@ -73,7 +73,7 @@ internal final class MLXCorrectionService {
             case .invalidResponse(let reason):
                 throw MLXCorrectionError.invalidResponse(reason)
             case .remoteError(let message):
-                if message.contains("mlx_lm") || message.contains("ModuleNotFoundError") {
+                if Self.isMLXDependencyMissing(message) {
                     throw MLXCorrectionError.dependencyMissing("mlx-lm", installCommand: "uv add mlx-lm")
                 }
                 throw MLXCorrectionError.correctionFailed(message)
@@ -112,7 +112,40 @@ internal final class MLXCorrectionService {
     }
     
     // MARK: - Private Helpers
-    
+
+    /// Decides whether a daemon `remoteError` message describes a genuinely
+    /// missing `mlx-lm` package rather than an unrelated runtime failure that
+    /// merely mentions the module (audit #40).
+    ///
+    /// A bare `contains("mlx_lm")` / `contains("ModuleNotFoundError")` matched
+    /// any stack trace, OOM, or model-load error and wrongly told the user to
+    /// install an already-installed package. We now require BOTH:
+    ///   1. A genuine import-failure signal — either the daemon's structured
+    ///      `error_kind=dependency_missing` marker, the daemon loader's
+    ///      `mlx-lm import failed:` prefix, or an explicit
+    ///      `ModuleNotFoundError`/`ImportError`.
+    ///   2. The error to actually concern the `mlx_lm` / `mlx-lm` module.
+    static func isMLXDependencyMissing(_ message: String) -> Bool {
+        // Structured marker emitted by the Python side for this exact case.
+        if message.contains("\"error_kind\": \"dependency_missing\"")
+            || message.contains("\"error_kind\":\"dependency_missing\"") {
+            return true
+        }
+
+        let mentionsMLX = message.contains("mlx_lm") || message.contains("mlx-lm")
+        guard mentionsMLX else { return false }
+
+        // The daemon loader wraps a missing-module import as exactly this.
+        if message.contains("mlx-lm import failed:") {
+            return true
+        }
+
+        // A genuine missing-module Python error for the mlx_lm module.
+        let isModuleError = message.contains("ModuleNotFoundError")
+            || message.contains("ImportError")
+        return isModuleError
+    }
+
     private static func loadSystemPrompt() -> String? {
         guard let promptsDir = try? FileManager.default.url(
             for: .applicationSupportDirectory,

@@ -357,10 +357,14 @@ internal class PasteManager {
         // even if the timeout and activation notification race each other
         let completedFlag = ResumedFlag()
 
+        // NSWorkspace posts activation notifications on its own notification
+        // center, not NotificationCenter.default — observe the correct one.
+        let workspaceCenter = NSWorkspace.shared.notificationCenter
+
         // Helper to clean up the observer and call completion exactly once
         let cleanupAndComplete = { [observerBox] in
             if let observer = observerBox.observer {
-                NotificationCenter.default.removeObserver(observer)
+                workspaceCenter.removeObserver(observer)
                 observerBox.observer = nil
             }
             if completedFlag.tryResume() {
@@ -374,7 +378,7 @@ internal class PasteManager {
         }
 
         // Observe app activation
-        observerBox.observer = NotificationCenter.default.addObserver(
+        observerBox.observer = workspaceCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification,
             object: nil,
             queue: .main

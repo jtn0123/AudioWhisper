@@ -168,10 +168,14 @@ internal extension ContentView {
             let observerBox = ObserverBox()
             let resumedFlag = ResumedFlag()
 
+            // NSWorkspace posts activation notifications on its own notification
+            // center, not NotificationCenter.default — observe the correct one.
+            let workspaceCenter = NSWorkspace.shared.notificationCenter
+
             // Helper to clean up observer and resume continuation exactly once
             func cleanupAndResume() {
                 if let observer = observerBox.observer {
-                    NotificationCenter.default.removeObserver(observer)
+                    workspaceCenter.removeObserver(observer)
                     observerBox.observer = nil  // Clear to prevent redundant removal attempts
                 }
                 if resumedFlag.tryResume() {
@@ -184,7 +188,7 @@ internal extension ContentView {
                 cleanupAndResume()
             }
 
-            observerBox.observer = NotificationCenter.default.addObserver(
+            observerBox.observer = workspaceCenter.addObserver(
                 forName: NSWorkspace.didActivateApplicationNotification,
                 object: nil,
                 queue: .main

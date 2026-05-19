@@ -20,8 +20,15 @@ final class FFTProcessor: @unchecked Sendable {
     /// Number of output frequency bands
     let bandCount: Int
 
-    /// Sample rate of the audio
-    let sampleRate: Float
+    /// Sample rate of the audio. Mutable so it can be updated to the device's
+    /// actual input rate once recording starts (the input format is only known
+    /// then). `calculateBands` uses this to map Hz ranges onto FFT bins, so an
+    /// incorrect value mislabels every band on non-44.1 kHz devices.
+    ///
+    /// Only mutated from `updateSampleRate(_:)`, which the audio recorder calls
+    /// on the main thread before the tap is installed — never concurrently with
+    /// the audio-thread `process(_:)` calls.
+    private(set) var sampleRate: Float
 
     // MARK: - FFT Setup
 
@@ -83,6 +90,18 @@ final class FFTProcessor: @unchecked Sendable {
 
     deinit {
         vDSP_destroy_fftsetup(fftSetup)
+    }
+
+    // MARK: - Configuration
+
+    /// Update the sample rate to the audio device's actual rate.
+    ///
+    /// Must be called before audio processing begins (e.g. from the recorder's
+    /// `startRecording`, before the input tap is installed) so it never races
+    /// with `process(_:)` on the audio thread. Ignores non-positive values.
+    func updateSampleRate(_ newSampleRate: Float) {
+        guard newSampleRate > 0 else { return }
+        sampleRate = newSampleRate
     }
 
     // MARK: - Processing

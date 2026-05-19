@@ -23,7 +23,13 @@ struct AppDefault<Value: Equatable>: DynamicProperty {
         self.keyPath = keyPath
         let initial = AppDefaults.self[keyPath: keyPath]
         self._value = State(initialValue: initial)
-        self._observer = StateObject(wrappedValue: AppDefaultObserver())
+        // The observer re-reads the SAME keyPath on every defaults change and
+        // only invalidates when this view's value actually changed — so an
+        // unrelated defaults write elsewhere in the app no longer forces a
+        // re-render of every view holding any `@AppDefault`.
+        self._observer = StateObject(wrappedValue: AppDefaultObserver {
+            AppDefaults.self[keyPath: keyPath]
+        })
     }
 
     var wrappedValue: Value {
@@ -52,15 +58,44 @@ struct AppDefault<Value: Equatable>: DynamicProperty {
 }
 
 /// Listens for UserDefaults change notifications and triggers a SwiftUI
-/// invalidation by mutating its own `@Published`.
+/// invalidation by mutating its own `@Published` — but ONLY when the specific
+/// value this `@AppDefault` tracks actually changed.
+///
+/// `UserDefaults.didChangeNotification` fires for ANY defaults write anywhere
+/// in the app and carries no key information, so it cannot be filtered at the
+/// notification level. Instead the observer is given a `readValue` closure
+/// bound to its `@AppDefault`'s keyPath; on each notification it re-reads that
+/// value and skips the invalidation when nothing relevant changed. This
+/// removes the over-broad re-render churn without changing `@AppDefault`'s
+/// keyPath-based design.
 private final class AppDefaultObserver: ObservableObject {
     @Published private var tick: UInt64 = 0
     private var cancellable: AnyCancellable?
-    init() {
+    private let readValue: () -> AnyHashable?
+    private var lastSnapshot: AnyHashable?
+
+    /// - Parameter readValue: re-reads the tracked value. The value is wrapped
+    ///   in `AnyHashable` for equality comparison; non-`Hashable` values fall
+    ///   back to always invalidating (the previous behavior).
+    init<Value: Equatable>(read: @escaping () -> Value) {
+        self.readValue = { (read() as? AnyHashable) }
+        self.lastSnapshot = readValue()
         cancellable = NotificationCenter.default
             .publisher(for: UserDefaults.didChangeNotification)
             .sink { [weak self] _ in
-                Task { @MainActor in self?.tick &+= 1 }
+                guard let self else { return }
+                Task { @MainActor in self.invalidateIfChanged() }
             }
+    }
+
+    @MainActor
+    private func invalidateIfChanged() {
+        let current = readValue()
+        // If the value isn't Hashable we get nil here; treat that as "always
+        // invalidate" so correctness is never regressed for such types.
+        if current == nil || current != lastSnapshot {
+            lastSnapshot = current
+            tick &+= 1
+        }
     }
 }

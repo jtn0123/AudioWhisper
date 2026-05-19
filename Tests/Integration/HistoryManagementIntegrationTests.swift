@@ -64,9 +64,8 @@ final class HistoryManagementIntegrationTests: IsolatedXCTestCase {
         duration: TimeInterval? = 10.0
     ) -> TranscriptionRecord {
         TranscriptionRecord(
-            text: text,
-            provider: provider,
-            duration: duration
+            text: text, provider: provider, duration: duration,
+            wordCount: UsageMetricsStore.estimatedWordCount(for: text), characterCount: text.count
         )
     }
 

@@ -80,6 +80,46 @@ internal enum PressAndHoldKey: String, CaseIterable, Identifiable {
             return .function
         }
     }
+
+    /// Device-dependent modifier mask bit that distinguishes the *specific* physical
+    /// key (left vs. right). These are the `NX_DEVICE*KEYMASK` constants from
+    /// `IOKit/hidsystem/IOLLEvent.h`, tested against `NSEvent.modifierFlags.rawValue`.
+    ///
+    /// The device-independent `modifierFlag` (`.command`, `.option`, ...) is identical
+    /// for the left and right key of a pair, so it cannot tell them apart. Using the
+    /// device-dependent bit ensures e.g. releasing Right-Command is not masked by a
+    /// still-held Left-Command.
+    ///
+    /// `nil` for the Globe/Fn key, which has no left/right variant — callers fall back
+    /// to the device-independent `.function` flag for it.
+    var deviceDependentMask: UInt? {
+        switch self {
+        case .leftCommand:
+            return 0x00000008  // NX_DEVICELCMDKEYMASK
+        case .rightCommand:
+            return 0x00000010  // NX_DEVICERCMDKEYMASK
+        case .leftOption:
+            return 0x00000020  // NX_DEVICELALTKEYMASK
+        case .rightOption:
+            return 0x00000040  // NX_DEVICERALTKEYMASK
+        case .leftControl:
+            return 0x00000001  // NX_DEVICELCTLKEYMASK
+        case .rightControl:
+            return 0x00002000  // NX_DEVICERCTLKEYMASK
+        case .globe:
+            return nil
+        }
+    }
+
+    /// Returns whether this specific physical key is currently down, given a set of
+    /// `NSEvent.ModifierFlags`. Uses the device-dependent mask to distinguish left vs.
+    /// right; falls back to the device-independent flag for the Globe/Fn key.
+    func isKeyDown(in flags: NSEvent.ModifierFlags) -> Bool {
+        if let mask = deviceDependentMask {
+            return (flags.rawValue & mask) == mask
+        }
+        return flags.contains(modifierFlag)
+    }
 }
 
 internal struct PressAndHoldConfiguration: Equatable {
@@ -152,6 +192,16 @@ internal final class PressAndHoldKeyMonitor {
     private var keyUpMonitor: Any?
     private let monitorQueue = DispatchQueue(label: "com.audiowhisper.pressAndHoldMonitor")
 
+    /// Watchdog that reconciles `isPressed` against the real physical modifier state.
+    /// Global flagsChanged events can be missed (sleep, monitor restart, event consumed
+    /// elsewhere); without this, a missed key-up would leave `isPressed` stuck true and
+    /// the next press ignored. Runs only while pressed and is cheap.
+    private var watchdogTimer: Timer?
+    private static let watchdogInterval: TimeInterval = 0.25
+
+    /// Reads the current physical modifier state. Injectable for tests.
+    private let currentModifierFlags: () -> NSEvent.ModifierFlags
+
     // Thread-safe isPressed state using os_unfair_lock for minimal overhead in keyboard hot path
     private var isPressedLock = os_unfair_lock()
     private var _isPressed = false
@@ -173,13 +223,15 @@ internal final class PressAndHoldKeyMonitor {
         keyDownHandler: @escaping () -> Void,
         keyUpHandler: (() -> Void)? = nil,
         addGlobalMonitor: @escaping EventMonitorFactory = NSEvent.addGlobalMonitorForEvents(matching:handler:),
-        removeMonitor: @escaping EventMonitorRemoval = NSEvent.removeMonitor(_:)
+        removeMonitor: @escaping EventMonitorRemoval = NSEvent.removeMonitor(_:),
+        currentModifierFlags: @escaping () -> NSEvent.ModifierFlags = { NSEvent.modifierFlags }
     ) {
         self.configuration = configuration
         self.keyDownHandler = keyDownHandler
         self.keyUpHandler = keyUpHandler
         self.addGlobalMonitor = addGlobalMonitor
         self.removeMonitor = removeMonitor
+        self.currentModifierFlags = currentModifierFlags
     }
 
     func start() {
@@ -213,6 +265,7 @@ internal final class PressAndHoldKeyMonitor {
             removeMonitor(monitor)
             keyUpMonitor = nil
         }
+        stopWatchdog()
         isPressed = false
     }
 
@@ -226,7 +279,12 @@ internal final class PressAndHoldKeyMonitor {
         // Determine key state from the event's modifier flags, not by toggling.
         // This makes transitions idempotent - multiple events for the same state
         // are handled correctly by the guard in processTransition.
-        let keyIsCurrentlyDown = event.modifierFlags.contains(configuration.key.modifierFlag)
+        //
+        // Use the device-DEPENDENT mask so left vs. right modifier keys are
+        // distinguished. The device-independent flag (.command/.option/...) is
+        // identical for both keys of a pair, so holding the *other* side would
+        // keep it set and a real release would never register.
+        let keyIsCurrentlyDown = configuration.key.isKeyDown(in: event.modifierFlags)
 
         monitorQueue.async { [weak self] in
             self?.processTransition(isKeyDownEvent: keyIsCurrentlyDown)
@@ -249,16 +307,66 @@ internal final class PressAndHoldKeyMonitor {
         if isKeyDownEvent {
             guard !isPressed else { return }
             isPressed = true
+            startWatchdog()
             Task { @MainActor [keyDownHandler] in
                 keyDownHandler()
             }
         } else {
             guard isPressed else { return }
             isPressed = false
+            stopWatchdog()
             guard let keyUpHandler else { return }
             Task { @MainActor in
                 keyUpHandler()
             }
+        }
+    }
+
+    // MARK: - Watchdog
+
+    /// Starts a periodic reconciliation timer while the key is held. If a key-up
+    /// `flagsChanged` event is missed (sleep, monitor restart, event consumed
+    /// elsewhere), `isPressed` would otherwise stay stuck `true` and block all
+    /// future presses. The timer compares the real physical modifier state against
+    /// `isPressed` and synthesizes a release if the key is no longer down.
+    private func startWatchdog() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Re-check: a release may have already arrived before this main-actor hop.
+            guard self.isPressed else { return }
+            self.watchdogTimer?.invalidate()
+            let timer = Timer(
+                timeInterval: Self.watchdogInterval,
+                repeats: true
+            ) { [weak self] _ in
+                self?.checkPhysicalKeyState()
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            self.watchdogTimer = timer
+        }
+    }
+
+    private func stopWatchdog() {
+        Task { @MainActor [weak self] in
+            self?.watchdogTimer?.invalidate()
+            self?.watchdogTimer = nil
+        }
+    }
+
+    /// Reconciles `isPressed` against the real modifier state. Runs on the main
+    /// run loop via the watchdog timer.
+    private func checkPhysicalKeyState() {
+        guard isPressed else {
+            stopWatchdog()
+            return
+        }
+        let flags = currentModifierFlags()
+        guard !configuration.key.isKeyDown(in: flags) else { return }
+
+        // The configured key is no longer physically down but we still think it is —
+        // a release event was missed. Treat it as a release.
+        monitorQueue.async { [weak self] in
+            self?.processTransition(isKeyDownEvent: false)
         }
     }
 }

@@ -37,6 +37,46 @@ final class FFTProcessorTests: XCTestCase {
         XCTAssertNil(FFTProcessor(bufferSize: -1, bandCount: 8, sampleRate: 44100))
     }
 
+    // MARK: - Sample Rate Update Tests (bug #32)
+
+    func testUpdateSampleRateChangesSampleRate() {
+        // Bug #32 regression: the audio engine taps at the device's actual rate
+        // (often 48 kHz), not the 44.1 kHz default. The FFT processor must be
+        // updatable so Hz→bin mapping in calculateBands is correct.
+        XCTAssertEqual(processor.sampleRate, 44100)
+
+        processor.updateSampleRate(48000)
+
+        XCTAssertEqual(processor.sampleRate, 48000, "Sample rate should be updated to the device rate")
+    }
+
+    func testUpdateSampleRateIgnoresNonPositiveValues() {
+        processor.updateSampleRate(48000)
+
+        processor.updateSampleRate(0)
+        XCTAssertEqual(processor.sampleRate, 48000, "Zero sample rate should be ignored")
+
+        processor.updateSampleRate(-1)
+        XCTAssertEqual(processor.sampleRate, 48000, "Negative sample rate should be ignored")
+    }
+
+    func testUpdateSampleRateAffectsBandMapping() {
+        // A tone placed in band 0 (80-120 Hz) at 44.1 kHz must still be detected
+        // after switching the processor to a 48 kHz sample rate when the signal
+        // is generated at 48 kHz.
+        let processor48 = FFTProcessor(bufferSize: 2048, bandCount: 8, sampleRate: 44100)!
+        processor48.updateSampleRate(48000)
+
+        var samples = [Float](repeating: 0, count: 2048)
+        let frequency: Float = 100.0  // inside band 0 (80-120 Hz)
+        for index in 0..<2048 {
+            samples[index] = sin(2.0 * .pi * frequency * Float(index) / 48000.0) * 0.8
+        }
+
+        let bands = processor48.process(samples)
+        XCTAssertGreaterThan(bands[0], 0.01, "A 100 Hz tone at 48 kHz should land in the lowest band")
+    }
+
     // MARK: - Processing Tests
 
     func testProcessReturnsCorrectBandCount() {

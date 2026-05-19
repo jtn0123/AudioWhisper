@@ -44,8 +44,10 @@ internal extension AppDelegate {
         if let button = statusItem?.button {
             iconRenderer = MenuBarIconRenderer(button: button)
             iconRenderer?.setState(.idle)
-            button.action = #selector(toggleRecordWindow)
-            button.target = self
+            // Note: no button action/target — assigning a menu to the
+            // NSStatusItem means a click always shows the menu and never
+            // invokes a button action. Recording is reachable via the menu's
+            // "Start Recording" item and the global hotkey.
         }
         statusItem?.menu = makeStatusMenu()
 
@@ -72,9 +74,20 @@ internal extension AppDelegate {
             PermissionManager.shared.proceedWithPermissionRequest()
         }
 
+        // First-run users must always see the welcome/onboarding screen — even
+        // when the default `.local` model has not been downloaded yet. The
+        // first-run check therefore takes precedence over the model-missing
+        // dashboard fallback below.
+        if AppSetupHelper.checkFirstRun() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                self?.showWelcomeAndSettings()
+            }
+            return
+        }
+
         // Validate local model is ready before allowing use.
         // Preserves the legacy default-to-local behavior (no key set = treat as local)
-        // which is also what `AppSetupHelper.checkFirstRun()` later writes.
+        // which is also what `AppSetupHelper.checkFirstRun()` writes.
         let providerRaw = AppDefaults.defaults.string(
             forKey: AppDefaults.Key.transcriptionProvider.rawValue
         ) ?? TranscriptionProvider.local.rawValue
@@ -83,13 +96,6 @@ internal extension AppDelegate {
             if !WhisperKitStorage.isModelDownloaded(model) {
                 // Model not downloaded - show dashboard for download
                 DashboardWindowManager.shared.showDashboardWindow()
-                return
-            }
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            if AppSetupHelper.checkFirstRun() {
-                self.showWelcomeAndSettings()
             }
         }
     }

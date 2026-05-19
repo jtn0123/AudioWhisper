@@ -17,18 +17,28 @@ internal actor DiskMutationSerializer<Key: Hashable & Sendable> {
 
     /// Run `op` serialized on `key`. Concurrent callers for the same key
     /// will await the in-flight task instead of starting a new one.
+    ///
+    /// The `inFlight` entry is cleared deterministically — within this
+    /// actor-isolated context, immediately after the task finishes (success
+    /// OR failure) — so a FAILED operation is never cached and re-served to a
+    /// later caller that arrives in the window before cleanup. A previous
+    /// implementation used a detached `Task { clear() }`, leaving the failed
+    /// task lingering in `inFlight` until that detached task happened to run.
     func run(key: Key, _ op: @Sendable @escaping () async throws -> Void) async throws {
         if let existing = inFlight[key] {
             return try await existing.value
         }
         let task = Task<Void, Error> { try await op() }
         inFlight[key] = task
-        defer { Task { await self.clear(key: key) } }
-        try await task.value
-    }
 
-    private func clear(key: Key) {
+        // Await the result, then clear synchronously on this actor before
+        // returning, so success and failure are both un-cached deterministically.
+        // While this task is in flight, concurrent same-key callers await the
+        // existing entry rather than installing a new one, so no other writer
+        // can have replaced `inFlight[key]` by the time we get here.
+        let result = await task.result
         inFlight[key] = nil
+        try result.get()
     }
 }
 

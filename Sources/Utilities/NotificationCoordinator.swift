@@ -6,6 +6,11 @@ import Foundation
 final class NotificationCoordinator {
     private var observers: [Notification.Name: NSObjectProtocol] = [:]
     private var tasks: [Notification.Name: Task<Void, Never>] = [:]
+    /// In-flight handler Tasks spawned by `observeOnMainActor`, keyed by
+    /// notification name. Tracked so `remove`/`removeAll` can cancel handlers
+    /// that are still running, preventing them from mutating state after
+    /// teardown. Each task removes itself on completion to avoid accumulation.
+    private var handlerTasks: [Notification.Name: [UUID: Task<Void, Never>]] = [:]
 
     deinit {
         // Clean up any remaining observers
@@ -52,9 +57,34 @@ final class NotificationCoordinator {
         _ name: Notification.Name,
         handler: @escaping @MainActor (Notification) async -> Void
     ) {
-        observe(name, queue: .main) { notification in
+        observe(name, queue: .main) { [weak self] notification in
+            // Spawn the handler Task on the MainActor and track it so it can be
+            // cancelled by `remove`/`removeAll`. The Task removes itself from
+            // tracking on completion so finished tasks don't accumulate.
             Task { @MainActor in
-                await handler(notification)
+                guard let self else {
+                    await handler(notification)
+                    return
+                }
+                let id = UUID()
+                let task = Task { @MainActor in
+                    await handler(notification)
+                }
+                self.handlerTasks[name, default: [:]][id] = task
+                _ = await task.value
+                self.handlerTasks[name]?.removeValue(forKey: id)
+                if self.handlerTasks[name]?.isEmpty == true {
+                    self.handlerTasks.removeValue(forKey: name)
+                }
+            }
+        }
+    }
+
+    /// Cancels and clears all in-flight handler Tasks for a notification name.
+    private func cancelHandlerTasks(for name: Notification.Name) {
+        if let tasksForName = handlerTasks.removeValue(forKey: name) {
+            for task in tasksForName.values {
+                task.cancel()
             }
         }
     }
@@ -92,6 +122,8 @@ final class NotificationCoordinator {
         if let task = tasks.removeValue(forKey: name) {
             task.cancel()
         }
+        // Cancel any in-flight handler Tasks spawned for this notification.
+        cancelHandlerTasks(for: name)
     }
 
     /// Removes all observers and cancels all tasks.
@@ -105,6 +137,15 @@ final class NotificationCoordinator {
             task.cancel()
         }
         tasks.removeAll()
+
+        // Cancel any in-flight handler Tasks so they cannot mutate state
+        // after teardown.
+        for tasksForName in handlerTasks.values {
+            for task in tasksForName.values {
+                task.cancel()
+            }
+        }
+        handlerTasks.removeAll()
     }
 
     // MARK: - Query

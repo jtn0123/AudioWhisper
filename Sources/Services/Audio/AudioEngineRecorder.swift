@@ -36,8 +36,11 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     private nonisolated(unsafe) var sampleBuffer: [Float] = []  // Access under sampleBufferLock (audio thread + main)
     private let sampleBufferSize = 2048
     private let dateProvider: () -> Date
-    private let sampleBufferLock = NSLock()  // Guards sampleBuffer, _writeErrorCount, and _lastLevelPublishTime
-    private nonisolated(unsafe) var _writeErrorCount = 0  // Track write errors for diagnostics (access under sampleBufferLock)
+    // Guards sampleBuffer, _writeErrorCount, _writeSuccessCount, _framesWritten, _lastLevelPublishTime.
+    private let sampleBufferLock = NSLock()
+    private nonisolated(unsafe) var _writeErrorCount = 0  // Write errors for diagnostics (under sampleBufferLock)
+    private nonisolated(unsafe) var _writeSuccessCount = 0  // Successful buffer writes (under sampleBufferLock)
+    private nonisolated(unsafe) var _framesWritten: Int64 = 0  // Total frames written (under sampleBufferLock)
 
     // MARK: - Level Meter Throttle (60 Hz)
     // Audio callbacks fire much faster than SwiftUI can render (e.g. ~86 Hz at 16 kHz / 1024-frame buffers,
@@ -70,6 +73,25 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         super.init()
     }
 
+    deinit {
+        // Safety-net cleanup if the recorder is dropped mid-recording without a
+        // balanced stop/cancel: stop the engine, remove the tap, close/flush the
+        // open file (niling the AVAudioFile flushes it), and restore boosted mic
+        // volume. `deinit` may access these MainActor-isolated stored properties
+        // directly (it shares the isolation domain); AVAudioEngine teardown is
+        // safe here. `restoreMicrophoneVolume` is idempotent when nothing boosted.
+        if let engine = audioEngine {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+        }
+        audioEngine = nil
+        audioFile = nil
+        if AppDefaults.autoBoostMicrophoneVolume {
+            let manager = volumeManager
+            Task { await manager.restoreMicrophoneVolume() }
+        }
+    }
+
     // MARK: - AudioRecording Protocol
 
     func startRecording() -> Bool {
@@ -83,16 +105,19 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             return false
         }
 
-        // Boost microphone volume if enabled
+        // Skip real audio hardware operations in test environment to prevent errors
+        if AppEnvironment.isRunningTests {
+            return false
+        }
+
+        // Boost microphone volume if enabled.
+        // Dispatched AFTER the early-return checks above so the boost only happens
+        // when a real recording session actually begins — otherwise the matching
+        // restore (in stop/cancel) would never fire and the boost would stick.
         if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.boostMicrophoneVolume()
             }
-        }
-
-        // Skip real audio hardware operations in test environment to prevent errors
-        if AppEnvironment.isRunningTests {
-            return false
         }
 
         // Create recording URL
@@ -107,11 +132,19 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             let inputNode = engine.inputNode
             let inputFormat = inputNode.outputFormat(forBus: 0)
 
-            // Create output file for recording
+            // Map the FFT processor to the device's actual sample rate. The tap runs
+            // at the device rate (often 48 kHz), not the 44.1 kHz default — without
+            // this, frequency bands are mislabeled (Hz→bin mapping uses sampleRate).
+            fftProcessor?.updateSampleRate(Float(inputFormat.sampleRate))
+
+            // Create output file for recording.
+            // The channel count MUST match the input tap buffer's channel count, or
+            // every `audioFile.write(from:)` throws (channel-count mismatch) and the
+            // recording ends up empty on stereo input devices.
             let outputSettings: [String: Any] = [
                 AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
                 AVSampleRateKey: inputFormat.sampleRate,
-                AVNumberOfChannelsKey: 1,
+                AVNumberOfChannelsKey: Int(inputFormat.channelCount),
                 AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
             ]
 
@@ -134,6 +167,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             lastRecordingDuration = nil
             sampleBufferLock.lock()
             _writeErrorCount = 0  // Reset error count for new session
+            _writeSuccessCount = 0  // Reset success count for new session
+            _framesWritten = 0  // Reset frame counter for new session
             _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
             sampleBufferLock.unlock()
             isRecording = true
@@ -165,9 +200,11 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         lastRecordingDuration = sessionDuration
         currentSessionStart = nil
 
-        // Log warning if write errors occurred during recording
+        // Snapshot write diagnostics captured during the recording.
         sampleBufferLock.lock()
         let errorCount = _writeErrorCount
+        let successCount = _writeSuccessCount
+        let framesWritten = _framesWritten
         sampleBufferLock.unlock()
         if errorCount > 0 {
             Logger.audioEngineRecorder.warning("Recording had \(errorCount) audio buffer write errors - audio may be incomplete")
@@ -184,6 +221,16 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
         isRecording = false
         clearVisualizationData()
+
+        // A recording is only usable if real audio frames were captured and at
+        // least one buffer was written successfully. If every write failed (e.g.
+        // a format mismatch) or no frames landed, the file is empty/corrupt — return
+        // nil so the caller's `guard let` rejects it instead of transcribing garbage.
+        guard framesWritten > 0, successCount > 0 else {
+            Logger.audioEngineRecorder.error("Recording unusable (\(framesWritten)f/\(successCount)ok/\(errorCount)err) - discarded")
+            cleanupRecording()
+            return nil
+        }
 
         return recordingURL
     }
@@ -278,6 +325,12 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         if let audioFile = audioFile {
             do {
                 try audioFile.write(from: buffer)
+                // Track successful writes + frames so stopRecording can tell whether
+                // the recording is actually usable (thread-safe via sampleBufferLock).
+                sampleBufferLock.lock()
+                _writeSuccessCount += 1
+                _framesWritten += Int64(frameLength)
+                sampleBufferLock.unlock()
             } catch {
                 // Track write errors for later reporting (thread-safe via sampleBufferLock)
                 sampleBufferLock.lock()

@@ -92,6 +92,12 @@ final class TranscriptionCoordinator {
 
         PasteManager.copyToClipboard(text)
 
+        // Live stats (UsageMetricsStore / SourceUsageStore) are gated behind the
+        // SAME `isHistoryEnabled` condition as the history save. When history is
+        // disabled there are no persisted records, so `rebuild(using:)` after a
+        // delete reconstructs stats solely from persisted records — recording a
+        // session here would make live totals diverge and then plunge on the
+        // next delete-triggered rebuild.
         if DataManager.shared.isHistoryEnabled {
             let modelUsed: String? = (context.transcriptionProvider == .local)
                 ? context.selectedWhisperModel.rawValue
@@ -109,14 +115,14 @@ final class TranscriptionCoordinator {
                 sourceAppIconData: sourceInfo.iconData
             )
             await DataManager.shared.saveTranscriptionQuietly(record)
-        }
 
-        UsageMetricsStore.shared.recordSession(
-            duration: context.source.duration,
-            wordCount: wordCount,
-            characterCount: characterCount
-        )
-        recordSourceUsage(words: wordCount, characters: characterCount)
+            UsageMetricsStore.shared.recordSession(
+                duration: context.source.duration,
+                wordCount: wordCount,
+                characterCount: characterCount
+            )
+            recordSourceUsage(words: wordCount, characters: characterCount)
+        }
         viewModel.transcriptionStartTime = nil
 
         // Surface silent correction failures to the UI (audit item A4). The
@@ -202,7 +208,9 @@ final class TranscriptionCoordinator {
     // MARK: - Private Helpers
 
     private func recordSourceUsage(words: Int, characters: Int) {
-        guard words > 0, let viewModel else { return }
+        // Zero-word sessions are still recorded by `SourceUsageStore` so its
+        // session totals stay in sync with `UsageMetricsStore` (bug #47).
+        guard let viewModel else { return }
         let info = viewModel.currentSourceAppInfo()
         SourceUsageStore.shared.recordUsage(for: info, words: words, characters: characters)
     }

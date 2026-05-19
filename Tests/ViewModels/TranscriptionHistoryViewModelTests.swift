@@ -79,6 +79,27 @@ final class TranscriptionHistoryViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.hasMore)
     }
 
+    func testPaginationEmptyBatchClearsHasMore() async {
+        // Bug #43: when the record count is an exact multiple of pageSize,
+        // the last full page leaves hasMore true; the follow-up fetch returns
+        // an empty batch, which must set hasMore false rather than loop.
+        let mock = MockDataManager()
+        mock.recordsToReturn = makeRecords(6) // exact multiple of pageSize 3
+        let viewModel = TranscriptionHistoryViewModel(dataManager: mock, pageSize: 3)
+
+        await viewModel.loadRecords(reset: true)
+        XCTAssertEqual(viewModel.records.count, 3)
+        XCTAssertTrue(viewModel.hasMore)
+
+        await viewModel.loadRecords()
+        XCTAssertEqual(viewModel.records.count, 6)
+        // After fetching the last full page, hasMore may still be true.
+
+        await viewModel.loadRecords() // fetches an empty batch
+        XCTAssertEqual(viewModel.records.count, 6)
+        XCTAssertFalse(viewModel.hasMore, "Empty batch must clear hasMore")
+    }
+
     func testResetReturnsToFirstPage() async {
         let mock = MockDataManager()
         mock.recordsToReturn = makeRecords(7)

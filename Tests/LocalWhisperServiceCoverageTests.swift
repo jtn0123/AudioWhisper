@@ -83,4 +83,32 @@ final class LocalWhisperServiceCoverageTests: IsolatedXCTestCase {
         let service = LocalWhisperService()
         await service.clearCache()
     }
+
+    // MARK: - isNetworkError (bug #21 — locale-independent detection)
+
+    func testIsNetworkErrorDetectsURLError() {
+        XCTAssertTrue(LocalWhisperService.isNetworkError(URLError(.notConnectedToInternet)))
+        XCTAssertTrue(LocalWhisperService.isNetworkError(URLError(.timedOut)))
+    }
+
+    func testIsNetworkErrorDetectsNSURLErrorDomain() {
+        let error = NSError(domain: NSURLErrorDomain, code: NSURLErrorCannotConnectToHost)
+        XCTAssertTrue(LocalWhisperService.isNetworkError(error))
+    }
+
+    func testIsNetworkErrorUnwrapsUnderlyingError() {
+        let underlying = URLError(.cannotFindHost)
+        let wrapper = NSError(
+            domain: "SomeFrameworkDomain",
+            code: 1,
+            userInfo: [NSUnderlyingErrorKey: underlying]
+        )
+        XCTAssertTrue(LocalWhisperService.isNetworkError(wrapper))
+    }
+
+    func testIsNetworkErrorIgnoresUnrelatedErrors() {
+        // A non-English-text, non-network error must NOT be misclassified.
+        let error = NSError(domain: "WhisperKitInternal", code: 99)
+        XCTAssertFalse(LocalWhisperService.isNetworkError(error))
+    }
 }

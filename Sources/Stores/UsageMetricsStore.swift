@@ -79,6 +79,12 @@ internal final class UsageMetricsStore {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = .current
+        // Pin a POSIX locale + Gregorian calendar so `yyyy` always renders a
+        // stable Gregorian year. Without this, a non-Gregorian device calendar
+        // could emit non-Gregorian years, corrupting dictionary keys and the
+        // lexicographic cutoff comparison (bug #44).
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
         return formatter
     }()
 
@@ -175,7 +181,10 @@ internal final class UsageMetricsStore {
                 rebuilt.totalDuration += duration
             }
             rebuilt.totalWords += record.wordCount
-            rebuilt.totalCharacters += record.text.count
+            // Use the stored `characterCount` so a rebuild matches what
+            // `recordSession` accumulated live (bug #45). `text.count` would
+            // diverge if the stored count and text ever differ.
+            rebuilt.totalCharacters += record.characterCount
             
             // Rebuild daily activity from records
             let dateString = Self.dateFormatter.string(from: record.date)

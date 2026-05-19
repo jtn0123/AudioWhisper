@@ -151,9 +151,42 @@ final class TextCleaningTests: XCTestCase {
     
     func testPerformance() {
         let longText = String(repeating: "Hello [BLANK_AUDIO] world [Music] and (crying) text (applause) ", count: 1000)
-        
+
         measure {
             _ = SpeechToTextService.cleanTranscriptionText(longText)
         }
+    }
+
+    // MARK: - cleanedNonEmptyTranscription (bug #6)
+
+    func testCleanedNonEmptyThrowsOnMarkerOnlySilence() {
+        // WhisperKit emits "[BLANK_AUDIO]" for silent recordings. After cleaning
+        // this is empty — it must surface a no-speech error, not "".
+        XCTAssertThrowsError(try SpeechToTextService.cleanedNonEmptyTranscription("[BLANK_AUDIO]")) { error in
+            guard case SpeechToTextError.noSpeechDetected = error else {
+                return XCTFail("Expected .noSpeechDetected, got \(error)")
+            }
+        }
+    }
+
+    func testCleanedNonEmptyThrowsOnEmptyInput() {
+        XCTAssertThrowsError(try SpeechToTextService.cleanedNonEmptyTranscription("")) { error in
+            guard case SpeechToTextError.noSpeechDetected = error else {
+                return XCTFail("Expected .noSpeechDetected, got \(error)")
+            }
+        }
+    }
+
+    func testCleanedNonEmptyThrowsOnWhitespaceAndMarkers() {
+        XCTAssertThrowsError(try SpeechToTextService.cleanedNonEmptyTranscription("   [SILENCE]  (applause) ")) { error in
+            guard case SpeechToTextError.noSpeechDetected = error else {
+                return XCTFail("Expected .noSpeechDetected, got \(error)")
+            }
+        }
+    }
+
+    func testCleanedNonEmptyReturnsRealSpeech() throws {
+        let result = try SpeechToTextService.cleanedNonEmptyTranscription("Hello [BLANK_AUDIO] world")
+        XCTAssertEqual(result, "Hello world")
     }
 }

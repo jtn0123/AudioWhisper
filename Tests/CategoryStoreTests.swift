@@ -1,6 +1,7 @@
 import XCTest
 @testable import AudioWhisper
 
+@MainActor
 final class CategoryStoreTests: XCTestCase {
     private var tempStorageURL: URL!
     private var store: CategoryStore!

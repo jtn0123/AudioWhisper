@@ -52,12 +52,40 @@ final class SourceUsageStoreTests: XCTestCase {
         XCTAssertEqual(updatedStat.fallbackSymbolName, "doc")
     }
 
-    func testRecordUsageIgnoresZeroWords() {
+    func testRecordUsageRecordsZeroWordSessions() {
+        // Bug #47: zero-word sessions must still be recorded so per-app
+        // session totals stay in sync with UsageMetricsStore.
         let info = makeInfo(bundleId: "com.test.none", name: "No Words")
 
         store.recordUsage(for: info, words: 0, characters: 10)
 
-        XCTAssertTrue(store.allSources().isEmpty)
+        guard let stat = store.allSources().first else {
+            return XCTFail("Expected a recorded zero-word session")
+        }
+        XCTAssertEqual(stat.sessionCount, 1)
+        XCTAssertEqual(stat.totalWords, 0)
+        XCTAssertEqual(stat.totalCharacters, 10)
+    }
+
+    func testTrimEvictsLeastRecentlyUsed() {
+        // Bug #46: trimming must evict by least-recently-used, not lowest
+        // word count, so a brand-new recently-active app is retained even
+        // though it has the fewest words.
+        for index in 0..<50 {
+            let info = makeInfo(bundleId: "com.old.\(index)", name: "Old \(index)")
+            store.recordUsage(for: info, words: 1000, characters: 5000)
+            usleep(2_000) // ensure strictly increasing lastUsed timestamps
+        }
+        // One brand-new app: fewest words but most recently used.
+        let fresh = makeInfo(bundleId: "com.fresh.app", name: "Fresh App")
+        store.recordUsage(for: fresh, words: 1, characters: 1)
+
+        let all = store.allSources()
+        XCTAssertEqual(all.count, 50)
+        XCTAssertTrue(all.contains { $0.bundleIdentifier == "com.fresh.app" },
+                      "Most recently used app must survive trimming despite low word count")
+        XCTAssertFalse(all.contains { $0.bundleIdentifier == "com.old.0" },
+                       "Least recently used app should be evicted")
     }
 
     func testTopSourcesSortsByWordsThenRecency() {

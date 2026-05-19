@@ -49,14 +49,18 @@ private actor WhisperKitCache {
                 newInstance = try await WhisperKit(config)
             }
         } catch {
-            // If WhisperKit fails due to network issues, provide a more helpful error
-            if error.localizedDescription.contains("offline") ||
-               error.localizedDescription.contains("network") ||
-               error.localizedDescription.contains("connection") {
+            // Decide whether this is a "model not downloaded" situation without
+            // relying on locale-/version-fragile English substrings.
+            //
+            // 1. If the model files are no longer present on disk (e.g. a
+            //    partial/cleared cache), it is definitively not downloaded.
+            // 2. If WhisperKit attempted a network fetch and failed
+            //    (URLError / NSURLErrorDomain), that also means the model
+            //    wasn't available locally.
+            if !(await isModelDownloadedLocally(model)) || LocalWhisperService.isNetworkError(error) {
                 throw LocalWhisperError.modelNotDownloaded
-            } else {
-                throw error
             }
+            throw error
         }
 
         // Remove least recently used models if cache is full
@@ -198,6 +202,21 @@ internal final class LocalWhisperService: Sendable {
         return transcription.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
     
+    /// Locale-independent network-failure detection: inspects the error type
+    /// and domain rather than locale-/version-fragile localized message text.
+    /// Used to map a WhisperKit construction failure caused by a network fetch
+    /// to `modelNotDownloaded`.
+    static func isNetworkError(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain { return true }
+        // Walk a wrapped underlying error if present.
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isNetworkError(underlying)
+        }
+        return false
+    }
+
     // Method to clear cached instances if needed (for memory management)
     func clearCache() async {
         await cache.clear()
