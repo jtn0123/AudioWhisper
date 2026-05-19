@@ -269,8 +269,8 @@ extension UvBootstrapCoverageTests {
         let dst = dir.appendingPathComponent("dst.toml")
 
         // Same length, different bytes.
-        try "AAAA".data(using: .utf8)!.write(to: src)
-        try "BBBB".data(using: .utf8)!.write(to: dst)
+        try Data("AAAA".utf8).write(to: src)
+        try Data("BBBB".utf8).write(to: dst)
 
         // Make the destination's mtime NEWER so the old size+mtime logic
         // would have skipped the copy.
@@ -292,8 +292,8 @@ extension UvBootstrapCoverageTests {
 
         let src = dir.appendingPathComponent("src.toml")
         let dst = dir.appendingPathComponent("dst.toml")
-        try "same content".data(using: .utf8)!.write(to: src)
-        try "same content".data(using: .utf8)!.write(to: dst)
+        try Data("same content".utf8).write(to: src)
+        try Data("same content".utf8).write(to: dst)
 
         let before = try FileManager.default.attributesOfItem(atPath: dst.path)[.modificationDate] as? Date
         try UvBootstrap.copyIfDifferentForTesting(src: src, dst: dst)
