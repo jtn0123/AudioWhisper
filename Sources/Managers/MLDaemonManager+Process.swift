@@ -8,6 +8,14 @@ import os.log
 // `type_body_length` limit. All members remain actor-isolated.
 internal extension MLDaemonManager {
     func ensureDaemonRunning() async throws {
+        // H6: if another caller is already inside `startProcess`, yield until
+        // it finishes attaching. Without this guard a queued caller would see
+        // `process == nil` and launch a duplicate daemon while the first
+        // spawn was suspended on `resolvedPython()`.
+        while isStarting {
+            try await Task.sleep(nanoseconds: 10_000_000)
+            if isShuttingDown { throw MLDaemonError.daemonUnavailable("shutting down") }
+        }
         if let process, process.isRunning { return }
         guard !isShuttingDown else { throw MLDaemonError.daemonUnavailable("shutting down") }
         guard restartAttempts < maxRestartAttempts else { throw MLDaemonError.restartLimitReached }
@@ -26,6 +34,11 @@ internal extension MLDaemonManager {
         // Count every spawn attempt, restart or not, against the limit.
         restartAttempts += 1
         if restartAttempts > maxRestartAttempts { throw MLDaemonError.restartLimitReached }
+
+        // H6: mark spawn-in-progress so concurrent `ensureDaemonRunning`
+        // callers wait rather than racing us to launch a second daemon.
+        isStarting = true
+        defer { isStarting = false }
 
         let python = try await resolvedPython()
         let script = try resolvedScript()
@@ -62,6 +75,13 @@ internal extension MLDaemonManager {
         do {
             try proc.run()
         } catch {
+            // M8: release the pipes/handler opened above if `proc.run()` throws
+            // before we attach them to the actor. Without this the file handles
+            // (and stderr readabilityHandler) leak on every failed spawn.
+            stderr.fileHandleForReading.readabilityHandler = nil
+            try? stdin.fileHandleForWriting.close()
+            try? stdout.fileHandleForReading.close()
+            try? stderr.fileHandleForReading.close()
             throw MLDaemonError.daemonUnavailable("Failed to start process: \(error.localizedDescription)")
         }
 
@@ -164,6 +184,10 @@ internal extension MLDaemonManager {
         completeAllPending(with: MLDaemonError.daemonUnavailable("exited (\(exitCode))"))
         process = nil
 
+        // H6: mark spawn-in-progress BEFORE the await so concurrent
+        // `ensureDaemonRunning` callers see the guard and wait rather than
+        // launching their own daemon while we're between actor hops.
+        isStarting = true
         // `startProcess` itself counts the attempt and throws
         // `restartLimitReached` once the crash-loop limit is hit, so a daemon
         // that keeps dying eventually stops being respawned (audit #8). We do
@@ -172,6 +196,7 @@ internal extension MLDaemonManager {
         do {
             try await startProcess(isRestart: true)
         } catch {
+            isStarting = false
             logger.error("Failed to restart ml_daemon: \(error.localizedDescription)")
             completeAllPending(with: error)
         }

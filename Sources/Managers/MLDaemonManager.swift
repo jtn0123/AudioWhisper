@@ -50,6 +50,11 @@ internal actor MLDaemonManager {
     /// crash-loop restart counter is reset. See `markDaemonStableIfHealthy`.
     static let stableUptimeSeconds: UInt64 = 10
     private let requestTimeoutSeconds: UInt64 = 60
+    /// Hard cap on a single JSON-RPC request payload (M6). Picked at 1 MiB —
+    /// large enough for the longest realistic correction/transcription input
+    /// but small enough that an oversize string can't DoS the Python daemon
+    /// by exhausting memory while it deserializes.
+    static let maxRequestBytes: Int = 1 * 1024 * 1024
 
     var process: Process?
     var stdinPipe: Pipe?
@@ -59,6 +64,10 @@ internal actor MLDaemonManager {
     private var nextRequestID: Int = 1
     var restartAttempts: Int = 0
     var isShuttingDown = false
+    /// True while `startProcess` is between checking for an existing process
+    /// and finishing process attachment. Prevents queued `ensureDaemonRunning`
+    /// callers from launching a duplicate daemon during an in-flight spawn (H6).
+    var isStarting = false
     var stdoutReaderTask: Task<Void, Never>?
     private var pythonExecutable: URL?
     private var scriptLocation: URL?
@@ -132,6 +141,10 @@ internal actor MLDaemonManager {
         }
 
         let data = try JSONSerialization.data(withJSONObject: payload, options: [])
+        // M6: cap payload size so a multi-MB string can't DoS the Python side.
+        if data.count > Self.maxRequestBytes {
+            throw MLDaemonError.daemonUnavailable("input too large (max \(Self.maxRequestBytes) bytes)")
+        }
         guard let writer = stdinPipe?.fileHandleForWriting else {
             throw MLDaemonError.daemonUnavailable("stdin unavailable")
         }
@@ -162,18 +175,16 @@ internal actor MLDaemonManager {
                 deadline: deadline
             )
 
-            // Write with error handling. On failure, remove the just-registered
-            // pending entry and tear down the dead daemon so the next request
-            // spawns a fresh one (audit #23 / #24).
-            do {
-                try writer.write(contentsOf: data)
-                try writer.write(contentsOf: Data([0x0a])) // newline
-            } catch {
-                self.logger.error("Failed to write to daemon stdin: \(error.localizedDescription)")
-                self.pending.removeValue(forKey: requestID)
-                Task { await self.teardownDeadDaemon() }
-                continuation.resume(throwing: MLDaemonError.writeFailed)
-                return
+            // H9: perform the synchronous stdin write OFF the actor. A blocked
+            // write (full pipe + stalled daemon) inside actor isolation would
+            // prevent `handle(line:)` from running, deadlocking the pair.
+            Task.detached { [weak self] in
+                do {
+                    try writer.write(contentsOf: data)
+                    try writer.write(contentsOf: Data([0x0a])) // newline
+                } catch {
+                    await self?.handleWriteFailure(requestID: requestID, error: error)
+                }
             }
 
             // Start timeout task.
@@ -190,6 +201,16 @@ internal actor MLDaemonManager {
                 }
             }
         }
+    }
+
+    /// Tears down the dead daemon and fails the in-flight request whose
+    /// detached stdin write threw. Invoked from the H9 off-actor write path.
+    func handleWriteFailure(requestID: Int, error: Error) async {
+        logger.error("Failed to write to daemon stdin: \(error.localizedDescription)")
+        if let entry = pending.removeValue(forKey: requestID) {
+            entry.completion(.failure(MLDaemonError.writeFailed))
+        }
+        await teardownDeadDaemon()
     }
 
     private func removePendingRequest(_ id: Int) {
@@ -291,6 +312,7 @@ internal extension MLDaemonManager {
         scriptLocation = nil
         restartAttempts = 0
         isShuttingDown = false
+        isStarting = false
         testResponder = nil
     }
 
