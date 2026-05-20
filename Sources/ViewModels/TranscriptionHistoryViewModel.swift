@@ -26,6 +26,16 @@ final class TranscriptionHistoryViewModel {
     private let dataManager: DataManagerProtocol
     private let pageSize: Int
 
+    /// Tracks the in-flight load Task so a new `loadRecords` call can cancel
+    /// the previous one instead of being silently dropped (bugs H13/H14).
+    /// Updated only on the MainActor, so no extra synchronization is needed.
+    private var currentLoadTask: Task<Void, Never>?
+
+    /// Debounce in nanoseconds applied to search-driven reloads to avoid one
+    /// Task per keystroke. 200ms matches the "feels responsive but not
+    /// thrashing" target from the bug report.
+    private static let searchDebounceNanos: UInt64 = 200_000_000
+
     // MARK: - Initialization
 
     init(dataManager: DataManagerProtocol = DataManager.shared, pageSize: Int = 50) {
@@ -38,12 +48,53 @@ final class TranscriptionHistoryViewModel {
     /// Loads the next page of records (or the first page when `reset` is true).
     /// `search` is the raw search text from the view; it is trimmed here and
     /// treated as "no filter" when empty.
+    ///
+    /// Replaces the old `guard !isLoading else { return }` pattern, which
+    /// silently dropped keystrokes while a previous load was in flight (bugs
+    /// H13/H14). The latest call now wins: it cancels any in-flight load,
+    /// then debounces briefly (when `reset` is true) so per-keystroke search
+    /// doesn't spawn a Task per character.
     func loadRecords(reset: Bool = false, search: String = "") async {
-        guard !isLoading else { return }
+        // Cancel any in-flight load and replace it. The new task wins; the
+        // old one will observe cancellation and exit early.
+        currentLoadTask?.cancel()
+
+        // Reflect "loading" immediately so the UI shows the spinner while we
+        // wait through the debounce window. Doing it here (instead of inside
+        // the Task) prevents brief `isLoading = false` flicker when the
+        // cancelled task's defer fires after the new task has been queued.
         isLoading = true
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.performLoad(reset: reset, search: search)
+        }
+        currentLoadTask = task
+        await task.value
+    }
+
+    private func performLoad(reset: Bool, search: String) async {
+        // Debounce reset/search loads only — paginated "load more" calls
+        // shouldn't be delayed. `Task.sleep` throws on cancellation, which
+        // is exactly the early-exit we want.
+        if reset {
+            do {
+                try await Task.sleep(nanoseconds: Self.searchDebounceNanos)
+            } catch {
+                return
+            }
+        }
+
+        if Task.isCancelled { return }
+
+        // Only the latest task is responsible for clearing `isLoading`.
+        // Stale (cancelled) tasks bail out without touching shared state so
+        // they can't flip the spinner off while a newer load is still going.
         defer {
-            isLoading = false
-            hasLoadedOnce = true
+            if !Task.isCancelled {
+                isLoading = false
+                hasLoadedOnce = true
+            }
         }
 
         if reset {
@@ -62,6 +113,8 @@ final class TranscriptionHistoryViewModel {
                 search: searchTerm
             )
 
+            if Task.isCancelled { return }
+
             if reset {
                 records = batch
             } else {
@@ -74,6 +127,7 @@ final class TranscriptionHistoryViewModel {
             hasMore = !batch.isEmpty && batch.count == pageSize
             page += 1
         } catch {
+            if Task.isCancelled { return }
             errorMessage = "Failed to load transcription history: \(error.localizedDescription)"
             showError = true
             hasMore = false

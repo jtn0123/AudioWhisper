@@ -16,16 +16,23 @@ internal class KeyboardEventHandler {
     }
     
     private func setupGlobalKeyMonitoring() {
-        // Use global monitor that works regardless of focus
-        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+        // Use global monitor that works regardless of focus.
+        // `[weak self]` prevents the monitor closure from retaining the handler;
+        // without it `deinit` never fires and the monitor leaks (bug H10).
+        globalKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return }
             // Check if recording window is visible
             if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }), window.isVisible {
                 _ = self.handleKeyEvent(event, for: window)
             }
         }
-        
-        // Also add local monitor with proper filtering
-        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+
+        // Also add local monitor with proper filtering.
+        // `[weak self]` here too — same reason as the global monitor above.
+        // Note: local monitor closure must return `NSEvent?`, so the early
+        // exit returns `event` (pass through) rather than `nil`.
+        localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
             // Check if recording window is visible
             if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }), window.isVisible {
                 // Always consume events when recording window is visible to prevent passthrough

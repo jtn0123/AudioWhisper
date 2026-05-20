@@ -19,6 +19,21 @@ final class NotificationCoordinator {
         for observer in observersToRemove {
             NotificationCenter.default.removeObserver(observer)
         }
+
+        // Cancel async-stream Tasks so the `for await` loops in
+        // `observeAsync` terminate when the coordinator is dropped (bug H11).
+        // `Task.cancel()` is safe to call from any thread.
+        for task in tasks.values {
+            task.cancel()
+        }
+
+        // Cancel in-flight handler Tasks spawned by `observeOnMainActor` so
+        // they cannot mutate state after the coordinator is gone (bug H11).
+        for tasksForName in handlerTasks.values {
+            for task in tasksForName.values {
+                task.cancel()
+            }
+        }
     }
 
     // MARK: - Traditional Observer Pattern

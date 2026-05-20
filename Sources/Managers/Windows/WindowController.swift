@@ -63,6 +63,12 @@ internal class WindowController {
     }
     
     private func hideWindow(_ window: NSWindow, completion: (() -> Void)? = nil) {
+        // Clear the shared target-app reference as the window goes down. The
+        // value gets re-stored next time `showWindow` runs, so leaving it set
+        // here lets a stale `NSRunningApplication` survive across sessions
+        // (bug H22). Defensive even when `restoreFocusToPreviousApp` will
+        // also clear it — `hideWindow` is the canonical "session end".
+        WindowController.storedTargetApp = nil
         fadeOutWindow(window) { [weak self] in
             self?.restoreFocusToPreviousApp(completion: completion)
         }
@@ -151,14 +157,21 @@ internal class WindowController {
     
     func restoreFocusToPreviousApp(completion: (() -> Void)? = nil) {
         guard let prevApp = previousApp else {
+            // Even if `previousApp` is nil, clear the shared static value so
+            // a stale entry from a previous session can't leak (bug H22).
+            WindowController.storedTargetApp = nil
             completion?()
             return
         }
-        
+
         // Small delay to ensure window is hidden first
         performWindowOperation(after: 0.1) { [weak self] in
             prevApp.activate(options: [])
             self?.previousApp = nil
+            // Clear the shared target-app reference once focus has been
+            // restored; otherwise it stays alive across sessions and
+            // `findValidTargetApp` may pick the wrong app next time (bug H22).
+            WindowController.storedTargetApp = nil
             completion?()
         }
     }
