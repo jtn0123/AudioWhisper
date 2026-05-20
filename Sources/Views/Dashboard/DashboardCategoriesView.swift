@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import AppKit
 
 internal struct DashboardCategoriesView: View {
     @State var categoryManager = AppCategoryManager.shared
@@ -72,7 +73,7 @@ internal struct DashboardCategoriesView: View {
                 .tint(DashboardTheme.accent)
                 
                 Button {
-                    categoryStore.resetToDefaults()
+                    confirmResetCategories()
                 } label: {
                     Text("Reset")
                         .font(DashboardTheme.Fonts.sans(11, weight: .medium))
@@ -181,6 +182,20 @@ internal struct DashboardCategoriesView: View {
     }
 
     // MARK: - Helpers
+    private func confirmResetCategories() {
+        let alert = NSAlert()
+        alert.messageText = "Reset categories?"
+        alert.informativeText = "All custom categories will be deleted and system categories will be restored to their defaults. This action cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Reset")
+
+        let response = alert.runModal()
+        if response == .alertSecondButtonReturn {
+            categoryStore.resetToDefaults()
+        }
+    }
+
     func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(DashboardTheme.Fonts.sans(11, weight: .semibold))

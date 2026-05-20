@@ -148,11 +148,11 @@ internal struct DashboardPreferencesView: View {
                     Divider().background(DashboardTheme.rule)
 
                     SettingsButtonRow(
-                        title: "Open Recordings Folder",
-                        subtitle: "Inspect saved audio snippets",
+                        title: "Open App Data Folder",
+                        subtitle: "Application Support folder (models, prompts, categories)",
                         icon: "arrow.right"
                     ) {
-                        openRecordingsFolder()
+                        openAppDataFolder()
                     }
                 } else {
                     Divider().background(DashboardTheme.rule)
@@ -253,8 +253,27 @@ internal struct DashboardPreferencesView: View {
         }
     }
 
-    private func openRecordingsFolder() {
-        NSWorkspace.shared.open(FileManager.default.temporaryDirectory)
+    private func openAppDataFolder() {
+        // Recordings themselves are ephemeral (written to the system temp dir
+        // during capture and discarded after transcription), so the previous
+        // "Open Recordings Folder" button opened a noisy shared temp directory.
+        // Point users at the app-specific Application Support folder instead,
+        // which holds models, prompts, and categories.json. Create it lazily
+        // so the first open from a fresh install still works.
+        let fm = FileManager.default
+        guard let appSupport = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else {
+            return
+        }
+        let appDir = appSupport.appendingPathComponent("AudioWhisper", isDirectory: true)
+        if !fm.fileExists(atPath: appDir.path) {
+            try? fm.createDirectory(at: appDir, withIntermediateDirectories: true)
+        }
+        NSWorkspace.shared.open(appDir)
     }
 
     private func formattedGigabytes(_ value: Double) -> String {

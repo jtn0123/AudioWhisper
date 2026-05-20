@@ -53,7 +53,10 @@ internal class WelcomeWindow {
 
 internal class WelcomeWindowDelegate: NSObject, NSWindowDelegate {
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        // End the modal session when close button is clicked
+        // The user has seen the welcome window; closing it via the red button
+        // counts as "completed" so the next hotkey press isn't silently dropped
+        // by the first-run guard in WindowController.
+        AppDefaults.hasCompletedWelcome = true
         NSApplication.shared.stopModal(withCode: .cancel)
         return true
     }
