@@ -51,7 +51,17 @@ internal struct MLXModelManagementView: View {
                 .disabled(isRefreshing)
                 .help("Refresh model list to check downloaded models")
             }
-            
+
+            if selectedModelRepo.isEmpty || !modelManager.downloadedModels.contains(selectedModelRepo) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("No MLX model installed — choose one below to download.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             // Model List (shared row UI using adapters)
             VStack(spacing: 8) {
                 let entries: [ModelEntry] = MLXModelManager.recommendedModels.map { model in
@@ -82,7 +92,10 @@ internal struct MLXModelManagementView: View {
                             Task {
                                 await modelManager.deleteModel(model.repo)
                                 if selectedModelRepo == model.repo {
-                                    selectedModelRepo = "mlx-community/Llama-3.2-1B-Instruct-4bit"
+                                    // Prefer another already-downloaded model. If none is
+                                    // available, leave the selection empty so the "no MLX
+                                    // model installed" badge above the list is visible.
+                                    selectedModelRepo = modelManager.nextSelectionAfterDeletion(deletedRepo: model.repo) ?? ""
                                 }
                             }
                         }

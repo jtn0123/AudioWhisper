@@ -185,13 +185,18 @@ extension DashboardCorrectionView {
                 err.fileHandleForReading.readabilityHandler = nil
 
                 let lastMsg = await messageStore.stdoutMessage()
+                let lastErr = await messageStore.stderrMessage()
                 await MainActor.run {
                     isVerifyingMLX = false
                     if process.terminationStatus == 0 {
                         mlxVerifyMessage = lastMsg.isEmpty ? "Model verified" : lastMsg
                         Task { await modelManager.refreshModelList() }
                     } else {
-                        if (mlxVerifyMessage ?? "").isEmpty { mlxVerifyMessage = "Verification failed" }
+                        // Always overwrite the in-progress "Checking model…" with a
+                        // concrete failure message. Prefer last stdout/stderr if
+                        // available, otherwise a generic failure label.
+                        let detail = !lastMsg.isEmpty ? lastMsg : lastErr
+                        mlxVerifyMessage = detail.isEmpty ? "Verification failed" : "Verification failed: \(detail)"
                     }
                 }
             } catch {

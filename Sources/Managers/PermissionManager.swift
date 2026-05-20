@@ -163,6 +163,14 @@ internal class PermissionManager {
                     self?.checkIfAllPermissionsHandled()
                 }
             }
+        } else if microphonePermissionState == .denied {
+            // macOS does not re-prompt once denied; the only path forward is to
+            // route the user to System Settings → Privacy → Microphone.
+            if isTestEnvironment { return }
+            guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") else {
+                return
+            }
+            NSWorkspace.shared.open(url)
         }
     }
     

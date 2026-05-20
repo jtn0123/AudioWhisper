@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 internal struct CategoryEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -224,9 +225,17 @@ internal struct CategoryEditorSheet: View {
         // Validate
         let trimmedId = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedIcon = icon.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if trimmedName.isEmpty {
             validationError = "Display name is required"
+            return
+        }
+
+        // System categories keep their original identifier; only validate the
+        // identifier field when the user is allowed to edit it.
+        if !isSystem && trimmedId.isEmpty {
+            validationError = "Identifier is required"
             return
         }
 
@@ -237,10 +246,19 @@ internal struct CategoryEditorSheet: View {
             return
         }
 
+        // Reject icon strings that aren't valid SF Symbols so the saved category
+        // doesn't render as a blank glyph. An empty icon is allowed because the
+        // downstream UI falls back to "questionmark".
+        if !trimmedIcon.isEmpty,
+           NSImage(systemSymbolName: trimmedIcon, accessibilityDescription: nil) == nil {
+            validationError = "Icon must be a valid SF Symbol name (e.g. star.fill)"
+            return
+        }
+
         let category = CategoryDefinition(
             id: isSystem ? (originalCategory?.id ?? trimmedId) : trimmedId,
             displayName: trimmedName,
-            icon: icon.trimmingCharacters(in: .whitespacesAndNewlines),
+            icon: trimmedIcon,
             colorHex: accentColor.hexString() ?? "#888888",
             promptDescription: promptDescription.trimmingCharacters(in: .whitespacesAndNewlines),
             promptTemplate: promptTemplate.trimmingCharacters(in: .whitespacesAndNewlines),

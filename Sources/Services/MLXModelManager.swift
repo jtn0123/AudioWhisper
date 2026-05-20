@@ -201,4 +201,23 @@ internal final class MLXModelManager {
         formatter.countStyle = .file
         return formatter.string(fromByteCount: bytes)
     }
+
+    /// Returns the next preferred MLX selection after deleting `deletedRepo`.
+    ///
+    /// Preference order:
+    /// 1. Any other already-downloaded model (preserves user's local cache).
+    /// 2. The first recommended model that is downloaded (apart from the deleted one).
+    /// 3. `nil`, meaning no MLX model is currently installed — callers should
+    ///    surface a clear "no MLX model installed" affordance.
+    func nextSelectionAfterDeletion(deletedRepo: String) -> String? {
+        if let alt = downloadedModels.first(where: { $0 != deletedRepo }) {
+            return alt
+        }
+        for model in Self.recommendedModels where model.repo != deletedRepo {
+            if downloadedModels.contains(model.repo) {
+                return model.repo
+            }
+        }
+        return nil
+    }
 }

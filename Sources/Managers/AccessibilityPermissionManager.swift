@@ -80,7 +80,10 @@ internal class AccessibilityPermissionManager {
             pollingLock.unlock()
 
             if isCancelled {
-                // Another request started - this polling chain should stop silently
+                // Another request started. Stop polling, but still notify the
+                // caller so its UI doesn't get stuck in `.requesting`. The newer
+                // request has its own completion that will fire independently.
+                completion(false)
                 return
             }
 
