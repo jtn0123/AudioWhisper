@@ -9,7 +9,12 @@ internal enum KeychainError: Error, LocalizedError {
     case deleteFailed(OSStatus)
     case itemNotFound
     case unexpectedItemFormat
-    
+    /// H21: An OSStatus that is neither success nor errSecItemNotFound
+    /// (e.g. errSecAuthFailed, errSecInteractionNotAllowed, errSecMissingEntitlement,
+    /// errSecDecode). Previously these collapsed into `.itemNotFound`, masking real
+    /// auth/keychain failures as "no key configured".
+    case osStatusError(OSStatus)
+
     var errorDescription: String? {
         switch self {
         case .invalidData:
@@ -24,6 +29,11 @@ internal enum KeychainError: Error, LocalizedError {
             return "Keychain item not found"
         case .unexpectedItemFormat:
             return "Unexpected keychain item format"
+        case .osStatusError(let status):
+            if let message = SecCopyErrorMessageString(status, nil) as String? {
+                return "Keychain error \(status): \(message)"
+            }
+            return "Keychain error \(status)"
         }
     }
 }
@@ -125,7 +135,12 @@ internal class KeychainService: KeychainServiceProtocol {
         } else if status == errSecItemNotFound {
             return nil
         } else {
-            throw KeychainError.itemNotFound
+            // H21: Do not silently collapse non-success/non-not-found OSStatus into
+            // .itemNotFound. Surface the real status so auth failures, missing
+            // entitlements, locked-keychain, etc. can be diagnosed.
+            let message = (SecCopyErrorMessageString(status, nil) as String?) ?? "unknown"
+            Logger.keychain.error("SecItemCopyMatching failed for \(account, privacy: .public): status=\(status) (\(message, privacy: .public))")
+            throw KeychainError.osStatusError(status)
         }
     }
     
@@ -155,12 +170,19 @@ internal class KeychainService: KeychainServiceProtocol {
     func getQuietly(service: String, account: String) -> String? {
         do {
             return try get(service: service, account: account)
+        } catch KeychainError.osStatusError(let status) {
+            // H21: distinguish "real" keychain errors from a missing item.
+            // Previously these were silently swallowed as "no key", causing
+            // confusing UI states ("Configure API key" while the key actually exists
+            // but the keychain is locked / auth failed).
+            Logger.keychain.warning("getQuietly: keychain returned status \(status) for \(account, privacy: .public) — treating as missing, but underlying access likely failed")
+            return nil
         } catch {
             Logger.keychain.error("Keychain operation failed: \(error.localizedDescription)")
             return nil
         }
     }
-    
+
     func deleteQuietly(service: String, account: String) {
         do {
             try delete(service: service, account: account)

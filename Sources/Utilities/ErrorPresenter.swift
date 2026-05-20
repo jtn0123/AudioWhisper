@@ -67,8 +67,26 @@ internal class ErrorPresenter {
         }
 
         // Ensure we're on the main thread for UI operations
-        Task { @MainActor in
-            await showAlertOnMainThread(sanitizedMessage)
+        Task { @MainActor [weak self] in
+            await self?.showAlertOnMainThread(sanitizedMessage, structuralType: nil)
+        }
+    }
+
+    /// M13: Error-typed entry point. Uses structural `NSError.domain/code`
+    /// matching first (works on localized macOS systems) and only falls back
+    /// to English substring matching for unknown domains. Prefer this overload
+    /// at call sites that have an `Error` value rather than a pre-formatted
+    /// string.
+    func showError(_ error: Error) {
+        let transcriptionError = TranscriptionError.from(error: error)
+        let sanitizedMessage = sanitizeErrorMessage(error.localizedDescription)
+
+        if !isTestEnvironment {
+            logger.error("Error presented (\(String(describing: transcriptionError), privacy: .public)): \(sanitizedMessage, privacy: .public)")
+        }
+
+        Task { @MainActor [weak self] in
+            await self?.showAlertOnMainThread(sanitizedMessage, structuralType: transcriptionError)
         }
     }
     
@@ -102,34 +120,65 @@ internal class ErrorPresenter {
     
     private func getErrorType(from message: String) -> String? {
         let lowercasedMessage = message.lowercased()
-        
+
         for (errorType, patterns) in errorPatterns
         where patterns.contains(where: { lowercasedMessage.contains($0) }) {
             return errorType
         }
-        
+
         return nil
     }
-    
-    private func showAlertOnMainThread(_ message: String) async {
+
+    /// M13: Map a structural `TranscriptionError` to the legacy string-token
+    /// dispatch used by the rest of this class. Returns `nil` for cases that
+    /// don't have a recovery affordance attached, so we fall back to substring
+    /// matching for the few cases the structural matcher doesn't cover.
+    private func errorTypeToken(for structuralType: TranscriptionError?) -> String? {
+        guard let structuralType else { return nil }
+        switch structuralType {
+        case .missingAPIKey, .invalidAPIKey:
+            return "api_key"
+        case .microphonePermissionDenied, .microphonePermissionRestricted, .microphoneUnavailable:
+            return "microphone"
+        case .networkConnectionError, .networkTimeout:
+            return "connection"
+        case .transcriptionFailed:
+            return "transcription"
+        case .audioProcessingError, .modelNotFound, .insufficientStorage,
+             .pythonConfigurationError, .generalError:
+            return nil
+        }
+    }
+
+    /// Resolves the dispatch token using the structural type first (so localized
+    /// macOS errors still get the right recovery buttons), then the English
+    /// substring fallback.
+    private func resolveErrorToken(for message: String, structuralType: TranscriptionError?) -> String? {
+        if let token = errorTypeToken(for: structuralType) {
+            return token
+        }
+        return getErrorType(from: message)
+    }
+
+    private func showAlertOnMainThread(_ message: String, structuralType: TranscriptionError?) async {
         // Skip UI operations in test environment or non-interactive runs
         if isTestEnvironment || AppEnvironment.isRunningTests {
             // In tests, just handle the error classification
-            await handleTestErrorResponse(for: message)
+            await handleTestErrorResponse(for: message, structuralType: structuralType)
             return
         }
-        
+
         let alert = NSAlert()
         alert.messageText = LocalizedStrings.Alerts.errorTitle
         alert.informativeText = message
         alert.alertStyle = .critical
-        
+
         // Add OK button (default)
         alert.addButton(withTitle: "OK")
-        
+
         // Add contextual buttons based on error type using efficient pattern matching
-        let errorType = getErrorType(from: message)
-        
+        let errorType = resolveErrorToken(for: message, structuralType: structuralType)
+
         switch errorType {
         case "api_key":
             alert.addButton(withTitle: "Open Settings")
@@ -145,18 +194,18 @@ internal class ErrorPresenter {
             // No additional buttons for unknown error types
             break
         }
-        
+
         // Show alert without blocking UI across Spaces
         let response = alert.runModal()
-        
+
         // Handle button responses
         await handleErrorResponse(response, for: message, errorType: errorType)
     }
-    
-    private func handleTestErrorResponse(for message: String) async {
+
+    private func handleTestErrorResponse(for message: String, structuralType: TranscriptionError?) async {
         // In tests, simulate the second button click based on message type
-        let errorType = getErrorType(from: message)
-        
+        let errorType = resolveErrorToken(for: message, structuralType: structuralType)
+
         switch errorType {
         case "api_key":
             DashboardWindowManager.shared.showDashboardWindow()
