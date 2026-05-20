@@ -492,6 +492,14 @@ extension MLXModelManager {
         """
 
     func deleteModel(_ repo: String) async {
+        // L2: validate the repo string before treating it as a path component.
+        // HuggingFace repo names are "org/name" using alphanumerics, dot, dash,
+        // and underscore — reject anything else to prevent path traversal,
+        // null bytes, control chars, etc.
+        guard Self.isValidRepoIdentifier(repo) else {
+            logger.warning("deleteModel rejected invalid repo identifier: \(repo, privacy: .public)")
+            return
+        }
         let escapedRepo = repo.replacingOccurrences(of: "/", with: "--")
         let modelPath = cacheDirectory.appendingPathComponent("models--\(escapedRepo)")
 
@@ -505,6 +513,25 @@ extension MLXModelManager {
             logger.info("Deleted model: \(repo)")
         } catch {
             logger.error("Failed to delete model: \(error.localizedDescription)")
+        }
+    }
+
+    /// Validates a HuggingFace-style repo identifier (`org/name`). Rejects empty
+    /// strings, leading slashes, `..` traversal segments, null bytes, control
+    /// characters, and anything outside `[A-Za-z0-9_.-]/[A-Za-z0-9_.-]`.
+    static func isValidRepoIdentifier(_ repo: String) -> Bool {
+        guard !repo.isEmpty else { return false }
+        if repo.hasPrefix("/") { return false }
+        if repo.contains("..") { return false }
+        if repo.unicodeScalars.contains(where: { $0.value == 0 || ($0.value < 0x20) }) {
+            return false
+        }
+        // Exactly one '/' separating org and name.
+        let parts = repo.split(separator: "/", omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else { return false }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
+        return parts.allSatisfy { segment in
+            segment.unicodeScalars.allSatisfy { allowed.contains($0) }
         }
     }
 

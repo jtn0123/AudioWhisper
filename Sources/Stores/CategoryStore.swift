@@ -26,7 +26,7 @@ internal final class CategoryStore {
 
         let defaults = CategoryDefinition.defaults
         categories = defaults
-        categoriesById = Dictionary(uniqueKeysWithValues: defaults.map { ($0.id, $0) })
+        categoriesById = Dictionary(defaults.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         loadFromDiskIfNeeded()
     }
 
@@ -74,7 +74,15 @@ internal final class CategoryStore {
             let decoded = try JSONDecoder().decode([CategoryDefinition].self, from: data)
             if !decoded.isEmpty {
                 categories = decoded
+                // H19: dedupe any duplicate ids before they reach rebuildIndex —
+                // and heal the on-disk state if we detected duplicates.
+                let originalCount = categories.count
+                dedupeCategoriesInPlace()
                 rebuildIndex()
+                if categories.count != originalCount {
+                    Logger.app.warning("CategoryStore: removed \(originalCount - self.categories.count) duplicate id(s) from categories.json")
+                    persist()
+                }
             }
         } catch {
             // Log load failure but keep defaults - file may be corrupted
@@ -98,7 +106,23 @@ internal final class CategoryStore {
     }
 
     private func rebuildIndex() {
-        categoriesById = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+        // H19: tolerate duplicate ids defensively — keep the last occurrence
+        // rather than trapping (Dictionary(uniqueKeysWithValues:) crashes on dup).
+        categoriesById = Dictionary(categories.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
+    }
+
+    /// Removes duplicate ids in `categories`, keeping the last occurrence per id.
+    /// Order is preserved for unique entries.
+    private func dedupeCategoriesInPlace() {
+        var seen: Set<String> = []
+        var result: [CategoryDefinition] = []
+        // Iterate in reverse so the last occurrence wins, matching `rebuildIndex`.
+        for category in categories.reversed() {
+            if seen.insert(category.id).inserted {
+                result.append(category)
+            }
+        }
+        categories = Array(result.reversed())
     }
 }
 

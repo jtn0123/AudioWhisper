@@ -224,6 +224,61 @@ final class CategoryStoreTests: XCTestCase {
         XCTAssertEqual(newStore.category(withId: "reload-test").displayName, "Reload Test")
     }
 
+    // MARK: - H19 Regression Tests
+
+    /// H19: A categories.json file with duplicate ids used to crash via
+    /// `Dictionary(uniqueKeysWithValues:)`. The store should now load such a
+    /// file successfully, dedupe the in-memory and on-disk state, and pick the
+    /// last occurrence per id.
+    func testLoadFromDiskWithDuplicateIdsDedupesAndHeals() throws {
+        let duplicate1 = CategoryDefinition(
+            id: "dup-id",
+            displayName: "First",
+            icon: "1.circle",
+            colorHex: "#111111",
+            promptDescription: "first",
+            promptTemplate: "first template",
+            isSystem: false
+        )
+        let duplicate2 = CategoryDefinition(
+            id: "dup-id",
+            displayName: "Second",
+            icon: "2.circle",
+            colorHex: "#222222",
+            promptDescription: "second",
+            promptTemplate: "second template",
+            isSystem: false
+        )
+        let unique = CategoryDefinition(
+            id: "unique-id",
+            displayName: "Unique",
+            icon: "star",
+            colorHex: "#333333",
+            promptDescription: "unique",
+            promptTemplate: "unique template",
+            isSystem: false
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode([duplicate1, unique, duplicate2])
+        try data.write(to: tempStorageURL)
+
+        // Loading must not crash.
+        let healedStore = CategoryStore(storageURL: tempStorageURL)
+
+        let dupCount = healedStore.categories.filter { $0.id == "dup-id" }.count
+        XCTAssertEqual(dupCount, 1, "Expected duplicate ids to be deduped")
+        XCTAssertTrue(healedStore.containsCategory(withId: "unique-id"))
+        // Last occurrence wins.
+        XCTAssertEqual(healedStore.category(withId: "dup-id").displayName, "Second")
+
+        // The on-disk file should also have been healed.
+        let healedData = try Data(contentsOf: tempStorageURL)
+        let healedDecoded = try JSONDecoder().decode([CategoryDefinition].self, from: healedData)
+        let onDiskDupCount = healedDecoded.filter { $0.id == "dup-id" }.count
+        XCTAssertEqual(onDiskDupCount, 1, "Expected on-disk state to be healed")
+    }
+
     // MARK: - Index Consistency Tests
 
     func testIndexConsistencyAfterMultipleOperations() {
