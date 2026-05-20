@@ -347,9 +347,20 @@ internal final class PressAndHoldKeyMonitor {
     }
 
     private func stopWatchdog() {
-        Task { @MainActor [weak self] in
-            self?.watchdogTimer?.invalidate()
-            self?.watchdogTimer = nil
+        // Invalidate synchronously. The previous implementation scheduled an
+        // async Task — when called from `deinit`, `[weak self]` is already
+        // nil by the time the Task runs, so the timer never gets invalidated
+        // and the run-loop retained it for the next ~watchdogInterval seconds.
+        // Capture the timer locally so we don't need to retain `self`, and
+        // marshal to the main RunLoop (where the timer was scheduled) if
+        // necessary. `invalidate()` must be called from the scheduling thread.
+        let timer = watchdogTimer
+        watchdogTimer = nil
+        guard let timer else { return }
+        if Thread.isMainThread {
+            timer.invalidate()
+        } else {
+            RunLoop.main.perform { timer.invalidate() }
         }
     }
 

@@ -13,13 +13,14 @@ internal protocol MicrophoneVolumeManaging {
 }
 
 @Observable
+@MainActor
 internal class MicrophoneVolumeManager: MicrophoneVolumeManaging {
     static let shared = MicrophoneVolumeManager()
-    
+
     private var originalVolume: Float32?
     private var audioDeviceID: AudioDeviceID?
     private var isVolumeBoosted = false
-    
+
     private init() {}
     
     // MARK: - Public Interface

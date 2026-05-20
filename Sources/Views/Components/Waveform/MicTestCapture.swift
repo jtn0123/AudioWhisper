@@ -1,6 +1,7 @@
 import Accelerate
 import AVFoundation
 import Foundation
+import QuartzCore
 import os.log
 
 // MARK: - MicTestState
@@ -41,6 +42,15 @@ final class MicTestCapture: ObservableObject {
     /// on the main actor (`stop`). All access goes through `stateLock`.
     private nonisolated(unsafe) var _smoothedLevel: Float = 0
     private let stateLock = NSLock()
+
+    /// Throttles the per-buffer MainActor Task to ~60 Hz. The audio thread
+    /// fires faster than SwiftUI can render (~47 Hz at 48 kHz / 1024 frames,
+    /// and bursts can pile up if main stalls). Without throttling, every
+    /// buffer spawned a MainActor Task — under main-actor stalls the queue
+    /// grew unboundedly. CACurrentMediaTime is monotonic and immune to
+    /// wall-clock jumps.
+    private static let publishInterval: TimeInterval = 1.0 / 60.0
+    private nonisolated(unsafe) var _lastPublishTime: TimeInterval = 0
 
     private nonisolated var smoothedLevel: Float {
         get {
@@ -165,12 +175,24 @@ final class MicTestCapture: ObservableObject {
 
         let mono = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
 
-        // RMS level — amplified + smoothed per the design spec.
+        // RMS level — amplified + smoothed per the design spec. Always update
+        // smoothedLevel so the next publish reflects the most recent buffer
+        // even when intermediate buffers are throttled out.
         var rms: Float = 0
         vDSP_rmsqv(mono, 1, &rms, vDSP_Length(frameLength))
         let target = max(0.05, min(1, rms * 5))
         let smooth = smoothedLevel * 0.55 + target * 0.45
         smoothedLevel = smooth
+
+        // Throttle the MainActor publish to ~60 Hz. Audio callbacks fire much
+        // faster and used to spawn a Task per buffer; under load the queue
+        // could grow unboundedly.
+        let now = CACurrentMediaTime()
+        stateLock.lock()
+        let shouldPublish = (now - _lastPublishTime) >= Self.publishInterval
+        if shouldPublish { _lastPublishTime = now }
+        stateLock.unlock()
+        guard shouldPublish else { return }
 
         // 64 time-domain samples scaled by 0.9.
         let samples = Self.downsample(mono, count: 64).map { $0 * 0.9 }

@@ -46,7 +46,15 @@ internal enum TranscriptionSource {
 final class RecordingViewModel {
     // MARK: - Core Recording State
 
-    private(set) var isProcessing = false
+    private(set) var isProcessing = false {
+        didSet {
+            guard oldValue != isProcessing else { return }
+            NotificationCenter.default.post(
+                name: .transcriptionProcessingStateChanged,
+                object: isProcessing
+            )
+        }
+    }
     var progressMessage = "Processing..."
     var transcriptionStartTime: Date?
 
