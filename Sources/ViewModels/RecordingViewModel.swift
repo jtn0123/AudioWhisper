@@ -145,6 +145,27 @@ final class RecordingViewModel {
         isProcessing = false
     }
 
+    // MARK: - Deinit
+
+    /// Cancels any notification-observer Tasks the VM is holding. Without
+    /// this, if the SwiftUI view tree drops the VM without invoking
+    /// `onDisappear` (which can happen during teardown), the async-stream
+    /// Tasks spawned by `setupNotificationObservers` survive (bug H12).
+    ///
+    /// `Task.cancel()` is thread-safe, but `notificationTasks` is
+    /// `@MainActor`-isolated. The VM type itself is `@MainActor`, so its
+    /// final release necessarily happens on the main thread — making
+    /// `MainActor.assumeIsolated` safe here. If that assumption ever fails
+    /// this traps loudly, which is preferable to silently leaking Tasks.
+    deinit {
+        MainActor.assumeIsolated {
+            for task in notificationTasks {
+                task.cancel()
+            }
+            notificationTasks.removeAll()
+        }
+    }
+
     // MARK: - Lifecycle
 
     func onAppear(permissionManager: PermissionManager, loadProvider: () -> Void) {

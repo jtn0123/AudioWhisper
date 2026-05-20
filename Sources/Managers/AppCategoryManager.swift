@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os.log
 
 @MainActor
 @Observable
@@ -9,6 +10,12 @@ internal final class AppCategoryManager {
     private let userDefaultsKey = "appCategoryMappings"
     private let defaults: UserDefaults
     private let categoryStore: CategoryStore
+
+    /// Soft cap on the number of user-override mappings persisted to
+    /// `UserDefaults`. Without it, every distinct app the user ever
+    /// categorizes accumulates indefinitely (bug L3). 200 is generous for
+    /// real-world use — most users categorize fewer than 30 apps.
+    private static let maxUserMappings = 200
 
     // Built-in mappings (can be overridden by user)
     private static let builtInMappings: [String: String] = [
@@ -97,7 +104,23 @@ internal final class AppCategoryManager {
     func setCategory(id categoryId: String, for bundleId: String) {
         guard categoryStore.containsCategory(withId: categoryId) else { return }
         userMappings[bundleId] = categoryId
+        evictExcessUserMappings()
         saveUserMappings()
+    }
+
+    /// Enforces the `maxUserMappings` soft cap by dropping deterministic
+    /// entries (alphabetically lowest bundle IDs) when over the cap.
+    /// Dictionary iteration order is undefined, so we sort to pick a
+    /// reproducible victim. Logs each eviction so users hitting the cap can
+    /// see what was removed. See bug L3.
+    private func evictExcessUserMappings() {
+        while userMappings.count > Self.maxUserMappings,
+              let evictKey = userMappings.keys.sorted().first {
+            userMappings.removeValue(forKey: evictKey)
+            Logger.app.notice(
+                "AppCategoryManager: evicted user mapping for \(evictKey, privacy: .public) (cap \(Self.maxUserMappings))"
+            )
+        }
     }
 
     func resetToDefault(for bundleId: String) {
@@ -114,6 +137,14 @@ internal final class AppCategoryManager {
     private func loadUserMappings() {
         if let data = defaults.dictionary(forKey: userDefaultsKey) as? [String: String] {
             userMappings = data
+            // Apply the cap on load so a pre-existing oversized mapping
+            // (from before this fix) gets trimmed (bug L3). Persist the
+            // trimmed result if anything was evicted.
+            let originalCount = userMappings.count
+            evictExcessUserMappings()
+            if userMappings.count != originalCount {
+                saveUserMappings()
+            }
         }
     }
 
