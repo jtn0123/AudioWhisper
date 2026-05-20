@@ -173,13 +173,15 @@ extension MLXModelManager {
             Task.detached { [outputPipe, errorPipe] in
                 process.waitUntilExit()
 
-                // Clear readability handlers to prevent file descriptor leak
-                outputPipe.fileHandleForReading.readabilityHandler = nil
-                errorPipe.fileHandleForReading.readabilityHandler = nil
-
                 let exitStatus = process.terminationStatus
 
                 await MainActor.run { [weak self] in
+                    // L4: stop listening for stdout/stderr BEFORE we declare
+                    // completion. Clearing handlers after `removeValue` allowed
+                    // a late callback to overwrite the cleared progress string
+                    // with stale "Downloading…" text.
+                    outputPipe.fileHandleForReading.readabilityHandler = nil
+                    errorPipe.fileHandleForReading.readabilityHandler = nil
                     self?.isDownloading[repo] = false
                     if exitStatus != 0 {
                         self?.downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
@@ -201,6 +203,13 @@ extension MLXModelManager {
                 }
             }
         } catch {
+            // M9: pipes opened above leak (file descriptors + readability
+            // handlers) if `process.run()` throws. Clear and close them
+            // before bailing out.
+            outputPipe.fileHandleForReading.readabilityHandler = nil
+            errorPipe.fileHandleForReading.readabilityHandler = nil
+            try? outputPipe.fileHandleForReading.close()
+            try? errorPipe.fileHandleForReading.close()
             logger.error("Failed to launch Python process: \(error)")
             Task { @MainActor [weak self] in
                 self?.isDownloading[repo] = false
@@ -414,13 +423,14 @@ extension MLXModelManager {
             Task.detached { [outputPipe, errorPipe] in
                 process.waitUntilExit()
 
-                // Clear readability handlers to prevent file descriptor leak
-                outputPipe.fileHandleForReading.readabilityHandler = nil
-                errorPipe.fileHandleForReading.readabilityHandler = nil
-
                 let exitStatus = process.terminationStatus
 
                 await MainActor.run { [weak self] in
+                    // L4: stop listening before declaring completion so a late
+                    // stdout callback can't overwrite the cleared progress
+                    // string with stale "Downloading…" text.
+                    outputPipe.fileHandleForReading.readabilityHandler = nil
+                    errorPipe.fileHandleForReading.readabilityHandler = nil
                     self?.isDownloading[repo] = false
                     if exitStatus != 0 {
                         self?.downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
@@ -442,6 +452,13 @@ extension MLXModelManager {
                 }
             }
         } catch {
+            // M9: clean up pipes opened above before bailing out so that a
+            // failed spawn doesn't leak file descriptors and readability
+            // handlers.
+            outputPipe.fileHandleForReading.readabilityHandler = nil
+            errorPipe.fileHandleForReading.readabilityHandler = nil
+            try? outputPipe.fileHandleForReading.close()
+            try? errorPipe.fileHandleForReading.close()
             logger.error("Failed to launch Python process for Parakeet: \(error)")
             Task { @MainActor [weak self] in
                 self?.isDownloading[repo] = false

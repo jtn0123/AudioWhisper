@@ -90,6 +90,14 @@ internal final class MLXModelManager {
 
         // Perform heavy file system operations off the main thread
         let cacheDir = cacheDirectory
+        // L1: prefer the forward mapping (repo → escaped dir name) as source of
+        // truth so repos whose name contains literal "--" round-trip correctly.
+        // We feed this lookup the recommended + currently-known set so a cached
+        // model whose escaped name we've seen before resolves exactly.
+        let knownEscapedToRepo: [String: String] = Self.knownReverseMap(
+            extraRepos: downloadedModels
+        )
+        let logger = self.logger
         let result: [(String, Int64)] = await Task.detached(priority: .utility) {
             var models: [(String, Int64)] = []
 
@@ -103,10 +111,20 @@ internal final class MLXModelManager {
             for item in contents {
                 guard item.lastPathComponent.hasPrefix("models--") else { continue }
 
-                // Convert directory name back to repo format
-                let modelName = item.lastPathComponent
-                    .replacingOccurrences(of: "models--", with: "")
-                    .replacingOccurrences(of: "--", with: "/")
+                let escaped = String(item.lastPathComponent.dropFirst("models--".count))
+
+                // Prefer the exact reverse lookup; fall back to the lossy
+                // `--` → `/` rewrite and log a warning so the user can spot
+                // repo names that don't round-trip.
+                let modelName: String
+                if let known = knownEscapedToRepo[escaped] {
+                    modelName = known
+                } else {
+                    modelName = escaped.replacingOccurrences(of: "--", with: "/")
+                    if escaped.contains("----") {
+                        logger.warning("Unknown cache dir '\(escaped, privacy: .public)'; reverse mapping may be lossy")
+                    }
+                }
 
                 // Check if this looks like an MLX model
                 let mlxKeywords = ["mlx", "qwen", "llama", "phi", "mistral", "gemma", "starcoder", "parakeet"]
@@ -136,6 +154,22 @@ internal final class MLXModelManager {
         }
 
         logger.info("Found \(self.downloadedModels.count) MLX models, total size: \(self.formatBytes(totalSize))")
+    }
+
+    /// Builds an `escaped → repo` map for known repos (recommended + extras).
+    /// Used as the source of truth when reversing the HuggingFace
+    /// `models--<escaped>` directory name back to a repo (L1) — the lossy
+    /// `--` → `/` rewrite is only used as a fallback.
+    private static func knownReverseMap(extraRepos: Set<String>) -> [String: String] {
+        var map: [String: String] = [:]
+        let knownRepos: [String] = recommendedModels.map { $0.repo }
+            + ParakeetModel.allCases.map { $0.rawValue }
+            + Array(extraRepos)
+        for repo in knownRepos {
+            let escaped = repo.replacingOccurrences(of: "/", with: "--")
+            map[escaped] = repo
+        }
+        return map
     }
 
     // Static version for use in detached tasks (nonisolated for background execution)
