@@ -36,9 +36,20 @@ internal extension AppDelegate {
             name: .pressAndHoldSettingsChanged,
             object: nil
         )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onTranscriptionProcessingStateChanged(_:)),
+            name: .transcriptionProcessingStateChanged,
+            object: nil
+        )
     }
 
     @objc private func onPressAndHoldSettingsChanged(_ notification: Notification) {
         configureShortcutMonitors()
+    }
+
+    @objc private func onTranscriptionProcessingStateChanged(_ notification: Notification) {
+        isTranscriptionProcessing = (notification.object as? Bool) ?? false
     }
 }

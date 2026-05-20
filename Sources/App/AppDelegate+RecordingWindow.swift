@@ -19,6 +19,12 @@ internal extension AppDelegate {
         }
 
         guard let window = recordingWindow else {
+            // M14: `createRecordingWindow()` silently returns when
+            // `audioRecorder == nil` (or the ModelContainer fails), so the
+            // window never gets built and the caller's completion fires with
+            // no UI feedback. Surface the failure so the user knows recording
+            // is unavailable.
+            reportRecordingWindowUnavailable()
             completion?()
             return
         }
@@ -30,6 +36,20 @@ internal extension AppDelegate {
                 completion?()
             }
         }
+    }
+
+    /// Logs and surfaces a user-visible alert when the recording window can't
+    /// be built (e.g. `audioRecorder == nil` or the SwiftData container failed
+    /// to initialize). Skips during tests to keep the suite headless.
+    private func reportRecordingWindowUnavailable() {
+        Logger.app.error("Recording window unavailable: AudioRecorder or ModelContainer not initialized")
+        guard !AppEnvironment.isRunningTests else { return }
+        let alert = NSAlert()
+        alert.messageText = "Recording is unavailable"
+        alert.informativeText = "AudioWhisper couldn't start the recording window. Try relaunching the app; if the problem persists, check microphone permissions in System Settings."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     func createRecordingWindow() {
