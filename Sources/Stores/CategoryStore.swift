@@ -117,10 +117,8 @@ internal final class CategoryStore {
         var seen: Set<String> = []
         var result: [CategoryDefinition] = []
         // Iterate in reverse so the last occurrence wins, matching `rebuildIndex`.
-        for category in categories.reversed() {
-            if seen.insert(category.id).inserted {
-                result.append(category)
-            }
+        for category in categories.reversed() where seen.insert(category.id).inserted {
+            result.append(category)
         }
         categories = Array(result.reversed())
     }

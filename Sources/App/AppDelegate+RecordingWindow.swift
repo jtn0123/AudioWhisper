@@ -46,7 +46,11 @@ internal extension AppDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         let alert = NSAlert()
         alert.messageText = "Recording is unavailable"
-        alert.informativeText = "AudioWhisper couldn't start the recording window. Try relaunching the app; if the problem persists, check microphone permissions in System Settings."
+        alert.informativeText = """
+        AudioWhisper couldn't start the recording window. \
+        Try relaunching the app; if the problem persists, \
+        check microphone permissions in System Settings.
+        """
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()

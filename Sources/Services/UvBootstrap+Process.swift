@@ -52,8 +52,8 @@ extension UvBootstrap {
         // Explicitly close file handles to ensure immediate resource cleanup
         try? outPipe.fileHandleForReading.close()
         try? errPipe.fileHandleForReading.close()
-        let stdout = String(data: outData, encoding: .utf8) ?? ""
-        let stderr = String(data: errData, encoding: .utf8) ?? ""
+        let stdout = String(bytes: outData, encoding: .utf8) ?? ""
+        let stderr = String(bytes: errData, encoding: .utf8) ?? ""
         return ProcessResult(stdout: stdout, stderr: stderr, status: process.terminationStatus)
     }
 }

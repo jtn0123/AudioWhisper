@@ -177,9 +177,9 @@ internal final class MLXCorrectionService {
         return decodePromptFile(at: promptPath)
     }
 
-    /// Reads `promptPath` as utf8, falling back to utf16 then a lossy utf8
-    /// decode of the raw bytes. Each fallback logs a warning so a mis-encoded
-    /// prompt is observable in Console.app rather than silently producing nil.
+    /// Reads `promptPath` as utf8, falling back to utf16 then a utf8 decode of
+    /// the raw bytes. Each fallback logs a warning so a mis-encoded prompt is
+    /// observable in Console.app rather than silently producing nil.
     private static func decodePromptFile(at promptPath: URL) -> String? {
         if let utf8 = try? String(contentsOf: promptPath, encoding: .utf8) {
             return utf8
@@ -188,11 +188,12 @@ internal final class MLXCorrectionService {
             Logger.app.warning("MLX system prompt decoded as utf16 fallback")
             return utf16
         }
-        if let data = try? Data(contentsOf: promptPath) {
-            Logger.app.warning("MLX system prompt decoded with lossy utf8 fallback")
-            return String(decoding: data, as: UTF8.self)
+        if let data = try? Data(contentsOf: promptPath),
+           let recovered = String(bytes: data, encoding: .utf8) {
+            Logger.app.warning("MLX system prompt decoded via raw utf8 bytes fallback")
+            return recovered
         }
-        Logger.app.warning("MLX system prompt could not be read")
+        Logger.app.warning("MLX system prompt could not be decoded as utf8 or utf16")
         return nil
     }
 }

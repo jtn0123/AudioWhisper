@@ -185,7 +185,10 @@ internal struct DashboardCategoriesView: View {
     private func confirmResetCategories() {
         let alert = NSAlert()
         alert.messageText = "Reset categories?"
-        alert.informativeText = "All custom categories will be deleted and system categories will be restored to their defaults. This action cannot be undone."
+        alert.informativeText = """
+        All custom categories will be deleted and system categories will be \
+        restored to their defaults. This action cannot be undone.
+        """
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Cancel")
         alert.addButton(withTitle: "Reset")

@@ -24,7 +24,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     // MARK: - Audio Engine
 
-    private var audioEngine: AVAudioEngine?
+    var audioEngine: AVAudioEngine?
     // audioFile is read on the audio thread (in processAudioBuffer) and mutated on the main thread.
     // Mutations always happen after removeTap + engine.stop (in stopEngine), so the audio thread
     // cannot observe a torn-down file reference while the tap is still firing.
@@ -59,8 +59,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // Registered for the lifetime of a recording session (start → stop/cancel)
     // so we can detect machine sleep and AVAudioEngine config/route changes that
     // silently truncate recordings. Cleared in `stopEngine` and `deinit`.
-    private var sleepObserver: NSObjectProtocol?
-    private var configChangeObserver: NSObjectProtocol?
+    var sleepObserver: NSObjectProtocol?
+    var configChangeObserver: NSObjectProtocol?
 
     // MARK: - Initialization
 
@@ -310,61 +310,6 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // user-stop (commit what we have) and an engine-config change as an
     // interruption surfaced through `.recordingStartFailed`.
 
-    private func installInterruptionObservers() {
-        removeInterruptionObservers()
-
-        sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.willSleepNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleSleepInterruption()
-            }
-        }
-
-        configChangeObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleEngineConfigurationChange()
-            }
-        }
-    }
-
-    private func removeInterruptionObservers() {
-        if let observer = sleepObserver {
-            NSWorkspace.shared.notificationCenter.removeObserver(observer)
-            sleepObserver = nil
-        }
-        if let observer = configChangeObserver {
-            NotificationCenter.default.removeObserver(observer)
-            configChangeObserver = nil
-        }
-    }
-
-    private func handleSleepInterruption() {
-        guard isRecording else { return }
-        Logger.audioEngineRecorder.warning("System will sleep mid-recording - stopping cleanly")
-        // Commit whatever we have so the user gets their partial transcript.
-        _ = stopRecording()
-        NotificationCenter.default.post(name: .recordingStopped, object: nil)
-    }
-
-    private func handleEngineConfigurationChange() {
-        guard isRecording, let engine = audioEngine else { return }
-        // A route or format change can leave the engine stopped or unable to
-        // continue writing to the open file. If the engine is no longer running,
-        // surface an interruption error so the UI can react.
-        if !engine.isRunning {
-            Logger.audioEngineRecorder.error("Audio engine stopped after configuration change - recording interrupted")
-            cancelRecording()
-            NotificationCenter.default.post(name: .recordingStartFailed, object: nil)
-        }
-    }
-
     private func clearVisualizationData() {
         audioLevel = 0.0
         waveformSamples = []
@@ -465,25 +410,6 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
     }
 
-    nonisolated private func downsampleForDisplay(_ samples: [Float], targetCount: Int) -> [Float] {
-        guard targetCount > 0, samples.count > targetCount else { return samples }
-
-        let chunkSize = samples.count / targetCount
-        var result = [Float](repeating: 0, count: targetCount)
-
-        for chunkIndex in 0..<targetCount {
-            let startIndex = chunkIndex * chunkSize
-            let endIndex = min(startIndex + chunkSize, samples.count)
-            let chunk = Array(samples[startIndex..<endIndex])
-
-            // Use RMS for each chunk
-            var rms: Float = 0
-            vDSP_rmsqv(chunk, 1, &rms, vDSP_Length(chunk.count))
-            result[chunkIndex] = rms
-        }
-
-        return result
-    }
 }
 
 // MARK: - Logger Extension

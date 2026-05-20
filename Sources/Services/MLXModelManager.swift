@@ -213,10 +213,9 @@ internal final class MLXModelManager {
         if let alt = downloadedModels.first(where: { $0 != deletedRepo }) {
             return alt
         }
-        for model in Self.recommendedModels where model.repo != deletedRepo {
-            if downloadedModels.contains(model.repo) {
-                return model.repo
-            }
+        for model in Self.recommendedModels
+        where model.repo != deletedRepo && downloadedModels.contains(model.repo) {
+            return model.repo
         }
         return nil
     }
