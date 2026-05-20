@@ -123,4 +123,38 @@ final class MLXModelManagerTests: IsolatedXCTestCase {
         // Cleanup
         UserDefaults.standard.removeObject(forKey: "selectedParakeetModel")
     }
+
+    // MARK: - nextSelectionAfterDeletion Tests
+
+    func testNextSelectionAfterDeletionReturnsNilWhenNothingElseDownloaded() {
+        let manager = MLXModelManager.shared
+        let saved = manager.downloadedModels
+        defer { manager.downloadedModels = saved }
+
+        manager.downloadedModels = ["mlx-community/Qwen3-1.7B-4bit"]
+        XCTAssertNil(manager.nextSelectionAfterDeletion(deletedRepo: "mlx-community/Qwen3-1.7B-4bit"))
+    }
+
+    func testNextSelectionAfterDeletionPrefersAnotherDownloadedModel() {
+        let manager = MLXModelManager.shared
+        let saved = manager.downloadedModels
+        defer { manager.downloadedModels = saved }
+
+        manager.downloadedModels = [
+            "mlx-community/Qwen3-1.7B-4bit",
+            "mlx-community/Llama-3.2-1B-Instruct-4bit"
+        ]
+        let next = manager.nextSelectionAfterDeletion(deletedRepo: "mlx-community/Qwen3-1.7B-4bit")
+        XCTAssertEqual(next, "mlx-community/Llama-3.2-1B-Instruct-4bit")
+    }
+
+    func testNextSelectionAfterDeletionDoesNotReturnDeletedRepo() {
+        let manager = MLXModelManager.shared
+        let saved = manager.downloadedModels
+        defer { manager.downloadedModels = saved }
+
+        manager.downloadedModels = ["mlx-community/Llama-3.2-1B-Instruct-4bit"]
+        // The only "downloaded" entry IS the one being deleted — nothing remains.
+        XCTAssertNil(manager.nextSelectionAfterDeletion(deletedRepo: "mlx-community/Llama-3.2-1B-Instruct-4bit"))
+    }
 }

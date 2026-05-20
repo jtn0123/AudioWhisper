@@ -1,4 +1,5 @@
 import Accelerate
+import AppKit
 import AVFoundation
 import Combine
 import Foundation
@@ -23,7 +24,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     // MARK: - Audio Engine
 
-    private var audioEngine: AVAudioEngine?
+    var audioEngine: AVAudioEngine?
     // audioFile is read on the audio thread (in processAudioBuffer) and mutated on the main thread.
     // Mutations always happen after removeTap + engine.stop (in stopEngine), so the audio thread
     // cannot observe a torn-down file reference while the tap is still firing.
@@ -54,6 +55,13 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     private let volumeManager: MicrophoneVolumeManaging
 
+    // MARK: - Interruption Observers
+    // Registered for the lifetime of a recording session (start → stop/cancel)
+    // so we can detect machine sleep and AVAudioEngine config/route changes that
+    // silently truncate recordings. Cleared in `stopEngine` and `deinit`.
+    var sleepObserver: NSObjectProtocol?
+    var configChangeObserver: NSObjectProtocol?
+
     // MARK: - Initialization
 
     override init() {
@@ -80,6 +88,12 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // volume. `deinit` may access these MainActor-isolated stored properties
         // directly (it shares the isolation domain); AVAudioEngine teardown is
         // safe here. `restoreMicrophoneVolume` is idempotent when nothing boosted.
+        if let observer = sleepObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        if let observer = configChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         if let engine = audioEngine {
             engine.inputNode.removeTap(onBus: 0)
             engine.stop()
@@ -172,6 +186,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
             sampleBufferLock.unlock()
             isRecording = true
+
+            installInterruptionObservers()
 
             return true
 
@@ -274,6 +290,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - Private Methods
 
     private func stopEngine() {
+        removeInterruptionObservers()
         if let engine = audioEngine {
             engine.inputNode.removeTap(onBus: 0)
             engine.stop()
@@ -284,6 +301,14 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // Note: If there are other references, dealloc may be delayed.
         audioFile = nil
     }
+
+    // MARK: - Interruption Handling (H4)
+    //
+    // Without these observers, lid-close or input-device-change mid-recording
+    // would silently stop the engine while `isRecording == true`, truncating
+    // the recording without telling the caller. We treat sleep as a graceful
+    // user-stop (commit what we have) and an engine-config change as an
+    // interruption surfaced through `.recordingStartFailed`.
 
     private func clearVisualizationData() {
         audioLevel = 0.0
@@ -385,25 +410,6 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
     }
 
-    nonisolated private func downsampleForDisplay(_ samples: [Float], targetCount: Int) -> [Float] {
-        guard targetCount > 0, samples.count > targetCount else { return samples }
-
-        let chunkSize = samples.count / targetCount
-        var result = [Float](repeating: 0, count: targetCount)
-
-        for chunkIndex in 0..<targetCount {
-            let startIndex = chunkIndex * chunkSize
-            let endIndex = min(startIndex + chunkSize, samples.count)
-            let chunk = Array(samples[startIndex..<endIndex])
-
-            // Use RMS for each chunk
-            var rms: Float = 0
-            vDSP_rmsqv(chunk, 1, &rms, vDSP_Length(chunk.count))
-            result[chunkIndex] = rms
-        }
-
-        return result
-    }
 }
 
 // MARK: - Logger Extension

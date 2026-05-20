@@ -198,10 +198,16 @@ final class TranscriptionErrorTests: XCTestCase {
     }
 
     func testPythonConfigurationErrorFromErrorMessage() {
+        // M12: Only classify as pythonConfigurationError when the message also
+        // signals a configuration problem ("not found"/"not installed"/"missing"/
+        // "configure"/"install"). Generic transcription failures that just happen
+        // to mention "python" or "parakeet" should fall through.
         let messages = [
             "Python not configured correctly",
-            "Parakeet transcription failed - check python",
-            "Python environment error"
+            "Parakeet model not installed",
+            "Python is missing required dependencies",
+            "Failed to configure parakeet-mlx",
+            "Python environment: please install dependencies"
         ]
 
         for message in messages {
@@ -211,6 +217,17 @@ final class TranscriptionErrorTests: XCTestCase {
             } else {
                 XCTFail("Expected pythonConfigurationError for message: \(message), got: \(error)")
             }
+        }
+    }
+
+    /// M12 regression: messages that mention python/parakeet without a config
+    /// signal must NOT be intercepted as pythonConfigurationError.
+    func testGenericParakeetErrorIsNotPythonConfigurationError() {
+        // "transcription" appears in the message so this should route to
+        // .transcriptionFailed, not .pythonConfigurationError.
+        let error = TranscriptionError.from(errorMessage: "Parakeet transcription failed - check python")
+        if case .pythonConfigurationError = error {
+            XCTFail("Expected non-pythonConfigurationError for generic parakeet/python message, got: \(error)")
         }
     }
 
@@ -230,5 +247,4 @@ final class TranscriptionErrorTests: XCTestCase {
             }
         }
     }
-
 }

@@ -16,6 +16,9 @@ internal extension Notification.Name {
     static let recordingStopped = Notification.Name("RecordingStopped")
     static let targetAppStored = Notification.Name("TargetAppStored")
     static let transcriptionProgress = Notification.Name("TranscriptionProgress")
+    /// Posted when the transcription pipeline starts (true) or finishes (false).
+    /// `object` is the new `Bool` value.
+    static let transcriptionProcessingStateChanged = Notification.Name("TranscriptionProcessingStateChanged")
     
     // MARK: - Window Management
     static let restoreFocusToPreviousApp = Notification.Name("RestoreFocusToPreviousApp")

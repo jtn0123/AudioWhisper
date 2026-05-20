@@ -104,9 +104,18 @@ internal extension AppDelegate {
         false // Keep app running in menu bar
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        Task { await MLDaemonManager.shared.shutdown() }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // H7: the ML daemon is a Python subprocess; if the app exits before
+        // `shutdown()` finishes, the subprocess is orphaned. Defer
+        // termination until the shutdown completes.
+        Task { @MainActor in
+            await MLDaemonManager.shared.shutdown()
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
 
+    func applicationWillTerminate(_ notification: Notification) {
         recordingWindow = nil
         recordingWindowDelegate = nil
 

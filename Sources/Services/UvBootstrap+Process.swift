@@ -41,15 +41,39 @@ extension UvBootstrap {
             try? errPipe.fileHandleForReading.close()
             return ProcessResult(stdout: "", stderr: String(describing: error), status: 1)
         }
+        // H8: drain stdout and stderr concurrently BEFORE `waitUntilExit`. A
+        // child that writes more than the pipe capacity (64 KiB on macOS)
+        // blocks on its own stdout write if we wait first, deadlocking us.
+        let outRead = PipeReader(handle: outPipe.fileHandleForReading)
+        let errRead = PipeReader(handle: errPipe.fileHandleForReading)
         process.waitUntilExit()
-        // Read output before closing handles
-        let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
-        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+        let outData = outRead.value
+        let errData = errRead.value
         // Explicitly close file handles to ensure immediate resource cleanup
         try? outPipe.fileHandleForReading.close()
         try? errPipe.fileHandleForReading.close()
-        let stdout = String(data: outData, encoding: .utf8) ?? ""
-        let stderr = String(data: errData, encoding: .utf8) ?? ""
+        let stdout = String(bytes: outData, encoding: .utf8) ?? ""
+        let stderr = String(bytes: errData, encoding: .utf8) ?? ""
         return ProcessResult(stdout: stdout, stderr: stderr, status: process.terminationStatus)
+    }
+}
+
+/// Reads a `FileHandle` to EOF on a background queue; `value` blocks until done.
+/// Used by `runProcess` (H8) so stdout and stderr are drained in parallel with
+/// process execution rather than after `waitUntilExit`.
+private final class PipeReader {
+    private let group = DispatchGroup()
+    private var data = Data()
+    init(handle: FileHandle) {
+        group.enter()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let buffer = handle.readDataToEndOfFile()
+            self?.data = buffer
+            self?.group.leave()
+        }
+    }
+    var value: Data {
+        group.wait()
+        return data
     }
 }

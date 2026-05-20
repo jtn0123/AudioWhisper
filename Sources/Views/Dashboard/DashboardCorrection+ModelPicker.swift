@@ -93,6 +93,16 @@ extension DashboardCorrectionView {
                 .disabled(isRefreshingModels)
             }
 
+            if semanticCorrectionModelRepo.isEmpty || !modelManager.downloadedModels.contains(semanticCorrectionModelRepo) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("No MLX model installed — choose one below to download.")
+                        .font(DashboardTheme.Fonts.sans(11, weight: .medium))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+                }
+            }
+
             VStack(spacing: 0) {
                 ForEach(mlxEntries.indices, id: \.self) { idx in
                     let entry = mlxEntries[idx]
@@ -180,12 +190,19 @@ extension DashboardCorrectionView {
 
             // Status/Action
             if entry.isDownloading {
-                DownloadProgressView(
-                    state: .downloading(
-                        progress: 0,
-                        statusText: entry.statusText
-                    )
-                )
+                // MLX downloads via the Python helper don't report fractional
+                // progress, so render an indeterminate bar alongside any status
+                // text rather than a stuck-at-0 determinate bar.
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .frame(maxWidth: 100)
+                    if let statusText = entry.statusText {
+                        Text(statusText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 .frame(maxWidth: 160)
             } else if entry.isDownloaded {
                 HStack(spacing: 4) {
@@ -252,7 +269,10 @@ extension DashboardCorrectionView {
                     Task {
                         await modelManager.deleteModel(model.repo)
                         if semanticCorrectionModelRepo == model.repo {
-                            semanticCorrectionModelRepo = "mlx-community/Qwen3-1.7B-4bit"
+                            // Prefer another already-downloaded model. If none is
+                            // available, leave the selection empty so the "no MLX
+                            // model installed" badge surfaces above the list.
+                            semanticCorrectionModelRepo = modelManager.nextSelectionAfterDeletion(deletedRepo: model.repo) ?? ""
                         }
                     }
                 }

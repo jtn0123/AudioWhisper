@@ -146,6 +146,11 @@ internal final class MLXCorrectionService {
         return isModuleError
     }
 
+    /// Maximum size of the user's custom MLX system prompt. Load-bearing —
+    /// anything larger is rejected because a multi-MB prompt would bloat every
+    /// request payload and is almost certainly a misconfigured file.
+    private static let maxSystemPromptBytes = 64 * 1024
+
     private static func loadSystemPrompt() -> String? {
         guard let promptsDir = try? FileManager.default.url(
             for: .applicationSupportDirectory,
@@ -155,12 +160,40 @@ internal final class MLXCorrectionService {
         ).appendingPathComponent("AudioWhisper/prompts", isDirectory: true) else {
             return nil
         }
-        
+
         let promptPath = promptsDir.appendingPathComponent("local_mlx_prompt.txt")
         guard FileManager.default.fileExists(atPath: promptPath.path) else {
             return nil
         }
-        
-        return try? String(contentsOf: promptPath, encoding: .utf8)
+
+        // M7: enforce a size cap before reading so a huge prompt file can't
+        // slip into every JSON-RPC payload.
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: promptPath.path),
+           let size = (attrs[.size] as? NSNumber)?.int64Value, size > Int64(maxSystemPromptBytes) {
+            Logger.app.warning("MLX system prompt exceeds \(maxSystemPromptBytes) bytes (\(size)); ignoring")
+            return nil
+        }
+
+        return decodePromptFile(at: promptPath)
+    }
+
+    /// Reads `promptPath` as utf8, falling back to utf16 then a utf8 decode of
+    /// the raw bytes. Each fallback logs a warning so a mis-encoded prompt is
+    /// observable in Console.app rather than silently producing nil.
+    private static func decodePromptFile(at promptPath: URL) -> String? {
+        if let utf8 = try? String(contentsOf: promptPath, encoding: .utf8) {
+            return utf8
+        }
+        if let utf16 = try? String(contentsOf: promptPath, encoding: .utf16) {
+            Logger.app.warning("MLX system prompt decoded as utf16 fallback")
+            return utf16
+        }
+        if let data = try? Data(contentsOf: promptPath),
+           let recovered = String(bytes: data, encoding: .utf8) {
+            Logger.app.warning("MLX system prompt decoded via raw utf8 bytes fallback")
+            return recovered
+        }
+        Logger.app.warning("MLX system prompt could not be decoded as utf8 or utf16")
+        return nil
     }
 }
