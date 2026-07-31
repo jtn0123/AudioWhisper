@@ -268,8 +268,11 @@ internal class AppSetupHelper {
 
             let files: [(name: String, content: String)] = [
                 ("local_mlx_prompt.txt", defaultLocalMLXPrompt),
-                ("cloud_openai_prompt.txt", defaultCloudPrompt),
-                ("cloud_gemini_prompt.txt", defaultCloudPrompt)
+                // A4: cloud_openai_prompt.txt / cloud_gemini_prompt.txt used to be
+                // written here. The cloud providers were removed
+                // (TranscriptionProvider has only .local and .parakeet), so nothing
+                // ever read them — they were two junk files created in the user's
+                // Application Support directory on every launch.
             ]
 
             for promptFile in files {
@@ -283,7 +286,9 @@ internal class AppSetupHelper {
         }
     }
 
-    private static let defaultCloudPrompt = """
+    /// Shared correction prompt. Named `defaultCorrectionPrompt` since A4 —
+    /// it was `defaultCloudPrompt` back when cloud providers existed.
+    private static let defaultCorrectionPrompt = """
         You are a transcription corrector. Fix grammar, casing, punctuation, \
         and obvious mis-hearings that do not change meaning. Remove filler \
         words and transcribed pauses that add no meaning (e.g., 'um', 'uh', \
@@ -292,5 +297,5 @@ internal class AppSetupHelper {
         or add content. Output only the corrected text.
         """
 
-    private static let defaultLocalMLXPrompt = defaultCloudPrompt
+    private static let defaultLocalMLXPrompt = defaultCorrectionPrompt
 }

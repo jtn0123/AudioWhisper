@@ -116,33 +116,10 @@ final class AppDelegateLifecycleTests: IsolatedXCTestCase {
         XCTAssertNil(appDelegate.recordingWindowDelegate)
     }
 
-    // MARK: - hasAPIKey Tests
-
-    func testHasAPIKeyWithValidKey() {
-        // Save a key to keychain
-        let service = "test.service"
-        let account = "test.account"
-        let key = "test-api-key"
-
-        KeychainService.shared.saveQuietly(key, service: service, account: account)
-
-        // Verify hasAPIKey returns true
-        let hasKey = appDelegate.hasAPIKey(service: service, account: account)
-        XCTAssertTrue(hasKey)
-
-        // Cleanup
-        KeychainService.shared.deleteQuietly(service: service, account: account)
-    }
-
-    func testHasAPIKeyWithMissingKey() {
-        // Use a service/account that doesn't exist
-        let service = "nonexistent.service.\(UUID().uuidString)"
-        let account = "nonexistent.account"
-
-        // Verify hasAPIKey returns false
-        let hasKey = appDelegate.hasAPIKey(service: service, account: account)
-        XCTAssertFalse(hasKey)
-    }
+    // A4: testHasAPIKeyWithValidKey / testHasAPIKeyWithMissingKey were removed
+    // alongside `AppDelegate.hasAPIKey`, which had no production callers once the
+    // cloud providers were dropped. Their round-trip (save -> read -> delete) is
+    // already covered directly against KeychainService in KeychainServiceTests.
 
     // MARK: - Initial State Tests
 

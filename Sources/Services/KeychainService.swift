@@ -122,8 +122,9 @@ internal class KeychainService: KeychainServiceProtocol {
                 Logger.keychain.warning("Retrieved empty API key for \(account, privacy: .public)")
                 return nil
             }
-            // API keys typically have minimum lengths (OpenAI ~50 chars, Gemini ~40 chars)
-            // Log a warning for suspiciously short keys but don't reject them
+            // Generic secret-length sanity check. The app no longer stores cloud
+            // API keys (A4), but this is still a useful corruption signal for any
+            // secret. Log a warning for suspiciously short values, never reject.
             if trimmed.count < 20 {
                 Logger.keychain.warning("Retrieved unusually short API key (\(trimmed.count) chars) for \(account, privacy: .public)")
             }

@@ -305,6 +305,12 @@ extension DashboardHomeView {
         return Int(delta.rounded())
     }
 
+    // NOTE (A4): the "openai" / "gemini" cases below are NOT dead code, despite
+    // those providers having been removed from `TranscriptionProvider`.
+    // `TranscriptionRecord.provider` is persisted as a raw String, so history
+    // written by a pre-2.0 build still contains "openai" and "gemini". Dropping
+    // these cases would render that history as "Openai" with a generic icon.
+    // Keep them until a store migration rewrites or drops those records.
     func providerColor(for provider: String) -> Color {
         switch provider.lowercased() {
         case "openai":   return DashboardTheme.providerOpenAI

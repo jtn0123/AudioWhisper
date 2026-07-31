@@ -36,25 +36,12 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         XCTAssertNotNil(appDelegate)
     }
 
-    // MARK: - API Key Error Handling
-
-    func testHasAPIKeyWithNonexistentService() {
-        let service = "nonexistent.\(UUID().uuidString)"
-        let hasKey = appDelegate.hasAPIKey(service: service, account: "test")
-        XCTAssertFalse(hasKey)
-    }
-
-    func testHasAPIKeyWithEmptyStrings() {
-        let hasKey = appDelegate.hasAPIKey(service: "", account: "")
-        XCTAssertFalse(hasKey)
-    }
-
-    func testHasAPIKeyWithSpecialCharacters() {
-        let service = "test.service.with-special_chars"
-        let account = "test@account.com"
-        let hasKey = appDelegate.hasAPIKey(service: service, account: account)
-        XCTAssertFalse(hasKey)
-    }
+    // A4: the three testHasAPIKey* cases were removed alongside
+    // `AppDelegate.hasAPIKey`, which had no production callers after the cloud
+    // providers were dropped. They asserted only that a keychain lookup for a
+    // random nonexistent service returns false — i.e. they exercised
+    // KeychainService (already covered by KeychainServiceTests) through a
+    // wrapper nothing called.
 
     // MARK: - Termination
 
