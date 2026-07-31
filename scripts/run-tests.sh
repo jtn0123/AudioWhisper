@@ -1,12 +1,24 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 # Run the AudioWhisper test suite with macOS framework noise filtered out.
-# Runs sequentially by default to match CI: some tests still read/write
-# UserDefaults.standard directly and fail nondeterministically under
-# --parallel. Tests that touch UserDefaults.standard should subclass
-# IsolatedXCTestCase (Tests/Utilities/IsolatedXCTestCase.swift); once that
-# migration enforces strict isolation, parallel can become the default.
-# Pass --parallel to opt in anyway.
+#
+# Runs sequentially by default to match CI. Some tests write UserDefaults.standard
+# directly in setUp and then assert on production code that reads the same global
+# domain, so under --parallel two xctest processes race the same keys. Reproduced
+# consistently: --parallel yields 2-4 nondeterministic failures per run, always in
+# AppDefaultsTests, PasteManagerTests, AppDelegateHotkeysTests,
+# HotkeyIntegrationTests, RecordingViewModelPasteCoverageTests, and
+# AppSetupHelperCoverageTests — exactly the classes that set
+# `enforcesStandardUserDefaultsIsolation = false`.
+#
+# Fixing this properly means migrating every test that touches
+# UserDefaults.standard (48 files) onto a scoped suite; redirecting only the six
+# offenders makes it worse, because the other 42 write .standard and expect
+# production to read it back. See .claude/fix-plan.md item 17.
+#
+# Usage:
+#   scripts/run-tests.sh              # sequential (default, reliable)
+#   scripts/run-tests.sh --parallel   # faster, currently flaky — see above
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   sed -n 's/^# //p' "$0" | head -n 20
   exit 0
@@ -19,8 +31,6 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # These errors occur because xctest runs outside the app sandbox
 export OS_ACTIVITY_MODE=disable
 
-# Run sequentially by default (matches CI). Pass --parallel as a script arg
-# to opt into parallel execution (currently nondeterministic — see above).
 PARALLEL_FLAG="--no-parallel"
 for arg in "$@"; do
   if [[ "$arg" == "--parallel" ]]; then
@@ -28,4 +38,16 @@ for arg in "$@"; do
   fi
 done
 
-swift test $PARALLEL_FLAG -Xswiftc -DTESTING 2>&1 | grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel)" | grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)"
+# The pipeline below must not swallow swift test's exit status. Piping into grep
+# makes $? grep's, so a failing suite reported success — the same class of bug as
+# the print() CI gate (plan item 8). Capture PIPESTATUS explicitly.
+set -o pipefail
+swift test $PARALLEL_FLAG -Xswiftc -DTESTING 2>&1 \
+  | grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel)" \
+  | grep -E "(Test Suite|Test Case|passed|failed|error:|Executed|skipped)"
+status=${PIPESTATUS[0]}
+
+if [ "$status" -ne 0 ]; then
+  echo "swift test failed (exit $status)"
+fi
+exit "$status"
