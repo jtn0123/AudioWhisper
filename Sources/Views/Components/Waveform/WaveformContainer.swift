@@ -42,6 +42,12 @@ struct WaveformContainer: View {
     @AppDefault(\.waveformStyle) private var waveformStyle
     @AppDefault(\.visualIntensity) private var visualIntensity
 
+    /// C2: single place the Reduce Motion setting is read. It is passed down to
+    /// the decorative effects rather than each of them reaching for the
+    /// environment, which also makes them testable —
+    /// `accessibilityReduceMotion` is a read-only key that cannot be injected.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @State private var previousStatus: AppStatus?
     @State private var showError = false
     @State private var recordingStartedAt: Date?
@@ -80,7 +86,7 @@ struct WaveformContainer: View {
 
                 // Particle overlay for neon style while recording
                 if style == .neon && isRecording {
-                    ParticleOverlay(audioLevel: audioLevel, isActive: true)
+                    ParticleOverlay(audioLevel: audioLevel, isActive: true, reduceMotion: reduceMotion)
                         .opacity(intensity.particleMultiplier)
                 }
 
@@ -91,7 +97,8 @@ struct WaveformContainer: View {
                     StatusTransitionOverlay(
                         fromStatus: previousStatus,
                         toStatus: status,
-                        intensity: intensity
+                        intensity: intensity,
+                        reduceMotion: reduceMotion
                     )
                 }
 
@@ -100,7 +107,8 @@ struct WaveformContainer: View {
                     SuccessCelebration(
                         intensity: intensity,
                         isActive: true,
-                        successColor: successColor
+                        successColor: successColor,
+                        reduceMotion: reduceMotion
                     )
                     .opacity(0.7)
                 }
@@ -115,7 +123,7 @@ struct WaveformContainer: View {
         .shadow(color: .black.opacity(0.55), radius: 30, x: 0, y: 16)
         // State-aware colored glow — gives each state its own ambient color
         .shadow(color: glowColor, radius: glowRadius, x: 0, y: 0)
-        .shake(when: showError, intensity: intensity)
+        .shake(when: showError, intensity: intensity, reduceMotion: reduceMotion)
         .onChange(of: status) { oldStatus, newStatus in
             previousStatus = oldStatus
             if case .recording = newStatus {

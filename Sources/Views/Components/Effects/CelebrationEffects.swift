@@ -10,7 +10,23 @@ struct SuccessCelebration: View {
 
     @State private var triggered = false
 
+    /// C2: when true, all celebration flourish is suppressed.
+    ///
+    /// Passed in rather than read via `@Environment` because
+    /// `accessibilityReduceMotion` is a read-only environment key that cannot be
+    /// injected in tests. `WaveformContainer` reads it once and passes it down,
+    /// which also keeps the environment dependency in one place.
+    var reduceMotion: Bool = false
+
     var body: some View {
+        if reduceMotion {
+            EmptyView()
+        } else {
+            animatedBody
+        }
+    }
+
+    private var animatedBody: some View {
         ZStack {
             // Flash overlay (burst only)
             if intensity.showFlash && triggered {

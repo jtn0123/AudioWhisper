@@ -17,6 +17,7 @@ internal struct InkRippleView: View {
     /// C3/G1: was a raw autoconnected Timer publisher firing 20x/second for
     /// the view's whole lifetime, on- or off-screen. FrameTimer is cancellable.
     @State private var frameTimer = FrameTimer(interval: 0.05)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     // Terracotta color from theme
     private let inkColor = Color(red: 0.76, green: 0.42, blue: 0.32)
@@ -58,6 +59,9 @@ internal struct InkRippleView: View {
         }
         .onChange(of: audioLevel) { _, newLevel in
             guard isActive else { return }
+            // C2: ripples are decorative; the central dot still scales with
+            // audioLevel so the view keeps conveying level under Reduce Motion.
+            guard !reduceMotion else { return }
             maybeSpawnRipple(level: newLevel)
         }
         .onReceive(frameTimer.publisher) { _ in
