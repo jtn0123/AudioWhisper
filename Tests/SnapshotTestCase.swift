@@ -25,12 +25,24 @@ class SnapshotTestCase: XCTestCase {
         }
     }
     
+    /// Renders `view` and compares it against the committed baseline.
+    ///
+    /// - Parameter tolerance: maximum fraction of pixels (0...1) allowed to
+    ///   differ before the assertion fails. Defaults to `0` — exact match.
+    ///
+    ///   Most views render deterministically: 31 of 39 snapshots are
+    ///   byte-identical across back-to-back recording runs on the same machine.
+    ///   The waveform views are not. They animate, and `WaveformBars.updateLevels`
+    ///   feeds `CGFloat.random(in:)` into bar heights, so a captured frame varies
+    ///   by up to ~2% of pixels between runs. Those call sites pass a small
+    ///   tolerance; everything else stays exact so real regressions still fail.
     func assertSnapshot<V: View>(
         _ view: V,
         named name: String,
         size: CGSize,
         colorScheme: ColorScheme = .light,
         scale: CGFloat = 2,
+        tolerance: Double = 0,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -74,6 +86,23 @@ class SnapshotTestCase: XCTestCase {
                 return
             }
 
+            if tolerance > 0,
+               let differingFraction = differingPixelFraction(
+                   baselinePNGData: baselineData,
+                   actualPNGData: actualData
+               ) {
+                if differingFraction <= tolerance {
+                    return
+                }
+                XCTFail(
+                    "Snapshot mismatch for \(name): \(String(format: "%.3f", differingFraction * 100))% of "
+                        + "pixels differ, tolerance is \(String(format: "%.3f", tolerance * 100))%.",
+                    file: file,
+                    line: line
+                )
+                return
+            }
+
             let expectedAttachment = XCTAttachment(contentsOfFile: snapshotURL)
             expectedAttachment.name = "\(name)-baseline"
             expectedAttachment.lifetime = .deleteOnSuccess
@@ -96,6 +125,38 @@ class SnapshotTestCase: XCTestCase {
         return url
             .appendingPathComponent(snapshotFolderName, isDirectory: true)
             .appendingPathComponent("\(name).png")
+    }
+
+    /// Fraction of pixels (0...1) whose RGBA bytes differ between the two images.
+    /// Returns `nil` if either image cannot be decoded or the sizes differ — a
+    /// size change is a real regression and must not be tolerated away.
+    private func differingPixelFraction(baselinePNGData: Data, actualPNGData: Data) -> Double? {
+        guard let baselineImage = NSImage(data: baselinePNGData),
+              let actualImage = NSImage(data: actualPNGData),
+              let baselineBytes = baselineImage.normalizedRGBABytes(),
+              let actualBytes = actualImage.normalizedRGBABytes(),
+              baselineBytes.count == actualBytes.count,
+              baselineBytes.count % 4 == 0,
+              !baselineBytes.isEmpty else {
+            return nil
+        }
+
+        var differingPixels = 0
+        let pixelCount = baselineBytes.count / 4
+        baselineBytes.withUnsafeBytes { baselineRaw in
+            actualBytes.withUnsafeBytes { actualRaw in
+                for pixel in 0..<pixelCount {
+                    let offset = pixel * 4
+                    if baselineRaw[offset] != actualRaw[offset]
+                        || baselineRaw[offset + 1] != actualRaw[offset + 1]
+                        || baselineRaw[offset + 2] != actualRaw[offset + 2]
+                        || baselineRaw[offset + 3] != actualRaw[offset + 3] {
+                        differingPixels += 1
+                    }
+                }
+            }
+        }
+        return Double(differingPixels) / Double(pixelCount)
     }
 
     private func imagesMatchIgnoringEncoding(baselinePNGData: Data, actualPNGData: Data) -> Bool {

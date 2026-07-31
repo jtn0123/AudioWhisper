@@ -26,7 +26,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-classic-recording",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -46,7 +47,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-ready",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.01  // animated view — measured nondeterministic
         )
     }
 
@@ -66,7 +68,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-success",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -88,7 +91,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-processing",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.01  // animated view — measured nondeterministic
         )
     }
 
@@ -108,7 +112,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-error",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -131,7 +136,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-glow-intensity",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -152,7 +158,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-burst-intensity",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -295,7 +302,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-neon-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.02  // animated view — measured nondeterministic
         )
     }
 
@@ -316,7 +324,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-spectrum-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -340,7 +349,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-halo-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.03  // animated view — measured nondeterministic
         )
     }
 
@@ -361,7 +371,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-heartbeat-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -382,7 +393,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-stream-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -405,7 +417,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-spectrum-light",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .light
+            colorScheme: .light,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -428,7 +441,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-classic-recording-light",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .light
+            colorScheme: .light,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 

@@ -239,6 +239,67 @@ jobs:
           du -sh AudioWhisper.app
           ls -lh AudioWhisper.app/Contents/MacOS/AudioWhisper
 
+  # The snapshot suite (36 committed baselines) is skipped unless SNAPSHOT_TESTS=1,
+  # and nothing ever set it — so the visual-regression net has never run in CI.
+  # Turning it on found a real crash: DialWaveformView trapped on an empty
+  # frequencyBands array (fixed in this branch, now covered by a direct render
+  # test in WaveformViewsTests).
+  #
+  # REPORT-ONLY, and it cannot become blocking until the baselines are
+  # regenerated ON THIS RUNNER. The comparison is exact-match on RGBA bytes, and
+  # the committed baselines were recorded on a different macOS/Xcode; 14 of the
+  # 36 differ purely from environment. Three (Waveform-halo-dark,
+  # -heartbeat-dark, -stream-dark) have no committed baseline at all.
+  #
+  # To adopt: run this job, download the `snapshot-renders` artifact, commit the
+  # PNGs into Tests/__Snapshots__/, then drop continue-on-error and move
+  # SNAPSHOT_TESTS=1 into the main test job.
+  snapshots:
+    name: UI snapshots (report-only)
+    runs-on: macos-15
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
+
+      - name: Generate VersionInfo.swift
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+
+      - name: Run snapshot tests
+        env:
+          SNAPSHOT_TESTS: "1"
+          OS_ACTIVITY_MODE: disable
+        run: swift test --no-parallel -Xswiftc -DTESTING --filter "UISnapshotTests" || true
+
+      - name: Render baselines on this runner
+        env:
+          SNAPSHOT_RECORD: "1"
+          OS_ACTIVITY_MODE: disable
+        run: |
+          # SNAPSHOT_RECORD overwrites Tests/__Snapshots__ and deliberately fails
+          # each test, so the run always "fails" — we only want the images.
+          swift test --no-parallel -Xswiftc -DTESTING --filter "UISnapshotTests" || true
+
+      - name: Upload renders for baseline adoption
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-renders
+          path: Tests/__Snapshots__/
+          if-no-files-found: warn
+
   # SwiftLint's analyzer rules (unused_declaration, unused_import) are configured
   # in .swiftlint.yml but only run under `swiftlint analyze`, never `swiftlint
   # lint`. They had therefore never executed — which is how a 160-line
