@@ -238,3 +238,65 @@ jobs:
         run: |
           du -sh AudioWhisper.app
           ls -lh AudioWhisper.app/Contents/MacOS/AudioWhisper
+
+  # SwiftLint's analyzer rules (unused_declaration, unused_import) are configured
+  # in .swiftlint.yml but only run under `swiftlint analyze`, never `swiftlint
+  # lint`. They had therefore never executed — which is how a 160-line
+  # DependencyContainer with zero call sites survived in the codebase.
+  #
+  # REPORT-ONLY, deliberately. The first run surfaces ~214 unused_declaration and
+  # ~117 unused_import findings, and a large share are false positives:
+  # protocol-conforming mock members, SwiftUI conformances, and umbrella imports
+  # (e.g. `import Cocoa` in an NSImage extension is flagged even though it is
+  # required). Triaging that backlog is its own piece of work; until it is done,
+  # failing the build on these would just teach people to ignore CI.
+  #
+  # To make it blocking later: work the backlog down, then drop `|| true` and add
+  # `--strict`.
+  analyze:
+    name: SwiftLint analyze (report-only)
+    runs-on: macos-15
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
+          swift --version
+
+      - name: Install SwiftLint
+        run: brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+      - name: Generate VersionInfo.swift
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+
+      - name: Build with xcodebuild (analyzer needs a compiler log)
+        run: |
+          # `swift build -v` does NOT emit a log swiftlint can parse — SPM's new
+          # build system omits the per-file swiftc invocations the analyzer
+          # reads, and it errors with "Cannot index file at path ...".
+          # xcodebuild does produce a compatible log. build-for-testing is used
+          # so Tests/ are included; without them every *ForTesting helper is
+          # reported as unused.
+          set -o pipefail
+          xcodebuild -scheme AudioWhisper -destination 'platform=macOS' \
+            build-for-testing 2>&1 | tee xcodebuild.log | tail -5
+
+      - name: Analyze
+        run: |
+          swiftlint analyze --compiler-log-path xcodebuild.log \
+            --reporter github-actions-logging || true
+          echo "--- summary ---"
+          swiftlint analyze --compiler-log-path xcodebuild.log --quiet 2>/dev/null \
+            | grep -oE '\((unused_declaration|unused_import)\)' | sort | uniq -c || true
