@@ -290,6 +290,13 @@ internal struct DashboardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // C1: the icon carries no label of its own, and VoiceOver otherwise
+        // announces these as unlabelled buttons with no indication of which
+        // section is current. `.isSelected` is what makes the active tab audible.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.rawValue)
+        .accessibilityHint("Show the \(item.rawValue) section")
+        .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
 
     private var statsFooter: some View {

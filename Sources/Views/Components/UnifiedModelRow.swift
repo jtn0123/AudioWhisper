@@ -80,6 +80,15 @@ internal struct UnifiedModelRow: View {
             .buttonStyle(.plain)
             .disabled(!isDownloaded)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // C1: this row is used by every model list (Whisper, Parakeet, MLX
+            // correction). Without this, VoiceOver walked the title, subtitle,
+            // size and status as separate unlabelled fragments, and the
+            // selection indicator — a bare Circle — announced nothing at all.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityTitle)
+            .accessibilityValue(accessibilityStateDescription)
+            .accessibilityHint(isDownloaded ? "Use this model" : "Download it first to select it")
+            .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
 
             // Action area
             actionButton
@@ -90,8 +99,37 @@ internal struct UnifiedModelRow: View {
         )
     }
     
+    // MARK: - Accessibility (C1)
+
+    /// Model name plus any badge ("RECOMMENDED"), which is otherwise conveyed
+    /// only by a coloured pill.
+    ///
+    /// `internal` rather than `private` so tests can assert the composed
+    /// announcement — these are pure string builders with no view state.
+    var accessibilityTitle: String {
+        guard let badge = badgeText, !badge.isEmpty else { return title }
+        return "\(title), \(badge.lowercased())"
+    }
+
+    /// Everything the row communicates visually: description, size, install
+    /// state, selection, and any in-progress status.
+    var accessibilityStateDescription: String {
+        var parts: [String] = [subtitle]
+        if let size = sizeText, !size.isEmpty {
+            parts.append(size)
+        }
+        parts.append(isDownloaded ? "Installed" : "Not installed")
+        if isSelected {
+            parts.append("Selected")
+        }
+        if let status = statusText, !status.isEmpty {
+            parts.append(status)
+        }
+        return parts.joined(separator: ", ")
+    }
+
     // MARK: - Components
-    
+
     @ViewBuilder
     private var selectionIndicator: some View {
         if isDownloaded {
@@ -121,6 +159,11 @@ internal struct UnifiedModelRow: View {
                     .foregroundStyle(DashboardTheme.inkMuted)
             }
             .frame(width: 72)
+            // C1: a bare spinner announces nothing. Name the model, and surface
+            // the live status text as the value so progress is actually audible.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Downloading \(title)")
+            .accessibilityValue(statusText ?? "In progress")
         } else if isDeleting {
             VStack(spacing: 2) {
                 ProgressView()
@@ -130,6 +173,8 @@ internal struct UnifiedModelRow: View {
                     .foregroundStyle(DashboardTheme.inkMuted)
             }
             .frame(width: 72)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Deleting \(title)")
         } else if isDownloaded {
             Button("Delete") {
                 isDeleting = true
@@ -142,10 +187,15 @@ internal struct UnifiedModelRow: View {
             .buttonStyle(PaperButtonStyle())
             .frame(width: 72)
             .disabled(isDeleting)
+            // C1: "Delete" alone is ambiguous in a list of models.
+            .accessibilityLabel("Delete \(title)")
+            .accessibilityHint("Removes the downloaded model from disk")
         } else {
             Button("Get") { onDownload() }
                 .buttonStyle(PaperAccentButtonStyle())
                 .frame(width: 72)
+                .accessibilityLabel("Download \(title)")
+                .accessibilityHint(sizeText.map { "Downloads \($0)" } ?? "Downloads the model")
         }
     }
 }

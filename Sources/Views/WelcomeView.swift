@@ -138,6 +138,12 @@ internal struct WelcomeView: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: .black.opacity(0.22), radius: 20, y: 12)
             .shadow(color: coral.opacity(0.12), radius: 56)
+            // C1: purely visual preview of the recording window. Collapse it into
+            // one element that states what it is and which style is showing,
+            // rather than letting VoiceOver walk its decorative innards.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Recording window preview")
+            .accessibilityValue("\(selectedStyle.rawValue) style. Press Command Shift Space to record.")
 
             // Headline
             Text("Hold a key. Speak. Paste.")
@@ -302,6 +308,14 @@ private struct StyleTile: View {
             )
         }
         .buttonStyle(.plain)
+        // C1: this button's entire label is a rendered waveform, so VoiceOver
+        // announced eight identical unlabelled buttons with no way to tell the
+        // styles apart or know which was chosen.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(style.isNew ? "\(style.rawValue), new" : style.rawValue)
+        .accessibilityValue(style.description)
+        .accessibilityHint("Use this waveform style")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

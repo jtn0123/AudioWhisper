@@ -146,10 +146,18 @@ extension DashboardHomeView {
                 )
                 .frame(height: 32)
                 .frame(maxWidth: 280, alignment: .leading)
+                // The sparkline is decorative; its data is already announced by
+                // the number above it.
+                .accessibilityHidden(true)
             }
             .padding(DashboardTheme.Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(DashboardTheme.cardBg)
+            // C1: hero stat reads as one element rather than a number, a pill
+            // and a chart announced separately.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Words this month")
+            .accessibilityValue(formatNumber(metricsStore.snapshot.totalWords))
 
             // Sub-stat: time saved
             subStat(
@@ -189,6 +197,11 @@ extension DashboardHomeView {
         .padding(DashboardTheme.Spacing.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DashboardTheme.cardBg)
+        // C1: read as one stat ("Time saved: 2 hours, vs typing at 40 WPM")
+        // instead of three disconnected text fragments.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue("\(value), \(sub)")
     }
 
     func statLabel(_ text: String) -> some View {
