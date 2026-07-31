@@ -30,8 +30,15 @@ internal enum DashboardTheme {
     static let sidebarTextMuted  = Color(nsColor: .secondaryLabelColor)
     static let sidebarTextFaint  = Color(nsColor: .tertiaryLabelColor)
     static let sidebarDivider    = Color(nsColor: .separatorColor)
-    static let sidebarHover      = Color.black.opacity(0.04)
-    static let sidebarActive     = Color.black.opacity(0.07)
+    // Hover/active overlays must be `Color.primary`, not a literal black: the
+    // sidebar is drawn over an NSVisualEffectView `.sidebar` material, which is
+    // DARK in dark mode. Black-at-7% over a dark material is invisible, so the
+    // selected-nav indicator effectively disappeared for dark-mode users.
+    // `Color.primary` resolves to labelColor — black in light, white in dark —
+    // so the light-mode appearance is byte-identical to the previous values
+    // while dark mode now actually renders.
+    static let sidebarHover      = Color.primary.opacity(0.04)
+    static let sidebarActive     = Color.primary.opacity(0.07)
 
     // Main content — native macOS surfaces
     static let pageBg   = Color(nsColor: .windowBackgroundColor)
