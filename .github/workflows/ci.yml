@@ -161,6 +161,28 @@ jobs:
           fi
           echo "No production print() found"
 
+      - name: Python lockfile is in sync with pyproject.toml
+        run: |
+          # UvBootstrap ships uv.lock and installs with `uv sync --frozen`, which
+          # never re-resolves. `--frozen` does NOT verify the lock matches
+          # pyproject.toml, so drift would ship as a dependency that silently
+          # fails to install. `uv lock --check` is the assertion that catches it.
+          set -e
+          if ! command -v uv >/dev/null 2>&1; then
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+          fi
+          cd Sources/Resources
+          if [ ! -f uv.lock ]; then
+            echo "::error::Sources/Resources/uv.lock is missing. Run 'uv lock' there."
+            exit 1
+          fi
+          uv lock --check || {
+            echo "::error::uv.lock is out of date with pyproject.toml. Run 'uv lock' in Sources/Resources and commit the result."
+            exit 1
+          }
+          echo "uv.lock is in sync with pyproject.toml"
+
       - name: TODO/FIXME audit (warn only)
         run: |
           grep -rn "TODO\|FIXME" Sources/ --include='*.swift' || echo "No TODO/FIXME comments found"

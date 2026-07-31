@@ -220,12 +220,27 @@ else
   echo "⚠️ No uv available; MLX/Parakeet features will not work"
 fi
 
-# Bundle pyproject.toml and uv.lock if present
+# Bundle pyproject.toml and uv.lock.
+#
+# The lock is load-bearing, not decorative: UvBootstrap runs `uv sync --frozen`
+# against it. Without a bundled lock, the app resolved its entire Python
+# dependency tree fresh from PyPI on first launch, subject only to range
+# constraints — arbitrary code execution in an unsandboxed app holding
+# Microphone and Accessibility permissions. This step previously claimed to
+# bundle uv.lock in its comment but only ever copied pyproject.toml.
 if [ -f "Sources/Resources/pyproject.toml" ]; then
   cp Sources/Resources/pyproject.toml AudioWhisper.app/Contents/Resources/pyproject.toml
   echo "Bundled pyproject.toml"
 else
   echo "ℹ️ No pyproject.toml found in Sources/Resources"
+fi
+
+if [ -f "Sources/Resources/uv.lock" ]; then
+  cp Sources/Resources/uv.lock AudioWhisper.app/Contents/Resources/uv.lock
+  echo "Bundled uv.lock"
+else
+  echo "::warning::No uv.lock in Sources/Resources — the app will fall back to"
+  echo "           unpinned dependency resolution. Run 'uv lock' in that directory."
 fi
 
 # Note: AudioProcessorCLI binary no longer needed - using direct Swift audio processing

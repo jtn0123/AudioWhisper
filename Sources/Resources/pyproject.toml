@@ -4,11 +4,14 @@ version = "0.0.0"
 description = "Runtime dependencies for AudioWhisper"
 requires-python = ">=3.11,<3.12"
 dependencies = [
-  # MLX correction
-  "mlx-lm>=0.26.3, <0.27.0",
+  # MLX correction.
+  # NOTE: these are EXCLUSIVE upper bounds, so `uv sync` can never pick up a
+  # newer minor no matter how long the app runs, and Dependabot does not manage
+  # this file. Bumping them is a deliberate act — see the checklist below.
+  "mlx-lm>=0.31, <0.32",
 
   # Parakeet and audio toolchain; pin transitive deps to Py3.11-compatible wheels
-  "parakeet-mlx>=0.3.5, <0.4.0",
+  "parakeet-mlx>=0.5, <0.6",
   "librosa>=0.11.0, <0.12.0",
   "numba>=0.60.0",
   "llvmlite>=0.43.0",
@@ -19,5 +22,15 @@ dependencies = [
   "scikit-learn>=1.3, <2",
 ]
 
-[tool.uv]
-dev-dependencies = []
+# When raising the mlx-lm / parakeet-mlx bounds:
+#   1. Update the specifiers above.
+#   2. Regenerate the lock:  uv lock   (uv.lock ships in the app bundle and is
+#      enforced with `uv sync --frozen` — see UvBootstrap.ensureVenv).
+#   3. Re-verify the API surface Sources/ml/ actually uses, because these
+#      libraries break it across minors. At minimum:
+#        parakeet_mlx.from_pretrained, parakeet_mlx.audio.get_logmel,
+#        <model>.preprocessor_config, <model>.generate,
+#        mlx_lm.load, mlx_lm.generate, mlx_lm.sample_utils.make_sampler
+#      (0.26 -> 0.31 moved sampling from generate(temp=, top_p=) to an explicit
+#      sampler= callable; Sources/ml/correction.py handles both.)
+#   4. Run the end-to-end check:  RUN_E2E=1 swift test --filter ParakeetEndToEndTests

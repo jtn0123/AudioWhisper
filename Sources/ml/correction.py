@@ -31,6 +31,34 @@ def _safe_chat_template(
         return f"{system_prompt}\n\n{text}"
 
 
+# Sampling parameters for the correction pass. Low temperature: we want the
+# model to fix the transcript, not to paraphrase it.
+CORRECTION_TEMP = 0.2
+CORRECTION_TOP_P = 0.9
+
+
+def _build_sampler() -> Optional[Any]:
+    """Build an mlx-lm sampler for the correction temperature/top-p.
+
+    mlx-lm >= 0.20 moved sampling out of ``generate``'s keyword arguments and
+    into an explicit ``sampler`` callable: ``generate_step`` now accepts
+    ``sampler=`` and rejects ``temp=``/``top_p=``. Passing the old keywords
+    raises TypeError only once execution reaches ``generate_step``, i.e. after
+    prompt processing has already been paid for.
+
+    Returns ``None`` when ``make_sampler`` is unavailable, so the caller can
+    fall back to the legacy keyword form.
+    """
+    try:
+        from mlx_lm.sample_utils import make_sampler
+    except Exception:
+        return None
+    try:
+        return make_sampler(temp=CORRECTION_TEMP, top_p=CORRECTION_TOP_P)
+    except Exception:
+        return None
+
+
 def _safe_generate(
     model: Any,
     tokenizer: Any,
@@ -42,17 +70,35 @@ def _safe_generate(
     except Exception as exc:
         raise RuntimeError(f"mlx-lm import failed: {exc}") from exc
 
+    # Preferred path on current mlx-lm: an explicit sampler.
+    sampler = _build_sampler()
+    if sampler is not None:
+        try:
+            return generate(
+                model,
+                tokenizer,
+                prompt=chat_prompt,
+                max_tokens=max_tokens,
+                sampler=sampler,
+                verbose=False,
+            )
+        except TypeError:
+            pass
+
+    # Legacy mlx-lm (< 0.20) took the sampling knobs directly.
     try:
         return generate(
             model,
             tokenizer,
             prompt=chat_prompt,
             max_tokens=max_tokens,
-            temp=0.2,
-            top_p=0.9,
+            temp=CORRECTION_TEMP,
+            top_p=CORRECTION_TOP_P,
             verbose=False,
         )
     except TypeError:
+        # Last resort: default (greedy) sampling. Correction still works, it
+        # just loses the temperature tuning.
         return generate(
             model,
             tokenizer,
