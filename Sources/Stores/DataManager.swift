@@ -327,19 +327,16 @@ internal final class DataManager: DataManagerProtocol {
             throw DataManagerError.deleteFailed(error)
         }
 
-        // The delete + save above has committed. Rebuilding stats from the
-        // remaining records is a best-effort follow-up — a fetch failure here
-        // must NOT be reported as `deleteFailed`, since the delete succeeded
-        // (bug #19). Log it distinctly instead and leave the delete reported
-        // as a success.
-        do {
-            let context = ModelContext(container)
-            let remainingRecords = try context.fetch(FetchDescriptor<TranscriptionRecord>())
-            UsageMetricsStore.shared.rebuild(using: remainingRecords)
-            SourceUsageStore.shared.rebuild(using: remainingRecords)
-        } catch {
-            Logger.dataManager.error("Record deleted, but failed to rebuild usage stats: \(error.localizedDescription)")
-        }
+        // B5/G2: subtract this record's contribution instead of fetching every
+        // remaining record to recompute totals from scratch. The previous
+        // rebuild meant deleting a single transcript cost a full-table load on
+        // the main actor, scaling with total history — the one unbounded fetch
+        // in an otherwise carefully paginated data layer.
+        //
+        // This runs after the delete has committed, and is best-effort: it must
+        // never turn a successful delete into a reported failure (bug #19).
+        UsageMetricsStore.shared.remove(record: record)
+        SourceUsageStore.shared.remove(record: record)
     }
     
     func deleteAllRecords() async throws {
@@ -349,16 +346,14 @@ internal final class DataManager: DataManagerProtocol {
         
         do {
             let context = ModelContext(container)
-            let descriptor = FetchDescriptor<TranscriptionRecord>()
-            let records = try context.fetch(descriptor)
-            
-            for record in records {
-                context.delete(record)
-            }
-            
+
+            // B5/G2: batch delete rather than fetching every record and deleting
+            // them one at a time. The old path materialised the entire history
+            // in memory purely to throw it away.
+            try context.delete(model: TranscriptionRecord.self)
             try context.save()
-            
-            Logger.dataManager.info("Deleted all \(records.count) transcription records")
+
+            Logger.dataManager.info("Deleted all transcription records")
             
             // Reset usage metrics and source stats since all records are gone
             UsageMetricsStore.shared.reset()
@@ -496,9 +491,10 @@ internal final class MockDataManager: DataManagerProtocol {
 
         Logger.dataManager.info("Mock deleted transcription record with ID: \(record.id)")
 
-        // Rebuild usage metrics and source usage stats from remaining records
-        UsageMetricsStore.shared.rebuild(using: records)
-        SourceUsageStore.shared.rebuild(using: records)
+        // Mirror production (B5/G2): incremental subtraction, not a rebuild, so
+        // tests exercise the same code path the app uses.
+        UsageMetricsStore.shared.remove(record: record)
+        SourceUsageStore.shared.remove(record: record)
     }
     
     func deleteAllRecords() async throws {

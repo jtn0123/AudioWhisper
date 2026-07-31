@@ -195,6 +195,41 @@ internal final class UsageMetricsStore {
         persist(rebuilt)
     }
 
+    /// Subtracts a single record's contribution from the running totals.
+    ///
+    /// B5/G2: `DataManager.deleteRecord` used to fetch EVERY remaining record
+    /// just to recompute these numbers, so deleting one transcript cost a
+    /// full-table load on the main actor — scaling linearly with history size
+    /// under the "Forever" retention setting. All of these fields are plain
+    /// sums, so removing one record is exact arithmetic and needs no fetch.
+    ///
+    /// Values are floored at zero: if the stored snapshot ever drifts below the
+    /// true total (e.g. history was enabled after some sessions were recorded),
+    /// subtracting must not produce negatives. Use `rebuild(using:)` for an
+    /// authoritative recount.
+    func remove(record: TranscriptionRecord) {
+        var updated = snapshot
+        updated.totalSessions = max(0, updated.totalSessions - 1)
+        if let duration = record.duration {
+            updated.totalDuration = max(0, updated.totalDuration - duration)
+        }
+        updated.totalWords = max(0, updated.totalWords - record.wordCount)
+        updated.totalCharacters = max(0, updated.totalCharacters - record.characterCount)
+
+        let dateString = Self.dateFormatter.string(from: record.date)
+        if let existing = updated.dailyActivity[dateString] {
+            let remaining = existing - record.wordCount
+            if remaining > 0 {
+                updated.dailyActivity[dateString] = remaining
+            } else {
+                updated.dailyActivity.removeValue(forKey: dateString)
+            }
+        }
+
+        updated.lastUpdated = Date()
+        persist(updated)
+    }
+
     func reset() {
         persist(.empty)
     }

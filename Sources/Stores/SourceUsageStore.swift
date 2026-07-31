@@ -245,6 +245,41 @@ internal final class SourceUsageStore {
         persist()
     }
 
+    /// Subtracts a single record's contribution from its source app's stats.
+    ///
+    /// B5/G2: avoids the full-table fetch `DataManager.deleteRecord` previously
+    /// needed to call `rebuild(using:)`.
+    ///
+    /// `totalWords`, `totalCharacters` and `sessionCount` are plain sums, so this
+    /// is exact. `lastUsed` is NOT: `rebuild` derives it as the maximum record
+    /// date for the app, and recovering the next-most-recent date after removing
+    /// the newest would require the very fetch this avoids. It is therefore left
+    /// untouched, which can leave it slightly too recent until the app is used
+    /// again or an explicit rebuild runs. `lastUsed` only affects dashboard sort
+    /// order, so a stale value is cosmetic — unlike a full-table load on every
+    /// delete.
+    ///
+    /// The app's entry is dropped entirely once its session count reaches zero.
+    func remove(record: TranscriptionRecord) {
+        guard let bundleId = record.sourceAppBundleId, !bundleId.isEmpty,
+              var existing = statsByBundle[bundleId] else {
+            return
+        }
+
+        existing.totalWords = max(0, existing.totalWords - record.wordCount)
+        existing.totalCharacters = max(0, existing.totalCharacters - record.characterCount)
+        existing.sessionCount = max(0, existing.sessionCount - 1)
+
+        if existing.sessionCount == 0 {
+            statsByBundle.removeValue(forKey: bundleId)
+        } else {
+            statsByBundle[bundleId] = existing
+        }
+
+        refreshOrderedStats()
+        persist()
+    }
+
     func resetForTesting() {
         reset()
     }
