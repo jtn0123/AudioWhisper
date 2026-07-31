@@ -166,7 +166,7 @@ extension DashboardProvidersView {
         let isSelected = semanticCorrectionModelRepo == model.repo
         let isDownloaded = mlxModelManager.downloadedModels.contains(model.repo)
         let isDownloading = mlxModelManager.isDownloading[model.repo] ?? false
-        let isRecommended = model.repo == "mlx-community/Qwen3-1.7B-4bit"
+        let isRecommended = model.repo == AppDefaults.defaultSemanticCorrectionModelRepo
 
         return HStack(spacing: DashboardTheme.Spacing.sm) {
             // Selection

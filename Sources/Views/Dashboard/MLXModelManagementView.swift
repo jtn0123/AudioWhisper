@@ -148,6 +148,9 @@ internal struct MLXModelManagementView: View {
     }
 
     private func isRecommended(_ repo: String) -> Bool {
-        return repo == "mlx-community/Llama-3.2-1B-Instruct-4bit"
+        // B1: this badged Llama-3.2-1B while DashboardCorrectionView badged
+        // Qwen3-1.7B — two screens telling the user different things. Both now
+        // read the one constant that the correction pipeline also uses.
+        return repo == AppDefaults.defaultSemanticCorrectionModelRepo
     }
 }

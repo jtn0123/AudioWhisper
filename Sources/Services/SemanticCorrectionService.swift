@@ -120,11 +120,13 @@ internal final class SemanticCorrectionService {
     /// not a failure — there's nothing to recover from).
     private func correctLocallyWithMLXThrowing(text: String, category: CategoryDefinition) async throws -> String {
         guard Arch.isAppleSilicon else { return text }
-        // Preserve the legacy default ("Llama-3.2-1B-Instruct-4bit") when no key is set;
-        // `AppDefaults.semanticCorrectionModelRepo`'s built-in default is "Qwen3-1.7B-4bit".
-        let modelRepo = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
-            ? AppDefaults.semanticCorrectionModelRepo
-            : "mlx-community/Llama-3.2-1B-Instruct-4bit"
+        // B1: honour `AppDefaults.semanticCorrectionModelRepo` unconditionally.
+        // This used to fall back to Llama-3.2-1B whenever the key was unset,
+        // while the Dashboard displayed and badged Qwen3-1.7B as RECOMMENDED —
+        // so users on the implicit default saw one model and ran another.
+        // Existing installs are pinned to the legacy model by
+        // `AppSetupHelper.migrateSemanticCorrectionModelDefault()`.
+        let modelRepo = AppDefaults.semanticCorrectionModelRepo
         let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
         let prompt = loadPrompt(for: category)
         let output = try await mlxService.correct(text: text, modelRepo: modelRepo, pythonPath: pyURL.path, systemPrompt: prompt)

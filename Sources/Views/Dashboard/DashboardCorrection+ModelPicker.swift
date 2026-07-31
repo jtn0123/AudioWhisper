@@ -248,7 +248,7 @@ extension DashboardCorrectionView {
             }
 
             // Badge logic: recommend Qwen3-1.7B as best balance
-            let badge: String? = model.repo == "mlx-community/Qwen3-1.7B-4bit" ? "RECOMMENDED" : nil
+            let badge: String? = model.repo == AppDefaults.defaultSemanticCorrectionModelRepo ? "RECOMMENDED" : nil
 
             return MLXEntry(
                 model: model,

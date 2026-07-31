@@ -60,8 +60,26 @@ extension AppDefaults {
         }
     }
 
+    /// The correction model used when the user has not chosen one. This is the
+    /// single source of truth — the Dashboard badges it RECOMMENDED and the
+    /// correction pipeline runs it. Keep those in agreement (audit item B1).
+    static let defaultSemanticCorrectionModelRepo = "mlx-community/Qwen3-1.7B-4bit"
+
+    /// The implicit default before the B1 fix. The correction call sites used to
+    /// bypass `semanticCorrectionModelRepo` and hardcode this whenever the key
+    /// was unset, so users saw Qwen3 recommended but ran Llama.
+    ///
+    /// Retained ONLY for the one-time migration in
+    /// `AppSetupHelper.migrateSemanticCorrectionModelDefault()`, which pins
+    /// existing users who already have this model on disk so the fix doesn't
+    /// trigger a surprise 1 GB download. Do not read it anywhere else.
+    static let legacySemanticCorrectionModelRepo = "mlx-community/Llama-3.2-1B-Instruct-4bit"
+
     static var semanticCorrectionModelRepo: String {
-        get { defaults.string(forKey: Key.semanticCorrectionModelRepo.rawValue) ?? "mlx-community/Qwen3-1.7B-4bit" }
+        get {
+            defaults.string(forKey: Key.semanticCorrectionModelRepo.rawValue)
+                ?? defaultSemanticCorrectionModelRepo
+        }
         set { defaults.set(newValue, forKey: Key.semanticCorrectionModelRepo.rawValue) }
     }
 

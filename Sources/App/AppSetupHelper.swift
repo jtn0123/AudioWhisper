@@ -12,6 +12,73 @@ internal class AppSetupHelper {
         setupLoginItem()
         ensurePromptFiles()
         cleanupOldTemporaryFiles()
+        migrateSemanticCorrectionModelDefault()
+    }
+
+    // MARK: - Semantic-correction model migration (audit item B1)
+
+    /// One-time migration that pins existing installs to the pre-2.0 correction
+    /// model so the B1 fix doesn't silently switch them.
+    ///
+    /// Before B1, the two correction call sites bypassed
+    /// `AppDefaults.semanticCorrectionModelRepo` whenever the key was unset and
+    /// hardcoded Llama-3.2-1B, while the Dashboard displayed and badged
+    /// Qwen3-1.7B as RECOMMENDED. Those call sites now honour `AppDefaults`
+    /// unconditionally, which makes Qwen3 the real default.
+    ///
+    /// For a user who never picked a model, that flip would mean their next
+    /// dictation quietly downloads a different ~1 GB model. So: if there is no
+    /// explicit choice AND the legacy model is already on disk, write the legacy
+    /// repo explicitly. Their behaviour is unchanged and the Dashboard now tells
+    /// the truth about which model is in use. Everyone else — fresh installs, and
+    /// users who never downloaded the legacy model — gets the Qwen3 default.
+    ///
+    /// Idempotent: writing the key makes `hasValue` true on every later launch.
+    static func migrateSemanticCorrectionModelDefault() {
+        let hasExplicitChoice = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
+        let legacyPresent = isModelInHuggingFaceCache(AppDefaults.legacySemanticCorrectionModelRepo)
+
+        guard shouldPinLegacyCorrectionModel(
+            hasExplicitChoice: hasExplicitChoice,
+            legacyModelIsDownloaded: legacyPresent
+        ) else { return }
+
+        AppDefaults.semanticCorrectionModelRepo = AppDefaults.legacySemanticCorrectionModelRepo
+        Logger.app.info(
+            "Pinned semantic-correction model to the pre-2.0 default; it is already downloaded."
+        )
+    }
+
+    /// Pure decision half of `migrateSemanticCorrectionModelDefault`, split out
+    /// so the policy is testable without touching UserDefaults or the filesystem.
+    static func shouldPinLegacyCorrectionModel(
+        hasExplicitChoice: Bool,
+        legacyModelIsDownloaded: Bool
+    ) -> Bool {
+        !hasExplicitChoice && legacyModelIsDownloaded
+    }
+
+    /// Whether `repo` has a snapshot directory in the HuggingFace hub cache.
+    ///
+    /// Mirrors the layout `MLXModelManager` uses (`models--org--name`) rather
+    /// than reading `MLXModelManager.downloadedModels`, which is populated
+    /// asynchronously after launch and would race this check.
+    static func isModelInHuggingFaceCache(
+        _ repo: String,
+        cacheDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache/huggingface/hub")
+    ) -> Bool {
+        // Reject anything that isn't a plain `org/name` identifier before using
+        // it as a path component (same guard as MLXModelManager.deleteModel).
+        let allowed = repo.allSatisfy { $0.isLetter || $0.isNumber || "/._-".contains($0) }
+        guard allowed, !repo.hasPrefix("/"), !repo.contains("..") else { return false }
+
+        let escaped = repo.replacingOccurrences(of: "/", with: "--")
+        let modelPath = cacheDirectory.appendingPathComponent("models--\(escaped)")
+
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: modelPath.path, isDirectory: &isDirectory)
+        return exists && isDirectory.boolValue
     }
     
     static func setupLoginItem() {
