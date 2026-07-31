@@ -456,6 +456,9 @@ private struct ProcessingShimmerView: View {
 private struct TimerLabel: View {
     let start: Date?
     @State private var now: Date = Date()
+    /// C3/G1: was a raw autoconnected Timer publisher. Only 2 Hz, but it
+    /// also never stopped — the recording window stays alive between sessions.
+    @State private var frameTimer = FrameTimer(interval: 0.5)
 
     private let formatter: DateComponentsFormatter = {
         let componentsFormatter = DateComponentsFormatter()
@@ -469,8 +472,12 @@ private struct TimerLabel: View {
         Text(label)
             .font(.system(size: 11, weight: .regular, design: .monospaced))
             .tracking(0.5)
-            .onAppear { now = Date() }
-            .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
+            .onAppear {
+                now = Date()
+                frameTimer.start()
+            }
+            .onDisappear { frameTimer.stop() }
+            .onReceive(frameTimer.publisher) { _ in
                 now = Date()
             }
     }

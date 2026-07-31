@@ -156,6 +156,10 @@ private struct WaveformBars: View {
     
     @State private var animatedLevels: [CGFloat] = []
     @State private var idlePhase: CGFloat = 0
+    /// C3/G1: was a raw autoconnected Timer publisher, which runs for the
+    /// view's entire lifetime whether or not it is on screen. `FrameTimer` is
+    /// driven from onAppear/onDisappear so the timer is cancelled, not ignored.
+    @State private var frameTimer = FrameTimer(interval: 0.05)
     
     var body: some View {
         HStack(spacing: barSpacing) {
@@ -167,8 +171,10 @@ private struct WaveformBars: View {
         }
         .onAppear {
             animatedLevels = Array(repeating: minHeight, count: barCount)
+            frameTimer.start()
         }
-        .onReceive(Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()) { _ in
+        .onDisappear { frameTimer.stop() }
+        .onReceive(frameTimer.publisher) { _ in
             updateLevels()
         }
     }

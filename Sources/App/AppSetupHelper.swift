@@ -266,13 +266,13 @@ internal class AppSetupHelper {
                 try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
             }
 
+            // A4: cloud_openai_prompt.txt / cloud_gemini_prompt.txt used to be
+            // written here too. The cloud providers were removed
+            // (TranscriptionProvider has only .local and .parakeet), so nothing
+            // ever read them — they were two junk files created in the user's
+            // Application Support directory on every launch.
             let files: [(name: String, content: String)] = [
-                ("local_mlx_prompt.txt", defaultLocalMLXPrompt),
-                // A4: cloud_openai_prompt.txt / cloud_gemini_prompt.txt used to be
-                // written here. The cloud providers were removed
-                // (TranscriptionProvider has only .local and .parakeet), so nothing
-                // ever read them — they were two junk files created in the user's
-                // Application Support directory on every launch.
+                ("local_mlx_prompt.txt", defaultLocalMLXPrompt)
             ]
 
             for promptFile in files {

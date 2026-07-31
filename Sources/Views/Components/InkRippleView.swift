@@ -14,6 +14,9 @@ internal struct InkRippleView: View {
     
     @State private var ripples: [Ripple] = []
     @State private var lastRippleTime: Date = .distantPast
+    /// C3/G1: was a raw autoconnected Timer publisher firing 20x/second for
+    /// the view's whole lifetime, on- or off-screen. FrameTimer is cancellable.
+    @State private var frameTimer = FrameTimer(interval: 0.05)
     
     // Terracotta color from theme
     private let inkColor = Color(red: 0.76, green: 0.42, blue: 0.32)
@@ -57,12 +60,14 @@ internal struct InkRippleView: View {
             guard isActive else { return }
             maybeSpawnRipple(level: newLevel)
         }
-        .onReceive(Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(frameTimer.publisher) { _ in
             cleanupOldRipples()
         }
         .onAppear {
             ripples = []
+            frameTimer.start()
         }
+        .onDisappear { frameTimer.stop() }
         .onChange(of: isActive) { _, active in
             if !active {
                 // Let existing ripples fade out naturally

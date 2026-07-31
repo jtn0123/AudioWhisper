@@ -65,4 +65,24 @@ trailing_whitespace:
 nesting:
   type_level: 3
 
+custom_rules:
+  # C3/G1: `Timer.publish(...).autoconnect()` starts the moment a view is
+  # created and never stops — including for off-screen views. Use FrameTimer,
+  # which is driven from onAppear/onDisappear and actually cancels.
+  # FrameTimer.swift is the one legitimate site and is excluded below.
+  no_autoconnected_timer:
+    name: "Autoconnected Timer"
+    regex: 'Timer\.publish\([^)]*\)[\s\S]{0,40}?\.autoconnect\(\)'
+    # No `match_kinds`: [identifier] suppresses real code too (the match spans
+    # numbers and argument labels), and `none` is not a valid kind. So the regex
+    # also matches prose that quotes the pattern — keep such prose out of
+    # Sources/, and exclude the two files where it legitimately appears.
+    message: "Use FrameTimer (start/stop from onAppear/onDisappear) — an autoconnected timer runs forever, even off-screen."
+    severity: warning
+    excluded:
+      # Its doc comment quotes the pattern it exists to replace.
+      - ".*/FrameTimer\\.swift"
+      # Preview-only helper with its own explicit start()/stop() lifecycle.
+      - ".*/WaveformPreviewHelpers\\.swift"
+
 reporter: "xcode"
