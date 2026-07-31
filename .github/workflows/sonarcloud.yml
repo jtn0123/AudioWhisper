@@ -18,7 +18,7 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Need Xcode 16+ (Swift 6 tooling) for swift-jinja 2.x.
+          # Need Xcode 16+ (Swift 6 tooling) for swift-argument-parser 1.8.x.
           latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then
             sudo xcode-select -s "$latest/Contents/Developer"

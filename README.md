@@ -27,7 +27,7 @@ A lightweight macOS menu bar app for fast, **fully on-device** audio transcripti
 - **macOS 14.0 (Sonoma) or later**
 - **Apple Silicon** for Parakeet and on-device semantic correction. WhisperKit works on Intel, just slower.
 - **Disk space** — up to ~1.5 GB for Whisper Large Turbo, ~2.5 GB for a Parakeet model, ~0.6–2.4 GB for a correction model. Models cache under `~/.cache/huggingface/hub`.
-- **Building from source: Xcode 16.0+.** Not 15 — WhisperKit's transitive dependency `swift-jinja` 2.x declares `swift-tools-version: 6.0`, which needs Swift 6 tooling.
+- **Building from source: Xcode 16.0+.** Not 15 — the transitive dependency `swift-argument-parser` 1.8.x declares `swift-tools-version: 6.0`, which needs Swift 6 tooling.
 
 ## Installation 🛠️
 
@@ -155,8 +155,8 @@ Apple Silicon only. Dashboard → **Models** → Parakeet → Install Dependenci
 **Semantic correction not applying**
 Dashboard → **Models** → Correction: confirm the mode is Local MLX and that the selected model is downloaded. Correction fails open — if it errors, you still get the raw transcript.
 
-**Build fails on `swift-jinja`**
-You're on Xcode 15. This project needs Xcode 16+ (Swift 6 tooling).
+**Build fails resolving dependencies**
+You're probably on Xcode 15. This project needs Xcode 16+ (Swift 6 tooling).
 
 ## Contributing 🤝
 

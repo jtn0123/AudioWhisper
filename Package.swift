@@ -12,7 +12,12 @@ let package = Package(
         // mode, which the universal release build (swift build --arch arm64
         // --arch x86_64 via the Xcode build system) compiles as Swift 5.
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", .upToNextMajor(from: "1.10.0")),
-        .package(url: "https://github.com/argmaxinc/WhisperKit.git", .upToNextMinor(from: "0.15.0")),
+        // WhisperKit graduated to 1.0 and moved to the Argmax Open-Source SDK
+        // repo. The package still vends a `WhisperKit` library product, so the
+        // import sites are unchanged; only the URL and version move. The old
+        // pin was `.upToNextMinor(from: "0.15.0")`, which capped us at 0.15.x
+        // and silently skipped 0.16, 0.17, 0.18 and 1.0.
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.0.0"),
         .package(url: "https://github.com/nalexn/ViewInspector", .upToNextMinor(from: "0.10.0"))
     ],
     targets: [
@@ -20,7 +25,7 @@ let package = Package(
             name: "AudioWhisper",
             dependencies: [
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
-                "WhisperKit"
+                .product(name: "WhisperKit", package: "argmax-oss-swift")
             ],
             path: "Sources",
             exclude: ["VersionInfo.swift.template"],
