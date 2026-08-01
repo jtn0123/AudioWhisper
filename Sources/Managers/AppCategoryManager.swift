@@ -73,9 +73,14 @@ internal final class AppCategoryManager {
 
     private(set) var userMappings: [String: String] = [:]
 
-    init(defaults: UserDefaults = .standard, categoryStore: CategoryStore = .shared) {
+    init(defaults: UserDefaults = .standard, categoryStore: CategoryStore? = nil) {
+        // A5: resolved in the body rather than as a default argument.
+        // Default-argument expressions are evaluated in the CALLER's
+        // isolation, so referencing a @MainActor `.shared` there warns
+        // ("error in the Swift 6 language mode") even though this type is
+        // itself @MainActor. Same pattern DashboardHomeView already uses.
         self.defaults = defaults
-        self.categoryStore = categoryStore
+        self.categoryStore = categoryStore ?? .shared
         loadUserMappings()
     }
 

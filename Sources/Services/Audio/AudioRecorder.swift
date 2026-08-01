@@ -26,11 +26,16 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
     }
 
     init(
-        volumeManager: MicrophoneVolumeManaging = MicrophoneVolumeManager.shared,
+        volumeManager: MicrophoneVolumeManaging? = nil,
         recorderFactory: @escaping (URL, [String: Any]) throws -> AVAudioRecorder,
         dateProvider: @escaping () -> Date = { Date() }
     ) {
-        self.volumeManager = volumeManager
+        // A5: resolved in the body rather than as a default argument.
+        // Default-argument expressions are evaluated in the CALLER's
+        // isolation, so referencing a @MainActor `.shared` there warns
+        // ("error in the Swift 6 language mode") even though this type is
+        // itself @MainActor. Same pattern DashboardHomeView already uses.
+        self.volumeManager = volumeManager ?? MicrophoneVolumeManager.shared
         self.recorderFactory = recorderFactory
         self.dateProvider = dateProvider
         super.init()

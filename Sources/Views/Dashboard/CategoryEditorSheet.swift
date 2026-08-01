@@ -22,11 +22,16 @@ internal struct CategoryEditorSheet: View {
     
     init(
         category: CategoryDefinition?,
-        categoryStore: CategoryStore = .shared,
+        categoryStore: CategoryStore? = nil,
         onSave: @escaping (CategoryDefinition) -> Void,
         onDelete: (() -> Void)? = nil
     ) {
-        self.categoryStore = categoryStore
+        // A5: resolved in the body rather than as a default argument.
+        // Default-argument expressions are evaluated in the CALLER's
+        // isolation, so referencing a @MainActor `.shared` there warns
+        // ("error in the Swift 6 language mode") even though this type is
+        // itself @MainActor. Same pattern DashboardHomeView already uses.
+        self.categoryStore = categoryStore ?? .shared
         self.originalCategory = category
         self.onSave = onSave
         self.onDelete = onDelete
