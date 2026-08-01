@@ -98,9 +98,11 @@ class SnapshotTestCase: XCTestCase {
         if let flat = dominantColorFraction(pngData: actualData), flat > 0.995 {
             XCTFail(
                 "Snapshot \(name) rendered as a flat colour (\(String(format: "%.2f", flat * 100))% "
-                    + "of pixels are one colour) — nothing was drawn, so this assertion is vacuous. "
-                    + "ImageRenderer cannot draw ScrollView content; snapshot the scrollable content "
-                    + "directly instead of the view that wraps it.",
+                    + "of pixels are one colour). Either nothing was drawn — ImageRenderer cannot "
+                    + "draw ScrollView content, so snapshot the scrollable content rather than the "
+                    + "view wrapping it — or the view really is this sparse, in which case the "
+                    + "snapshot is not worth keeping: it would match its own baseline no matter "
+                    + "what changed.",
                 file: file,
                 line: line
             )

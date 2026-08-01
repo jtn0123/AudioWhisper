@@ -255,19 +255,20 @@ extension UISnapshotTests {
 
     // MARK: - Transcripts View Snapshots
 
-    func testDashboardTranscriptsViewSnapshot() throws {
-        // Deferred(G1): same root cause as testTranscriptionHistoryViewSnapshot —
-        // DashboardTranscriptsView just hosts TranscriptionHistoryView, whose
-        // records arrive from an async paged fetch that has not completed when
-        // ImageRenderer captures. Unlike those two, this test was never skipped:
-        // it rendered an empty pane and compared it against an equally empty
-        // baseline (99.78% one colour), so it passed while asserting nothing.
-        // The flat-render guard in SnapshotTestCase now catches that.
-        //
-        // Re-enable together with the other two once the first load can be
-        // awaited deterministically.
-        throw XCTSkip("Async paged fetch makes initial render non-deterministic; see Deferred(G1)")
-    }
+    // No DashboardTranscriptsView snapshot, deliberately.
+    //
+    // It is a ~25-line wrapper that shows TranscriptionHistoryView when
+    // DataManager.shared has a model container and a static "History not
+    // available" icon otherwise. Which branch renders depends on whether some
+    // earlier test in the same process called DataManager.shared.initialize(),
+    // so the baseline would flip with test ordering — flaky by construction.
+    //
+    // The branch worth covering (the actual history UI) is covered directly by
+    // testTranscriptionHistoryViewSnapshot / ...LightSnapshot, which inject a
+    // pre-loaded view model. Stabilising this one would mean adding an
+    // in-memory-container seam to DataManager purely to re-test UI that is
+    // already tested. It previously "passed" by comparing one 99.78%-blank
+    // image against another.
 
     // MARK: - Additional Waveform Style Snapshots (D3)
     //
