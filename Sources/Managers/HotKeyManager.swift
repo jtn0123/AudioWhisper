@@ -53,6 +53,11 @@ internal class HotKeyManager {
     }
 
     private func registerKeyDownHandler() {
+        // Carbon hotkey registration aborts the process outright when there is
+        // no WindowServer connection — see WindowServer.isAvailable. Degrade to
+        // "no hotkeys" rather than SIGABRT.
+        guard WindowServer.isAvailable else { return }
+
         // Remove any handler previously installed by another instance so we
         // don't accumulate them when multiple managers are created (e.g. in
         // tests). AudioWhisper registers only the `.toggleRecording` name, so
@@ -74,6 +79,8 @@ internal class HotKeyManager {
     }
 
     private func setupHotKeyFromString(_ hotkeyString: String) {
+        guard WindowServer.isAvailable else { return }
+
         let parsed = Self.parseHotkeyString(hotkeyString)
 
         guard let key = parsed.key else {

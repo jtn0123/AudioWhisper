@@ -178,7 +178,15 @@ final class AppDelegateMenuTests: XCTestCase {
 
     // MARK: - Screen Configuration Tests
 
-    func testScreenConfigurationChangedResetsIconCache() {
+    func testScreenConfigurationChangedResetsIconCache() throws {
+        // A real status item needs a WindowServer connection; without one this
+        // aborts the whole test process rather than failing. CI runners have no
+        // GUI session, so this is skipped there and runs locally.
+        try XCTSkipUnless(
+            WindowServer.isAvailable,
+            "Needs a WindowServer connection to create an NSStatusItem"
+        )
+
         // Create status item for testing
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         appDelegate.statusItem = statusItem

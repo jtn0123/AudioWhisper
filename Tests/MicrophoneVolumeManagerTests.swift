@@ -57,6 +57,9 @@ final class MicrophoneVolumeManagerTests: IsolatedXCTestCase {
 
     // MARK: - Protocol Conformance Tests
 
+    // MicrophoneVolumeManager.shared is main-actor isolated; reaching it from
+    // this nonisolated test is an error under the Swift 6 language mode.
+    @MainActor
     func testMicrophoneVolumeManagerConformsToProtocol() {
         let manager: MicrophoneVolumeManaging = MicrophoneVolumeManager.shared
         XCTAssertNotNil(manager)
