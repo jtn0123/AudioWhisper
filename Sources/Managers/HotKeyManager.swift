@@ -28,6 +28,11 @@ internal struct ParsedHotkey {
 // `KeyboardShortcuts.Shortcut` and registers a key-down handler with the
 // KeyboardShortcuts library. AppDefaults remains the canonical store; the
 // KeyboardShortcuts UserDefaults entry is a runtime mirror.
+// A6: @MainActor because KeyboardShortcuts 3.x isolated its API to the main
+// actor, and global hotkey registration is inherently main-thread work anyway.
+// (Contrast PressAndHoldKeyMonitor, which is deliberately queue-based and takes
+// @unchecked Sendable instead — see A5.)
+@MainActor
 internal class HotKeyManager {
     private let onHotKeyPressed: () -> Void
 
@@ -89,7 +94,11 @@ internal class HotKeyManager {
     // Same string format as before ("⌘⇧Space", "⌘A", "F5", etc.). Extracted
     // as a static helper so callers (e.g. tests, future migrations) can use
     // it without instantiating the manager.
-    internal static func parseHotkeyString(_ hotkeyString: String) -> ParsedHotkey {
+    // A6: nonisolated because it is a PURE parser — it reads no actor state.
+    // The comment above invites tests and future migrations to call it, which
+    // they cannot do from a nonisolated context if it inherits @MainActor from
+    // the enclosing type.
+    internal nonisolated static func parseHotkeyString(_ hotkeyString: String) -> ParsedHotkey {
         var modifiers: NSEvent.ModifierFlags = []
         var keyString = hotkeyString
 
@@ -129,7 +138,9 @@ internal class HotKeyManager {
         "←": .leftArrow, "→": .rightArrow
     ]
 
-    private static func stringToKey(_ keyString: String) -> Key? {
+    // A6: nonisolated for the same reason as parseHotkeyString — a pure
+    // dictionary lookup with no actor state.
+    private nonisolated static func stringToKey(_ keyString: String) -> Key? {
         keyLookup[keyString.uppercased()]
     }
 

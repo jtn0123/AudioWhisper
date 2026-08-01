@@ -1,6 +1,11 @@
 import XCTest
 @testable import AudioWhisper
 
+// A6: @MainActor because HotKeyManager became main-actor isolated when
+// KeyboardShortcuts 3.x isolated its API. Global hotkey registration is
+// main-thread work, so exercising it from the main actor is also more faithful
+// to how the app uses it.
+@MainActor
 final class HotKeyManagerTests: IsolatedXCTestCase {
     // Deferred(D1): HotKeyManager reads `globalHotkey` from UserDefaults.standard
     // directly. Once it accepts an injected UserDefaults, route writes
