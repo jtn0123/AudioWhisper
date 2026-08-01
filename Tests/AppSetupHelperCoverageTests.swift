@@ -152,50 +152,73 @@ final class SemanticCorrectionModelDefaultTests: XCTestCase {
         )
     }
 
-    /// The legacy repo must stay distinct from the current default, otherwise
+    /// Every prior default must stay distinct from the current one, otherwise
     /// the migration below is a silent no-op.
-    func testLegacyAndCurrentDefaultsAreDistinct() {
-        XCTAssertNotEqual(
-            AppDefaults.legacySemanticCorrectionModelRepo,
-            AppDefaults.defaultSemanticCorrectionModelRepo
+    func testPriorDefaultsAreDistinctFromCurrent() {
+        XCTAssertFalse(
+            AppDefaults.priorSemanticCorrectionModelRepos
+                .contains(AppDefaults.defaultSemanticCorrectionModelRepo),
+            "The current default must not also be listed as a prior default"
+        )
+        XCTAssertEqual(
+            Set(AppDefaults.priorSemanticCorrectionModelRepos).count,
+            AppDefaults.priorSemanticCorrectionModelRepos.count,
+            "Prior defaults must not contain duplicates"
         )
     }
 
     // MARK: Migration policy
 
-    /// Existing user, never chose a model, already has the legacy model on disk:
-    /// pin them so the B1 fix doesn't trigger a surprise ~1 GB download.
-    func testPinsLegacyModelForExistingUserWhoHasItDownloaded() {
-        XCTAssertTrue(
-            AppSetupHelper.shouldPinLegacyCorrectionModel(
+    /// Existing user, never chose a model, already has a previously-shipped
+    /// default on disk: keep them on it rather than silently switching them to a
+    /// new default and making them download 2.3 GB.
+    func testPinsPriorDefaultTheUserAlreadyHas() {
+        XCTAssertEqual(
+            AppSetupHelper.priorDefaultToPin(
                 hasExplicitChoice: false,
-                legacyModelIsDownloaded: true
-            )
+                downloadedPriorDefaults: ["mlx-community/Qwen3-1.7B-4bit"]
+            ),
+            "mlx-community/Qwen3-1.7B-4bit"
         )
     }
 
-    /// Fresh install: nothing downloaded, no choice made — take the new default.
+    /// With several old defaults cached, keep the most recent — the input is
+    /// ordered newest-first.
+    func testPrefersTheMostRecentPriorDefault() {
+        XCTAssertEqual(
+            AppSetupHelper.priorDefaultToPin(
+                hasExplicitChoice: false,
+                downloadedPriorDefaults: [
+                    "mlx-community/Qwen3-1.7B-4bit",
+                    "mlx-community/Llama-3.2-1B-Instruct-4bit"
+                ]
+            ),
+            "mlx-community/Qwen3-1.7B-4bit"
+        )
+    }
+
+    /// Fresh install: nothing cached, no choice made — take the new default.
     func testFreshInstallGetsTheNewDefault() {
-        XCTAssertFalse(
-            AppSetupHelper.shouldPinLegacyCorrectionModel(
+        XCTAssertNil(
+            AppSetupHelper.priorDefaultToPin(
                 hasExplicitChoice: false,
-                legacyModelIsDownloaded: false
+                downloadedPriorDefaults: []
             )
         )
     }
 
-    /// An explicit user choice always wins, downloaded or not.
+    /// An explicit user choice always wins, cached or not.
     func testExplicitChoiceIsNeverOverwritten() {
-        XCTAssertFalse(
-            AppSetupHelper.shouldPinLegacyCorrectionModel(
+        XCTAssertNil(
+            AppSetupHelper.priorDefaultToPin(
                 hasExplicitChoice: true,
-                legacyModelIsDownloaded: true
+                downloadedPriorDefaults: ["mlx-community/Qwen3-1.7B-4bit"]
             )
         )
-        XCTAssertFalse(
-            AppSetupHelper.shouldPinLegacyCorrectionModel(
+        XCTAssertNil(
+            AppSetupHelper.priorDefaultToPin(
                 hasExplicitChoice: true,
-                legacyModelIsDownloaded: false
+                downloadedPriorDefaults: []
             )
         )
     }

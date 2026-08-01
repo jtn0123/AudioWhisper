@@ -130,7 +130,11 @@ internal final class SemanticCorrectionService {
         let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
         let prompt = loadPrompt(for: category)
         let output = try await mlxService.correct(text: text, modelRepo: modelRepo, pythonPath: pyURL.path, systemPrompt: prompt)
-        let merged = Self.safeMerge(original: text, corrected: output, maxChangeRatio: 0.6)
+        let merged = Self.safeMerge(
+            original: text,
+            corrected: output,
+            maxChangeRatio: Self.maxChangeRatio(for: category.id)
+        )
         if merged == text {
             logger.info("MLX correction produced no accepted change (kept original)")
         } else {
@@ -194,6 +198,34 @@ internal final class SemanticCorrectionService {
     }
 
     // MARK: - Safety Guard (internal for testability)
+    /// Maximum share of the transcript a correction may rewrite before it is
+    /// rejected, per category.
+    ///
+    /// A3: this used to be a flat 0.6 everywhere, which actively fought the
+    /// command-line categories. Measured example from the 2026-07-31 model
+    /// benchmark — a correction that is exactly what the Terminal prompt asks
+    /// for, and was thrown away at ratio 0.664:
+    ///
+    ///     in : um so run suit oh apt update and then uh see dee into tilde
+    ///          slash documents and like grep dash v for the error you know
+    ///          then pipe to less
+    ///     out: sudo apt update && cd ~/Documents && grep -v error | less
+    ///
+    /// Good terminal correction legitimately COMPRESSES rambling dictation into
+    /// a terse command, so edit distance from the raw transcript is large by
+    /// design. Prose correction does not do that, and a large edit there really
+    /// does signal the model went off the rails — so prose keeps the tight
+    /// bound. The guard is not weakened globally, only where the tight bound
+    /// was wrong.
+    static func maxChangeRatio(for categoryId: String) -> Double {
+        switch categoryId {
+        case "terminal", "coding":
+            return 0.85
+        default:
+            return 0.6
+        }
+    }
+
     /// Hard ceiling above which we skip the O(m*n) Levenshtein computation.
     /// At ~4k chars the DP runs in well under a second; above that, a 30+ minute
     /// transcript can stall the correction pipeline for many seconds. Load-bearing.

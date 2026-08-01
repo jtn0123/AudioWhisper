@@ -64,11 +64,35 @@ final class MLXModelManagerTests: IsolatedXCTestCase {
         }
     }
 
-    func testRecommendedModelsContainExpectedModels() {
-        let repos = MLXModelManager.recommendedModels.map { $0.repo }
+    /// The catalog changes as models are benchmarked, so assert invariants that
+    /// must hold for ANY catalog rather than freezing today's membership.
+    func testRecommendedModelsInvariants() {
+        let models = MLXModelManager.recommendedModels
+        let repos = models.map { $0.repo }
 
-        XCTAssertTrue(repos.contains("mlx-community/Llama-3.2-1B-Instruct-4bit"))
-        XCTAssertTrue(repos.contains("mlx-community/gemma-3-1b-it-4bit"))
+        XCTAssertFalse(models.isEmpty)
+        XCTAssertEqual(Set(repos).count, repos.count, "No duplicate repos")
+
+        XCTAssertTrue(
+            repos.contains(AppDefaults.defaultSemanticCorrectionModelRepo),
+            "The default correction model must be offered in the picker, or users "
+                + "cannot see or manage what they are running"
+        )
+
+        for model in models {
+            XCTAssertTrue(model.repo.hasPrefix("mlx-community/"), "\(model.repo) is not an MLX repo")
+            XCTAssertFalse(model.description.isEmpty, "\(model.repo) needs a description")
+            XCTAssertFalse(model.estimatedSize.isEmpty, "\(model.repo) needs a size")
+        }
+    }
+
+    /// Retired by the 2026-07-31 benchmark: Phi-3.5-mini was accepted by
+    /// safeMerge 1/6 times while labelled "Premium quality"; Llama-3.2-1B fixed
+    /// 0/6 homophones and was the only candidate that dropped required terms.
+    func testRetiredModelsAreNotOffered() {
+        let repos = MLXModelManager.recommendedModels.map { $0.repo }
+        XCTAssertFalse(repos.contains("mlx-community/Phi-3.5-mini-instruct-4bit"))
+        XCTAssertFalse(repos.contains("mlx-community/Llama-3.2-1B-Instruct-4bit"))
     }
 
     // MARK: - Format Bytes Tests

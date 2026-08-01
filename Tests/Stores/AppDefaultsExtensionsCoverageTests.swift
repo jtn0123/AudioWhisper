@@ -102,8 +102,13 @@ final class AppDefaultsExtensionsCoverageTests: IsolatedXCTestCase {
     }
 
     func testSemanticCorrectionModelRepoDefaultWhenUnset() {
+        // Assert the WIRING (getter falls back to the documented default)
+        // rather than duplicating the literal — AppDefaultsTests pins the value.
         AppDefaults.removeValue(for: .semanticCorrectionModelRepo)
-        XCTAssertEqual(AppDefaults.semanticCorrectionModelRepo, "mlx-community/Qwen3-1.7B-4bit")
+        XCTAssertEqual(
+            AppDefaults.semanticCorrectionModelRepo,
+            AppDefaults.defaultSemanticCorrectionModelRepo
+        )
     }
 
     func testMaxModelStorageGBRoundTrip() {

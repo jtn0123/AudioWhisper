@@ -108,6 +108,82 @@ def _safe_generate(
         )
 
 
+# --------------------------------------------------------------- sanitisation
+# Chat-template control tokens. Models routinely emit these when generation runs
+# past the answer. They are never part of a corrected transcript, so removing
+# them is unconditionally safe.
+#
+# Found by the 2026-07-31 model benchmark: Phi-3.5-mini produced a CORRECT
+# correction that arrived as
+#     "Remember to call the dentist tomorrow morning.<|end|><|assistant|> …"
+# The trailing tokens pushed safeMerge's edit-distance ratio to 0.6083 — just
+# past the 0.6 threshold — so the app discarded a perfectly good correction and
+# pasted the raw transcript instead.
+_SPECIAL_TOKEN_RE = re.compile(r"<\|[^|>]{0,40}\|?>")
+
+# Reasoning preambles. `<think>` is only ONE of the formats in the wild:
+#   Qwen3            -> "<think> … </think>"
+#   gemma-4          -> "<|channel>thought\nThinking Process: …"
+#   Qwen3.5          -> "Thinking Process: …"      (no tags at all)
+# The bare-text variants were invisible to the old `<think>`-only stripper, so
+# raw chain-of-thought flowed into the transcript and safeMerge rejected the
+# whole correction. Both models scored 0/6 in the benchmark purely because of
+# this, not because of output quality.
+#
+# The risk here is asymmetric, so the match is deliberately narrow:
+#   * missing a preamble  -> safeMerge rejects, user gets the raw transcript
+#                            (annoying, but nothing is lost)
+#   * matching too eagerly -> the user's actual dictated words are deleted
+# So this requires ALL of:
+#   1. position at the very start of the output (the phrase can legitimately
+#      appear mid-transcript — "document our thinking process: first we scope"),
+#   2. an optional bare "thought" marker, which is what gemma-4 leaves behind
+#      once "<|channel>" has been removed,
+#   3. the heading itself, and
+#   4. structured-reasoning evidence immediately after — a numbered/bulleted
+#      list or bold markdown. Models lay reasoning out that way; dictation does
+#      not.
+# A bare "Reasoning:" heading is intentionally NOT matched: someone dictating
+# notes could plausibly open with it.
+_REASONING_HEADING_RE = re.compile(
+    r"\A\s*"
+    r"(?:thought\s*|thinking\s*)?"          # gemma-4 residue after <|channel>
+    r"(?:thinking|thought)\s+process\s*:"   # the heading
+    r"\s*(?:\d+[.)]|[-*]\s|\*\*)"           # structured-reasoning evidence
+    r".*",
+    flags=re.DOTALL | re.IGNORECASE,
+)
+
+
+def sanitize_model_output(generated: str) -> str:
+    """Strip reasoning preambles and control tokens from raw model output.
+
+    Deliberately conservative. Returning an EMPTY string is a useful outcome —
+    `correct()` treats that as "the model produced only reasoning" and retries
+    with thinking disabled, which is exactly the right recovery. Guessing at an
+    answer buried inside a truncated reasoning dump would be worse.
+
+    NOT handled, on purpose: models that emit several alternative answers
+    ("… | less\\n\\nAlternatively, for a more concise version:\\n…"). There is no
+    safe way to pick one — "Alternatively," is also a perfectly ordinary thing to
+    dictate, so truncating there would corrupt real transcripts. That behaviour
+    is a model-quality problem and is why Phi-3.5-mini is not in the catalog.
+    """
+    if not generated:
+        return ""
+
+    # 1. Complete <think>…</think> blocks.
+    cleaned = re.sub(r"<think>.*?</think>", "", generated, flags=re.DOTALL)
+    # 2. Unterminated <think> (model hit max_tokens mid-thought).
+    cleaned = re.sub(r"<think>.*", "", cleaned, flags=re.DOTALL)
+    # 3. Control tokens, including gemma-4's "<|channel>" reasoning marker.
+    cleaned = _SPECIAL_TOKEN_RE.sub("", cleaned)
+    # 4. A leading bare-text reasoning heading and everything after it.
+    cleaned = _REASONING_HEADING_RE.sub("", cleaned)
+
+    return cleaned.strip().strip('"').strip("'").strip()
+
+
 def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
     model, tokenizer = load_correction_model(repo)
 
@@ -128,12 +204,8 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
     if generated.startswith(chat_prompt):
         generated = generated[len(chat_prompt) :]
 
-    # Strip complete <think>...</think> blocks
-    cleaned = re.sub(r"<think>.*?</think>", "", generated, flags=re.DOTALL)
-    # Strip incomplete <think> blocks (model truncated before closing tag)
-    cleaned = re.sub(r"<think>.*", "", cleaned, flags=re.DOTALL)
-    cleaned = cleaned.strip().strip('"').strip("'").strip()
-    
+    cleaned = sanitize_model_output(generated)
+
     # If result is empty (all thinking, no answer), retry with thinking disabled
     if not cleaned:
         try:
@@ -143,9 +215,7 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
             generated = _safe_generate(model, tokenizer, chat_prompt_no_think, max_tokens)
             if generated.startswith(chat_prompt_no_think):
                 generated = generated[len(chat_prompt_no_think):]
-            cleaned = re.sub(r"<think>.*?</think>", "", generated, flags=re.DOTALL)
-            cleaned = re.sub(r"<think>.*", "", cleaned, flags=re.DOTALL)
-            cleaned = cleaned.strip().strip('"').strip("'").strip()
+            cleaned = sanitize_model_output(generated)
         except Exception:
             # Bug fix: Return original text if fallback fails instead of empty string
             cleaned = text

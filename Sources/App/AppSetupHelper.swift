@@ -36,26 +36,31 @@ internal class AppSetupHelper {
     /// Idempotent: writing the key makes `hasValue` true on every later launch.
     static func migrateSemanticCorrectionModelDefault() {
         let hasExplicitChoice = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
-        let legacyPresent = isModelInHuggingFaceCache(AppDefaults.legacySemanticCorrectionModelRepo)
+        let downloadedPriorDefaults = AppDefaults.priorSemanticCorrectionModelRepos
+            .filter { isModelInHuggingFaceCache($0) }
 
-        guard shouldPinLegacyCorrectionModel(
+        guard let pinned = priorDefaultToPin(
             hasExplicitChoice: hasExplicitChoice,
-            legacyModelIsDownloaded: legacyPresent
+            downloadedPriorDefaults: downloadedPriorDefaults
         ) else { return }
 
-        AppDefaults.semanticCorrectionModelRepo = AppDefaults.legacySemanticCorrectionModelRepo
-        Logger.app.info(
-            "Pinned semantic-correction model to the pre-2.0 default; it is already downloaded."
-        )
+        AppDefaults.semanticCorrectionModelRepo = pinned
+        Logger.app.info("Pinned semantic-correction model to a previously-shipped default already on disk.")
     }
 
     /// Pure decision half of `migrateSemanticCorrectionModelDefault`, split out
     /// so the policy is testable without touching UserDefaults or the filesystem.
-    static func shouldPinLegacyCorrectionModel(
+    ///
+    /// Returns the repo to pin, or `nil` to let the current default apply.
+    /// `downloadedPriorDefaults` must preserve
+    /// `AppDefaults.priorSemanticCorrectionModelRepos` order (newest first), so
+    /// a user who has several old models cached keeps the most recent one.
+    static func priorDefaultToPin(
         hasExplicitChoice: Bool,
-        legacyModelIsDownloaded: Bool
-    ) -> Bool {
-        !hasExplicitChoice && legacyModelIsDownloaded
+        downloadedPriorDefaults: [String]
+    ) -> String? {
+        guard !hasExplicitChoice else { return nil }
+        return downloadedPriorDefaults.first
     }
 
     /// Whether `repo` has a snapshot directory in the HuggingFace hub cache.

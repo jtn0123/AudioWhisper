@@ -113,8 +113,13 @@ final class AppDefaultsTests: IsolatedXCTestCase {
     }
 
     func testSemanticCorrectionModelRepoDefault() {
+        // The literal is pinned once, here, so a silent catalog change is caught.
+        // Chosen by measurement — see .claude/bench/.
         AppDefaults.removeValue(for: .semanticCorrectionModelRepo)
-        XCTAssertEqual(AppDefaults.semanticCorrectionModelRepo, "mlx-community/Qwen3-1.7B-4bit")
+        XCTAssertEqual(
+            AppDefaults.semanticCorrectionModelRepo,
+            "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+        )
     }
 
     func testSemanticCorrectionModelRepoSetAndGet() {
