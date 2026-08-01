@@ -23,7 +23,7 @@ internal struct DashboardCorrectionView: View {
     @State var isRefreshingModels = false
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Semantic Correction")
                     .font(.title2.weight(.semibold))

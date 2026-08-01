@@ -83,7 +83,7 @@ internal struct DashboardProvidersView: View {
     }
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: 0) {
                 // Hero header
                 headerSection

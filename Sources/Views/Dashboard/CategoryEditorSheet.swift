@@ -60,7 +60,7 @@ internal struct CategoryEditorSheet: View {
         VStack(spacing: 0) {
             header
 
-            ScrollView {
+            ScrollableContent {
                 VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                     previewCard
                     identitySection

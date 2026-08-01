@@ -18,9 +18,14 @@ import CoreGraphics
 ///    diff by eye before committing — do not re-record reflexively, that is how
 ///    a real regression gets blessed.
 ///  * In CI: the `snapshots` job is report-only for exactly this reason, and it
-///    uploads its renders as a `snapshot-renders` artifact. To make it blocking,
-///    download that artifact once, commit those PNGs, and drop the job's
-///    continue-on-error.
+///    uploads its renders as a diagnostic artifact.
+///
+/// **Do not adopt CI renders as baselines.** That was this file's previous
+/// advice and it is wrong. Measured 2026-08-01 against a real run: all 34 CI
+/// renders diverged from the local ones by 19–100% of pixels, because the
+/// runner draws AppKit-backed controls as the yellow "cannot render" placeholder
+/// and drops materials entirely. Committing them would have replaced every
+/// baseline with a picture of a broken render.
 @MainActor
 class SnapshotTestCase: XCTestCase {
     private let snapshotFolderName = "__Snapshots__"
@@ -65,6 +70,10 @@ class SnapshotTestCase: XCTestCase {
         let content = view
             .frame(width: size.width, height: size.height)
             .environment(\.colorScheme, colorScheme)
+            // ImageRenderer draws ScrollView content as a flat rectangle, which
+            // is what made 13 baselines blank. ScrollableContent honours this by
+            // dropping the ScrollView wrapper so the content is actually drawn.
+            .environment(\.flattensScrollViews, true)
             .environmentObject(WindowCoordinator.shared)
             .environment(MLXModelManager.shared)
             .environment(PermissionManager.shared)
@@ -78,6 +87,26 @@ class SnapshotTestCase: XCTestCase {
             return
         }
         
+        // A render that is one flat colour is not a regression test — it will
+        // match its own baseline forever no matter what the view does. 13 of the
+        // 39 committed baselines were exactly this (10 of them a SINGLE colour)
+        // because `ImageRenderer` does not draw `ScrollView` content, and every
+        // one of them had been passing since it was recorded.
+        //
+        // Checked before the recording branch too, so a blank baseline can never
+        // be written in the first place.
+        if let flat = dominantColorFraction(pngData: actualData), flat > 0.995 {
+            XCTFail(
+                "Snapshot \(name) rendered as a flat colour (\(String(format: "%.2f", flat * 100))% "
+                    + "of pixels are one colour) — nothing was drawn, so this assertion is vacuous. "
+                    + "ImageRenderer cannot draw ScrollView content; snapshot the scrollable content "
+                    + "directly instead of the view that wraps it.",
+                file: file,
+                line: line
+            )
+            return
+        }
+
         let snapshotURL = makeSnapshotURL(for: name, file: file)
         let fileManager = FileManager.default
         try? fileManager.createDirectory(at: snapshotURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -141,6 +170,34 @@ class SnapshotTestCase: XCTestCase {
         return url
             .appendingPathComponent(snapshotFolderName, isDirectory: true)
             .appendingPathComponent("\(name).png")
+    }
+
+    /// Fraction of pixels (0...1) occupied by the single most common colour.
+    ///
+    /// Used to detect a render that drew nothing. Samples every other pixel in
+    /// each direction — a quarter of the work, and far more precision than the
+    /// 0.995 threshold needs.
+    private func dominantColorFraction(pngData: Data) -> Double? {
+        guard let image = NSImage(data: pngData),
+              let bytes = image.normalizedRGBABytes(),
+              bytes.count % 4 == 0,
+              !bytes.isEmpty else {
+            return nil
+        }
+        let pixelCount = bytes.count / 4
+        var counts: [UInt32: Int] = [:]
+        var sampled = 0
+        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let px = raw.bindMemory(to: UInt8.self)
+            for pixel in stride(from: 0, to: pixelCount, by: 2) {
+                let offset = pixel * 4
+                let key = UInt32(px[offset]) << 16 | UInt32(px[offset + 1]) << 8 | UInt32(px[offset + 2])
+                counts[key, default: 0] += 1
+                sampled += 1
+            }
+        }
+        guard sampled > 0, let top = counts.values.max() else { return nil }
+        return Double(top) / Double(sampled)
     }
 
     /// Fraction of pixels (0...1) whose RGBA bytes differ between the two images.

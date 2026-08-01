@@ -1,3 +1,4 @@
+import XCTest
 import SwiftUI
 import SwiftData
 @testable import AudioWhisper
@@ -256,16 +257,17 @@ extension UISnapshotTests {
     // MARK: - Transcripts View Snapshots
 
     func testDashboardTranscriptsViewSnapshot() throws {
-        let container = try makePreviewContainer()
-        let view = DashboardTranscriptsView()
-            .modelContainer(container)
-
-        assertSnapshot(
-            view,
-            named: "DashboardTranscriptsView-light",
-            size: CGSize(width: 750, height: 600),
-            colorScheme: .light
-        )
+        // Deferred(G1): same root cause as testTranscriptionHistoryViewSnapshot —
+        // DashboardTranscriptsView just hosts TranscriptionHistoryView, whose
+        // records arrive from an async paged fetch that has not completed when
+        // ImageRenderer captures. Unlike those two, this test was never skipped:
+        // it rendered an empty pane and compared it against an equally empty
+        // baseline (99.78% one colour), so it passed while asserting nothing.
+        // The flat-render guard in SnapshotTestCase now catches that.
+        //
+        // Re-enable together with the other two once the first load can be
+        // awaited deterministically.
+        throw XCTSkip("Async paged fetch makes initial render non-deterministic; see Deferred(G1)")
     }
 
     // MARK: - Additional Waveform Style Snapshots (D3)

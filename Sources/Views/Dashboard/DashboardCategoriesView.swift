@@ -9,7 +9,7 @@ internal struct DashboardCategoriesView: View {
     @State private var isCreatingNew = false
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                 pageHeader
                 categoriesOverview

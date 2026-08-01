@@ -362,10 +362,15 @@ jobs:
             exit 1
           fi
 
-      - name: Upload renders for baseline adoption
+      # DIAGNOSTIC ONLY — these are not baselines. Measured 2026-08-01: every
+      # one of the 34 renders this job produced diverged from the locally
+      # recorded baseline by 19-100% of pixels, because the runner draws
+      # AppKit-backed controls as the yellow "cannot render" placeholder. Keep
+      # them for eyeballing a CI-only rendering question; never commit them.
+      - name: Upload renders (diagnostic only, NOT baselines)
         uses: actions/upload-artifact@v4
         with:
-          name: snapshot-renders
+          name: snapshot-renders-diagnostic
           path: Tests/__Snapshots__/
           if-no-files-found: error
 

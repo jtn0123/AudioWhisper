@@ -19,7 +19,7 @@ internal struct DashboardPreferencesView: View {
     private let storageOptions: [Double] = [1, 2, 5, 10, 20]
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                 pageHeader
                 generalSection
