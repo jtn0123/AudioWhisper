@@ -1,6 +1,5 @@
 import XCTest
 import AppKit
-import SwiftUI
 @testable import AudioWhisper
 
 /// Tests for WindowManager base class functionality

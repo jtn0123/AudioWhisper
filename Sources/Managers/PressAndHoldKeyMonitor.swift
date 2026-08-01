@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import os
 
 internal enum PressAndHoldMode: String, CaseIterable, Identifiable {
     case hold

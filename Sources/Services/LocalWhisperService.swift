@@ -1,6 +1,5 @@
 import Foundation
 @preconcurrency import WhisperKit
-import AVFoundation
 
 // Actor to manage WhisperKit instances safely across concurrency boundaries.
 // Audit item B3: keys are the typed `WhisperModel` enum, not the raw model

@@ -1,4 +1,5 @@
 import Foundation
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AVFoundation
 
 class MockAVAudioRecorder: AVAudioRecorder, @unchecked Sendable {

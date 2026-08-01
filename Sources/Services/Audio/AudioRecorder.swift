@@ -1,6 +1,6 @@
 import Foundation
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AVFoundation
-import Combine
 import os.log
 
 @MainActor

@@ -1,5 +1,4 @@
 import XCTest
-import SwiftData
 @testable import AudioWhisper
 
 // Concurrency / performance / settings / real-world integration tests, split out of

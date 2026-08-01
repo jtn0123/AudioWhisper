@@ -317,20 +317,13 @@ jobs:
   # lint`. They had therefore never executed — which is how a 160-line
   # DependencyContainer with zero call sites survived in the codebase.
   #
-  # REPORT-ONLY, deliberately. The first run surfaces ~214 unused_declaration and
-  # ~117 unused_import findings, and a large share are false positives:
-  # protocol-conforming mock members, SwiftUI conformances, and umbrella imports
-  # (e.g. `import Cocoa` in an NSImage extension is flagged even though it is
-  # required). Triaging that backlog is its own piece of work; until it is done,
-  # failing the build on these would just teach people to ignore CI.
-  #
-  # To make it blocking later: work the backlog down, then drop `|| true` and add
-  # `--strict`.
+  # PARTIALLY GATED. `unused_import` is enforced (backlog triaged to zero against
+  # the compiler); `unused_declaration` is reported only — see the note on its
+  # step below for why.
   analyze:
-    name: SwiftLint analyze (report-only)
+    name: SwiftLint analyze
     runs-on: macos-15
     timeout-minutes: 30
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -366,10 +359,36 @@ jobs:
           xcodebuild -scheme AudioWhisper -destination 'platform=macOS' \
             build-for-testing 2>&1 | tee xcodebuild.log | tail -5
 
-      - name: Analyze
+      - name: Analyze (report all findings)
         run: |
           swiftlint analyze --compiler-log-path xcodebuild.log \
             --reporter github-actions-logging || true
           echo "--- summary ---"
           swiftlint analyze --compiler-log-path xcodebuild.log --quiet 2>/dev/null \
             | grep -oE '\((unused_declaration|unused_import)\)' | sort | uniq -c || true
+
+      - name: Gate on unused_import
+        run: |
+          # unused_import IS enforced. The backlog was triaged by removing each
+          # flagged import and rebuilding — the compiler, not the analyzer, is
+          # the oracle. 95 were genuinely unused and removed; 20 were false
+          # positives (umbrella imports like Cocoa, modules needed only for @objc
+          # or a type in a signature, and `@testable import AudioWhisper`) and
+          # carry an inline swiftlint:disable:next with that justification.
+          # The rule now reports 0, so any new finding is real.
+          count=$(swiftlint analyze --compiler-log-path xcodebuild.log --quiet 2>/dev/null \
+            | grep -c 'unused_import' || true)
+          if [ "${count:-0}" -ne 0 ]; then
+            echo "::error::$count unused import(s). Remove them, or if the compiler"
+            echo "::error::genuinely needs one, add swiftlint:disable:next with a reason."
+            exit 1
+          fi
+          echo "unused_import: 0"
+
+      # unused_declaration is NOT gated yet. 215 findings, and 87 of those are in
+      # Tests/Mocks — mock members that satisfy a protocol and are only ever
+      # called through it, which the analyzer cannot see. Gating on that would
+      # fail every build for reasons that are not defects. Triaging the ~128
+      # remaining is real work and carries real risk (deleting something reached
+      # via protocol or dynamic dispatch), so it stays reported-only until
+      # someone works it down.

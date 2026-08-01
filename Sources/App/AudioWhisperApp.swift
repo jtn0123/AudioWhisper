@@ -1,5 +1,4 @@
 import AppKit
-import SwiftData
 import SwiftUI
 
 @main

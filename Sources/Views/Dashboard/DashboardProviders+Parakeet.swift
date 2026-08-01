@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 private actor VerificationMessageStore {
     private var stdout: String = ""

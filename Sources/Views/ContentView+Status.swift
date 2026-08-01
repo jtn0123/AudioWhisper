@@ -1,5 +1,3 @@
-import SwiftUI
-
 internal extension ContentView {
     func enhanceProgressMessage(_ message: String) -> String {
         return message

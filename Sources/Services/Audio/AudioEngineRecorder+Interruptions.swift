@@ -1,6 +1,5 @@
 import Accelerate
 import AppKit
-import AVFoundation
 import Foundation
 import os.log
 

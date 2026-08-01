@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 internal struct DashboardProvidersView: View {
     // Persistent settings - Transcription

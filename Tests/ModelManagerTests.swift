@@ -1,6 +1,5 @@
 import XCTest
 import Foundation
-import WhisperKit
 @testable import AudioWhisper
 
 // MARK: - Thread-Safe Helper

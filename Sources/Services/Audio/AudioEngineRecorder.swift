@@ -1,5 +1,5 @@
-import Accelerate
 import AppKit
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AVFoundation
 import Combine
 import Foundation

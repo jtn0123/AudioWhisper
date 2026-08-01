@@ -1,6 +1,4 @@
 import SwiftUI
-import SwiftData
-import AppKit
 
 // MARK: - DashboardHomeView (refined)
 //

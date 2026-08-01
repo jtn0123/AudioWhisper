@@ -1,5 +1,4 @@
 import XCTest
-import AppKit
 @testable import AudioWhisper
 
 // Thread-safety regression tests, split out of PressAndHoldKeyMonitorTests

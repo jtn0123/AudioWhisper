@@ -1,5 +1,3 @@
-import Foundation
-
 internal extension WhisperModel {
     var whisperKitModelName: String {
         switch self {

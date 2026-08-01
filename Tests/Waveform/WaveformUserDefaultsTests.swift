@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import AudioWhisper
 
 /// Tests for the waveform-related `UserDefaults` extension accessors. Split

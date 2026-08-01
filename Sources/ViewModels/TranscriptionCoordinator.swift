@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 import os.log
 
 /// Bundles the run-specific context needed to complete a transcription so the

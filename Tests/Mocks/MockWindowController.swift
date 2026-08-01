@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 @testable import AudioWhisper
 
 /// Mock WindowController for testing window operations without actual UI

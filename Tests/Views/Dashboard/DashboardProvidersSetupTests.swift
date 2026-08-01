@@ -1,5 +1,5 @@
 import XCTest
-import SwiftUI
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 @testable import AudioWhisper
 
 /// Setup-sheet and storage-limit coverage for DashboardProvidersView. Split

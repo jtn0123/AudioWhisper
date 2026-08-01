@@ -1,5 +1,4 @@
 import XCTest
-import AppKit
 import SwiftData
 @testable import AudioWhisper
 

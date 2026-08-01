@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import AudioWhisper
 
 /// C1: only 12 of 69 view files carried any accessibility annotation, and the

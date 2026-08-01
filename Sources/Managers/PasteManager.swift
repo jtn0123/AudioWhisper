@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import ApplicationServices
 import Carbon
 import Observation
 import os.log

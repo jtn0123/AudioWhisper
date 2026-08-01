@@ -1,6 +1,5 @@
 import XCTest
 import SwiftUI
-import AppKit
 @testable import AudioWhisper
 
 /// Tests for ContentView composition and subview assembly

@@ -1,4 +1,5 @@
 import XCTest
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AVFoundation
 @testable import AudioWhisper
 

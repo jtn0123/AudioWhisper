@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import AudioWhisper
 
 // MARK: - InkRippleView Tests

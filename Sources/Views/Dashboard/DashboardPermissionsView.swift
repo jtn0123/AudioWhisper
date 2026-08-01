@@ -1,6 +1,4 @@
 import SwiftUI
-import AVFoundation
-import ApplicationServices
 import AppKit
 
 internal struct DashboardPermissionsView: View {

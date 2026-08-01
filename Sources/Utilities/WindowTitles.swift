@@ -1,5 +1,3 @@
-import Foundation
-
 // MARK: - Window Titles
 // Centralized window title constants to avoid string duplication and silent failures
 

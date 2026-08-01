@@ -1,6 +1,4 @@
-import SwiftUI
 import AppKit
-import AVFoundation
 import os.log
 
 /// Identifies the origin of a transcription so the post-transcription tail

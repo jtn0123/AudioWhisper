@@ -1,5 +1,3 @@
-import Foundation
-import AppKit
 import KeyboardShortcuts
 
 // MARK: - Key Enum (drop-in replacement for HotKey.Key)

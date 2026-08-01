@@ -1,5 +1,4 @@
 import SwiftUI
-import Observation
 import AppKit
 
 internal struct DashboardCategoriesView: View {

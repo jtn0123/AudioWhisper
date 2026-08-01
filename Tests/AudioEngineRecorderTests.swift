@@ -1,5 +1,4 @@
 import XCTest
-import AVFoundation
 @testable import AudioWhisper
 
 @MainActor

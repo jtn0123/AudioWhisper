@@ -1,4 +1,5 @@
 import Foundation
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 @testable import AudioWhisper
 
 /// A single notification captured by `MockNotificationCenter`.
