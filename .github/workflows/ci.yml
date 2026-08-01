@@ -385,7 +385,9 @@ jobs:
   analyze:
     name: SwiftLint analyze
     runs-on: macos-15
-    timeout-minutes: 30
+    # xcodebuild build-for-testing plus a full analyze pass. 30 was too tight
+    # even after dropping from three analyze runs to one.
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -427,13 +429,19 @@ jobs:
           xcodebuild -scheme AudioWhisper -destination 'platform=macOS' \
             build-for-testing 2>&1 | tee xcodebuild.log | tail -5
 
-      - name: Analyze (report all findings)
+      - name: Analyze (single pass)
         run: |
+          # ONE analyze run, saved to a file that the summary and the gate below
+          # both read. This used to invoke `swiftlint analyze` three times —
+          # twice here, once in the gate — and each pass over 355 files takes
+          # ~10 minutes. The job took 28.5 minutes when it passed and was killed
+          # by its own 30-minute timeout when it did not. The gate step was the
+          # one cancelled, so the job reported "cancelled" rather than anything
+          # that pointed at the real cause.
           swiftlint analyze --compiler-log-path xcodebuild.log \
-            --reporter github-actions-logging || true
+            --reporter github-actions-logging 2>/dev/null | tee analyze.txt || true
           echo "--- summary ---"
-          swiftlint analyze --compiler-log-path xcodebuild.log --quiet 2>/dev/null \
-            | grep -oE '\((unused_declaration|unused_import)\)' | sort | uniq -c || true
+          grep -oE '\((unused_declaration|unused_import)\)' analyze.txt | sort | uniq -c || true
 
       - name: Gate on unused_import
         run: |
@@ -444,8 +452,8 @@ jobs:
           # or a type in a signature, and `@testable import AudioWhisper`) and
           # carry an inline swiftlint:disable:next with that justification.
           # The rule now reports 0, so any new finding is real.
-          count=$(swiftlint analyze --compiler-log-path xcodebuild.log --quiet 2>/dev/null \
-            | grep -c 'unused_import' || true)
+          # Reads the single analyze pass above; does not re-run it.
+          count=$(grep -c '(unused_import)' analyze.txt || true)
           if [ "${count:-0}" -ne 0 ]; then
             echo "::error::$count unused import(s). Remove them, or if the compiler"
             echo "::error::genuinely needs one, add swiftlint:disable:next with a reason."
