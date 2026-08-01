@@ -381,10 +381,30 @@ jobs:
           fi
           echo "unused_import: 0"
 
-      # unused_declaration is NOT gated yet. 215 findings, and 87 of those are in
-      # Tests/Mocks — mock members that satisfy a protocol and are only ever
-      # called through it, which the analyzer cannot see. Gating on that would
-      # fail every build for reasons that are not defects. Triaging the ~128
-      # remaining is real work and carries real risk (deleting something reached
-      # via protocol or dynamic dispatch), so it stays reported-only until
-      # someone works it down.
+      - name: Ratchet on unused_declaration
+        run: |
+          # NOT gated at zero, and probably never should be — much of what
+          # remains is structural rather than defective: protocol requirements
+          # reached only through the protocol, SwiftUI declarations required by
+          # position rather than by call, Tests/Mocks members that exist purely
+          # to satisfy a conformance.
+          #
+          # A RATCHET instead: the count may fall, never rise. That catches
+          # genuinely dead code as it appears — which is the actual risk — without
+          # demanding a triage pass nobody has time for. The previous note here
+          # claimed 215 findings with 87 in Tests/Mocks; the real number measured
+          # on this runner is 46, so that note was also badly out of date.
+          #
+          # Raising BASELINE should be a deliberate, explained act. Lowering it
+          # is always fine.
+          BASELINE=46
+          count=$(grep -c '(unused_declaration)' analyze.txt || true)
+          echo "unused_declaration: $count (baseline $BASELINE)"
+          if [ "${count:-0}" -gt "$BASELINE" ]; then
+            echo "::error::unused_declaration rose from $BASELINE to $count. Findings:"
+            grep '(unused_declaration)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
+            exit 1
+          fi
+          if [ "${count:-0}" -lt "$BASELINE" ]; then
+            echo "::notice::unused_declaration fell to $count — lower BASELINE to lock it in."
+          fi

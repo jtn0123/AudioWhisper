@@ -1,6 +1,5 @@
 import XCTest
 import SwiftUI
-import SwiftData
 @testable import AudioWhisper
 
 @MainActor
@@ -347,39 +346,4 @@ extension UISnapshotTests {
         return records
     }
 
-    func makePreviewContainer() throws -> ModelContainer {
-        let container = try ModelContainer(
-            for: TranscriptionRecord.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        let context = ModelContext(container)
-        
-        let sampleRecords = [
-            TranscriptionRecord(
-                text: "This is a sample transcription from Parakeet service. "
-                    + "It demonstrates how the history view will look with longer text content.",
-                provider: .parakeet,
-                duration: 12.5,
-                modelUsed: "parakeet-ctc-1.1b"
-            ),
-            TranscriptionRecord(
-                text: "Meeting notes about upcoming launch. Includes key dates and action items.",
-                provider: .local,
-                duration: 8.3,
-                modelUsed: "base"
-            ),
-            TranscriptionRecord(
-                text: "Quick local test recording to verify offline pipeline works correctly.",
-                provider: .local,
-                duration: 4.2,
-                modelUsed: "tiny"
-            )
-        ]
-        
-        for record in sampleRecords {
-            context.insert(record)
-        }
-        try context.save()
-        return container
-    }
 }
