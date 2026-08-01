@@ -20,7 +20,7 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
 
         let config = PressAndHoldConfiguration(enabled: true, key: .rightCommand, mode: .hold)
 
-        nonisolated(unsafe) let monitor = PressAndHoldKeyMonitor(
+        let monitor = PressAndHoldKeyMonitor(
             configuration: config,
             keyDownHandler: {
                 handlerCallCount.increment()
@@ -56,7 +56,7 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
 
         let config = PressAndHoldConfiguration(enabled: true, key: .rightCommand, mode: .hold)
 
-        nonisolated(unsafe) let monitor = PressAndHoldKeyMonitor(
+        let monitor = PressAndHoldKeyMonitor(
             configuration: config,
             keyDownHandler: {
                 keyDownCount.increment()

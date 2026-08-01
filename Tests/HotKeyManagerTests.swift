@@ -265,7 +265,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     // MARK: - Memory Management Tests
     
     func testDeinitCleanup() {
-        weak var weakManager: HotKeyManager? = hotKeyManager
+        weak let weakManager: HotKeyManager? = hotKeyManager
 
         hotKeyManager = nil
 
@@ -277,7 +277,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
 
     func testNotificationObserverCleanup() {
         let manager = HotKeyManager { }
-        weak var weakManager: HotKeyManager? = manager
+        weak let weakManager: HotKeyManager? = manager
 
         // Create a reference and then nil it
         var strongManager: HotKeyManager? = manager

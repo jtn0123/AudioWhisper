@@ -157,16 +157,22 @@ class SnapshotTestCase: XCTestCase {
             return nil
         }
 
-        var differingPixels = 0
+        // Bind explicitly to UInt8 rather than subscripting the raw buffer.
+        // `UnsafeRawBufferPointer`'s integer subscript is ambiguous on newer
+        // Swift compilers ("ambiguous use of 'subscript(_:)'"), which compiled
+        // fine locally and broke the CI runner's toolchain.
         let pixelCount = baselineBytes.count / 4
-        baselineBytes.withUnsafeBytes { baselineRaw in
-            actualBytes.withUnsafeBytes { actualRaw in
+        var differingPixels = 0
+        baselineBytes.withUnsafeBytes { (baselineRaw: UnsafeRawBufferPointer) in
+            actualBytes.withUnsafeBytes { (actualRaw: UnsafeRawBufferPointer) in
+                let baseline = baselineRaw.bindMemory(to: UInt8.self)
+                let actual = actualRaw.bindMemory(to: UInt8.self)
                 for pixel in 0..<pixelCount {
                     let offset = pixel * 4
-                    if baselineRaw[offset] != actualRaw[offset]
-                        || baselineRaw[offset + 1] != actualRaw[offset + 1]
-                        || baselineRaw[offset + 2] != actualRaw[offset + 2]
-                        || baselineRaw[offset + 3] != actualRaw[offset + 3] {
+                    if baseline[offset] != actual[offset]
+                        || baseline[offset + 1] != actual[offset + 1]
+                        || baseline[offset + 2] != actual[offset + 2]
+                        || baseline[offset + 3] != actual[offset + 3] {
                         differingPixels += 1
                     }
                 }
