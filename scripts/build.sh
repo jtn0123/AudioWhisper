@@ -115,9 +115,22 @@ struct VersionInfo {
 EOF
 fi
 
-# Build for release
+# Build for release.
+#
+# `--product AudioWhisper` is load-bearing, not tidiness. Without it SwiftPM
+# builds every product in the graph, and argmax-oss-swift 1.0.0 declares two
+# executables pointing at the SAME target:
+#
+#     .executable(name: "argmax-cli",     targets: ["ArgmaxCLI"]),
+#     .executable(name: "whisperkit-cli", targets: ["ArgmaxCLI"]),
+#
+# Xcode 26's SwiftPM rejects that outright —
+#   error: duplicate key found: 'ID(moduleName: "ArgmaxCLI", packageIdentity: argmax-oss-swift)'
+# — which broke `make build` on CI while still working on a 6.4 toolchain. It is
+# an upstream bug with no fixed release (1.0.0 is the newest tag), and we do not
+# need either CLI; we link the WhisperKit library only.
 echo "📦 Building for release..."
-swift build -c release --arch arm64 --arch x86_64
+swift build -c release --arch arm64 --arch x86_64 --product AudioWhisper
 
 # Locate the release binary. SwiftPM's universal-build output directory MOVED:
 # older toolchains emit .build/apple/Products/Release, current ones emit
