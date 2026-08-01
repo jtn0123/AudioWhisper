@@ -37,9 +37,27 @@ enum AppDefaults {
     /// directly (see ADR 0004); tests use `AppDefaults.defaults`.
     private static func makeBackingStore() -> UserDefaults {
         let environment = ProcessInfo.processInfo.environment
-        guard let prefix = environment["AUDIOWHISPER_DEFAULTS_SUITE"], !prefix.isEmpty else {
+        let explicitPrefix = environment["AUDIOWHISPER_DEFAULTS_SUITE"]
+
+        // The prefix normally comes from scripts/run-tests.sh. Relying on that
+        // alone made the isolation opt-in, and CI never opted in: ci.yml called
+        // `swift test --parallel` directly, so every worker fell through to
+        // `.standard` and raced it. That produced 24 failures across 7 suites
+        // (leaked waveformStyle, leaked enableSmartPaste, ...) which reproduced
+        // on no developer machine, because everyone ran the script.
+        //
+        // So detect the test runner intrinsically instead: XCTest is only ever
+        // loaded into a test process. Any harness that forgets the variable
+        // still gets an isolated store.
+        let prefix: String
+        if let explicitPrefix, !explicitPrefix.isEmpty {
+            prefix = explicitPrefix
+        } else if NSClassFromString("XCTestCase") != nil {
+            prefix = "com.audiowhisper.tests.autoscratch"
+        } else {
             return .standard
         }
+
         let suiteName = "\(prefix).\(ProcessInfo.processInfo.processIdentifier)"
         return UserDefaults(suiteName: suiteName) ?? .standard
     }
