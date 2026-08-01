@@ -2,9 +2,20 @@ name: CI
 
 on:
   push:
-    branches: [ main, master, 'claude/**', 'grade-report-sweep' ]
+    # I4: dropped 'grade-report-sweep', a one-off branch from a May 2026 audit
+    # that no longer exists. Replaced the ad-hoc list with globs that cover the
+    # working-branch conventions actually in use, so CI runs on feature branches
+    # without needing this list edited every time.
+    branches:
+      - main
+      - master
+      - 'claude/**'
+      - 'grade-fixes-**'
+      - 'fix/**'
+      - 'feat/**'
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
