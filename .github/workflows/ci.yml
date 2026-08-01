@@ -78,70 +78,66 @@ jobs:
 
       - name: Run Tests
         run: |
-          # D4: runs in PARALLEL. This used to be forced sequential because tests
-          # wrote UserDefaults.standard while production read the same global
-          # domain, so parallel xctest processes raced the same keys.
-          # AppDefaults.defaults is now redirectable and appends the process id,
-          # giving each worker its own settings store; every settings access,
-          # production and test, goes through it.
+          # ONE run, parallel, with coverage.
           #
-          # Coverage still needs --no-parallel: llvm merges one .profraw per
-          # process and parallel workers race the same file.
-          set +e
-          swift test --parallel 2>&1 | tee /tmp/test_output.txt
-          PARALLEL_EXIT=${PIPESTATUS[0]}
-          if [ "$PARALLEL_EXIT" -ne 0 ]; then
-            grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel)" /tmp/test_output.txt || true
-            exit $PARALLEL_EXIT
-          fi
-          # Second pass, sequential, purely to produce coverage data.
-          swift test --no-parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
+          # This used to run the whole suite twice — once `--parallel` for speed
+          # and again `--no-parallel --enable-code-coverage`, on the belief that
+          # llvm merges one .profraw per process and parallel workers race it.
+          # Measured on 2830 tests: parallel reports 53.50% line coverage,
+          # sequential 53.54% — 30 lines out of 92,525, which is ordinary
+          # run-to-run variance (the waveform views feed random values into
+          # their layout), not lost profile data. The second full run bought
+          # nothing and doubled this job.
+          #
+          # Tests are isolated per process by AppDefaults' scratch suite, so
+          # --parallel is safe here; see Sources/Stores/AppDefaults.swift.
+          set -o pipefail
+          swift test --parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
-          # Filter and display cleaned output
           grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" /tmp/test_output.txt || true
           exit $TEST_EXIT_CODE
         env:
           OS_ACTIVITY_MODE: disable
 
-      - name: Coverage summary
+      - name: Coverage gate
         if: always()
         run: |
-          set +e
-          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
-          BIN_DIR=$(find .build -type d -name '*.xctest' | head -n 1)
-          if [ -n "$PROFDATA" ] && [ -n "$BIN_DIR" ]; then
-            BIN=$(find "$BIN_DIR/Contents/MacOS" -type f | head -n 1)
-            xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" 2>/dev/null | tail -n 1 || true
-          else
-            echo "No coverage data found"
-          fi
-
-      - name: Coverage threshold gate
-        if: always()
-        run: |
-          set +e
-          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
-          BIN_DIR=$(find .build -type d -name '*.xctest' | head -n 1)
-          if [ -z "$PROFDATA" ] || [ -z "$BIN_DIR" ]; then
-            echo "No coverage data — skipping threshold check"
-            exit 0
-          fi
-          BIN=$(find "$BIN_DIR/Contents/MacOS" -type f | head -n 1)
-          # Pull the line-coverage percentage from the TOTAL line
-          PCT=$(xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" 2>/dev/null | tail -n 1 | awk '{print $(NF-1)}' | tr -d '%')
-          if [ -z "$PCT" ]; then
-            echo "Could not parse coverage percent; skipping"
-            exit 0
-          fi
-          echo "Line coverage: $PCT%"
-          THRESHOLD=60
-          # bash's [ ] doesn't do float comparison; cast to int for the check
-          PCT_INT=${PCT%.*}
-          if [ "$PCT_INT" -lt "$THRESHOLD" ]; then
-            echo "::error::Line coverage $PCT% below threshold $THRESHOLD%"
+          # Reads SwiftPM's codecov JSON rather than scraping `llvm-cov report`.
+          #
+          # The old gate did `... | tail -n 1 | awk '{print $(NF-1)}'`, and on the
+          # TOTAL line $(NF-1) is MISSED BRANCHES, not line coverage — the line
+          # percentage is several columns earlier. With no branch data the last
+          # fields are "0  -", so the value never parsed, and the gate answered
+          # "Could not parse coverage percent; skipping" and exited 0. It had
+          # never enforced anything: the threshold was 60% while real line
+          # coverage was 53.5%.
+          #
+          # Missing data is now an error, not a silent skip. A gate that cannot
+          # find its input is broken, and should say so rather than pass.
+          set -e
+          COV_JSON=$(swift test --show-codecov-path 2>/dev/null || true)
+          if [ -z "$COV_JSON" ] || [ ! -f "$COV_JSON" ]; then
+            echo "::error::No coverage JSON at '${COV_JSON:-<empty>}'. The test step must run"
+            echo "::error::with --enable-code-coverage for this gate to mean anything."
             exit 1
           fi
-          echo "Coverage $PCT% >= threshold $THRESHOLD%"
+
+          COV_LINE=$(python3 -c 'import json,sys; t=json.load(open(sys.argv[1]))["data"][0]["totals"]["lines"]; print(round(t["percent"], 2), t["covered"], t["count"])' "$COV_JSON")
+          PCT=$(echo "$COV_LINE" | awk '{print $1}')
+          COVERED=$(echo "$COV_LINE" | awk '{print $2}')
+          TOTAL=$(echo "$COV_LINE" | awk '{print $3}')
+
+          echo "Line coverage: $PCT% ($COVERED/$TOTAL lines)"
+
+          # RATCHET, not an aspiration. 60 was aspirational and unenforced; a
+          # threshold above the real number only stays green by being broken.
+          # Raise this as coverage improves; never lower it to make CI pass.
+          THRESHOLD=53
+          if [ "${PCT%.*}" -lt "$THRESHOLD" ]; then
+            echo "::error::Line coverage $PCT% is below the $THRESHOLD% ratchet."
+            exit 1
+          fi
+          echo "Coverage $PCT% >= ratchet $THRESHOLD%"
 
   lint:
     runs-on: macos-14
@@ -283,105 +279,20 @@ jobs:
           du -sh AudioWhisper.app
           ls -lh AudioWhisper.app/Contents/MacOS/AudioWhisper
 
-  # The snapshot suite (36 committed baselines) is skipped unless SNAPSHOT_TESTS=1,
-  # and nothing ever set it — so the visual-regression net has never run in CI.
-  # Turning it on found a real crash: DialWaveformView trapped on an empty
-  # frequencyBands array (fixed in this branch, now covered by a direct render
-  # test in WaveformViewsTests).
+  # There is deliberately no snapshot job.
   #
-  # REPORT-ONLY, and it cannot become blocking until the baselines are
-  # regenerated ON THIS RUNNER. The comparison is exact-match on RGBA bytes, and
-  # the committed baselines were recorded on a different macOS/Xcode; 14 of the
-  # 36 differ purely from environment. Three (Waveform-halo-dark,
-  # -heartbeat-dark, -stream-dark) have no committed baseline at all.
+  # Turning the suite on in CI once was worthwhile — it found a real crash,
+  # DialWaveformView trapping on an empty frequencyBands array (fixed in this
+  # branch, now covered by a direct render test in WaveformViewsTests). But the
+  # job could never do more than that. A GitHub runner has no usable
+  # WindowServer, so it draws AppKit-backed controls as the yellow "cannot
+  # render" placeholder and whole views as flat rectangles: measured
+  # 2026-08-01, all 34 renders it produced diverged from the local baselines by
+  # 19-100% of pixels. The comparison step could only ever be report-only, and
+  # its artifact looked authoritative while being a picture of a broken render.
   #
-  # To adopt: run this job, download the `snapshot-renders` artifact, commit the
-  # PNGs into Tests/__Snapshots__/, then drop continue-on-error and move
-  # SNAPSHOT_TESTS=1 into the main test job.
-  snapshots:
-    name: UI snapshots (report-only)
-    runs-on: macos-15
-    timeout-minutes: 30
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Select Xcode
-        run: |
-          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
-          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
-          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
-          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
-          # 16.x, so take the highest available and let the floor be enforced by
-          # the packages themselves.
-          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
-          if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
-
-      - name: Generate VersionInfo.swift
-        run: |
-          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
-          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
-              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
-              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
-              -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
-              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
-              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
-
-      # Build FIRST, and let a build failure fail the job. Without this the two
-      # `|| true` steps below hid a dependency-resolution failure completely: the
-      # job went green, rendered nothing, and uploaded the repo's own committed
-      # baselines as if they were fresh CI renders. A false green that produces a
-      # plausible-looking artifact is worse than a red build.
-      - name: Build tests
-        run: swift build --build-tests
-
-      - name: Run snapshot tests (report-only)
-        env:
-          SNAPSHOT_TESTS: "1"
-          OS_ACTIVITY_MODE: disable
-        run: swift test --no-parallel -Xswiftc -DTESTING --filter "UISnapshotTests" || true
-
-      - name: Render baselines on this runner
-        env:
-          SNAPSHOT_RECORD: "1"
-          OS_ACTIVITY_MODE: disable
-        run: |
-          # Clear the committed baselines first so anything left in the directory
-          # is unambiguously rendered by THIS runner.
-          rm -f Tests/__Snapshots__/*.png
-          # SNAPSHOT_RECORD deliberately fails each test after writing its image,
-          # so a nonzero exit here is expected; we only want the PNGs.
-          swift test --no-parallel -Xswiftc -DTESTING --filter "UISnapshotTests" || true
-
-          count=$(ls Tests/__Snapshots__/*.png 2>/dev/null | wc -l | tr -d ' ')
-          echo "rendered $count snapshot(s)"
-          if [ "$count" -lt 30 ]; then
-            echo "::error::Only $count snapshots rendered (expected ~39). The artifact"
-            echo "::error::would be incomplete, so failing rather than publishing it."
-            exit 1
-          fi
-
-      # DIAGNOSTIC ONLY — these are not baselines. Measured 2026-08-01: every
-      # one of the 34 renders this job produced diverged from the locally
-      # recorded baseline by 19-100% of pixels, because the runner draws
-      # AppKit-backed controls as the yellow "cannot render" placeholder. Keep
-      # them for eyeballing a CI-only rendering question; never commit them.
-      - name: Upload renders (diagnostic only, NOT baselines)
-        uses: actions/upload-artifact@v4
-        with:
-          name: snapshot-renders-diagnostic
-          path: Tests/__Snapshots__/
-          if-no-files-found: error
-
-  # SwiftLint's analyzer rules (unused_declaration, unused_import) are configured
-  # in .swiftlint.yml but only run under `swiftlint analyze`, never `swiftlint
-  # lint`. They had therefore never executed — which is how a 160-line
-  # DependencyContainer with zero call sites survived in the codebase.
-  #
-  # PARTIALLY GATED. `unused_import` is enforced (backlog triaged to zero against
-  # the compiler); `unused_declaration` is reported only — see the note on its
-  # step below for why.
+  # Snapshots are a local-only tool: SNAPSHOT_TESTS=1 to check,
+  # SNAPSHOT_RECORD=1 to re-record. See Tests/SnapshotTestCase.swift.
   analyze:
     name: SwiftLint analyze
     runs-on: macos-15

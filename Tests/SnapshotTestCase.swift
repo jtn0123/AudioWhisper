@@ -17,15 +17,21 @@ import CoreGraphics
 ///    differently, re-record with `SNAPSHOT_RECORD=1 make test` and inspect the
 ///    diff by eye before committing — do not re-record reflexively, that is how
 ///    a real regression gets blessed.
-///  * In CI: the `snapshots` job is report-only for exactly this reason, and it
-///    uploads its renders as a diagnostic artifact.
+///  * In CI: not at all. Snapshots are a local-only tool.
 ///
-/// **Do not adopt CI renders as baselines.** That was this file's previous
-/// advice and it is wrong. Measured 2026-08-01 against a real run: all 34 CI
-/// renders diverged from the local ones by 19–100% of pixels, because the
-/// runner draws AppKit-backed controls as the yellow "cannot render" placeholder
-/// and drops materials entirely. Committing them would have replaced every
-/// baseline with a picture of a broken render.
+/// **Why CI does not run these, and why you must not adopt CI renders as
+/// baselines.** This file used to advise downloading the CI `snapshots`
+/// artifact and committing it. Measured 2026-08-01 against a real run: all 34
+/// CI renders diverged from the local ones by 19–100% of pixels, because a
+/// GitHub runner has no usable WindowServer — it draws AppKit-backed controls
+/// as the yellow "cannot render" placeholder and drops materials entirely.
+/// Whole views came back as flat rectangles. Following that advice would have
+/// replaced every baseline with a picture of a broken render.
+///
+/// The job was removed rather than left report-only: it could never produce a
+/// meaningful comparison, so its green check meant nothing, and it published an
+/// artifact that looked authoritative and was not. The same missing WindowServer
+/// is why hotkey registration aborts there (see `WindowServer`).
 @MainActor
 class SnapshotTestCase: XCTestCase {
     private let snapshotFolderName = "__Snapshots__"
