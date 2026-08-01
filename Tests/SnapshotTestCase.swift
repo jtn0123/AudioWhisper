@@ -5,6 +5,22 @@ import CoreGraphics
 @testable import AudioWhisper
 
 /// Lightweight snapshot helper built on XCTest + ImageRenderer.
+///
+/// **Baselines are environment-specific.** Comparison is exact-match on RGBA
+/// bytes (modulo the per-call `tolerance:`), and SwiftUI rendering differs
+/// between macOS releases — fonts, antialiasing and material rendering all move.
+/// The committed baselines were recorded on the maintainer's machine, so they
+/// are authoritative *there* and may not match a different macOS.
+///
+/// Consequences:
+///  * Locally: opt in with `SNAPSHOT_TESTS=1 make test`. If your machine renders
+///    differently, re-record with `SNAPSHOT_RECORD=1 make test` and inspect the
+///    diff by eye before committing — do not re-record reflexively, that is how
+///    a real regression gets blessed.
+///  * In CI: the `snapshots` job is report-only for exactly this reason, and it
+///    uploads its renders as a `snapshot-renders` artifact. To make it blocking,
+///    download that artifact once, commit those PNGs, and drop the job's
+///    continue-on-error.
 @MainActor
 class SnapshotTestCase: XCTestCase {
     private let snapshotFolderName = "__Snapshots__"
