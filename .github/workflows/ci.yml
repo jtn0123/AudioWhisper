@@ -31,11 +31,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Need Xcode 16+ (Swift 6 tooling): swift-argument-parser 1.8.x
-          # declares swift-tools-version 6.0. (Before the Argmax OSS SDK 1.0
-          # migration the culprit was WhisperKit's swift-jinja 2.x, which is no
-          # longer in the dependency graph.)
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then
             sudo xcode-select -s "$latest/Contents/Developer"
           else
@@ -221,8 +223,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Need Xcode 16+ (Swift 6 tooling) — see build-and-test job.
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then
             sudo xcode-select -s "$latest/Contents/Developer"
           else
@@ -288,7 +295,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
 
       - name: Generate VersionInfo.swift
@@ -301,7 +314,15 @@ jobs:
               -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
               Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
 
-      - name: Run snapshot tests
+      # Build FIRST, and let a build failure fail the job. Without this the two
+      # `|| true` steps below hid a dependency-resolution failure completely: the
+      # job went green, rendered nothing, and uploaded the repo's own committed
+      # baselines as if they were fresh CI renders. A false green that produces a
+      # plausible-looking artifact is worse than a red build.
+      - name: Build tests
+        run: swift build --build-tests
+
+      - name: Run snapshot tests (report-only)
         env:
           SNAPSHOT_TESTS: "1"
           OS_ACTIVITY_MODE: disable
@@ -312,16 +333,27 @@ jobs:
           SNAPSHOT_RECORD: "1"
           OS_ACTIVITY_MODE: disable
         run: |
-          # SNAPSHOT_RECORD overwrites Tests/__Snapshots__ and deliberately fails
-          # each test, so the run always "fails" — we only want the images.
+          # Clear the committed baselines first so anything left in the directory
+          # is unambiguously rendered by THIS runner.
+          rm -f Tests/__Snapshots__/*.png
+          # SNAPSHOT_RECORD deliberately fails each test after writing its image,
+          # so a nonzero exit here is expected; we only want the PNGs.
           swift test --no-parallel -Xswiftc -DTESTING --filter "UISnapshotTests" || true
+
+          count=$(ls Tests/__Snapshots__/*.png 2>/dev/null | wc -l | tr -d ' ')
+          echo "rendered $count snapshot(s)"
+          if [ "$count" -lt 30 ]; then
+            echo "::error::Only $count snapshots rendered (expected ~39). The artifact"
+            echo "::error::would be incomplete, so failing rather than publishing it."
+            exit 1
+          fi
 
       - name: Upload renders for baseline adoption
         uses: actions/upload-artifact@v4
         with:
           name: snapshot-renders
           path: Tests/__Snapshots__/
-          if-no-files-found: warn
+          if-no-files-found: error
 
   # SwiftLint's analyzer rules (unused_declaration, unused_import) are configured
   # in .swiftlint.yml but only run under `swiftlint analyze`, never `swiftlint
@@ -341,7 +373,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
           swift --version
 

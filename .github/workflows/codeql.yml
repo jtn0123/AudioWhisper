@@ -34,8 +34,9 @@ jobs:
     - name: Select Xcode
       if: matrix.language == 'swift'
       run: |
-        # Need Xcode 16+ (Swift 6 tooling) for swift-argument-parser 1.8.x.
-        latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+        # Newest Xcode: KeyboardShortcuts 3.x needs swift-tools-version 6.2,
+          # which Xcode 16 cannot resolve. See ci.yml for the full note.
+        latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
         if [ -n "$latest" ]; then
           sudo xcode-select -s "$latest/Contents/Developer"
         fi

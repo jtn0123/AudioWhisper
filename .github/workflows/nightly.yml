@@ -27,9 +27,9 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Xcode 16+ (Swift 6 tooling) — swift-argument-parser 1.8.x declares
-          # swift-tools-version 6.0.
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Newest Xcode: KeyboardShortcuts 3.x needs swift-tools-version 6.2,
+          # which Xcode 16 cannot resolve. See ci.yml for the full note.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
           swift --version
 
