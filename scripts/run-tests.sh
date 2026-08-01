@@ -25,6 +25,12 @@ fi
 # Change to repo root (parent of scripts/)
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
+# Building compiles an asset catalog, which needs `actool` — Xcode only, not
+# Command Line Tools. Recover automatically if xcode-select points at CLT.
+# shellcheck source=scripts/lib/xcode-env.sh
+. "scripts/lib/xcode-env.sh"
+ensure_xcode_toolchain || exit 1
+
 # Suppress macOS system framework noise (Contacts, CoreData XPC, FrontBoardServices)
 # These errors occur because xctest runs outside the app sandbox
 export OS_ACTIVITY_MODE=disable

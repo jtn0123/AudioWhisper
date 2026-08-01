@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Needs `actool` (Xcode, not Command Line Tools) for Sources/Assets.xcassets.
+# shellcheck source=scripts/lib/xcode-env.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/xcode-env.sh"
+ensure_xcode_toolchain || exit 1
+
 # AudioWhisper Release Build Script
 # For development, use: swift build && swift run
 # This script is for creating distributable releases
