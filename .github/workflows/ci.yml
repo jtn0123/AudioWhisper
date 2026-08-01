@@ -208,6 +208,20 @@ jobs:
           }
           echo "uv.lock is in sync with pyproject.toml"
 
+      - name: Python unit tests
+        run: |
+          # Tests/test_correction_sanitize.py guards sanitize_model_output, the
+          # function that decides whether a correction survives safeMerge or gets
+          # silently thrown away. Every fixture in it is a verbatim capture of a
+          # model output that DID get discarded, so a regression here is a silent
+          # quality loss with no error anywhere.
+          #
+          # These were unreferenced by any workflow until now. They import
+          # ml.correction, whose mlx imports are lazy, so plain system python is
+          # enough — no uv, no venv, no model download.
+          set -e
+          python3 Tests/test_correction_sanitize.py
+
       - name: TODO/FIXME audit (warn only)
         run: |
           grep -rn "TODO\|FIXME" Sources/ --include='*.swift' || echo "No TODO/FIXME comments found"
