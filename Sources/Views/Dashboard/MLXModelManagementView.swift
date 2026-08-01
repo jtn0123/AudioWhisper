@@ -48,6 +48,8 @@ internal struct MLXModelManagementView: View {
                     }
                 })
                 .buttonStyle(.plain)
+                // C1: icon-only, so it announced as an unlabelled button.
+                .accessibilityLabel(isRefreshing ? "Refreshing model list" : "Refresh model list")
                 .disabled(isRefreshing)
                 .help("Refresh model list to check downloaded models")
             }
@@ -142,6 +144,9 @@ internal struct MLXModelManagementView: View {
                     })
                     .buttonStyle(.plain)
                     .help("Open in Finder")
+                    // C1: `.help` is a mouse tooltip — VoiceOver does not read
+                    // it, so the button still needed an explicit label.
+                    .accessibilityLabel("Show models in Finder")
                 }
             }
         }

@@ -136,6 +136,14 @@ internal struct DashboardCategoriesView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // C1: the row is one Button whose label is an icon plus several Texts;
+        // VoiceOver otherwise reads the fragments separately with no indication
+        // it is actionable or that system categories differ from custom ones.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(category.displayName)
+        .accessibilityValue(category.isSystem ? "System category" : "Custom category")
+        .accessibilityHint("Edit this category")
+        .accessibilityAddTraits(.isButton)
     }
     
     // MARK: - App Mappings
