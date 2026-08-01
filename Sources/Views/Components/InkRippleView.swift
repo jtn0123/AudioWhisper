@@ -170,6 +170,10 @@ internal struct InkRippleRecordingView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                // C1: the record button is a bare circle — no icon, no text —
+                // so VoiceOver had nothing to announce for the app's single most
+                // important control. The label reflects what tapping does now.
+                .accessibilityLabel(status.shouldAnimate ? "Stop recording" : "Start recording")
             }
             .frame(width: 200, height: 140)
 

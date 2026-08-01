@@ -118,6 +118,9 @@ extension DashboardProvidersView {
                                 .font(.system(size: 11))
                         }
                     }
+                    .accessibilityLabel(
+                        isRefreshingMLXModels ? "Refreshing model list" : "Refresh model list"
+                    )
                     .buttonStyle(.plain)
                     .foregroundStyle(DashboardTheme.inkMuted)
                 }
@@ -253,6 +256,9 @@ extension DashboardProvidersView {
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
                 .buttonStyle(.plain)
+                // C1: destructive and icon-only — name the model, or every row's
+                // delete button announces identically.
+                .accessibilityLabel("Delete \(model.displayName)")
             }
         } else {
             Button {

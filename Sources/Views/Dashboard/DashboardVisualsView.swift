@@ -253,6 +253,13 @@ private struct StylePickerCard: View {
             )
         }
         .buttonStyle(.plain)
+        // C1: same problem as the Welcome screen's style grid — the label is a
+        // rendered waveform, so every tile announced identically.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(style.isNew ? "\(style.rawValue), new" : style.rawValue)
+        .accessibilityValue(style.description)
+        .accessibilityHint("Use this waveform style")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

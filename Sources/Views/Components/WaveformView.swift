@@ -54,6 +54,12 @@ internal struct WaveformRecordingView: View {
             }
         }
         .buttonStyle(.plain)
+        // C1: the whole recording window is one Button whose label is a
+        // waveform and a status line. Collapse it and announce the action and
+        // the current state, rather than letting VoiceOver walk the bars.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isRecording ? "Stop recording" : "Start recording")
+        .accessibilityValue(statusText)
         .background(bgColor)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(

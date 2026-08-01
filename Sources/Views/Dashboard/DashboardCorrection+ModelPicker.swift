@@ -55,6 +55,7 @@ extension DashboardCorrectionView {
             .buttonStyle(.bordered)
             .tint(DashboardTheme.accent)
             .disabled(isCheckingEnv)
+            .accessibilityLabel("Re-check Python environment")
         }
     }
 
@@ -91,6 +92,7 @@ extension DashboardCorrectionView {
                 .buttonStyle(.borderless)
                 .foregroundStyle(DashboardTheme.inkMuted)
                 .disabled(isRefreshingModels)
+                .accessibilityLabel(isRefreshingModels ? "Refreshing model list" : "Refresh model list")
             }
 
             if semanticCorrectionModelRepo.isEmpty || !modelManager.downloadedModels.contains(semanticCorrectionModelRepo) {

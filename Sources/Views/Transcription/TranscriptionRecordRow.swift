@@ -65,6 +65,10 @@ internal struct TranscriptionRecordRow: View {
                                 })
                                 .buttonStyle(.plain)
                                 .help("Copy to clipboard")
+                                // C1: `.help` is a MOUSE tooltip — VoiceOver does
+                                // not read it, so this announced as an unlabelled
+                                // button next to an identical-sounding delete.
+                                .accessibilityLabel("Copy transcript")
                                 .onHover { isHovering in
                                     hoveredButton = isHovering ? "copy" : nil
                                 }
@@ -81,6 +85,10 @@ internal struct TranscriptionRecordRow: View {
                                 })
                                 .buttonStyle(.plain)
                                 .help("Delete")
+                                // C1: same tooltip-is-not-a-label problem as the
+                                // copy button beside it. Naming the action matters
+                                // more here — it is destructive.
+                                .accessibilityLabel("Delete transcript")
                                 .onHover { isHovering in
                                     hoveredButton = isHovering ? "delete" : nil
                                 }

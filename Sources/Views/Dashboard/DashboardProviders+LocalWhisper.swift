@@ -26,6 +26,7 @@ internal extension DashboardProvidersView {
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Refresh Whisper model status")
             }
 
             VStack(spacing: 0) {
