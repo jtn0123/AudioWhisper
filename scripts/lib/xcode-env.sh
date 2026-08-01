@@ -25,15 +25,16 @@ ensure_xcode_toolchain() {
   fi
 
   # Prefer a released Xcode over a beta; highest version first within each.
-  # nullglob so a missing pattern expands to nothing instead of a literal.
-  local had_nullglob=1
-  shopt -q nullglob || had_nullglob=0
-  shopt -s nullglob
-  local candidates=(/Applications/Xcode.app /Applications/Xcode_*.app /Applications/Xcode-beta.app)
-  [ "$had_nullglob" -eq 0 ] && shopt -u nullglob
-
+  #
+  # Uses `ls` rather than a shell glob with `shopt -s nullglob`: `shopt` is
+  # bash-only, and macOS defaults to zsh, so anyone sourcing this from an
+  # interactive shell would hit "command not found: shopt". The `-d` guard below
+  # makes an unmatched pattern harmless anyway.
   local candidate
-  for candidate in "${candidates[@]}"; do
+  for candidate in \
+    /Applications/Xcode.app \
+    $(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V -r) \
+    /Applications/Xcode-beta.app; do
     [ -d "$candidate/Contents/Developer" ] || continue
     # Validate by USE, not by probing for a binary at a guessed path: Xcode
     # betas do not ship xcrun at Contents/Developer/usr/bin/xcrun, so an

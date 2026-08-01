@@ -119,9 +119,36 @@ fi
 echo "📦 Building for release..."
 swift build -c release --arch arm64 --arch x86_64
 
-# Check for the actual binary instead of exit code (swift-collections emits spurious errors)
-if [ ! -f ".build/apple/Products/Release/AudioWhisper" ]; then
-  echo "❌ Build failed - binary not found!"
+# Locate the release binary. SwiftPM's universal-build output directory MOVED:
+# older toolchains emit .build/apple/Products/Release, current ones emit
+# .build/out/Products/Release. Hardcoding the old path made `make build` fail
+# with "binary not found" even though the build had just succeeded — i.e. the
+# release/distribution path was broken on any current toolchain.
+# Check both, newest layout first, and fail with something diagnosable.
+RELEASE_BINARY=""
+for candidate in \
+  ".build/out/Products/Release/AudioWhisper" \
+  ".build/apple/Products/Release/AudioWhisper"; do
+  if [ -f "$candidate" ]; then
+    RELEASE_BINARY="$candidate"
+    break
+  fi
+done
+
+if [ -z "$RELEASE_BINARY" ]; then
+  echo "❌ Build failed - release binary not found."
+  echo "   Looked in .build/out/Products/Release and .build/apple/Products/Release."
+  echo "   Found instead:"
+  find .build -name AudioWhisper -type f -perm +111 2>/dev/null | sed 's/^/     /' | head -5
+  exit 1
+fi
+echo "Using release binary: $RELEASE_BINARY"
+
+# Distribution builds must be universal; a single-arch binary here would ship
+# broken to Intel users and is worth failing loudly on.
+if ! lipo -archs "$RELEASE_BINARY" 2>/dev/null | grep -q x86_64 \
+   || ! lipo -archs "$RELEASE_BINARY" 2>/dev/null | grep -q arm64; then
+  echo "❌ Release binary is not universal: $(lipo -archs "$RELEASE_BINARY" 2>/dev/null)"
   exit 1
 fi
 
@@ -135,7 +162,7 @@ mkdir -p AudioWhisper.app/Contents/Resources/bin
 BUILD_NUMBER="${VERSION//./}"
 
 # Copy executable (universal binary)
-cp .build/apple/Products/Release/AudioWhisper AudioWhisper.app/Contents/MacOS/
+cp "$RELEASE_BINARY" AudioWhisper.app/Contents/MacOS/
 
 # Copy dashboard logo
 if [ -f "Sources/Resources/DashboardLogo.jpg" ]; then
