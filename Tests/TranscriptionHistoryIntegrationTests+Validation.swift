@@ -11,22 +11,22 @@ extension TranscriptionHistoryIntegrationTests {
     
     func testHistoryEnabledSetting() async throws {
         // Test enabling history
-        UserDefaults.standard.set(true, forKey: "transcriptionHistoryEnabled")
-        let isEnabled = UserDefaults.standard.bool(forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")
+        let isEnabled = AppDefaults.defaults.bool(forKey: "transcriptionHistoryEnabled")
         XCTAssertTrue(isEnabled, "History should be enabled")
         
         // Test disabling history
-        UserDefaults.standard.set(false, forKey: "transcriptionHistoryEnabled")
-        let isDisabled = UserDefaults.standard.bool(forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(false, forKey: "transcriptionHistoryEnabled")
+        let isDisabled = AppDefaults.defaults.bool(forKey: "transcriptionHistoryEnabled")
         XCTAssertFalse(isDisabled, "History should be disabled")
     }
     
     func testRetentionPeriodSettings() async throws {
         // Test all retention periods
         for period in RetentionPeriod.allCases {
-            UserDefaults.standard.set(period.rawValue, forKey: "transcriptionRetentionPeriod")
+            AppDefaults.defaults.set(period.rawValue, forKey: "transcriptionRetentionPeriod")
             
-            let storedValue = UserDefaults.standard.string(forKey: "transcriptionRetentionPeriod")
+            let storedValue = AppDefaults.defaults.string(forKey: "transcriptionRetentionPeriod")
             XCTAssertEqual(storedValue, period.rawValue, "Retention period should be stored correctly")
             
             let retrievedPeriod = RetentionPeriod(rawValue: storedValue!) ?? .oneMonth

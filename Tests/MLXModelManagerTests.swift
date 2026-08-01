@@ -131,7 +131,7 @@ final class MLXModelManagerTests: IsolatedXCTestCase {
     // MARK: - Parakeet Repo Tests
 
     func testParakeetRepoReturnsDefaultWhenNotSet() {
-        UserDefaults.standard.removeObject(forKey: "selectedParakeetModel")
+        AppDefaults.defaults.removeObject(forKey: "selectedParakeetModel")
 
         let repo = MLXModelManager.parakeetRepo
         XCTAssertFalse(repo.isEmpty)
@@ -139,13 +139,13 @@ final class MLXModelManagerTests: IsolatedXCTestCase {
 
     func testParakeetRepoReturnsUserSelection() {
         let customRepo = "custom/parakeet-model"
-        UserDefaults.standard.set(customRepo, forKey: "selectedParakeetModel")
+        AppDefaults.defaults.set(customRepo, forKey: "selectedParakeetModel")
 
         let repo = MLXModelManager.parakeetRepo
         XCTAssertEqual(repo, customRepo)
 
         // Cleanup
-        UserDefaults.standard.removeObject(forKey: "selectedParakeetModel")
+        AppDefaults.defaults.removeObject(forKey: "selectedParakeetModel")
     }
 
     // MARK: - nextSelectionAfterDeletion Tests

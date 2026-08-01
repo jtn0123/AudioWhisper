@@ -142,14 +142,14 @@ final class TranscriptionPipelineTests: XCTestCase {
     /// Asserts both the final transcript text and the correction outcome.
     @MainActor
     func testTranscribeSuccessReturnsSkippedOutcomeWhenModeOff() async throws {
-        let previousMode = UserDefaults.standard.string(forKey: "semanticCorrectionMode")
-        UserDefaults.standard.set(SemanticCorrectionMode.off.rawValue,
+        let previousMode = AppDefaults.defaults.string(forKey: "semanticCorrectionMode")
+        AppDefaults.defaults.set(SemanticCorrectionMode.off.rawValue,
                                   forKey: "semanticCorrectionMode")
         defer {
             if let previousMode = previousMode {
-                UserDefaults.standard.set(previousMode, forKey: "semanticCorrectionMode")
+                AppDefaults.defaults.set(previousMode, forKey: "semanticCorrectionMode")
             } else {
-                UserDefaults.standard.removeObject(forKey: "semanticCorrectionMode")
+                AppDefaults.defaults.removeObject(forKey: "semanticCorrectionMode")
             }
         }
 

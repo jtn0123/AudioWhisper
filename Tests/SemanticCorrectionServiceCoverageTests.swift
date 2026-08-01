@@ -12,14 +12,14 @@ final class SemanticCorrectionServiceCoverageTests: IsolatedXCTestCase {
 
     override func setUp() {
         super.setUp()
-        originalMode = UserDefaults.standard.string(forKey: "semanticCorrectionMode")
+        originalMode = AppDefaults.defaults.string(forKey: "semanticCorrectionMode")
     }
 
     override func tearDown() {
         if let originalMode {
-            UserDefaults.standard.set(originalMode, forKey: "semanticCorrectionMode")
+            AppDefaults.defaults.set(originalMode, forKey: "semanticCorrectionMode")
         } else {
-            UserDefaults.standard.removeObject(forKey: "semanticCorrectionMode")
+            AppDefaults.defaults.removeObject(forKey: "semanticCorrectionMode")
         }
         super.tearDown()
     }
@@ -45,7 +45,7 @@ final class SemanticCorrectionServiceCoverageTests: IsolatedXCTestCase {
     // MARK: - correctWithOutcome: off mode
 
     func testCorrectWithOutcomeOffReturnsSkipped() async {
-        UserDefaults.standard.set("off", forKey: "semanticCorrectionMode")
+        AppDefaults.defaults.set("off", forKey: "semanticCorrectionMode")
         let service = SemanticCorrectionService()
         let outcome = await service.correctWithOutcome(
             text: "raw transcript",
@@ -59,14 +59,14 @@ final class SemanticCorrectionServiceCoverageTests: IsolatedXCTestCase {
     }
 
     func testCorrectOffReturnsOriginalText() async {
-        UserDefaults.standard.set("off", forKey: "semanticCorrectionMode")
+        AppDefaults.defaults.set("off", forKey: "semanticCorrectionMode")
         let service = SemanticCorrectionService()
         let result = await service.correct(text: "hello world", providerUsed: .local)
         XCTAssertEqual(result, "hello world")
     }
 
     func testCorrectWithOutcomePassesBundleId() async {
-        UserDefaults.standard.set("off", forKey: "semanticCorrectionMode")
+        AppDefaults.defaults.set("off", forKey: "semanticCorrectionMode")
         let service = SemanticCorrectionService()
         // With a bundle id the category lookup runs; off-mode still skips.
         let outcome = await service.correctWithOutcome(

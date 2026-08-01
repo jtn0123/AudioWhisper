@@ -25,7 +25,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     
     override func tearDown() {
         hotKeyManager = nil
-        UserDefaults.standard.removeObject(forKey: "globalHotkey")
+        AppDefaults.defaults.removeObject(forKey: "globalHotkey")
         super.tearDown()
     }
     
@@ -43,7 +43,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     }
     
     func testInitializationWithCustomHotkey() {
-        UserDefaults.standard.set("⌘⌥A", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘⌥A", forKey: "globalHotkey")
         
         let manager = HotKeyManager { }
         XCTAssertNotNil(manager)
@@ -53,7 +53,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     
     func testParseBasicHotkey() {
         // We can't directly test the private parsing method, but we can test through notification
-        UserDefaults.standard.set("⌘A", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘A", forKey: "globalHotkey")
         
         NotificationCenter.default.post(
             name: .updateGlobalHotkey,
@@ -65,7 +65,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     }
     
     func testParseComplexHotkey() {
-        UserDefaults.standard.set("⌘⇧⌥⌃A", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘⇧⌥⌃A", forKey: "globalHotkey")
         
         NotificationCenter.default.post(
             name: .updateGlobalHotkey,
@@ -317,16 +317,16 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     // MARK: - UserDefaults Integration Tests
     
     func testUserDefaultsIntegration() {
-        UserDefaults.standard.set("⌘⇧X", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘⇧X", forKey: "globalHotkey")
         
         let manager = HotKeyManager { }
         XCTAssertNotNil(manager)
         
-        UserDefaults.standard.removeObject(forKey: "globalHotkey")
+        AppDefaults.defaults.removeObject(forKey: "globalHotkey")
     }
     
     func testDefaultHotkeyFallback() {
-        UserDefaults.standard.removeObject(forKey: "globalHotkey")
+        AppDefaults.defaults.removeObject(forKey: "globalHotkey")
         
         let manager = HotKeyManager { }
         XCTAssertNotNil(manager)

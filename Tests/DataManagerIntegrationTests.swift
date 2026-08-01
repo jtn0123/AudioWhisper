@@ -20,14 +20,14 @@ final class DataManagerIntegrationTests: IsolatedXCTestCase {
         try dataManager.initialize()
         
         // Ensure history is enabled for tests
-        UserDefaults.standard.set(true, forKey: "transcriptionHistoryEnabled")
-        UserDefaults.standard.set(RetentionPeriod.forever.rawValue, forKey: "transcriptionRetentionPeriod")
+        AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(RetentionPeriod.forever.rawValue, forKey: "transcriptionRetentionPeriod")
     }
     
     override func tearDown() async throws {
         // Clean up UserDefaults
-        UserDefaults.standard.removeObject(forKey: "transcriptionHistoryEnabled")
-        UserDefaults.standard.removeObject(forKey: "transcriptionRetentionPeriod")
+        AppDefaults.defaults.removeObject(forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.removeObject(forKey: "transcriptionRetentionPeriod")
         
         dataManager = nil
         

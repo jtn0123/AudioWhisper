@@ -73,7 +73,7 @@ internal final class AppCategoryManager {
 
     private(set) var userMappings: [String: String] = [:]
 
-    init(defaults: UserDefaults = .standard, categoryStore: CategoryStore? = nil) {
+    init(defaults: UserDefaults = AppDefaults.defaults, categoryStore: CategoryStore? = nil) {
         // A5: resolved in the body rather than as a default argument.
         // Default-argument expressions are evaluated in the CALLER's
         // isolation, so referencing a @MainActor `.shared` there warns

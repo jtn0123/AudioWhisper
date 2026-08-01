@@ -88,7 +88,7 @@ internal final class UsageMetricsStore {
         return formatter
     }()
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppDefaults.defaults) {
         self.defaults = defaults
         let dailyData = defaults.dictionary(forKey: Keys.dailyActivity) as? [String: Int] ?? [:]
         self.snapshot = UsageSnapshot(

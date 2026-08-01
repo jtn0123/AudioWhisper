@@ -12,11 +12,11 @@ final class RecordingButtonTests: IsolatedXCTestCase {
 
     override func setUp() {
         super.setUp()
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         super.tearDown()
     }
 
@@ -53,11 +53,11 @@ final class RecordingButtonIconTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         super.tearDown()
     }
 
@@ -92,7 +92,7 @@ final class RecordingButtonIconTests: XCTestCase {
     }
 
     func testSuccessIconWithSmartPaste() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
         let icon = getButtonIcon(
             isRecording: false,
             hasPermission: true,
@@ -103,7 +103,7 @@ final class RecordingButtonIconTests: XCTestCase {
     }
 
     func testSuccessIconWithoutSmartPaste() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
         let icon = getButtonIcon(
             isRecording: false,
             hasPermission: true,
@@ -121,7 +121,7 @@ final class RecordingButtonIconTests: XCTestCase {
         showSuccess: Bool
     ) -> String {
         if showSuccess {
-            let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+            let enableSmartPaste = AppDefaults.defaults.bool(forKey: "enableSmartPaste")
             return enableSmartPaste ? "arrow.down.doc.on.clipboard" : "checkmark"
         } else if isRecording {
             return "stop.fill"
@@ -138,11 +138,11 @@ final class RecordingButtonColorTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         super.tearDown()
     }
 
@@ -210,11 +210,11 @@ final class RecordingButtonAccessibilityTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         super.tearDown()
     }
 
@@ -259,7 +259,7 @@ final class RecordingButtonAccessibilityTests: XCTestCase {
     }
 
     func testSuccessLabelWithSmartPaste() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
         let label = getAccessibilityLabel(
             isRecording: false,
             hasPermission: true,
@@ -270,7 +270,7 @@ final class RecordingButtonAccessibilityTests: XCTestCase {
     }
 
     func testSuccessLabelWithoutSmartPaste() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
         let label = getAccessibilityLabel(
             isRecording: false,
             hasPermission: true,
@@ -288,7 +288,7 @@ final class RecordingButtonAccessibilityTests: XCTestCase {
         showSuccess: Bool
     ) -> String {
         if showSuccess {
-            let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+            let enableSmartPaste = AppDefaults.defaults.bool(forKey: "enableSmartPaste")
             return enableSmartPaste ? "Paste transcribed text" : "Transcription completed successfully"
         } else if isRecording {
             return "Stop recording"
@@ -381,11 +381,11 @@ final class RecordingButtonDisabledStateTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         super.tearDown()
     }
 
@@ -417,7 +417,7 @@ final class RecordingButtonDisabledStateTests: XCTestCase {
     }
 
     func testButtonDisabledOnSuccessWithSmartPaste() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
         let isDisabled = shouldBeDisabled(
             isProcessing: false,
             hasPermission: true,
@@ -432,7 +432,7 @@ final class RecordingButtonDisabledStateTests: XCTestCase {
         hasPermission: Bool,
         showSuccess: Bool
     ) -> Bool {
-        let enableSmartPaste = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+        let enableSmartPaste = AppDefaults.defaults.bool(forKey: "enableSmartPaste")
         return isProcessing || !hasPermission || (showSuccess && !enableSmartPaste)
     }
 }

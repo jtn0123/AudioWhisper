@@ -36,7 +36,7 @@ final class AppDelegateLifecycleTests: IsolatedXCTestCase {
     func testApplicationDidFinishLaunchingRegistersDefaults() {
         // The defaults should be registered when app launches
         // We test by checking that the defaults exist after launch
-        let defaults = UserDefaults.standard
+        let defaults = AppDefaults.defaults
 
         // These defaults should be registered
         // Note: In test environment, applicationDidFinishLaunching returns early

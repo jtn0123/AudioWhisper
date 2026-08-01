@@ -16,7 +16,7 @@ final class AppDefaultsTests: IsolatedXCTestCase {
         super.setUp()
         // Store original values for keys we'll modify
         for key in AppDefaults.Key.allCases {
-            if let value = UserDefaults.standard.object(forKey: key.rawValue) {
+            if let value = AppDefaults.defaults.object(forKey: key.rawValue) {
                 originalDefaults[key.rawValue] = value
             }
         }
@@ -26,9 +26,9 @@ final class AppDefaultsTests: IsolatedXCTestCase {
         // Restore original values
         for key in AppDefaults.Key.allCases {
             if let original = originalDefaults[key.rawValue] {
-                UserDefaults.standard.set(original, forKey: key.rawValue)
+                AppDefaults.defaults.set(original, forKey: key.rawValue)
             } else {
-                UserDefaults.standard.removeObject(forKey: key.rawValue)
+                AppDefaults.defaults.removeObject(forKey: key.rawValue)
             }
         }
         originalDefaults.removeAll()
@@ -303,10 +303,10 @@ final class AppDefaultsTests: IsolatedXCTestCase {
 
     func testInvalidEnumValueFallsBackToDefault() {
         // Set an invalid raw value directly
-        UserDefaults.standard.set("invalid_provider", forKey: AppDefaults.Key.transcriptionProvider.rawValue)
+        AppDefaults.defaults.set("invalid_provider", forKey: AppDefaults.Key.transcriptionProvider.rawValue)
         XCTAssertEqual(AppDefaults.transcriptionProvider, .parakeet) // Falls back to default
 
-        UserDefaults.standard.set("invalid_model", forKey: AppDefaults.Key.selectedWhisperModel.rawValue)
+        AppDefaults.defaults.set("invalid_model", forKey: AppDefaults.Key.selectedWhisperModel.rawValue)
         XCTAssertEqual(AppDefaults.selectedWhisperModel, .base) // Falls back to default
 
         // Note: waveformStyle invalid value test is in WaveformStyleTests.swift

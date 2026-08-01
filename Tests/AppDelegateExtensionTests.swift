@@ -49,18 +49,18 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
         let testKey = "pressAndHoldEnabled"
 
         // Save current value
-        let originalValue = UserDefaults.standard.object(forKey: testKey)
+        let originalValue = AppDefaults.defaults.object(forKey: testKey)
 
         // Set a test value
-        UserDefaults.standard.set(true, forKey: testKey)
+        AppDefaults.defaults.set(true, forKey: testKey)
 
         let config = PressAndHoldSettings.configuration()
 
         // Restore original value
         if let original = originalValue {
-            UserDefaults.standard.set(original, forKey: testKey)
+            AppDefaults.defaults.set(original, forKey: testKey)
         } else {
-            UserDefaults.standard.removeObject(forKey: testKey)
+            AppDefaults.defaults.removeObject(forKey: testKey)
         }
 
         XCTAssertTrue(config.enabled)
@@ -178,17 +178,17 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
 
     func testImmediateRecordingDefaultsToTrue() {
         // Clear any existing value
-        let originalValue = UserDefaults.standard.object(forKey: "immediateRecording")
-        UserDefaults.standard.removeObject(forKey: "immediateRecording")
+        let originalValue = AppDefaults.defaults.object(forKey: "immediateRecording")
+        AppDefaults.defaults.removeObject(forKey: "immediateRecording")
 
         // Register defaults as app does
-        UserDefaults.standard.register(defaults: ["immediateRecording": true])
+        AppDefaults.defaults.register(defaults: ["immediateRecording": true])
 
-        let value = UserDefaults.standard.bool(forKey: "immediateRecording")
+        let value = AppDefaults.defaults.bool(forKey: "immediateRecording")
 
         // Restore
         if let original = originalValue {
-            UserDefaults.standard.set(original, forKey: "immediateRecording")
+            AppDefaults.defaults.set(original, forKey: "immediateRecording")
         }
 
         XCTAssertTrue(value, "immediateRecording should default to true")

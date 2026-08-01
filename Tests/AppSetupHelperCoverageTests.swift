@@ -15,10 +15,10 @@ final class AppSetupHelperCoverageTests: IsolatedXCTestCase {
 
     override func setUp() {
         super.setUp()
-        originalProvider = UserDefaults.standard.object(forKey: AppDefaults.Key.transcriptionProvider.rawValue)
-        originalCompletedWelcome = UserDefaults.standard.object(forKey: AppDefaults.Key.hasCompletedWelcome.rawValue)
-        originalWelcomeVersion = UserDefaults.standard.object(forKey: AppDefaults.Key.lastWelcomeVersion.rawValue)
-        originalIconSize = UserDefaults.standard.object(forKey: AppDefaults.Key.menuBarIconSize.rawValue)
+        originalProvider = AppDefaults.defaults.object(forKey: AppDefaults.Key.transcriptionProvider.rawValue)
+        originalCompletedWelcome = AppDefaults.defaults.object(forKey: AppDefaults.Key.hasCompletedWelcome.rawValue)
+        originalWelcomeVersion = AppDefaults.defaults.object(forKey: AppDefaults.Key.lastWelcomeVersion.rawValue)
+        originalIconSize = AppDefaults.defaults.object(forKey: AppDefaults.Key.menuBarIconSize.rawValue)
     }
 
     override func tearDown() {
@@ -32,9 +32,9 @@ final class AppSetupHelperCoverageTests: IsolatedXCTestCase {
 
     private func restore(_ value: Any?, _ key: AppDefaults.Key) {
         if let value = value {
-            UserDefaults.standard.set(value, forKey: key.rawValue)
+            AppDefaults.defaults.set(value, forKey: key.rawValue)
         } else {
-            UserDefaults.standard.removeObject(forKey: key.rawValue)
+            AppDefaults.defaults.removeObject(forKey: key.rawValue)
         }
     }
 

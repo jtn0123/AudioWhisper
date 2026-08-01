@@ -94,7 +94,7 @@ internal final class SourceUsageStore {
     private(set) var orderedStats: [SourceUsageStats] = []
     private var statsByBundle: [String: SourceUsageStats] = [:]
     
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppDefaults.defaults) {
         self.defaults = defaults
         if let data = defaults.data(forKey: storageKey) {
             let decoder = JSONDecoder()

@@ -119,7 +119,9 @@ internal class HotKeyManager {
     /// Lookup table mapping the uppercased hotkey string fragment to a `Key`.
     /// Using a dictionary keeps `stringToKey` simple and avoids a large
     /// switch statement.
-    private static let keyLookup: [String: Key] = [
+    // A6: nonisolated alongside stringToKey — an immutable dictionary of value
+    // types is trivially Sendable, and the lookup that reads it is nonisolated.
+    private nonisolated static let keyLookup: [String: Key] = [
         "F1": .f1, "F2": .f2, "F3": .f3, "F4": .f4, "F5": .f5,
         "F6": .f6, "F7": .f7, "F8": .f8, "F9": .f9, "F10": .f10,
         "F11": .f11, "F12": .f12, "F13": .f13, "F14": .f14, "F15": .f15,

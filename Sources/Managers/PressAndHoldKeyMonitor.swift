@@ -139,7 +139,10 @@ internal enum PressAndHoldSettings {
     private static let keyIdentifierKey = "pressAndHoldKeyIdentifier"
     private static let modeKey = "pressAndHoldMode"
 
-    static func configuration(using defaults: UserDefaults = .standard) -> PressAndHoldConfiguration {
+    // D4: defaults to AppDefaults.defaults, not .standard, so this honours the
+    // test-suite redirection. It read .standard while tests wrote the redirected
+    // store, which made AppDelegateHotkeysTests fail under --parallel.
+    static func configuration(using defaults: UserDefaults = AppDefaults.defaults) -> PressAndHoldConfiguration {
         let enabled = defaults.object(forKey: enabledKey) as? Bool ?? PressAndHoldConfiguration.defaults.enabled
         let keyIdentifier = defaults.string(forKey: keyIdentifierKey) ?? PressAndHoldConfiguration.defaults.key.rawValue
         let modeIdentifier = defaults.string(forKey: modeKey) ?? PressAndHoldConfiguration.defaults.mode.rawValue
@@ -152,7 +155,7 @@ internal enum PressAndHoldSettings {
         return PressAndHoldConfiguration(enabled: enabled, key: key, mode: mode)
     }
 
-    static func update(_ configuration: PressAndHoldConfiguration, using defaults: UserDefaults = .standard) {
+    static func update(_ configuration: PressAndHoldConfiguration, using defaults: UserDefaults = AppDefaults.defaults) {
         defaults.set(configuration.enabled, forKey: enabledKey)
         defaults.set(configuration.key.rawValue, forKey: keyIdentifierKey)
         defaults.set(configuration.mode.rawValue, forKey: modeKey)

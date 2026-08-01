@@ -194,8 +194,8 @@ final class SemanticCorrectionTests: IsolatedXCTestCase {
     
     func testDefaultModelSettings() {
         // Clear UserDefaults first
-        UserDefaults.standard.removeObject(forKey: "semanticCorrectionModelRepo")
-        UserDefaults.standard.removeObject(forKey: "semanticCorrectionPythonPath")
+        AppDefaults.defaults.removeObject(forKey: "semanticCorrectionModelRepo")
+        AppDefaults.defaults.removeObject(forKey: "semanticCorrectionPythonPath")
         
         // Check defaults in SemanticCorrectionService
         let service = SemanticCorrectionService()

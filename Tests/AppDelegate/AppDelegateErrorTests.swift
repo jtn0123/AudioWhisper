@@ -88,7 +88,7 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         let key = "hasCleanedWindowState"
 
         // Reading the key should not crash
-        _ = UserDefaults.standard.bool(forKey: key)
+        _ = AppDefaults.defaults.bool(forKey: key)
 
         XCTAssertNotNil(key)
     }
@@ -97,11 +97,11 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         let testKey = "testWindowStateCleanup.\(UUID().uuidString)"
 
         // Should be able to set and read the flag
-        UserDefaults.standard.set(true, forKey: testKey)
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: testKey))
+        AppDefaults.defaults.set(true, forKey: testKey)
+        XCTAssertTrue(AppDefaults.defaults.bool(forKey: testKey))
 
         // Cleanup
-        UserDefaults.standard.removeObject(forKey: testKey)
+        AppDefaults.defaults.removeObject(forKey: testKey)
     }
 
     func testSavedApplicationStateDirectoryExists() {

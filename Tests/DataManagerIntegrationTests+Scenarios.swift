@@ -161,7 +161,7 @@ extension DataManagerIntegrationTests {
         let testRecord = createSampleRecord(text: "Settings test", provider: .local)
         
         // Enable history and save
-        UserDefaults.standard.set(true, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")
         dataManager.isHistoryEnabled = true
         
         try await dataManager.saveTranscription(testRecord)
@@ -169,7 +169,7 @@ extension DataManagerIntegrationTests {
         XCTAssertEqual(records.count, 1, "Record should be saved when history enabled")
         
         // Disable history and try to save another
-        UserDefaults.standard.set(false, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(false, forKey: "transcriptionHistoryEnabled")
         dataManager.isHistoryEnabled = false
         
         let anotherRecord = createSampleRecord(text: "Should not save", provider: .parakeet)
@@ -184,7 +184,7 @@ extension DataManagerIntegrationTests {
         let periods: [RetentionPeriod] = [.oneWeek, .oneMonth, .threeMonths, .forever]
         
         for period in periods {
-            UserDefaults.standard.set(period.rawValue, forKey: "transcriptionRetentionPeriod")
+            AppDefaults.defaults.set(period.rawValue, forKey: "transcriptionRetentionPeriod")
             dataManager.retentionPeriod = period
             
             XCTAssertEqual(dataManager.retentionPeriod, period, "Retention period should be set correctly")
@@ -209,8 +209,8 @@ extension DataManagerIntegrationTests {
         // Simulate a complete user journey from setup to data management
         
         // Step 1: User enables history
-        UserDefaults.standard.set(true, forKey: "transcriptionHistoryEnabled")
-        UserDefaults.standard.set(RetentionPeriod.oneMonth.rawValue, forKey: "transcriptionRetentionPeriod")
+        AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(RetentionPeriod.oneMonth.rawValue, forKey: "transcriptionRetentionPeriod")
         
         dataManager.isHistoryEnabled = true
         dataManager.retentionPeriod = .oneMonth

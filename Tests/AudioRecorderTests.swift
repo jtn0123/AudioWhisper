@@ -16,7 +16,7 @@ final class AudioRecorderTests: IsolatedXCTestCase {
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.removeObject(forKey: "autoBoostMicrophoneVolume")
         PermissionManager.shared.microphonePermissionState = .unknown
         super.tearDown()
     }
@@ -161,7 +161,7 @@ final class AudioRecorderTests: IsolatedXCTestCase {
             dateProvider: { Date() }
         )
         PermissionManager.shared.microphonePermissionState = .granted
-        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.set(true, forKey: "autoBoostMicrophoneVolume")
 
         // Start recording - this should boost volume
         XCTAssertTrue(recorder.startRecording())
@@ -193,7 +193,7 @@ final class AudioRecorderTests: IsolatedXCTestCase {
             dateProvider: { Date() }
         )
         PermissionManager.shared.microphonePermissionState = .granted
-        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.set(true, forKey: "autoBoostMicrophoneVolume")
 
         // Start recording
         XCTAssertTrue(recorder.startRecording())

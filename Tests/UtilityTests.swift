@@ -183,17 +183,17 @@ class UtilityTests: IsolatedXCTestCase {
         let testValue = "test-value"
         
         // Set value
-        UserDefaults.standard.set(testValue, forKey: testKey)
+        AppDefaults.defaults.set(testValue, forKey: testKey)
         
         // Get value
-        let retrievedValue = UserDefaults.standard.string(forKey: testKey)
+        let retrievedValue = AppDefaults.defaults.string(forKey: testKey)
         XCTAssertEqual(retrievedValue, testValue)
         
         // Remove value
-        UserDefaults.standard.removeObject(forKey: testKey)
+        AppDefaults.defaults.removeObject(forKey: testKey)
         
         // Verify removed
-        let removedValue = UserDefaults.standard.string(forKey: testKey)
+        let removedValue = AppDefaults.defaults.string(forKey: testKey)
         XCTAssertNil(removedValue)
     }
     
@@ -201,15 +201,15 @@ class UtilityTests: IsolatedXCTestCase {
         let testKey = "test-bool-key"
         
         // Set true
-        UserDefaults.standard.set(true, forKey: testKey)
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: testKey))
+        AppDefaults.defaults.set(true, forKey: testKey)
+        XCTAssertTrue(AppDefaults.defaults.bool(forKey: testKey))
         
         // Set false
-        UserDefaults.standard.set(false, forKey: testKey)
-        XCTAssertFalse(UserDefaults.standard.bool(forKey: testKey))
+        AppDefaults.defaults.set(false, forKey: testKey)
+        XCTAssertFalse(AppDefaults.defaults.bool(forKey: testKey))
         
         // Clean up
-        UserDefaults.standard.removeObject(forKey: testKey)
+        AppDefaults.defaults.removeObject(forKey: testKey)
     }
     
     // MARK: - Date and Time Tests

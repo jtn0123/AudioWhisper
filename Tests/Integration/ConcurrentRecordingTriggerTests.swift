@@ -147,8 +147,8 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
             appDelegate.pressAndHoldMonitor = nil
         }
 
-        UserDefaults.standard.set(true, forKey: "immediateRecording")
-        defer { UserDefaults.standard.removeObject(forKey: "immediateRecording") }
+        AppDefaults.defaults.set(true, forKey: "immediateRecording")
+        defer { AppDefaults.defaults.removeObject(forKey: "immediateRecording") }
 
         // Without a recorder, handleHotkey falls through to toggleRecordWindow
         // This verifies the nil-recorder guard path doesn't crash
@@ -167,8 +167,8 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
             appDelegate.pressAndHoldMonitor = nil
         }
 
-        UserDefaults.standard.set(true, forKey: "immediateRecording")
-        defer { UserDefaults.standard.removeObject(forKey: "immediateRecording") }
+        AppDefaults.defaults.set(true, forKey: "immediateRecording")
+        defer { AppDefaults.defaults.removeObject(forKey: "immediateRecording") }
 
         // Alternate between hotkey sources rapidly
         for index in 0..<20 {

@@ -14,7 +14,7 @@ final class WaveformUserDefaultsTests: IsolatedXCTestCase {
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
     func testUserDefaultsWaveformStyleKey() {
-        let defaults = UserDefaults.standard
+        let defaults = AppDefaults.defaults
         let key = "waveformStyle"
 
         defaults.removeObject(forKey: key)
@@ -28,7 +28,7 @@ final class WaveformUserDefaultsTests: IsolatedXCTestCase {
     }
 
     func testUserDefaultsVisualIntensityKey() {
-        let defaults = UserDefaults.standard
+        let defaults = AppDefaults.defaults
         let key = "visualIntensity"
 
         defaults.removeObject(forKey: key)

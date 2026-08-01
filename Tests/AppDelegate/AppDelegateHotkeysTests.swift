@@ -107,19 +107,19 @@ final class AppDelegateHotkeysTests: IsolatedXCTestCase {
 
     func testHandleHotkeyWithImmediateRecordingEnabled() {
         // Test that immediate recording setting can be read
-        UserDefaults.standard.set(true, forKey: "immediateRecording")
-        let immediateRecording = UserDefaults.standard.bool(forKey: "immediateRecording")
+        AppDefaults.defaults.set(true, forKey: "immediateRecording")
+        let immediateRecording = AppDefaults.defaults.bool(forKey: "immediateRecording")
         XCTAssertTrue(immediateRecording)
     }
 
     func testHandleHotkeyWithImmediateRecordingDisabled() {
         // Test that immediate recording setting can be disabled
-        UserDefaults.standard.set(false, forKey: "immediateRecording")
-        let immediateRecording = UserDefaults.standard.bool(forKey: "immediateRecording")
+        AppDefaults.defaults.set(false, forKey: "immediateRecording")
+        let immediateRecording = AppDefaults.defaults.bool(forKey: "immediateRecording")
         XCTAssertFalse(immediateRecording)
 
         // Restore default
-        UserDefaults.standard.set(true, forKey: "immediateRecording")
+        AppDefaults.defaults.set(true, forKey: "immediateRecording")
     }
 
     func testHandleHotkeyWithMockRecorderNotRecording() {

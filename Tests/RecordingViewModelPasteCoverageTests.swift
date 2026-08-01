@@ -64,11 +64,27 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
     }
 
     func testFindValidTargetAppPrefersStoredApp() {
+        // D4: must use a REAL running application, not `NSRunningApplication
+        // .current`. In a parallel xctest worker `.current` is invalid — pid -1
+        // and `isTerminated == true` — so `findValidTargetApp` correctly
+        // discards it and falls through to the fallback, which defeats the
+        // premise of this test. The old version therefore failed every parallel
+        // run for a reason unrelated to the code under test.
+        guard let realApp = NSWorkspace.shared.runningApplications
+            .first(where: { !$0.isTerminated && $0.processIdentifier > 0 }) else {
+            XCTFail("Expected at least one live running application")
+            return
+        }
+
         let vm = makeViewModel()
-        WindowController.storedTargetApp = NSRunningApplication.current
+        WindowController.storedTargetApp = realApp
         vm.targetAppForPaste = nil
+
         let result = vm.findValidTargetApp()
-        XCTAssertEqual(result?.processIdentifier, NSRunningApplication.current.processIdentifier)
+        XCTAssertEqual(
+            result?.processIdentifier, realApp.processIdentifier,
+            "A live stored app must win over the fallback"
+        )
     }
 
     func testFindValidTargetAppUsesTargetAppForPasteWhenNoStored() {

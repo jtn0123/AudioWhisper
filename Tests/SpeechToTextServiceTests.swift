@@ -105,7 +105,7 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
 
     func testTranscribeWithParakeetProviderMissingPython() async {
         let invalidPythonPath = "/invalid/python/path"
-        UserDefaults.standard.set(invalidPythonPath, forKey: "parakeetPythonPath")
+        AppDefaults.defaults.set(invalidPythonPath, forKey: "parakeetPythonPath")
 
         do {
             _ = try await service.transcribeRaw(audioURL: testAudioURL, provider: .parakeet)
@@ -136,7 +136,7 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
         }
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "parakeetPythonPath")
+        AppDefaults.defaults.removeObject(forKey: "parakeetPythonPath")
     }
 
     func testParakeetProviderInAllCases() {

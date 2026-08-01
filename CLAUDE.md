@@ -18,11 +18,12 @@ swift run
 # Build for release (without app bundle)
 swift build -c release
 
-# Run tests
+# Run tests (parallel — scripts/run-tests.sh isolates settings per process)
 make test
 
-# Run all tests with coverage
-swift test --parallel --enable-code-coverage
+# Coverage needs --no-parallel: llvm merges one .profraw per process, and
+# parallel workers race the same file.
+swift test --no-parallel --enable-code-coverage
 
 # Run a single test file
 swift test --filter "DataManagerTests"

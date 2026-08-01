@@ -12,12 +12,12 @@ final class PasteManagerTests: IsolatedXCTestCase {
     override func setUp() {
         super.setUp()
         // Ensure clean state before each test
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         NSPasteboard.general.clearContents()
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         NSPasteboard.general.clearContents()
         super.tearDown()
     }
@@ -34,7 +34,7 @@ final class PasteManagerTests: IsolatedXCTestCase {
     // MARK: - Tests
 
     func testSmartPasteDisabledPostsFailureAndSkipsActivation() async throws {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
 
         let mockApp = MockRunningApplication()
         let manager = makeManager(permissionGranted: true)
@@ -59,7 +59,7 @@ final class PasteManagerTests: IsolatedXCTestCase {
     }
 
     func testSmartPasteFailsWhenPermissionDenied() async throws {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
 
         let mockApp = MockRunningApplication()
         let manager = makeManager(permissionGranted: false)
@@ -81,7 +81,7 @@ final class PasteManagerTests: IsolatedXCTestCase {
     }
 
     func testSmartPasteFailsForNilTargetApplication() async throws {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
 
         let manager = makeManager(permissionGranted: true)
 
@@ -101,7 +101,7 @@ final class PasteManagerTests: IsolatedXCTestCase {
     }
 
     func testSmartPasteAttemptsActivationThenFailsInsideTests() async throws {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
 
         let mockApp = MockRunningApplication()
         let manager = makeManager(permissionGranted: true)

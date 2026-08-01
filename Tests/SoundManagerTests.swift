@@ -15,11 +15,11 @@ final class SoundManagerTests: IsolatedXCTestCase {
         super.setUp()
         soundProvider = MockSoundProvider()
         soundManager = SoundManager(soundProvider: soundProvider)
-        UserDefaults.standard.removeObject(forKey: "playCompletionSound")
+        AppDefaults.defaults.removeObject(forKey: "playCompletionSound")
     }
     
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "playCompletionSound")
+        AppDefaults.defaults.removeObject(forKey: "playCompletionSound")
         soundManager = nil
         soundProvider = nil
         super.tearDown()
@@ -33,7 +33,7 @@ final class SoundManagerTests: IsolatedXCTestCase {
     }
     
     func testPlayCompletionSound_WhenDisabledDoesNotPlay() {
-        UserDefaults.standard.set(false, forKey: "playCompletionSound")
+        AppDefaults.defaults.set(false, forKey: "playCompletionSound")
         
         soundManager.playCompletionSound()
         
@@ -42,7 +42,7 @@ final class SoundManagerTests: IsolatedXCTestCase {
     }
     
     func testPlayCompletionSound_WhenEnabledPlaysOnce() {
-        UserDefaults.standard.set(true, forKey: "playCompletionSound")
+        AppDefaults.defaults.set(true, forKey: "playCompletionSound")
         
         soundManager.playCompletionSound()
         
@@ -58,7 +58,7 @@ final class SoundManagerTests: IsolatedXCTestCase {
     }
     
     func testPlayRecordingStartSound_WhenDisabledDoesNotPlay() {
-        UserDefaults.standard.set(false, forKey: "playCompletionSound")
+        AppDefaults.defaults.set(false, forKey: "playCompletionSound")
         
         soundManager.playRecordingStartSound()
         

@@ -23,16 +23,16 @@ final class AppDefaultsExtensionsCoverageTests: IsolatedXCTestCase {
     override func setUp() {
         super.setUp()
         for key in touchedKeys {
-            originalValues[key.rawValue] = UserDefaults.standard.object(forKey: key.rawValue)
+            originalValues[key.rawValue] = AppDefaults.defaults.object(forKey: key.rawValue)
         }
     }
 
     override func tearDown() {
         for (rawKey, value) in originalValues {
             if let value = value {
-                UserDefaults.standard.set(value, forKey: rawKey)
+                AppDefaults.defaults.set(value, forKey: rawKey)
             } else {
-                UserDefaults.standard.removeObject(forKey: rawKey)
+                AppDefaults.defaults.removeObject(forKey: rawKey)
             }
         }
         originalValues.removeAll()
@@ -131,12 +131,12 @@ final class AppDefaultsExtensionsCoverageTests: IsolatedXCTestCase {
     }
 
     func testWaveformStyleInvalidValueFallsBack() {
-        UserDefaults.standard.set("not-a-style", forKey: AppDefaults.Key.waveformStyle.rawValue)
+        AppDefaults.defaults.set("not-a-style", forKey: AppDefaults.Key.waveformStyle.rawValue)
         XCTAssertEqual(AppDefaults.waveformStyle, .classic)
     }
 
     func testVisualIntensityInvalidValueFallsBack() {
-        UserDefaults.standard.set("bogus", forKey: AppDefaults.Key.visualIntensity.rawValue)
+        AppDefaults.defaults.set("bogus", forKey: AppDefaults.Key.visualIntensity.rawValue)
         XCTAssertEqual(AppDefaults.visualIntensity, .balanced)
     }
 

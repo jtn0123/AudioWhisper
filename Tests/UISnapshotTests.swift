@@ -5,7 +5,7 @@ import SwiftData
 
 @MainActor
 final class UISnapshotTests: SnapshotTestCase {
-    let defaults = UserDefaults.standard
+    let defaults = AppDefaults.defaults
 
     override func setUp() async throws {
         try await super.setUp()

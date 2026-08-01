@@ -109,21 +109,21 @@ final class ColorThemeUserDefaultsTests: IsolatedXCTestCase {
 
     func testDefaultColorThemeIsNeonNights() {
         // When no theme is set, default should be neonNights
-        let theme = UserDefaults.standard.colorTheme
+        let theme = AppDefaults.defaults.colorTheme
         // Note: This tests the actual UserDefaults, might have existing value
         XCTAssertNotNil(theme)
     }
 
     func testSetAndGetColorTheme() {
-        let originalTheme = UserDefaults.standard.colorTheme
+        let originalTheme = AppDefaults.defaults.colorTheme
 
-        UserDefaults.standard.colorTheme = .ocean
-        XCTAssertEqual(UserDefaults.standard.colorTheme, .ocean)
+        AppDefaults.defaults.colorTheme = .ocean
+        XCTAssertEqual(AppDefaults.defaults.colorTheme, .ocean)
 
-        UserDefaults.standard.colorTheme = .warmSunset
-        XCTAssertEqual(UserDefaults.standard.colorTheme, .warmSunset)
+        AppDefaults.defaults.colorTheme = .warmSunset
+        XCTAssertEqual(AppDefaults.defaults.colorTheme, .warmSunset)
 
         // Restore original
-        UserDefaults.standard.colorTheme = originalTheme
+        AppDefaults.defaults.colorTheme = originalTheme
     }
 }
