@@ -455,6 +455,15 @@ jobs:
           # Reads the single analyze pass above; does not re-run it.
           count=$(grep -c '(unused_import)' analyze.txt || true)
           if [ "${count:-0}" -ne 0 ]; then
+            # analyze.txt holds the reporter's raw "::warning file=...,line=..."
+            # lines. GitHub turns those into annotations and hides the file path
+            # from the log, so the first time this gate fired it said only that
+            # ONE import was unused, with no way to tell which. Neutralise the
+            # "::" prefix so the paths actually print.
+            echo "offending imports:"
+            grep '(unused_import)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
+          fi
+          if [ "${count:-0}" -ne 0 ]; then
             echo "::error::$count unused import(s). Remove them, or if the compiler"
             echo "::error::genuinely needs one, add swiftlint:disable:next with a reason."
             exit 1

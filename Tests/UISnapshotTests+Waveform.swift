@@ -1,6 +1,5 @@
 import XCTest
 import SwiftUI
-import SwiftData
 @testable import AudioWhisper
 
 // Waveform-style and additional view snapshot tests, split out of UISnapshotTests
