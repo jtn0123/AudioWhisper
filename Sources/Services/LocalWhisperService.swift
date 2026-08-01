@@ -129,7 +129,7 @@ internal final class LocalWhisperService: Sendable {
     private let cache = WhisperKitCache()
     private let maxCachedModels = 3 // Limit cache to prevent excessive memory usage
     private let memoryPressureSource: DispatchSourceMemoryPressure?
-    
+
     init() {
         // Create memory pressure source inline to avoid self reference
         let queue = DispatchQueue(label: "whisperkit.memorypressure")
@@ -159,11 +159,11 @@ internal final class LocalWhisperService: Sendable {
         source.resume()
         self.memoryPressureSource = source
     }
-    
+
     deinit {
         memoryPressureSource?.cancel()
     }
-    
+
     func transcribe(
         audioFileURL: URL,
         model: WhisperModel,
@@ -200,7 +200,7 @@ internal final class LocalWhisperService: Sendable {
         progressCallback?("Transcription complete!")
         return transcription.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
     }
-    
+
     /// Locale-independent network-failure detection: inspects the error type
     /// and domain rather than locale-/version-fragile localized message text.
     /// Used to map a WhisperKit construction failure caused by a network fetch
@@ -220,12 +220,7 @@ internal final class LocalWhisperService: Sendable {
     func clearCache() async {
         await cache.clear()
     }
-    
-    // Method to preload a specific model
-    func preloadModel(_ model: WhisperModel, progressCallback: (@Sendable (String) -> Void)? = nil) async throws {
-        _ = try await cache.getOrCreate(model: model, maxCached: maxCachedModels, progressCallback: progressCallback)
-    }
-    
+
     // Provide helpful duration hints based on model speed
     private func getDurationHint(for model: WhisperModel) -> String {
         switch model {

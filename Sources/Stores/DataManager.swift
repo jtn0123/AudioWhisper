@@ -9,7 +9,7 @@ internal enum DataManagerError: Error, LocalizedError {
     case deleteFailed(Error)
     case cleanupFailed(Error)
     case modelContainerUnavailable
-    
+
     var errorDescription: String? {
         switch self {
         case .initializationFailed(let error):
@@ -33,7 +33,7 @@ internal enum RetentionPeriod: String, CaseIterable, Codable {
     case oneMonth
     case threeMonths
     case forever
-    
+
     var displayName: String {
         switch self {
         case .oneWeek:
@@ -46,7 +46,7 @@ internal enum RetentionPeriod: String, CaseIterable, Codable {
             return "Forever"
         }
     }
-    
+
     var timeInterval: TimeInterval? {
         switch self {
         case .oneWeek:
@@ -66,7 +66,7 @@ internal protocol DataManagerProtocol {
     var isHistoryEnabled: Bool { get }
     var retentionPeriod: RetentionPeriod { get set }
     var sharedModelContainer: ModelContainer? { get }
-    
+
     func initialize() throws
     func saveTranscription(_ record: TranscriptionRecord) async throws
     /// Fetches every record. Reserved for export / counter-rebuild flows; list
@@ -88,7 +88,7 @@ internal protocol DataManagerProtocol {
     func deleteRecord(_ record: TranscriptionRecord) async throws
     func deleteAllRecords() async throws
     func cleanupExpiredRecords() async throws
-    
+
     // Backward compatibility methods that don't throw
     func saveTranscriptionQuietly(_ record: TranscriptionRecord) async
     func fetchAllRecordsQuietly() async -> [TranscriptionRecord]
@@ -100,7 +100,7 @@ internal final class DataManager: DataManagerProtocol {
     nonisolated(unsafe) static let shared: DataManagerProtocol = MainActor.assumeIsolated {
         DataManager()
     }
-    
+
     private var modelContainer: ModelContainer?
 
     /// Tracks the single in-flight retention-cleanup task. Back-to-back saves
@@ -111,7 +111,7 @@ internal final class DataManager: DataManagerProtocol {
     var sharedModelContainer: ModelContainer? {
         return modelContainer
     }
-    
+
     var isHistoryEnabled: Bool {
         return AppDefaults.transcriptionHistoryEnabled
     }
@@ -120,52 +120,52 @@ internal final class DataManager: DataManagerProtocol {
         get { AppDefaults.transcriptionRetentionPeriod }
         set { AppDefaults.transcriptionRetentionPeriod = newValue }
     }
-    
+
     private init() {}
-    
+
     func initialize() throws {
         do {
             let schema = Schema([
                 TranscriptionRecord.self
             ])
-            
+
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: false,
                 allowsSave: true
             )
-            
+
             modelContainer = try ModelContainer(
                 for: schema,
                 configurations: [modelConfiguration]
             )
-            
+
             // Perform initial cleanup of expired records
             Task {
                 await cleanupExpiredRecordsQuietly()
             }
-            
+
         } catch {
             Logger.dataManager.error("Failed to initialize DataManager: \(error.localizedDescription)")
             throw DataManagerError.initializationFailed(error)
         }
     }
-    
+
     func saveTranscription(_ record: TranscriptionRecord) async throws {
         guard isHistoryEnabled else {
             Logger.dataManager.debug("Transcription history is disabled, skipping save")
             return
         }
-        
+
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
         }
-        
+
         do {
             let context = ModelContext(container)
             context.insert(record)
             try context.save()
-            
+
             Logger.dataManager.info("Saved transcription record with ID: \(record.id)")
 
             // Retention cleanup runs off the save critical path — the caller
@@ -197,37 +197,37 @@ internal final class DataManager: DataManagerProtocol {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
         }
-        
+
         do {
             let context = ModelContext(container)
             let descriptor = FetchDescriptor<TranscriptionRecord>(
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
             let records = try context.fetch(descriptor)
-            
+
             Logger.dataManager.debug("Fetched \(records.count) transcription records")
             return records
-            
+
         } catch {
             Logger.dataManager.error("Failed to fetch transcription records: \(error.localizedDescription)")
             throw DataManagerError.fetchFailed(error)
         }
     }
-    
+
     func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord] {
         // Backward compatibility - calls the new method with no pagination
         return try await fetchRecords(matching: searchQuery, limit: nil, offset: nil)
     }
-    
+
     func fetchRecords(matching searchQuery: String, limit: Int? = nil, offset: Int? = nil) async throws -> [TranscriptionRecord] {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
         }
-        
+
         do {
             let context = ModelContext(container)
             var descriptor: FetchDescriptor<TranscriptionRecord>
-            
+
             if searchQuery.isEmpty {
                 // If no search query, return all records
                 descriptor = FetchDescriptor<TranscriptionRecord>(
@@ -241,13 +241,13 @@ internal final class DataManager: DataManagerProtocol {
                     record.provider.localizedStandardContains(searchQuery) ||
                     (record.modelUsed?.localizedStandardContains(searchQuery) ?? false)
                 }
-                
+
                 descriptor = FetchDescriptor<TranscriptionRecord>(
                     predicate: predicate,
                     sortBy: [SortDescriptor(\.date, order: .reverse)]
                 )
             }
-            
+
             // Apply pagination if specified
             if let limit = limit {
                 descriptor.fetchLimit = limit
@@ -255,18 +255,18 @@ internal final class DataManager: DataManagerProtocol {
             if let offset = offset {
                 descriptor.fetchOffset = offset
             }
-            
+
             let records = try context.fetch(descriptor)
-            
+
             Logger.dataManager.debug("Fetched \(records.count) records matching query: '\(searchQuery)' (limit: \(limit ?? -1), offset: \(offset ?? 0))")
             return records
-            
+
         } catch {
             Logger.dataManager.error("Failed to fetch transcription records: \(error.localizedDescription)")
             throw DataManagerError.fetchFailed(error)
         }
     }
-    
+
     func fetchRecords(limit: Int, offset: Int, search: String?) async throws -> [TranscriptionRecord] {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
@@ -338,12 +338,12 @@ internal final class DataManager: DataManagerProtocol {
         UsageMetricsStore.shared.remove(record: record)
         SourceUsageStore.shared.remove(record: record)
     }
-    
+
     func deleteAllRecords() async throws {
         guard let container = modelContainer else {
             throw DataManagerError.modelContainerUnavailable
         }
-        
+
         do {
             let context = ModelContext(container)
 
@@ -354,17 +354,17 @@ internal final class DataManager: DataManagerProtocol {
             try context.save()
 
             Logger.dataManager.info("Deleted all transcription records")
-            
+
             // Reset usage metrics and source stats since all records are gone
             UsageMetricsStore.shared.reset()
             SourceUsageStore.shared.reset()
-            
+
         } catch {
             Logger.dataManager.error("Failed to delete all transcription records: \(error.localizedDescription)")
             throw DataManagerError.deleteFailed(error)
         }
     }
-    
+
     func cleanupExpiredRecords() async throws {
         guard let cutoffDate = RetentionPolicy.cutoffDate(for: retentionPeriod) else {
             Logger.dataManager.debug("Retention period is forever, no cleanup needed")
@@ -382,28 +382,28 @@ internal final class DataManager: DataManagerProtocol {
             let predicate = #Predicate<TranscriptionRecord> { record in
                 record.date < cutoffDate
             }
-            
+
             let descriptor = FetchDescriptor<TranscriptionRecord>(predicate: predicate)
             let expiredRecords = try context.fetch(descriptor)
-            
+
             for record in expiredRecords {
                 context.delete(record)
             }
-            
+
             try context.save()
-            
+
             if !expiredRecords.isEmpty {
                 Logger.dataManager.info("Cleaned up \(expiredRecords.count) expired transcription records")
             }
-            
+
         } catch {
             Logger.dataManager.error("Failed to cleanup expired records: \(error.localizedDescription)")
             throw DataManagerError.cleanupFailed(error)
         }
     }
-    
+
     // MARK: - Backward Compatibility Methods
-    
+
     func saveTranscriptionQuietly(_ record: TranscriptionRecord) async {
         do {
             try await saveTranscription(record)
@@ -411,7 +411,7 @@ internal final class DataManager: DataManagerProtocol {
             Logger.dataManager.error("DataManager operation failed: \(error.localizedDescription)")
         }
     }
-    
+
     func fetchAllRecordsQuietly() async -> [TranscriptionRecord] {
         do {
             return try await fetchAllRecords()
@@ -420,129 +420,12 @@ internal final class DataManager: DataManagerProtocol {
             return []
         }
     }
-    
+
     func cleanupExpiredRecordsQuietly() async {
         do {
             try await cleanupExpiredRecords()
         } catch {
             Logger.dataManager.error("DataManager operation failed: \(error.localizedDescription)")
-        }
-    }
-}
-
-// Mock implementation for testing
-@MainActor
-internal final class MockDataManager: DataManagerProtocol {
-    private var records: [TranscriptionRecord] = []
-    
-    var isHistoryEnabled: Bool = true
-    var retentionPeriod: RetentionPeriod = .oneMonth
-    var sharedModelContainer: ModelContainer?
-    
-    func initialize() throws {
-        Logger.dataManager.info("Mock DataManager initialized")
-    }
-    
-    func saveTranscription(_ record: TranscriptionRecord) async throws {
-        guard isHistoryEnabled else { return }
-        
-        records.append(record)
-        
-        Logger.dataManager.info("Mock saved transcription record with ID: \(record.id)")
-    }
-    
-    func fetchAllRecords() async throws -> [TranscriptionRecord] {
-        return records.sorted { $0.date > $1.date }
-    }
-    
-    func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord] {
-        // Backward compatibility - calls the new method with no pagination
-        return try await fetchRecords(matching: searchQuery, limit: nil, offset: nil)
-    }
-    
-    func fetchRecords(matching searchQuery: String, limit: Int? = nil, offset: Int? = nil) async throws -> [TranscriptionRecord] {
-        let allRecords = try await fetchAllRecords()
-        let filteredRecords = allRecords.filter { $0.matches(searchQuery: searchQuery) }
-        
-        // Apply pagination if specified
-        var results = filteredRecords
-        if let offset = offset, offset < filteredRecords.count {
-            results = Array(filteredRecords.dropFirst(offset))
-        }
-        if let limit = limit, limit > 0 {
-            results = Array(results.prefix(limit))
-        }
-        
-        Logger.dataManager.debug("Mock fetched \(results.count) records matching query: '\(searchQuery)' (limit: \(limit ?? -1), offset: \(offset ?? 0))")
-        return results
-    }
-    
-    func fetchRecords(limit: Int, offset: Int, search: String?) async throws -> [TranscriptionRecord] {
-        var slice = try await fetchAllRecords()
-        if let term = search, !term.isEmpty {
-            slice = slice.filter { $0.text.localizedStandardContains(term) }
-        }
-        guard offset < slice.count else { return [] }
-        return Array(slice.dropFirst(offset).prefix(limit))
-    }
-
-    func deleteRecord(_ record: TranscriptionRecord) async throws {
-        records.removeAll { $0.id == record.id }
-
-        Logger.dataManager.info("Mock deleted transcription record with ID: \(record.id)")
-
-        // Mirror production (B5/G2): incremental subtraction, not a rebuild, so
-        // tests exercise the same code path the app uses.
-        UsageMetricsStore.shared.remove(record: record)
-        SourceUsageStore.shared.remove(record: record)
-    }
-    
-    func deleteAllRecords() async throws {
-        let count = records.count
-        records.removeAll()
-        Logger.dataManager.info("Mock deleted all \(count) transcription records")
-        
-        // Reset usage metrics and source stats since all records are gone
-        UsageMetricsStore.shared.reset()
-        SourceUsageStore.shared.reset()
-    }
-    
-    func cleanupExpiredRecords() async throws {
-        guard let cutoffDate = RetentionPolicy.cutoffDate(for: retentionPeriod) else { return }
-
-        let initialCount = records.count
-        records.removeAll { $0.date < cutoffDate }
-        let removedCount = initialCount - records.count
-        
-        if removedCount > 0 {
-            Logger.dataManager.info("Mock cleaned up \(removedCount) expired transcription records")
-        }
-    }
-    
-    // MARK: - Backward Compatibility Methods
-    
-    func saveTranscriptionQuietly(_ record: TranscriptionRecord) async {
-        do {
-            try await saveTranscription(record)
-        } catch {
-            Logger.dataManager.error("Mock DataManager operation failed: \(error.localizedDescription)")
-        }
-    }
-    
-    func fetchAllRecordsQuietly() async -> [TranscriptionRecord] {
-        do {
-            return try await fetchAllRecords()
-        } catch {
-            Logger.dataManager.error("Mock DataManager operation failed: \(error.localizedDescription)")
-            return []
-        }
-    }
-    
-    func cleanupExpiredRecordsQuietly() async {
-        do {
-            try await cleanupExpiredRecords()
-        } catch {
-            Logger.dataManager.error("Mock DataManager operation failed: \(error.localizedDescription)")
         }
     }
 }

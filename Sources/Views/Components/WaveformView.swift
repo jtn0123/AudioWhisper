@@ -5,7 +5,7 @@ internal struct WaveformRecordingView: View {
     let status: AppStatus
     let audioLevel: Float
     let onTap: () -> Void
-    
+
     // Dark void background
     private let bgColor = Color(red: 0.04, green: 0.04, blue: 0.04)
     // Soft cream/white for bars
@@ -16,14 +16,14 @@ internal struct WaveformRecordingView: View {
     private let successColor = Color(red: 0.45, green: 0.75, blue: 0.55)
     // Error/recording accent
     private let accentColor = Color(red: 0.85, green: 0.45, blue: 0.40)
-    
+
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 0) {
                 // Waveform area
                 ZStack {
                     bgColor
-                    
+
                     WaveformBars(
                         audioLevel: audioLevel,
                         isActive: isRecording,
@@ -32,7 +32,7 @@ internal struct WaveformRecordingView: View {
                     .padding(.horizontal, 24)
                 }
                 .frame(height: 120)
-                
+
                 // Status bar
                 HStack(spacing: 8) {
                     // Status indicator dot
@@ -42,7 +42,7 @@ internal struct WaveformRecordingView: View {
                             .frame(width: 6, height: 6)
                             .modifier(PulseModifier(isActive: isRecording || isProcessing))
                     }
-                    
+
                     Text(statusText)
                         .font(.system(size: 12, weight: .medium, design: .default))
                         .tracking(0.5)
@@ -61,29 +61,19 @@ internal struct WaveformRecordingView: View {
                 .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
     }
-    
+
     // MARK: - State
-    
+
     private var isRecording: Bool {
         if case .recording = status { return true }
         return false
     }
-    
+
     private var isProcessing: Bool {
         if case .processing = status { return true }
         return false
     }
-    
-    private var isSuccess: Bool {
-        if case .success = status { return true }
-        return false
-    }
-    
-    private var isError: Bool {
-        if case .error = status { return true }
-        return false
-    }
-    
+
     private var shouldShowDot: Bool {
         switch status {
         case .recording, .processing, .success, .error:
@@ -92,7 +82,7 @@ internal struct WaveformRecordingView: View {
             return false
         }
     }
-    
+
     private var dotColor: Color {
         switch status {
         case .recording:
@@ -107,7 +97,7 @@ internal struct WaveformRecordingView: View {
             return mutedColor
         }
     }
-    
+
     private var currentBarColor: Color {
         switch status {
         case .recording:
@@ -122,7 +112,7 @@ internal struct WaveformRecordingView: View {
             return mutedColor.opacity(0.5)
         }
     }
-    
+
     private var statusText: String {
         switch status {
         case .recording:
@@ -147,20 +137,20 @@ private struct WaveformBars: View {
     let audioLevel: Float
     let isActive: Bool
     let barColor: Color
-    
+
     private let barCount = 48
     private let barWidth: CGFloat = 2
     private let barSpacing: CGFloat = 2
     private let minHeight: CGFloat = 2
     private let maxHeight: CGFloat = 60
-    
+
     @State private var animatedLevels: [CGFloat] = []
     @State private var idlePhase: CGFloat = 0
     /// C3/G1: was a raw autoconnected Timer publisher, which runs for the
     /// view's entire lifetime whether or not it is on screen. `FrameTimer` is
     /// driven from onAppear/onDisappear so the timer is cancelled, not ignored.
     @State private var frameTimer = FrameTimer(interval: 0.05)
-    
+
     var body: some View {
         HStack(spacing: barSpacing) {
             ForEach(0..<barCount, id: \.self) { index in
@@ -178,33 +168,33 @@ private struct WaveformBars: View {
             updateLevels()
         }
     }
-    
+
     private func barHeight(for index: Int) -> CGFloat {
         guard index < animatedLevels.count else { return minHeight }
         return animatedLevels[index]
     }
-    
+
     private func updateLevels() {
         idlePhase += 0.08
-        
+
         var newLevels: [CGFloat] = []
         let centerIndex = barCount / 2
-        
+
         for barIndex in 0..<barCount {
             let distanceFromCenter = abs(barIndex - centerIndex)
             let normalizedDistance = CGFloat(distanceFromCenter) / CGFloat(centerIndex)
-            
+
             // Base wave shape - higher in center, tapering to edges
             let baseShape = 1.0 - pow(normalizedDistance, 1.5)
-            
+
             if isActive && audioLevel > 0.01 {
                 // Active recording - respond to audio
                 let level = CGFloat(audioLevel)
-                
+
                 // Add some randomness for organic feel
                 let noise = CGFloat.random(in: -0.15...0.15)
                 let variation = sin(CGFloat(barIndex) * 0.5 + idlePhase * 2) * 0.2
-                
+
                 let height = minHeight + (maxHeight - minHeight) * baseShape * level * (1 + noise + variation)
                 newLevels.append(max(minHeight, min(maxHeight, height)))
             } else {
@@ -214,7 +204,7 @@ private struct WaveformBars: View {
                 newLevels.append(idleHeight)
             }
         }
-        
+
         // Smooth transition
         withAnimation(.linear(duration: 0.05)) {
             animatedLevels = newLevels
@@ -227,7 +217,7 @@ private struct WaveformBars: View {
 private struct PulseModifier: ViewModifier {
     let isActive: Bool
     @State private var isPulsing = false
-    
+
     func body(content: Content) -> some View {
         content
             .opacity(isActive ? (isPulsing ? 0.4 : 1.0) : 1.0)

@@ -106,27 +106,6 @@ final class NotificationCoordinator {
 
     // MARK: - Async Stream Pattern
 
-    /// Starts observing a notification using async/await.
-    /// The task runs until cancelled or the coordinator is deallocated.
-    ///
-    /// - Parameters:
-    ///   - name: The notification name to observe
-    ///   - handler: The async handler to execute for each notification
-    func observeAsync(
-        _ name: Notification.Name,
-        handler: @escaping @MainActor @Sendable (Notification) async -> Void
-    ) {
-        // Cancel existing task for this name if any
-        tasks[name]?.cancel()
-
-        let task = Task { @MainActor in
-            for await notification in NotificationCenter.default.notifications(named: name) {
-                await handler(notification)
-            }
-        }
-        tasks[name] = task
-    }
-
     // MARK: - Cleanup
 
     /// Removes the observer for a specific notification name.

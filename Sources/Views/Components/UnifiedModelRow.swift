@@ -22,7 +22,7 @@ internal struct UnifiedModelRow: View {
                 HStack(spacing: DashboardTheme.Spacing.md) {
                     // Selection indicator
                     selectionIndicator
-                    
+
                     // Info and status
                     VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
                         HStack(spacing: DashboardTheme.Spacing.sm) {
@@ -31,7 +31,7 @@ internal struct UnifiedModelRow: View {
                                 .foregroundStyle(DashboardTheme.ink)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
-                            
+
                             if let badge = badgeText, !badge.isEmpty {
                                 Text(badge)
                                     .font(DashboardTheme.Fonts.sans(9, weight: .semibold))
@@ -98,7 +98,7 @@ internal struct UnifiedModelRow: View {
             isSelected ? DashboardTheme.accentSubtle : Color.clear
         )
     }
-    
+
     // MARK: - Accessibility (C1)
 
     /// Model name plus any badge ("RECOMMENDED"), which is otherwise conveyed
@@ -147,7 +147,7 @@ internal struct UnifiedModelRow: View {
                 .frame(width: 18, height: 18)
         }
     }
-    
+
     @ViewBuilder
     private var actionButton: some View {
         if isDownloading {

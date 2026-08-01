@@ -42,7 +42,7 @@ internal class ErrorPresenter {
 
     // Logger for security and debugging
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "ErrorPresenter")
-    
+
     var isTestEnvironment: Bool {
         get {
             return queue.sync { _isTestEnvironment }
@@ -51,12 +51,12 @@ internal class ErrorPresenter {
             queue.sync { _isTestEnvironment = newValue }
         }
     }
-    
+
     private init() {
         // Detect if running in tests - thread-safe initialization
         queue.sync { _isTestEnvironment = AppEnvironment.isRunningTests }
     }
-    
+
     func showError(_ message: String) {
         // Sanitize input to prevent sensitive data leakage
         let sanitizedMessage = sanitizeErrorMessage(message)
@@ -72,24 +72,6 @@ internal class ErrorPresenter {
         }
     }
 
-    /// M13: Error-typed entry point. Uses structural `NSError.domain/code`
-    /// matching first (works on localized macOS systems) and only falls back
-    /// to English substring matching for unknown domains. Prefer this overload
-    /// at call sites that have an `Error` value rather than a pre-formatted
-    /// string.
-    func showError(_ error: Error) {
-        let transcriptionError = TranscriptionError.from(error: error)
-        let sanitizedMessage = sanitizeErrorMessage(error.localizedDescription)
-
-        if !isTestEnvironment {
-            logger.error("Error presented (\(String(describing: transcriptionError), privacy: .public)): \(sanitizedMessage, privacy: .public)")
-        }
-
-        Task { @MainActor [weak self] in
-            await self?.showAlertOnMainThread(sanitizedMessage, structuralType: transcriptionError)
-        }
-    }
-    
     // MARK: - Input Sanitization
 
     private func sanitizeErrorMessage(_ message: String) -> String {
@@ -115,9 +97,9 @@ internal class ErrorPresenter {
 
         return sanitized
     }
-    
+
     // MARK: - Error Pattern Matching
-    
+
     private func getErrorType(from message: String) -> String? {
         let lowercasedMessage = message.lowercased()
 
@@ -221,7 +203,7 @@ internal class ErrorPresenter {
             break
         }
     }
-    
+
     private func handleErrorResponse(_ response: NSApplication.ModalResponse, for message: String, errorType: String?) async {
         switch response {
         case .alertSecondButtonReturn:
@@ -248,18 +230,18 @@ internal class ErrorPresenter {
             break
         }
     }
-    
+
     private func openSystemSettings() async {
         // Skip opening system settings in test environment
         if isTestEnvironment {
             return
         }
-        
+
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") else {
             logger.error("Failed to create system settings URL")
             return
         }
-        
+
         let success = NSWorkspace.shared.open(url)
         if !success {
             logger.error("Failed to open system settings")

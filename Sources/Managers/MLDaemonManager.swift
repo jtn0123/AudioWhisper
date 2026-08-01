@@ -213,10 +213,6 @@ internal actor MLDaemonManager {
         await teardownDeadDaemon()
     }
 
-    private func removePendingRequest(_ id: Int) {
-        pending.removeValue(forKey: id)
-    }
-
     /// Removes any pending requests whose deadline has passed, completing each
     /// with `.timeout`. Cheap to call on every new request — keeps `pending`
     /// bounded without a separate timer.

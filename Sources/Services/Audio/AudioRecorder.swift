@@ -41,7 +41,7 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
         super.init()
         setupRecorder()
     }
-    
+
     private func setupRecorder() {
         // AVAudioSession is not needed on macOS
     }
@@ -63,42 +63,42 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
         // Note: @Published properties (isRecording, audioLevel) are automatically cleaned up
         // Note: Volume restoration should have been handled by stopRecording/cancelRecording
     }
-    
+
     func startRecording() -> Bool {
         // Check permission via PermissionManager (single source of truth)
         guard PermissionManager.shared.microphonePermissionState == .granted else {
             return false
         }
-        
+
         // Prevent re-entrancy - if already recording, return false
         guard audioRecorder == nil else {
             return false
         }
-        
+
         // Boost microphone volume if enabled
         if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.boostMicrophoneVolume()
             }
         }
-        
+
         let tempPath = FileManager.default.temporaryDirectory
         let timestamp = dateProvider().timeIntervalSince1970
         let audioFilename = tempPath.appendingPathComponent("recording_\(timestamp).m4a")
-        
+
         recordingURL = audioFilename
-        
+
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
             AVSampleRateKey: 44100,
             AVNumberOfChannelsKey: 1,
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
-        
+
         // Note: On macOS, microphone selection is handled at the system level
         // The AVAudioRecorder will use the system's default input device
         // Users can change this in System Preferences > Sound > Input
-        
+
         do {
             audioRecorder = try recorderFactory(audioFilename, settings)
             audioRecorder?.delegate = self
@@ -106,7 +106,7 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
             audioRecorder?.record()
             currentSessionStart = dateProvider()
             lastRecordingDuration = nil
-            
+
             self.isRecording = true
             self.startLevelMonitoring()
             return true
@@ -126,7 +126,7 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
             return false
         }
     }
-    
+
     func stopRecording() -> URL? {
         let now = dateProvider()
         let sessionDuration = currentSessionStart.map { now.timeIntervalSince($0) }
@@ -135,21 +135,21 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
 
         audioRecorder?.stop()
         audioRecorder = nil
-        
+
         // Restore microphone volume if it was boosted
         if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.restoreMicrophoneVolume()
             }
         }
-        
+
         // Update @Published properties on main thread
         self.isRecording = false
         self.stopLevelMonitoring()
-        
+
         return recordingURL
     }
-    
+
     func cleanupRecording() {
         guard let url = recordingURL else { return }
 
@@ -158,7 +158,7 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
 
         currentSessionStart = nil
         lastRecordingDuration = nil
-        
+
         do {
             try FileManager.default.removeItem(at: url)
         } catch {
@@ -167,32 +167,32 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
                 Logger.audioRecorder.error("Failed to cleanup recording file: \(error.localizedDescription)")
             }
         }
-        
+
         recordingURL = nil
     }
-    
+
     func cancelRecording() {
         // Stop recording and cleanup without returning URL
         audioRecorder?.stop()
         audioRecorder = nil
         currentSessionStart = nil
         lastRecordingDuration = nil
-        
+
         // Restore microphone volume if it was boosted
         if AppDefaults.autoBoostMicrophoneVolume {
             Task {
                 await volumeManager.restoreMicrophoneVolume()
             }
         }
-        
+
         // Update @Published properties on main thread
         self.isRecording = false
         self.stopLevelMonitoring()
-        
+
         // Clean up the recording file
         cleanupRecording()
     }
-    
+
     private func startLevelMonitoring() {
         // Use a more efficient approach for macOS
         levelUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
@@ -206,18 +206,18 @@ internal class AudioRecorder: NSObject, ObservableObject, AudioRecording {
             }
         }
     }
-    
+
     private func stopLevelMonitoring() {
         levelUpdateTimer?.invalidate()
         levelUpdateTimer = nil
         audioLevel = 0.0
     }
-    
+
     private func normalizeLevel(_ level: Float) -> Float {
         // Convert dB to linear scale (0.0 to 1.0)
         let minDb: Float = -60.0
         let maxDb: Float = 0.0
-        
+
         let clampedLevel = max(minDb, min(maxDb, level))
         return (clampedLevel - minDb) / (maxDb - minDb)
     }

@@ -14,12 +14,6 @@ internal extension ContentView {
         )
     }
 
-    func recordSourceUsage(words: Int, characters: Int) {
-        guard words > 0 else { return }
-        let info = currentSourceAppInfo()
-        SourceUsageStore.shared.recordUsage(for: info, words: words, characters: characters)
-    }
-
     func currentSourceAppInfo() -> SourceAppInfo {
         if let cached = viewModel.lastSourceAppInfo {
             return cached

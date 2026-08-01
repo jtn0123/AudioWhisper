@@ -4,7 +4,7 @@ internal struct MLXModelManagementView: View {
     @Environment(MLXModelManager.self) private var modelManager
     @Binding var selectedModelRepo: String
     @State private var isRefreshing = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
@@ -15,9 +15,9 @@ internal struct MLXModelManagementView: View {
                 Text("MLX Models")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 if modelManager.totalCacheSize > 0 {
                     Text(modelManager.formatBytes(modelManager.totalCacheSize))
                         .font(.caption)
@@ -27,7 +27,7 @@ internal struct MLXModelManagementView: View {
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
-                
+
                 Button(action: {
                     isRefreshing = true
                     Task {
@@ -121,19 +121,19 @@ internal struct MLXModelManagementView: View {
                     )
                 }
             }
-            
+
             // Info text with clickable path
             VStack(alignment: .leading, spacing: 4) {
                 Text("Models are stored in:")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                
+
                 HStack {
                     Text("~/.cache/huggingface/hub/")
                         .font(.caption2)
                         .foregroundStyle(.blue)
                         .textSelection(.enabled)
-                    
+
                     Button(action: {
                         let path = FileManager.default.homeDirectoryForCurrentUser
                             .appendingPathComponent(".cache/huggingface/hub")

@@ -13,7 +13,7 @@ internal struct DashboardRecordingView: View {
     @State private var isRecordingHotkey = false
     @State private var recordedModifiers: NSEvent.ModifierFlags = []
     @State private var recordedKey: Key?
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
@@ -27,7 +27,7 @@ internal struct DashboardRecordingView: View {
         .background(DashboardTheme.pageBg)
         .onAppear(perform: loadMicrophones)
     }
-    
+
     // MARK: - Header
     private var pageHeader: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
@@ -40,12 +40,12 @@ internal struct DashboardRecordingView: View {
                 .foregroundStyle(DashboardTheme.inkMuted)
         }
     }
-    
+
     // MARK: - Microphone
     private var microphoneSection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("Microphone")
-            
+
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
                 if availableMicrophones.isEmpty {
                     Text("No microphones detected. Plug in a microphone or check system permissions.")
@@ -68,26 +68,26 @@ internal struct DashboardRecordingView: View {
             .cardStyle()
         }
     }
-    
+
     // MARK: - Hotkey
     private var hotkeySection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("Global Hotkey")
-            
+
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
                 HStack(alignment: .center, spacing: DashboardTheme.Spacing.md) {
                     VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
                         Text("Record / Stop")
                             .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                             .foregroundStyle(DashboardTheme.ink)
-                        
+
                         Text("Starts and stops recording globally")
                             .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                             .foregroundStyle(DashboardTheme.inkMuted)
                     }
-                    
+
                     Spacer()
-                    
+
                     if isRecordingHotkey {
                         HotKeyRecorderView(
                             isRecording: $isRecordingHotkey,
@@ -109,7 +109,7 @@ internal struct DashboardRecordingView: View {
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(DashboardTheme.accentLight)
                                 )
-                            
+
                             Button("Change") {
                                 isRecordingHotkey = true
                                 recordedModifiers = []
@@ -124,12 +124,12 @@ internal struct DashboardRecordingView: View {
             .cardStyle()
         }
     }
-    
+
     // MARK: - Press & Hold
     private var pressAndHoldSection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("Press & Hold")
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 // Enable toggle
                 settingsRow(title: "Enable Press & Hold", subtitle: "Hold a modifier key to control recording") {
@@ -141,11 +141,11 @@ internal struct DashboardRecordingView: View {
                 .onChange(of: pressAndHoldEnabled) { _, _ in
                     publishPressAndHoldConfiguration()
                 }
-                
+
                 if pressAndHoldEnabled {
                     Divider()
                         .background(DashboardTheme.rule)
-                    
+
                     // Mode picker
                     settingsRow(title: "Behavior", subtitle: "Hold to record or press to toggle") {
                         Picker("", selection: $pressAndHoldModeRaw) {
@@ -159,10 +159,10 @@ internal struct DashboardRecordingView: View {
                     .onChange(of: pressAndHoldModeRaw) { _, _ in
                         publishPressAndHoldConfiguration()
                     }
-                    
+
                     Divider()
                         .background(DashboardTheme.rule)
-                    
+
                     // Key picker
                     settingsRow(title: "Key", subtitle: "Choose which modifier key to use") {
                         Picker("", selection: $pressAndHoldKeyIdentifier) {
@@ -176,16 +176,16 @@ internal struct DashboardRecordingView: View {
                     .onChange(of: pressAndHoldKeyIdentifier) { _, _ in
                         publishPressAndHoldConfiguration()
                     }
-                    
+
                     Divider()
                         .background(DashboardTheme.rule)
-                    
+
                     // Info
                     HStack(spacing: DashboardTheme.Spacing.sm) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 12))
                             .foregroundStyle(DashboardTheme.inkFaint)
-                        
+
                         Text("Requires Accessibility permission. Works system-wide.")
                             .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                             .foregroundStyle(DashboardTheme.inkMuted)
@@ -205,7 +205,7 @@ internal struct DashboardRecordingView: View {
             .tracking(0.8)
             .textCase(.uppercase)
     }
-    
+
     private func settingsRow<Content: View>(
         title: String,
         subtitle: String,
@@ -216,19 +216,19 @@ internal struct DashboardRecordingView: View {
                 Text(title)
                     .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                     .foregroundStyle(DashboardTheme.ink)
-                
+
                 Text(subtitle)
                     .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkMuted)
             }
-            
+
             Spacer()
-            
+
             content()
         }
         .padding(DashboardTheme.Spacing.md)
     }
-    
+
     private func loadMicrophones() {
         let discoverySession = AVCaptureDevice.DiscoverySession(
             deviceTypes: [.microphone],
@@ -237,7 +237,7 @@ internal struct DashboardRecordingView: View {
         )
         availableMicrophones = discoverySession.devices
     }
-    
+
     private func publishPressAndHoldConfiguration() {
         let selectedMode = PressAndHoldMode(rawValue: pressAndHoldModeRaw) ?? PressAndHoldConfiguration.defaults.mode
         let selectedKey = PressAndHoldKey(rawValue: pressAndHoldKeyIdentifier) ?? PressAndHoldConfiguration.defaults.key
@@ -248,7 +248,7 @@ internal struct DashboardRecordingView: View {
         )
         NotificationCenter.default.post(name: .pressAndHoldSettingsChanged, object: configuration)
     }
-    
+
     private func updateGlobalHotkey(_ newHotkey: String) {
         NotificationCenter.default.post(
             name: .updateGlobalHotkey,

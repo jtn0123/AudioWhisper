@@ -7,7 +7,7 @@ internal struct MLXModel: Identifiable, Equatable {
     let repo: String
     let estimatedSize: String
     let description: String
-    
+
     var displayName: String {
         repo.split(separator: "/").last.map(String.init) ?? repo
     }
@@ -17,13 +17,13 @@ internal struct MLXModel: Identifiable, Equatable {
 @MainActor
 internal final class MLXModelManager {
     static let shared = MLXModelManager()
-    
+
     var downloadedModels: Set<String> = []
     var modelSizes: [String: Int64] = [:]
     var isDownloading: [String: Bool] = [:]
     var downloadProgress: [String: String] = [:]
     var totalCacheSize: Int64 = 0
-    
+
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLXModelManager")
     let cacheDirectory: URL
 
@@ -39,7 +39,7 @@ internal final class MLXModelManager {
         AppDefaults.defaults.string(forKey: AppDefaults.Key.selectedParakeetModel.rawValue)
             ?? ParakeetModel.v3Multilingual.rawValue
     }
-    
+
     /// Curated correction models, ordered fastest → highest quality.
     ///
     /// Chosen from a measured benchmark (2026-07-31, seven candidates against
@@ -72,7 +72,7 @@ internal final class MLXModelManager {
             description: "Best quality, and faster than it looks"
         )
     ]
-    
+
     // Note: model/repo download logic lives in `MLXModelManager+Downloads.swift`.
     // The Parakeet download path drives the Python `parakeet_mlx` package, and the
     // selected repo is resolved from `selectedParakeetModel` (see `parakeetRepo`).
@@ -84,7 +84,7 @@ internal final class MLXModelManager {
             await refreshModelList()
         }
     }
-    
+
     func refreshModelList() async {
         await MainActor.run {
             self.downloadedModels.removeAll()
@@ -203,7 +203,7 @@ internal final class MLXModelManager {
 
         return size
     }
-    
+
     func formatBytes(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useBytes, .useKB, .useMB, .useGB]

@@ -5,49 +5,6 @@ import os.log
 // MARK: - Enhanced Model Management Methods
 
 extension ModelManager {
-    func setupFileSystemWatching() {
-        WhisperKitStorage.ensureBaseDirectoryExists()
-        guard let whisperKitPath = WhisperKitStorage.storageDirectory() else { return }
-
-        // Create directory if it doesn't exist
-        do {
-            try FileManager.default.createDirectory(at: whisperKitPath, withIntermediateDirectories: true)
-        } catch {
-            let redactedPath = whisperKitPath.path.redactingHomeDirectory
-            Logger.modelManager.error(
-                "Failed to create WhisperKit directory at \(redactedPath): \(error.localizedDescription)"
-            )
-        }
-
-        let descriptor = open(whisperKitPath.path, O_EVTONLY)
-        guard descriptor >= 0 else { return }
-
-        fileSystemWatcher = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: descriptor,
-            eventMask: [.write, .delete, .rename],
-            queue: DispatchQueue.global(qos: .utility)
-        )
-
-        fileSystemWatcher?.setEventHandler { [weak self] in
-            Task { @MainActor in
-                await self?.refreshDownloadedModels()
-            }
-        }
-
-        fileSystemWatcher?.setCancelHandler {
-            close(descriptor)
-        }
-
-        fileSystemWatcher?.resume()
-    }
-
-    func startPeriodicRefresh() {
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                await self?.refreshDownloadedModels()
-            }
-        }
-    }
 
     @MainActor
     func refreshDownloadedModels() async {

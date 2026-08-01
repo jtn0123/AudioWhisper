@@ -86,10 +86,6 @@ internal final class AppCategoryManager {
 
     // MARK: - Public API
 
-    var availableCategories: [CategoryDefinition] {
-        categoryStore.categories
-    }
-
     func category(for bundleId: String) -> CategoryDefinition {
         let categoryId = categoryId(for: bundleId)
         return categoryStore.category(withId: categoryId)

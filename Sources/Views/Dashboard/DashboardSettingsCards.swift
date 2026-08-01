@@ -5,7 +5,7 @@ internal struct SettingsSectionCard<Content: View>: View {
     let title: String
     let icon: String
     let content: () -> Content
-    
+
     init(
         title: String,
         icon: String,
@@ -15,7 +15,7 @@ internal struct SettingsSectionCard<Content: View>: View {
         self.icon = icon
         self.content = content
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             // Section header
@@ -24,7 +24,7 @@ internal struct SettingsSectionCard<Content: View>: View {
                 .foregroundStyle(DashboardTheme.inkMuted)
                 .tracking(0.8)
                 .textCase(.uppercase)
-            
+
             // Content card
             VStack(alignment: .leading, spacing: 0) {
                 content()
@@ -47,23 +47,23 @@ internal struct SettingsToggleRow: View {
     let title: String
     let subtitle: String?
     @Binding var isOn: Bool
-    
+
     var body: some View {
         HStack(alignment: .center, spacing: DashboardTheme.Spacing.md) {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
                 Text(title)
                     .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                     .foregroundStyle(DashboardTheme.ink)
-                
+
                 if let subtitle {
                     Text(subtitle)
                         .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
             }
-            
+
             Spacer()
-            
+
             Toggle("", isOn: $isOn)
                 .toggleStyle(.switch)
                 .tint(DashboardTheme.accent)
@@ -80,7 +80,7 @@ internal struct SettingsPickerRow<Selection: Hashable>: View {
     @Binding var selection: Selection
     let options: [Selection]
     let display: (Selection) -> String
-    
+
     init(
         title: String,
         subtitle: String? = nil,
@@ -94,23 +94,23 @@ internal struct SettingsPickerRow<Selection: Hashable>: View {
         self.options = options
         self.display = display
     }
-    
+
     var body: some View {
         HStack(alignment: .center, spacing: DashboardTheme.Spacing.md) {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
                 Text(title)
                     .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                     .foregroundStyle(DashboardTheme.ink)
-                
+
                 if let subtitle {
                     Text(subtitle)
                         .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
             }
-            
+
             Spacer()
-            
+
             Menu {
                 ForEach(options, id: \.self) { option in
                     Button {
@@ -129,7 +129,7 @@ internal struct SettingsPickerRow<Selection: Hashable>: View {
                     Text(display(selection))
                         .font(DashboardTheme.Fonts.sans(13, weight: .medium))
                         .foregroundStyle(DashboardTheme.ink)
-                    
+
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(DashboardTheme.inkMuted)
@@ -158,7 +158,7 @@ internal struct SettingsButtonRow: View {
     let icon: String
     let role: ButtonRole?
     let action: () -> Void
-    
+
     init(
         title: String,
         subtitle: String? = nil,
@@ -172,7 +172,7 @@ internal struct SettingsButtonRow: View {
         self.role = role
         self.action = action
     }
-    
+
     var body: some View {
         Button(role: role, action: action) {
             HStack(alignment: .center, spacing: DashboardTheme.Spacing.md) {
@@ -180,16 +180,16 @@ internal struct SettingsButtonRow: View {
                     Text(title)
                         .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                         .foregroundStyle(role == .destructive ? DashboardTheme.destructive : DashboardTheme.ink)
-                    
+
                     if let subtitle {
                         Text(subtitle)
                             .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                             .foregroundStyle(DashboardTheme.inkMuted)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(role == .destructive ? DashboardTheme.destructive : DashboardTheme.inkMuted)
@@ -204,61 +204,16 @@ internal struct SettingsButtonRow: View {
 // MARK: - Info Row
 internal struct SettingsInfoRow: View {
     let text: String
-    
+
     var body: some View {
         HStack(spacing: DashboardTheme.Spacing.sm) {
             Image(systemName: "info.circle")
                 .font(.system(size: 12))
                 .foregroundStyle(DashboardTheme.inkFaint)
-            
+
             Text(text)
                 .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                 .foregroundStyle(DashboardTheme.inkMuted)
-        }
-        .padding(DashboardTheme.Spacing.md)
-    }
-}
-
-// MARK: - Text Field Row
-internal struct SettingsTextFieldRow: View {
-    let title: String
-    let subtitle: String?
-    let placeholder: String
-    @Binding var text: String
-    var isSecure: Bool = false
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: DashboardTheme.Spacing.sm) {
-            VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
-                Text(title)
-                    .font(DashboardTheme.Fonts.sans(14, weight: .medium))
-                    .foregroundStyle(DashboardTheme.ink)
-                
-                if let subtitle {
-                    Text(subtitle)
-                        .font(DashboardTheme.Fonts.sans(12, weight: .regular))
-                        .foregroundStyle(DashboardTheme.inkMuted)
-                }
-            }
-            
-            Group {
-                if isSecure {
-                    SecureField(placeholder, text: $text)
-                } else {
-                    TextField(placeholder, text: $text)
-                }
-            }
-            .textFieldStyle(.plain)
-            .font(DashboardTheme.Fonts.sans(13, weight: .regular))
-            .padding(DashboardTheme.Spacing.sm + 2)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(DashboardTheme.cardBgAlt)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 4)
-                    .stroke(DashboardTheme.rule, lineWidth: 1)
-            )
         }
         .padding(DashboardTheme.Spacing.md)
     }

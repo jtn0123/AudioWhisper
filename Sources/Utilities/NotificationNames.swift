@@ -7,10 +7,10 @@ internal extension Notification.Name {
     // MARK: - Settings and Configuration
     static let updateGlobalHotkey = Notification.Name("UpdateGlobalHotkey")
     static let waveformStyleChanged = Notification.Name("WaveformStyleChanged")
-    
+
     // MARK: - Welcome Flow
     static let welcomeCompleted = Notification.Name("WelcomeCompleted")
-    
+
     // MARK: - Recording Events
     static let recordingStartFailed = Notification.Name("RecordingStartFailed")
     static let recordingStopped = Notification.Name("RecordingStopped")
@@ -19,16 +19,16 @@ internal extension Notification.Name {
     /// Posted when the transcription pipeline starts (true) or finishes (false).
     /// `object` is the new `Bool` value.
     static let transcriptionProcessingStateChanged = Notification.Name("TranscriptionProcessingStateChanged")
-    
+
     // MARK: - Window Management
     static let restoreFocusToPreviousApp = Notification.Name("RestoreFocusToPreviousApp")
-    
+
     // MARK: - Keyboard Events
     static let spaceKeyPressed = Notification.Name("SpaceKeyPressed")
     static let escapeKeyPressed = Notification.Name("EscapeKeyPressed")
     static let returnKeyPressed = Notification.Name("ReturnKeyPressed")
     static let pressAndHoldSettingsChanged = Notification.Name("PressAndHoldSettingsChanged")
-    
+
     // MARK: - Error Handling and Retry
     static let retryRequested = Notification.Name("RetryRequested")
     static let retryTranscriptionRequested = Notification.Name("RetryTranscriptionRequested")
@@ -36,7 +36,7 @@ internal extension Notification.Name {
 
     // MARK: - File Transcription
     static let transcribeAudioFile = Notification.Name("TranscribeAudioFile")
-    
+
     // MARK: - Paste Operations
     static let pasteOperationFailed = Notification.Name("PasteOperationFailed")
     static let pasteOperationSucceeded = Notification.Name("PasteOperationSucceeded")

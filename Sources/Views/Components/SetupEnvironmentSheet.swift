@@ -6,11 +6,11 @@ internal struct SetupEnvironmentSheet: View {
     @Binding var logs: String
     let title: String
     let onStart: () -> Void
-    
+
     private var isSuccess: Bool {
         !isRunning && title.lowercased().contains("ready")
     }
-    
+
     private var isError: Bool {
         (!isRunning && title.lowercased().contains("failed")) || logs.lowercased().contains("error")
     }

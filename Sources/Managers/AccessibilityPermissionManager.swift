@@ -52,13 +52,6 @@ internal class AccessibilityPermissionManager {
         requestPermissionDirect(completion: completion)
     }
 
-    /// Cancels any ongoing permission polling
-    func cancelPolling() {
-        pollingLock.lock()
-        currentPollingID = nil
-        pollingLock.unlock()
-    }
-
     /// Monitors permission status after opening System Settings.
     /// Automatically cancels any previous polling to prevent parallel chains.
     private func monitorPermissionStatus(completion: @escaping (Bool) -> Void) {
@@ -125,33 +118,6 @@ internal class AccessibilityPermissionManager {
         // Fallback to general Privacy & Security settings
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security") {
             NSWorkspace.shared.open(url)
-        }
-    }
-
-    /// Shows an alert with instructions for manually enabling permission
-    func showManualPermissionInstructions() {
-        Task { @MainActor in
-            let alert = NSAlert()
-            alert.messageText = "Enable Accessibility Permission"
-            alert.informativeText = """
-            To enable SmartPaste functionality:
-
-            1. Open System Settings (click "Open Settings" below)
-            2. Go to Privacy & Security → Accessibility
-            3. Find AudioWhisper in the list
-            4. Toggle the switch to enable it
-            5. Return to AudioWhisper
-
-            If AudioWhisper isn't in the list, you may need to add it manually using the "+" button.
-            """
-            alert.alertStyle = .informational
-            alert.addButton(withTitle: "Open System Settings")
-            alert.addButton(withTitle: "Cancel")
-
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                self.openAccessibilitySystemSettings()
-            }
         }
     }
 

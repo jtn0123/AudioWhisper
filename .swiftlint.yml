@@ -12,8 +12,21 @@ opt_in_rules:
   - fatal_error_message
   - toggle_bool
 
+# Analyzer rules only run under `swiftlint analyze`, never `swiftlint lint`.
+# CI runs both (see .github/workflows/ci.yml, `analyze` job).
 analyzer_rules:
+  # GATED. Triaged to zero by removing each flagged import and rebuilding — the
+  # compiler, not the analyzer, decided. A new finding is real; fix it, or add
+  # `swiftlint:disable:next unused_import` with a reason if the compiler needs it.
   - unused_import
+  # REPORTED, NOT GATED. One triage pass removed 82 genuinely dead declarations.
+  # The ~141 that remain are STRUCTURAL false positives the rule cannot see
+  # through, not a backlog: protocol requirements (DataManagerProtocol,
+  # KeychainServiceProtocol, …), SwiftUI declarations required by position rather
+  # than by call (@NSApplicationDelegateAdaptor, @AppDefault), and Tests/Mocks
+  # members that exist only to satisfy a protocol. Suppressing all of those would
+  # cost ~141 annotations and catch almost nothing, so this stays a periodic
+  # manual tool. Treat ~141 as the expected baseline, not a growing pile.
   - unused_declaration
 
 line_length:

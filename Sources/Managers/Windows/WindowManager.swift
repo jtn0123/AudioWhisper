@@ -5,26 +5,26 @@ import SwiftUI
 internal class WindowManager: ObservableObject {
     weak var recordWindow: NSWindow?
     private var windowObserver: NSObjectProtocol?
-    
+
     func setupRecordingWindow(completion: (() -> Void)? = nil) {
         findAndConfigureWindow()
         completion?()
     }
-    
+
     // Async version for modern Swift concurrency
     func setupRecordingWindow() async {
         await MainActor.run {
             findAndConfigureWindow()
         }
     }
-    
+
     private func findAndConfigureWindow() {
         // Find the main window with ContentView
         // Use NSApp.windows but guard against NSApp being nil (testing environment)
         guard let app = NSApp, !app.windows.isEmpty else {
             return
         }
-        
+
         if let window = app.windows.first(where: { window in
             // Check for ContentView in either direct hosting view or as a hosted controller
             if window.contentView is NSHostingView<ContentView> {
@@ -44,7 +44,7 @@ internal class WindowManager: ObservableObject {
             configureFallbackWindow()
         }
     }
-    
+
     private func configureWindow(_ window: NSWindow) {
         // Remove ALL window chrome - must be borderless only
         window.styleMask = [.borderless]
@@ -57,23 +57,23 @@ internal class WindowManager: ObservableObject {
         window.title = WindowTitles.recording
         window.hasShadow = true
         window.isOpaque = false
-        
+
         // Hide the title bar completely
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true
         window.standardWindowButton(.zoomButton)?.isHidden = true
-        
+
         // Force the window to update its appearance
         window.appearance = NSApp.appearance
-        
+
         centerWindow(window)
         enableMouseTracking(for: window)
         preventFocusRing(for: window)
     }
-    
+
     private func centerWindow(_ window: NSWindow) {
         window.center()
-        
+
         // Reset to center of screen if position seems off
         let screenFrame = NSScreen.main?.frame ?? NSRect.zero
         let windowFrame = window.frame
@@ -83,16 +83,16 @@ internal class WindowManager: ObservableObject {
         )
         window.setFrameOrigin(centeredOrigin)
     }
-    
+
     private func enableMouseTracking(for window: NSWindow) {
         window.acceptsMouseMovedEvents = true
         window.ignoresMouseEvents = false
     }
-    
+
     private func preventFocusRing(for window: NSWindow) {
         window.makeFirstResponder(nil)
     }
-    
+
     private func setupWindowObserver(for window: NSWindow) {
         // Remove any existing observer before adding new one
         if let existingObserver = windowObserver {
@@ -109,19 +109,19 @@ internal class WindowManager: ObservableObject {
             window?.orderOut(nil)
         }
     }
-    
+
     private func setInitialFocus(for window: NSWindow) {
         // NEVER show recording window automatically on app launch
         // It should only be shown when hotkey is pressed
         window.orderOut(nil)
     }
-    
+
     private func configureFallbackWindow() {
         // Guard against NSApp being nil (testing environment) and empty windows array
         guard let app = NSApp, !app.windows.isEmpty else {
             return
         }
-        
+
         // Fallback: try to find any window and make it chromeless
         if let window = app.windows.first {
             window.styleMask = [.borderless, .fullSizeContentView]
@@ -135,10 +135,10 @@ internal class WindowManager: ObservableObject {
             recordWindow = window
         }
     }
-    
+
     func showRecordingWindow() {
         guard let window = recordWindow else { return }
-        
+
         // Force window to current Space
         if let screen = NSScreen.main {
             let screenFrame = screen.frame
@@ -149,7 +149,7 @@ internal class WindowManager: ObservableObject {
             )
             window.setFrameOrigin(centeredOrigin)
         }
-        
+
         NSApp?.activate(ignoringOtherApps: true)
         window.orderFrontRegardless()
         if window.canBecomeKey {
@@ -159,11 +159,11 @@ internal class WindowManager: ObservableObject {
             window.orderFront(nil)
         }
     }
-    
+
     func hideRecordingWindow() {
         recordWindow?.orderOut(nil)
     }
-    
+
     deinit {
         if let observer = windowObserver {
             NotificationCenter.default.removeObserver(observer)

@@ -10,11 +10,11 @@ import os.log
 internal class WindowController {
     private var previousApp: NSRunningApplication?
     private let isTestEnvironment: Bool
-    
+
     // Thread-safe static property to share target app with ContentView
     private static let storedTargetAppQueue = DispatchQueue(label: "com.audiowhisper.storedTargetApp", attributes: .concurrent)
     private static var _storedTargetApp: NSRunningApplication?
-    
+
     static var storedTargetApp: NSRunningApplication? {
         get {
             return storedTargetAppQueue.sync {
@@ -27,11 +27,11 @@ internal class WindowController {
             }
         }
     }
-    
+
     init() {
         isTestEnvironment = AppEnvironment.isRunningTests
     }
-    
+
     func toggleRecordWindow(_ window: NSWindow? = nil, completion: (() -> Void)? = nil) {
         // Don't show recorder window during first-run welcome experience
         let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
@@ -39,18 +39,18 @@ internal class WindowController {
             completion?()
             return
         }
-        
+
         // In test environment, exit early
         if isTestEnvironment {
             completion?()
             return
         }
-        
+
         // Use provided window or find the recording window by title
         let recordWindow = window ?? NSApp.windows.first { window in
             window.title == WindowTitles.recording
         }
-        
+
         if let window = recordWindow {
             if window.isVisible {
                 hideWindow(window, completion: completion)
@@ -61,7 +61,7 @@ internal class WindowController {
             completion?()
         }
     }
-    
+
     private func hideWindow(_ window: NSWindow, completion: (() -> Void)? = nil) {
         // Clear the shared target-app reference as the window goes down. The
         // value gets re-stored next time `showWindow` runs, so leaving it set
@@ -85,7 +85,7 @@ internal class WindowController {
             completion?()
         })
     }
-    
+
     private func showWindow(_ window: NSWindow, completion: (() -> Void)? = nil) {
         // Skip actual window operations in test environment
         if isTestEnvironment {
@@ -124,18 +124,18 @@ internal class WindowController {
             completion?()
         }
     }
-    
+
     /// Helper method to perform window operations with delays and completion handlers
     private func performWindowOperation(after delay: TimeInterval, operation: @escaping () -> Void) {
         Task { @MainActor in
             if delay > 0 {
-                
+
                 try? await Task.sleep(for: .seconds(delay))
             }
             operation()
         }
     }
-    
+
     private func storePreviousApp() {
         let workspace = NSWorkspace.shared
         Logger.paste.debug("storePreviousApp called")
@@ -154,7 +154,7 @@ internal class WindowController {
             Logger.paste.debug("storePreviousApp: no suitable frontmost app found")
         }
     }
-    
+
     func restoreFocusToPreviousApp(completion: (() -> Void)? = nil) {
         guard let prevApp = previousApp else {
             // Even if `previousApp` is nil, clear the shared static value so
@@ -175,7 +175,7 @@ internal class WindowController {
             completion?()
         }
     }
-    
+
     @MainActor func openSettings() {
         // Skip actual window operations in test environment
         if isTestEnvironment {

@@ -33,12 +33,6 @@ internal final class SemanticCorrectionService {
     private let mlxService = MLXCorrectionService()
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "SemanticCorrection")
 
-    // Chunking configuration for 32k context window
-    // 32k tokens ≈ 24k words (0.75 ratio) ≈ 120k chars
-    // Use conservative 6k words to leave room for system prompt
-    private static let chunkSizeWords = 6000
-    private static let overlapSizeWords = 200 // Small overlap for context continuity
-
     @MainActor
     private func categoryFor(bundleId: String?) -> CategoryDefinition {
         guard let id = bundleId else { return CategoryDefinition.fallback }
@@ -94,23 +88,6 @@ internal final class SemanticCorrectionService {
                 logger.error("MLX correction failed: \(error.localizedDescription)")
                 return .failed(error, fallback: text)
             }
-        }
-    }
-
-    // MARK: - Local (MLX)
-    /// Runs the local MLX correction model for `text` using the category-specific
-    /// prompt. Requires Apple Silicon; on non-arm64 returns `text` unchanged.
-    /// Any subprocess or model failure logs and returns the original text silently
-    /// — this preserves the contract for the legacy `correct(...) -> String` API.
-    /// For new callers that want to know about failures, use `correctWithOutcome`,
-    /// which routes through `correctLocallyWithMLXThrowing` and surfaces errors
-    /// as `.failed`.
-    private func correctLocallyWithMLX(text: String, category: CategoryDefinition) async -> String {
-        do {
-            return try await correctLocallyWithMLXThrowing(text: text, category: category)
-        } catch {
-            logger.error("MLX correction failed: \(error.localizedDescription)")
-            return text
         }
     }
 
@@ -188,13 +165,6 @@ internal final class SemanticCorrectionService {
             }
         }
         return defaultPrompt
-    }
-
-    private func readPromptFile(name: String) -> String? {
-        guard let base = promptsBaseDir() else { return nil }
-        let url = base.appendingPathComponent(name)
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return try? String(contentsOf: url, encoding: .utf8)
     }
 
     // MARK: - Safety Guard (internal for testability)

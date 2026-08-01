@@ -15,12 +15,12 @@ internal final class TranscriptionRecord {
     var modelUsed: String?
     var wordCount: Int = 0
     var characterCount: Int = 0
-    
+
     // Source app tracking
     var sourceAppBundleId: String?
     var sourceAppName: String?
     var sourceAppIconData: Data?
-    
+
     init(
         text: String,
         provider: TranscriptionProvider,
@@ -52,22 +52,22 @@ internal extension TranscriptionRecord {
     var transcriptionProvider: TranscriptionProvider? {
         return TranscriptionProvider(rawValue: provider)
     }
-    
+
     /// Returns the WhisperModel if applicable (for local transcriptions)
     var whisperModel: WhisperModel? {
         guard let modelUsed = modelUsed else { return nil }
         return WhisperModel(rawValue: modelUsed)
     }
-    
+
     /// Returns a formatted date string for display
     var formattedDate: String {
         return Self.displayDateFormatter.string(from: date)
     }
-    
+
     /// Returns a formatted duration string for display
     var formattedDuration: String? {
         guard let duration = duration else { return nil }
-        
+
         if duration < 60 {
             return duration.formatted(.number.precision(.fractionLength(1))) + "s"
         } else if duration < 3600 {
@@ -80,7 +80,7 @@ internal extension TranscriptionRecord {
             return "\(hours)h \(minutes)m"
         }
     }
-    
+
     /// Returns a truncated version of the text for display in lists
     var preview: String {
         let maxLength = 100
@@ -110,7 +110,7 @@ internal extension TranscriptionRecord {
     /// Returns true if the record matches the search query
     func matches(searchQuery: String) -> Bool {
         guard !searchQuery.isEmpty else { return true }
-        
+
         let lowercaseQuery = searchQuery.lowercased()
         return text.lowercased().contains(lowercaseQuery) ||
                provider.lowercased().contains(lowercaseQuery) ||

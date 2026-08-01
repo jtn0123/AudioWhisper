@@ -7,7 +7,7 @@ internal struct SourceAppInfo: Equatable {
     let displayName: String
     let iconData: Data?
     let fallbackSymbolName: String?
-    
+
     static var unknown: SourceAppInfo {
         SourceAppInfo(
             bundleIdentifier: "unknown",
@@ -16,7 +16,7 @@ internal struct SourceAppInfo: Equatable {
             fallbackSymbolName: "questionmark.app"
         )
     }
-    
+
     static func from(app: NSRunningApplication) -> SourceAppInfo? {
         guard let bundleId = app.bundleIdentifier else {
             return nil
@@ -30,7 +30,7 @@ internal struct SourceAppInfo: Equatable {
             fallbackSymbolName: nil
         )
     }
-    
+
     private static func pngData(from image: NSImage?) -> Data? {
         guard let tiffData = image?.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData) else {
@@ -86,14 +86,14 @@ internal struct SourceUsageStats: Codable, Identifiable, Equatable {
 @MainActor
 internal final class SourceUsageStore {
     static let shared = SourceUsageStore()
-    
+
     private let defaults: UserDefaults
     private let storageKey = "sourceUsage.stats"
     private let maxSources = 50
-    
+
     private(set) var orderedStats: [SourceUsageStats] = []
     private var statsByBundle: [String: SourceUsageStats] = [:]
-    
+
     init(defaults: UserDefaults = AppDefaults.defaults) {
         self.defaults = defaults
         if let data = defaults.data(forKey: storageKey) {
@@ -111,7 +111,7 @@ internal final class SourceUsageStore {
         statsByBundle = [:]
         orderedStats = []
     }
-    
+
     func recordUsage(for info: SourceAppInfo, words: Int, characters: Int) {
         // Record the session even when `words == 0`: `sessionCount`, `lastUsed`
         // and characters must still be tracked so this store agrees with
@@ -145,15 +145,15 @@ internal final class SourceUsageStore {
         trimIfNeeded()
         persist()
     }
-    
+
     func topSources(limit: Int) -> [SourceUsageStats] {
         Array(orderedStats.prefix(limit))
     }
-    
+
     func allSources() -> [SourceUsageStats] {
         orderedStats
     }
-    
+
     private func trimIfNeeded() {
         guard statsByBundle.count > maxSources else { return }
         let surplus = statsByBundle.count - maxSources
@@ -176,11 +176,11 @@ internal final class SourceUsageStore {
             defaults.set(data, forKey: storageKey)
         }
     }
-    
+
     private func refreshOrderedStats() {
         orderedStats = statsByBundle.values.sorted(by: defaultSort)
     }
-    
+
     private var defaultSort: (SourceUsageStats, SourceUsageStats) -> Bool {
         { lhs, rhs in
             if lhs.totalWords == rhs.totalWords {

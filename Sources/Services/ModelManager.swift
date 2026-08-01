@@ -14,7 +14,7 @@ internal class ModelManager {
     var downloadedModels: Set<WhisperModel> = []
     var downloadEstimates: [WhisperModel: TimeInterval] = [:]
     var lastRefresh: Date = Date()
-    
+
     // FileManager operations are performed directly to avoid Sendable warnings
     var fileSystemWatcher: DispatchSourceFileSystemObject?
     var refreshTimer: Timer?
@@ -25,28 +25,28 @@ internal class ModelManager {
     /// DIFFERENT models proceed in parallel. WhisperModel is Hashable (per
     /// its String rawValue), so it works directly as the key.
     private let downloadSerializer = DiskMutationSerializer<WhisperModel>()
-    
+
     init() {
         // Disable automatic file system watching to prevent unwanted re-downloads
         // setupFileSystemWatching() 
-        
+
         // Only refresh manually when user requests it
         // startPeriodicRefresh()
-        
+
         Task {
             await refreshDownloadedModels()
         }
     }
-    
+
     // Note: deinit cleanup removed - this is a singleton that effectively never deinits.
     // The fileSystemWatcher and refreshTimer are cleaned up when the app terminates.
-    
+
     nonisolated func isModelDownloaded(_ model: WhisperModel) async -> Bool {
         // Only check if model files exist on disk - DO NOT initialize WhisperKit
         // as that triggers automatic downloads which users don't want
         return await isModelFileDownloaded(model)
     }
-    
+
     // Check if model files exist in the known WhisperKit storage location
     nonisolated func isModelFileDownloaded(_ model: WhisperModel) async -> Bool {
         guard WhisperKitStorage.isModelDownloaded(model) else { return false }
@@ -94,28 +94,7 @@ internal class ModelManager {
             Logger.modelManager.error("Failed to record integrity for \(model.rawValue): \(error.localizedDescription)")
         }
     }
-    
-    // Helper function to add timeout to async operations
-    private func withTimeout<T>(seconds: TimeInterval, operation: @escaping () async throws -> T) async throws -> T {
-        return try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            
-            group.addTask {
-                try await Task.sleep(for: .seconds(seconds))
-                throw ModelError.downloadTimeout
-            }
-            
-            guard let result = try await group.next() else {
-                throw ModelError.downloadTimeout
-            }
-            
-            group.cancelAll()
-            return result
-        }
-    }
-    
+
     nonisolated func downloadModel(_ model: WhisperModel) async throws {
         // Serialize per-model: two callers asking for the same model share
         // one download task. Callers asking for different models proceed in
@@ -147,7 +126,7 @@ internal class ModelManager {
         let currentModelsSize = await getTotalModelsSize()
         let maxStorageGB = AppDefaults.maxModelStorageGB
         let maxStorageBytes = Int64(maxStorageGB * 1024 * 1024 * 1024)
-        
+
         if currentModelsSize + requiredSpace > maxStorageBytes {
             await MainActor.run {
                 ModelManager.shared.downloadingModels.remove(model)
@@ -155,7 +134,7 @@ internal class ModelManager {
             }
             throw ModelError.storageLimitExceeded
         }
-        
+
         // Check available disk space
         let availableSpace = try await getAvailableStorageSpace()
         if availableSpace < requiredSpace + (100 * 1024 * 1024) { // Add 100MB buffer
@@ -165,21 +144,21 @@ internal class ModelManager {
             }
             throw ModelError.insufficientStorage
         }
-        
+
         do {
             // Update stage to downloading
             await MainActor.run {
                 ModelManager.shared.downloadStages[model] = .downloading
                 ModelManager.shared.downloadEstimates[model] = estimateDownloadTime(for: model)
             }
-            
+
             let config = WhisperKitConfig(model: model.whisperKitModelName)
-            
+
             // Update stage to processing
             await MainActor.run {
                 ModelManager.shared.downloadStages[model] = .processing
             }
-            
+
             _ = try await WhisperKit(config)
 
             // Record integrity sidecar after a successful download. This
@@ -191,10 +170,10 @@ internal class ModelManager {
             await MainActor.run {
                 ModelManager.shared.downloadStages[model] = .completing
             }
-            
+
             // Brief delay to show completion stage
             try await Task.sleep(for: .milliseconds(500)) // 0.5 seconds
-            
+
             // Clean up download state on success
             await MainActor.run {
                 ModelManager.shared.downloadingModels.remove(model)
@@ -203,16 +182,16 @@ internal class ModelManager {
                 ModelManager.shared.downloadEstimates.removeValue(forKey: model)
                 ModelManager.shared.downloadedModels.insert(model)
             }
-            
+
             // Clear the ready stage after a moment
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(2))
                 ModelManager.shared.downloadStages.removeValue(forKey: model)
             }
-            
+
             // Send system notification
             await sendDownloadCompletionNotification(for: model)
-            
+
         } catch {
             // Clean up download state on error
             await MainActor.run {
@@ -221,47 +200,42 @@ internal class ModelManager {
                 ModelManager.shared.downloadStages[model] = .failed(error.localizedDescription)
                 ModelManager.shared.downloadEstimates.removeValue(forKey: model)
             }
-            
+
             // Clear the error stage after a moment
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(5))
                 ModelManager.shared.downloadStages.removeValue(forKey: model)
             }
-            
+
             throw error
         }
     }
-    
-    @MainActor
-    private func updateDownloadProgress(_ model: WhisperModel, progress: Double) {
-        downloadProgress[model] = progress
-    }
-    
+
     nonisolated func deleteModel(_ model: WhisperModel) async throws {
         // Find the model directory and delete it
         guard let modelPath = WhisperKitStorage.modelDirectory(for: model) else {
             throw ModelError.applicationSupportDirectoryNotFound
         }
-        
+
         // Mark as delete in progress to prevent re-download
         _ = await MainActor.run {
             isDeleteInProgress.insert(model)
         }
-        
+
         // Check if the model directory exists
         if FileManager.default.fileExists(atPath: modelPath.path) {
             do {
                 try FileManager.default.removeItem(at: modelPath)
-                
+
                 // Clear the model from LocalWhisperService cache
                 await LocalWhisperService.shared.clearCache()
-                
+
                 // Update our tracking immediately
                 await MainActor.run {
                     downloadedModels.remove(model)
                     isDeleteInProgress.remove(model)
                 }
-                
+
             } catch {
                 _ = await MainActor.run {
                     isDeleteInProgress.remove(model)
@@ -276,24 +250,24 @@ internal class ModelManager {
             }
         }
     }
-    
+
     // Check if model can be deleted
     nonisolated func canDeleteModel(_ model: WhisperModel) -> Bool {
         // Models can be deleted by removing their directories
         return true
     }
-    
+
     nonisolated func getDownloadedModels() async -> [WhisperModel] {
         // Check which models can be successfully initialized
         var downloadedModels: [WhisperModel] = []
-        
+
         for model in WhisperModel.allCases where await isModelDownloaded(model) {
             downloadedModels.append(model)
         }
-        
+
         return downloadedModels
     }
-    
+
     nonisolated func getTotalModelsSize() async -> Int64 {
         // WhisperKit manages model storage internally
         // We can't easily determine the size without access to the internal storage
@@ -303,7 +277,7 @@ internal class ModelManager {
             total + model.estimatedSize
         }
     }
-    
+
 }
 
 internal enum DownloadStage: Equatable {
@@ -313,7 +287,7 @@ internal enum DownloadStage: Equatable {
     case completing
     case ready
     case failed(String)
-    
+
     var displayText: String {
         switch self {
         case .preparing: return "Preparing download..."
@@ -324,7 +298,7 @@ internal enum DownloadStage: Equatable {
         case .failed(let error): return "Failed: \(error)"
         }
     }
-    
+
     var isActive: Bool {
         switch self {
         case .preparing, .downloading, .processing, .completing: return true
@@ -343,7 +317,7 @@ internal enum ModelError: LocalizedError {
     case downloadTimeout
     case insufficientStorage
     case storageLimitExceeded
-    
+
     var errorDescription: String? {
         switch self {
         case .alreadyDownloading:

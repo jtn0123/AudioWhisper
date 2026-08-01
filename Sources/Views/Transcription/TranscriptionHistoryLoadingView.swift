@@ -6,7 +6,7 @@ internal struct TranscriptionHistoryLoadingView: View {
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle())
                 .scaleEffect(1.2)
-            
+
             Text("Loading transcription history...")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

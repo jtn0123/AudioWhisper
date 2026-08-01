@@ -124,8 +124,4 @@ internal final class CategoryStore {
 }
 
 extension CategoryStore {
-    func reloadForPreviews() {
-        categories = CategoryDefinition.defaults
-        rebuildIndex()
-    }
 }

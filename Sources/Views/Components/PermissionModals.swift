@@ -111,36 +111,36 @@ internal struct AccessibilityPermissionModal: View {
 internal struct PermissionRecoveryModal: View {
     let onOpenSettings: () -> Void
     let onCancel: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(.largeTitle))
                 .foregroundStyle(.orange)
                 .accessibilityLabel("Warning: Permissions denied")
-            
+
             VStack(spacing: 12) {
                 Text("Permissions Required")
                     .font(.title2)
                     .fontWeight(.semibold)
-                
+
                 Text("AudioWhisper needs microphone and accessibility permissions to work properly.")
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
-                
+
                 VStack(spacing: 8) {
                     HStack {
                         Text("1.")
                             .fontWeight(.semibold)
                         Text("Click 'Open System Settings' below")
                     }
-                    
+
                     HStack {
                         Text("2.")
                             .fontWeight(.semibold)
                         Text("Enable AudioWhisper in 'Microphone' section")
                     }
-                    
+
                     HStack {
                         Text("3.")
                             .fontWeight(.semibold)
@@ -150,14 +150,14 @@ internal struct PermissionRecoveryModal: View {
                 .font(.callout)
                 .foregroundStyle(.primary)
             }
-            
+
             HStack(spacing: 12) {
                 Button("Cancel") {
                     onCancel()
                 }
                 .buttonStyle(.bordered)
                 .accessibilityHint("Dismiss this dialog without opening System Settings")
-                
+
                 Button("Open System Settings") {
                     onOpenSettings()
                 }

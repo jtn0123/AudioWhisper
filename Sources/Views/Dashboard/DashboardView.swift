@@ -102,22 +102,10 @@ internal enum DashboardTheme {
 
     // MARK: - Radius (three-step scale)
     enum Radius {
-        static let xs: CGFloat = 4   // chips
         static let sm: CGFloat = 6   // buttons, inline pills
         static let md: CGFloat = 10  // cards (was 2 — too tight)
-        static let lg: CGFloat = 12  // windows
     }
 
-    // Animation timings used across the dashboard
-    enum Animation {
-        /// Stagger delay between consecutive sections when entering. Index 0 = no delay.
-        static func stagger(_ index: Int) -> Double {
-            Double(index) * 0.05
-        }
-        /// Standard durations used across the dashboard.
-        static let quick: Double = 0.15
-        static let standard: Double = 0.3
-    }
 }
 
 // MARK: - SidebarVisualEffect

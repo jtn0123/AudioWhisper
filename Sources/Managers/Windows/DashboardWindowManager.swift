@@ -13,7 +13,7 @@ internal protocol DashboardWindowManaging {
 @MainActor
 internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     static let shared = DashboardWindowManager()
-    
+
     private weak var dashboardWindow: NSWindow?
     private var windowDelegate: DashboardWindowDelegate?
     private let isTestEnvironment: Bool
@@ -47,13 +47,13 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
         if isTestEnvironment {
             return
         }
-        
+
         if let existingWindow = dashboardWindow, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
-        
+
         let dashboardView = DashboardView()
             .environment(MLXModelManager.shared)
             .environment(PermissionManager.shared)
@@ -67,7 +67,7 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
             backing: .buffered,
             defer: false
         )
-        
+
         window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.contentViewController = hostingController
         window.title = "AudioWhisper Dashboard"
@@ -80,18 +80,18 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
         // Follow system appearance
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        
+
         windowDelegate = DashboardWindowDelegate(manager: self)
         window.delegate = windowDelegate
-        
+
         dashboardWindow = window
-        
+
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        
+
         Logger.app.info("Dashboard window created and shown")
     }
-    
+
     func windowWillClose() {
         dashboardWindow = nil
         windowDelegate = nil
@@ -101,16 +101,16 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
 
 private class DashboardWindowDelegate: NSObject, NSWindowDelegate {
     private weak var manager: DashboardWindowManager?
-    
+
     init(manager: DashboardWindowManager) {
         self.manager = manager
         super.init()
     }
-    
+
     func windowWillClose(_ notification: Notification) {
         manager?.windowWillClose()
     }
-    
+
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         return true
     }

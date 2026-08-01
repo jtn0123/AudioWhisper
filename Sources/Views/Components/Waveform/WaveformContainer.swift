@@ -331,11 +331,6 @@ extension WaveformContainer {
         return false
     }
 
-    private var isError: Bool {
-        if case .error = status { return true }
-        return false
-    }
-
     private var shouldShowDot: Bool {
         switch status {
         case .recording, .processing, .success, .error:

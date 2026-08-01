@@ -2,7 +2,7 @@ import Foundation
 
 internal enum WhisperModelError: Error, LocalizedError, Sendable {
     case invalidURL(fileName: String)
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidURL(let fileName):

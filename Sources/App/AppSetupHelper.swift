@@ -85,7 +85,7 @@ internal class AppSetupHelper {
         let exists = FileManager.default.fileExists(atPath: modelPath.path, isDirectory: &isDirectory)
         return exists && isDirectory.boolValue
     }
-    
+
     static func setupLoginItem() {
         let startAtLogin = AppDefaults.startAtLogin
 
@@ -96,7 +96,7 @@ internal class AppSetupHelper {
             }
         }
     }
-    
+
     static func createMenuBarIcon() -> NSImage {
         let iconSize = getAdaptiveMenuBarIconSize()
         let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
@@ -107,18 +107,10 @@ internal class AppSetupHelper {
         image?.isTemplate = true // This makes it adapt to menu bar appearance
         return image ?? NSImage()
     }
-    
-    // MARK: - Menu Bar Icon Constants
-    private static let standardMenuBarHeight: CGFloat = 24.0
-    private static let notchedMenuBarThreshold: CGFloat = 26.0
+
     private static let standardIconSize: CGFloat = 16.0  // For regular displays
     private static let notchedIconSize: CGFloat = 20.0   // For notched displays (taller menu bar)
 
-    // Display detection constants
-    private static let notchedAspectRatioMin: CGFloat = 1.5
-    private static let notchedAspectRatioMax: CGFloat = 1.6
-    private static let notchedMinHeight: CGFloat = 1900.0
-    
     // Cache for icon size to avoid repeated calculations
     // Thread-safe access via lock to prevent data races
     private static let cacheLock = NSLock()
@@ -174,7 +166,7 @@ internal class AppSetupHelper {
 
         return iconSize
     }
-    
+
     private static func getStatusItemScreen() -> NSScreen? {
         // Try to get the screen where the menu bar is displayed
         // In most cases, this is the screen with menu bar
@@ -185,25 +177,18 @@ internal class AppSetupHelper {
         // Fallback to main screen
         return NSScreen.main
     }
-    
-    private static func detectDisplayNotch() -> Bool {
-        guard let mainScreen = NSScreen.main else {
-            return false  // Default to no notch if screen detection fails
-        }
-        return detectDisplayNotchForScreen(mainScreen)
-    }
-    
+
     private static func detectDisplayNotchForScreen(_ screen: NSScreen) -> Bool {
         // Check safe area insets (macOS 12+) - most reliable method
         // Notched displays have safe area insets at the top for the notch
         if #available(macOS 12.0, *) {
             return screen.safeAreaInsets.top > 0
         }
-        
+
         // For older macOS versions, assume no notch
         return false
     }
-    
+
     static func checkFirstRun() -> Bool {
         let hasExistingProvider = AppDefaults.hasValue(for: .transcriptionProvider)
         let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
@@ -228,10 +213,10 @@ internal class AppSetupHelper {
 
         return false
     }
-    
+
     static func cleanupOldTemporaryFiles() {
         let tempDirectory = FileManager.default.temporaryDirectory
-        
+
         do {
             let files = try FileManager.default.contentsOfDirectory(
                 at: tempDirectory,
@@ -239,9 +224,9 @@ internal class AppSetupHelper {
                 options: []
             )
             let audioFiles = files.filter { $0.lastPathComponent.hasPrefix("recording_") && $0.pathExtension == "m4a" }
-            
+
             let cutoffDate = Date().addingTimeInterval(-24 * 60 * 60) // 24 hours ago
-            
+
             for file in audioFiles {
                 do {
                     let attributes = try FileManager.default.attributesOfItem(atPath: file.path)

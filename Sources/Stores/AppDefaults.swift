@@ -44,13 +44,6 @@ enum AppDefaults {
         return UserDefaults(suiteName: suiteName) ?? .standard
     }
 
-    /// Whether the backing store has been redirected away from `.standard`.
-    /// Lets a test assert the harness actually set the env var, rather than
-    /// silently passing while polluting the real domain.
-    static var isUsingIsolatedStore: Bool {
-        defaults !== UserDefaults.standard
-    }
-
     // MARK: - Keys
 
     /// All UserDefaults keys used in the app, centralized for discoverability and safety.

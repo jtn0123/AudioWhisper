@@ -3,12 +3,12 @@ import AppKit
 
 internal struct CategoryEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
-    
+
     let categoryStore: CategoryStore
     let originalCategory: CategoryDefinition?
     let onSave: (CategoryDefinition) -> Void
     let onDelete: (() -> Void)?
-    
+
     @State var displayName: String
     @State var identifier: String
     @State var icon: String
@@ -19,7 +19,7 @@ internal struct CategoryEditorSheet: View {
 
     private let isNewCategory: Bool
     let isSystem: Bool
-    
+
     init(
         category: CategoryDefinition?,
         categoryStore: CategoryStore? = nil,
@@ -37,7 +37,7 @@ internal struct CategoryEditorSheet: View {
         self.onDelete = onDelete
         self.isNewCategory = category == nil
         self.isSystem = category?.isSystem ?? false
-        
+
         let cat = category ?? CategoryDefinition(
             id: "new-category",
             displayName: "New Category",
@@ -47,7 +47,7 @@ internal struct CategoryEditorSheet: View {
             promptTemplate: CategoryDefinition.fallback.promptTemplate,
             isSystem: false
         )
-        
+
         _displayName = State(initialValue: cat.displayName)
         _identifier = State(initialValue: cat.id)
         _icon = State(initialValue: cat.icon)
@@ -55,22 +55,22 @@ internal struct CategoryEditorSheet: View {
         _promptDescription = State(initialValue: cat.promptDescription)
         _promptTemplate = State(initialValue: cat.promptTemplate)
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             header
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                     previewCard
                     identitySection
                     appearanceSection
                     correctionSection
-                    
+
                     if let error = validationError {
                         errorBanner(error)
                     }
-                    
+
                     actionButtons
                 }
                 .padding(DashboardTheme.Spacing.xl)
@@ -79,17 +79,17 @@ internal struct CategoryEditorSheet: View {
         .frame(width: 560, height: 680)
         .background(DashboardTheme.pageBg)
     }
-    
+
     // MARK: - Header
-    
+
     private var header: some View {
         HStack {
             Text(isNewCategory ? "New Category" : "Edit Category")
                 .font(DashboardTheme.Fonts.serif(20, weight: .semibold))
                 .foregroundStyle(DashboardTheme.ink)
-            
+
             Spacer()
-            
+
             Button("Cancel") {
                 dismiss()
             }
@@ -104,9 +104,9 @@ internal struct CategoryEditorSheet: View {
             Rectangle().fill(DashboardTheme.rule).frame(height: 1)
         }
     }
-    
+
     // MARK: - Preview Card
-    
+
     private var previewCard: some View {
         HStack(spacing: DashboardTheme.Spacing.md) {
             Image(systemName: icon.isEmpty ? "questionmark" : icon)
@@ -115,19 +115,19 @@ internal struct CategoryEditorSheet: View {
                 .frame(width: 48, height: 48)
                 .background(accentColor, in: RoundedRectangle(cornerRadius: 12))
                 .shadow(color: accentColor.opacity(0.4), radius: 8, y: 4)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(displayName.isEmpty ? "Category Name" : displayName)
                     .font(DashboardTheme.Fonts.serif(18, weight: .semibold))
                     .foregroundStyle(DashboardTheme.ink)
-                
+
                 Text(identifier.isEmpty ? "identifier" : identifier)
                     .font(DashboardTheme.Fonts.mono(12, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkMuted)
             }
-            
+
             Spacer()
-            
+
             if isSystem {
                 Text("System")
                     .font(DashboardTheme.Fonts.sans(10, weight: .semibold))
@@ -144,9 +144,9 @@ internal struct CategoryEditorSheet: View {
                 .strokeBorder(DashboardTheme.rule, lineWidth: 1)
         )
     }
-    
+
     // MARK: - Actions
-    
+
     private var actionButtons: some View {
         HStack(spacing: DashboardTheme.Spacing.md) {
             Button {
@@ -162,7 +162,7 @@ internal struct CategoryEditorSheet: View {
             .buttonStyle(.plain)
             .disabled(displayName.isEmpty)
             .opacity(displayName.isEmpty ? 0.5 : 1)
-            
+
             if !isNewCategory && !isSystem, let onDelete {
                 Button {
                     onDelete()
@@ -177,11 +177,11 @@ internal struct CategoryEditorSheet: View {
                 }
                 .buttonStyle(.plain)
             }
-            
+
             Spacer()
         }
     }
-    
+
     private func errorBanner(_ message: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -194,16 +194,16 @@ internal struct CategoryEditorSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
     }
-    
+
     // MARK: - Helpers
-    
+
     func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             Text(title.uppercased())
                 .font(DashboardTheme.Fonts.sans(10, weight: .bold))
                 .foregroundStyle(DashboardTheme.inkMuted)
                 .tracking(1.2)
-            
+
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.lg) {
                 content()
             }
@@ -215,17 +215,17 @@ internal struct CategoryEditorSheet: View {
             )
         }
     }
-    
+
     func formField<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(DashboardTheme.Fonts.sans(12, weight: .semibold))
                 .foregroundStyle(DashboardTheme.ink)
-            
+
             content()
         }
     }
-    
+
     private func save() {
         // Validate
         let trimmedId = identifier.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -21,10 +21,6 @@ struct EntryAnimationModifier: ViewModifier {
 }
 
 extension View {
-    /// Applies entry animation based on visual intensity.
-    func entryAnimation(intensity: VisualIntensity) -> some View {
-        modifier(EntryAnimationModifier(intensity: intensity))
-    }
 }
 
 // MARK: - Recording Start Pulse
@@ -69,8 +65,6 @@ struct RecordingStartPulse: View {
 struct ProcessingWave: View {
     let intensity: VisualIntensity
     let isActive: Bool
-
-    @State private var phase: CGFloat = 0
 
     var body: some View {
         if isActive {
@@ -208,7 +202,6 @@ struct StatusTransitionOverlay: View {
     let intensity: VisualIntensity
 
     private let accentColor = Color(red: 0.85, green: 0.45, blue: 0.40)
-    private let successColor = Color(red: 0.45, green: 0.75, blue: 0.55)
 
     /// C2: state changes are also communicated by the status dot and label, so
     /// the transition flourish is safe to drop under Reduce Motion.
