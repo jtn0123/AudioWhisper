@@ -95,12 +95,30 @@ internal enum WhisperModel: String, CaseIterable, Codable, Sendable {
     }
 }
 
+/// Speech-to-text models available through Parakeet-MLX.
+///
+/// Ordered smallest → largest, which is also the order the picker renders.
+/// Every case must be loadable by `parakeet_mlx.from_pretrained`; that library
+/// dispatches on the `target` field of the model's `config.json` and, as of
+/// parakeet-mlx 0.5.2, supports `EncDecRNNTBPEModel`,
+/// `EncDecHybridRNNTCTCBPEModel` and `EncDecCTCModelBPE`. Models published for
+/// the separate `mlx-audio` runtime (Qwen3-ASR, Nemotron streaming, Voxtral,
+/// Granite Speech) are NOT drop-in and would need new Python integration.
+///
+/// WER figures below are the published Open ASR Leaderboard averages — lower is
+/// better. They are the reason `v2English` is described as the accurate English
+/// choice: multilingual v3 trades ~0.3 WER for 25-language coverage.
 internal enum ParakeetModel: String, CaseIterable, Codable, Sendable {
+    /// 110M-parameter hybrid TDT/CTC. 5.5× smaller than the 0.6B models for
+    /// roughly 1.2 WER points. Still emits punctuation and capitalisation.
+    case tdtCtc110mEnglish = "mlx-community/parakeet-tdt_ctc-110m"
     case v2English = "mlx-community/parakeet-tdt-0.6b-v2"
     case v3Multilingual = "mlx-community/parakeet-tdt-0.6b-v3"
 
     var displayName: String {
         switch self {
+        case .tdtCtc110mEnglish:
+            return "110M English (~0.5 GB)"
         case .v2English:
             return "v2 English (~2.5 GB)"
         case .v3Multilingual:
@@ -110,10 +128,12 @@ internal enum ParakeetModel: String, CaseIterable, Codable, Sendable {
 
     var description: String {
         switch self {
+        case .tdtCtc110mEnglish:
+            return "Lightest — 5× smaller, slightly less accurate (7.5% WER)"
         case .v2English:
-            return "English only, original model"
+            return "Most accurate for English (6.1% WER)"
         case .v3Multilingual:
-            return "25 languages, auto-detection"
+            return "25 languages with auto-detection (6.3% WER)"
         }
     }
 

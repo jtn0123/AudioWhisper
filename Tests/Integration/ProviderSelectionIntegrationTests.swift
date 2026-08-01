@@ -180,7 +180,8 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
 
     func testParakeetModelEnumeration() {
         let models = ParakeetModel.allCases
-        XCTAssertEqual(models.count, 2)
+        XCTAssertEqual(models.count, 3)
+        XCTAssertTrue(models.contains(.tdtCtc110mEnglish))
         XCTAssertTrue(models.contains(.v2English))
         XCTAssertTrue(models.contains(.v3Multilingual))
     }

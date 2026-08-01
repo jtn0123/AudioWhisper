@@ -169,13 +169,22 @@ internal extension DashboardProvidersView {
                     .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                     .foregroundStyle(DashboardTheme.ink)
                 
-                Text("Downloaded on first use")
+                // Surface the selected model's trade-off. `description` existed
+                // on ParakeetModel but was never rendered, so the picker gave no
+                // hint that v2 is the more accurate English model and v3 trades
+                // accuracy for language coverage.
+                Text(selectedParakeetModel.description)
                     .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Downloaded on first use")
+                    .font(DashboardTheme.Fonts.sans(11, weight: .regular))
+                    .foregroundStyle(DashboardTheme.inkFaint)
             }
-            
+
             Spacer()
-            
+
             Picker("", selection: $selectedParakeetModel) {
                 ForEach(ParakeetModel.allCases, id: \.self) { model in
                     Text(model.displayName).tag(model)
@@ -183,6 +192,8 @@ internal extension DashboardProvidersView {
             }
             .labelsHidden()
             .frame(width: 180)
+            .accessibilityLabel("Speech-to-text model")
+            .accessibilityValue("\(selectedParakeetModel.displayName). \(selectedParakeetModel.description)")
         }
         .padding(DashboardTheme.Spacing.md)
         .onChange(of: selectedParakeetModel) { _, _ in
