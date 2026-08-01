@@ -103,7 +103,8 @@ final class ReduceMotionTests: XCTestCase {
     // such a test would assert nothing. The suppression direction above IS
     // meaningful: it proves the guard short-circuits before any of that.
     //
-    // ViewInspector is declared as a test dependency but is currently unused
-    // across the whole suite; inspecting the view tree would be the right way to
-    // cover the OFF direction if that dependency is ever actually adopted.
+    // Inspecting the rendered view tree would be the right way to cover the OFF
+    // direction. That needs a view-introspection library (ViewInspector was
+    // declared for years but never imported by a single test, so it was
+    // removed); re-add one if this coverage becomes worth the dependency.
 }

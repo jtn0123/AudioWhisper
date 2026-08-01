@@ -19,8 +19,7 @@ let package = Package(
         // import sites are unchanged; only the URL and version move. The old
         // pin was `.upToNextMinor(from: "0.15.0")`, which capped us at 0.15.x
         // and silently skipped 0.16, 0.17, 0.18 and 1.0.
-        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.0.0"),
-        .package(url: "https://github.com/nalexn/ViewInspector", .upToNextMinor(from: "0.10.0"))
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.0.0")
     ],
     targets: [
         .executableTarget(
@@ -45,7 +44,7 @@ let package = Package(
         ),
         .testTarget(
             name: "AudioWhisperTests",
-            dependencies: ["AudioWhisper", "ViewInspector"],
+            dependencies: ["AudioWhisper"],
             path: "Tests",
             exclude: ["README.md", "test_parakeet_transcribe.py", "__Snapshots__"],
             resources: [
