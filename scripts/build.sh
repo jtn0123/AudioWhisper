@@ -115,46 +115,50 @@ struct VersionInfo {
 EOF
 fi
 
-# Build for release.
+# Build for release, one architecture at a time, then lipo them together.
 #
-# `--product AudioWhisper` is load-bearing, not tidiness. Without it SwiftPM
-# builds every product in the graph, and argmax-oss-swift 1.0.0 declares two
-# executables pointing at the SAME target:
+# `swift build --arch arm64 --arch x86_64` (the obvious way) cannot be used.
+# Passing --arch routes the build through the XCBuild backend, and that backend
+# rejects the package graph outright:
+#
+#   error: duplicate key found: 'ID(moduleName: "ArgmaxCLI", packageIdentity: argmax-oss-swift)'
+#
+# because argmax-oss-swift 1.0.0 declares two executable products pointing at
+# the SAME target:
 #
 #     .executable(name: "argmax-cli",     targets: ["ArgmaxCLI"]),
 #     .executable(name: "whisperkit-cli", targets: ["ArgmaxCLI"]),
 #
-# Xcode 26's SwiftPM rejects that outright —
-#   error: duplicate key found: 'ID(moduleName: "ArgmaxCLI", packageIdentity: argmax-oss-swift)'
-# — which broke `make build` on CI while still working on a 6.4 toolchain. It is
-# an upstream bug with no fixed release (1.0.0 is the newest tag), and we do not
-# need either CLI; we link the WhisperKit library only.
+# It is an upstream bug with no fixed release (v1.0.0 is the newest tag).
+# `--product AudioWhisper` does NOT avoid it — the graph is rejected before
+# product selection. Xcode 26 hits this; a 6.4 toolchain tolerates it, which is
+# why `make build` worked here and failed everywhere else.
+#
+# Building each slice with --triple keeps the ordinary SwiftPM backend, which
+# has no such problem, and `lipo` gives us the same universal binary.
 echo "📦 Building for release..."
-swift build -c release --arch arm64 --arch x86_64 --product AudioWhisper
+UNIVERSAL_DIR=".build/universal"
+rm -rf "$UNIVERSAL_DIR"
+mkdir -p "$UNIVERSAL_DIR"
 
-# Locate the release binary. SwiftPM's universal-build output directory MOVED:
-# older toolchains emit .build/apple/Products/Release, current ones emit
-# .build/out/Products/Release. Hardcoding the old path made `make build` fail
-# with "binary not found" even though the build had just succeeded — i.e. the
-# release/distribution path was broken on any current toolchain.
-# Check both, newest layout first, and fail with something diagnosable.
-RELEASE_BINARY=""
-for candidate in \
-  ".build/out/Products/Release/AudioWhisper" \
-  ".build/apple/Products/Release/AudioWhisper"; do
-  if [ -f "$candidate" ]; then
-    RELEASE_BINARY="$candidate"
-    break
+SLICES=()
+for triple in arm64-apple-macosx x86_64-apple-macosx; do
+  echo "   • $triple"
+  swift build -c release --triple "$triple" --product AudioWhisper
+  # Ask SwiftPM where it put the binary rather than guessing: the layout has
+  # already moved once (.build/apple -> .build/out) and broke this script.
+  slice_dir="$(swift build -c release --triple "$triple" --show-bin-path)"
+  if [ ! -f "$slice_dir/AudioWhisper" ]; then
+    echo "❌ Build failed - no $triple binary at $slice_dir"
+    exit 1
   fi
+  cp "$slice_dir/AudioWhisper" "$UNIVERSAL_DIR/AudioWhisper-$triple"
+  SLICES+=("$UNIVERSAL_DIR/AudioWhisper-$triple")
 done
 
-if [ -z "$RELEASE_BINARY" ]; then
-  echo "❌ Build failed - release binary not found."
-  echo "   Looked in .build/out/Products/Release and .build/apple/Products/Release."
-  echo "   Found instead:"
-  find .build -name AudioWhisper -type f -perm +111 2>/dev/null | sed 's/^/     /' | head -5
-  exit 1
-fi
+RELEASE_BINARY="$UNIVERSAL_DIR/AudioWhisper"
+lipo -create -output "$RELEASE_BINARY" "${SLICES[@]}"
+
 echo "Using release binary: $RELEASE_BINARY"
 
 # Distribution builds must be universal; a single-arch binary here would ship
