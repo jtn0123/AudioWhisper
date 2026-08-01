@@ -183,8 +183,8 @@ final class AppDelegateMenuTests: XCTestCase {
         // aborts the whole test process rather than failing. CI runners have no
         // GUI session, so this is skipped there and runs locally.
         try XCTSkipUnless(
-            WindowServer.isAvailable,
-            "Needs a WindowServer connection to create an NSStatusItem"
+            WindowServer.hasActiveDisplay,
+            "Needs an active display to create an NSStatusItem"
         )
 
         // Create status item for testing

@@ -54,9 +54,9 @@ internal class HotKeyManager {
 
     private func registerKeyDownHandler() {
         // Carbon hotkey registration aborts the process outright when there is
-        // no WindowServer connection — see WindowServer.isAvailable. Degrade to
-        // "no hotkeys" rather than SIGABRT.
-        guard WindowServer.isAvailable else { return }
+        // no WindowServer connection, and taking over the user's real hotkey
+        // during a test run is an unwanted side effect either way.
+        guard WindowServer.canRegisterGlobalHotkeys else { return }
 
         // Remove any handler previously installed by another instance so we
         // don't accumulate them when multiple managers are created (e.g. in
@@ -79,7 +79,7 @@ internal class HotKeyManager {
     }
 
     private func setupHotKeyFromString(_ hotkeyString: String) {
-        guard WindowServer.isAvailable else { return }
+        guard WindowServer.canRegisterGlobalHotkeys else { return }
 
         let parsed = Self.parseHotkeyString(hotkeyString)
 
