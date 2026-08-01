@@ -1,5 +1,10 @@
 name: CI
 
+# Single source of truth for the SwiftLint version. Both the lint job and the
+# analyze job pin to it; see "Install SwiftLint (pinned)".
+env:
+  SWIFTLINT_VERSION: "0.65.0"
+
 on:
   push:
     # I4: dropped 'grade-report-sweep', a one-off branch from a May 2026 audit
@@ -145,8 +150,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SwiftLint
-        run: brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+      - name: Install SwiftLint (pinned)
+        run: |
+          # PINNED, not `brew install swiftlint`.
+          #
+          # Homebrew always installs the latest, so the version drifted silently:
+          # this repo's checked-in expectations were written against 0.63.x while
+          # CI had moved to 0.65.0. The analyzer's unused_declaration heuristics
+          # changed between them — the same tree reports 144 findings on 0.63.2
+          # and 46 on 0.65.0. That is a 3x swing in a number the ratchet below
+          # compares against, so an unrelated Homebrew bump could fail the build
+          # for nobody's mistake, and local results would not match CI's either.
+          #
+          # Bump SWIFTLINT_VERSION deliberately, re-measure the ratchet baseline
+          # in the same commit, and tell developers to match it locally:
+          #   brew upgrade swiftlint   (or install the same release)
+          set -euo pipefail
+          curl -sSL --retry 3 -o /tmp/swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          unzip -q -o /tmp/swiftlint.zip -d /tmp/swiftlint
+          echo "/tmp/swiftlint" >> "$GITHUB_PATH"
+          /tmp/swiftlint/swiftlint version
 
       - name: SwiftLint (strict)
         run: swiftlint --strict --reporter github-actions-logging
@@ -315,8 +339,27 @@ jobs:
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
           swift --version
 
-      - name: Install SwiftLint
-        run: brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+      - name: Install SwiftLint (pinned)
+        run: |
+          # PINNED, not `brew install swiftlint`.
+          #
+          # Homebrew always installs the latest, so the version drifted silently:
+          # this repo's checked-in expectations were written against 0.63.x while
+          # CI had moved to 0.65.0. The analyzer's unused_declaration heuristics
+          # changed between them — the same tree reports 144 findings on 0.63.2
+          # and 46 on 0.65.0. That is a 3x swing in a number the ratchet below
+          # compares against, so an unrelated Homebrew bump could fail the build
+          # for nobody's mistake, and local results would not match CI's either.
+          #
+          # Bump SWIFTLINT_VERSION deliberately, re-measure the ratchet baseline
+          # in the same commit, and tell developers to match it locally:
+          #   brew upgrade swiftlint   (or install the same release)
+          set -euo pipefail
+          curl -sSL --retry 3 -o /tmp/swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          unzip -q -o /tmp/swiftlint.zip -d /tmp/swiftlint
+          echo "/tmp/swiftlint" >> "$GITHUB_PATH"
+          /tmp/swiftlint/swiftlint version
 
       - name: Generate VersionInfo.swift
         run: |
@@ -391,9 +434,12 @@ jobs:
           #
           # A RATCHET instead: the count may fall, never rise. That catches
           # genuinely dead code as it appears — which is the actual risk — without
-          # demanding a triage pass nobody has time for. The previous note here
-          # claimed 215 findings with 87 in Tests/Mocks; the real number measured
-          # on this runner is 46, so that note was also badly out of date.
+          # demanding a triage pass nobody has time for.
+          #
+          # BASELINE is only valid for the pinned SWIFTLINT_VERSION. The same
+          # tree reports 144 findings on 0.63.2 and 46 on 0.65.0, so bump the
+          # two together or this gate becomes noise. (The note that used to live
+          # here claimed 215 with 87 in Tests/Mocks — stale on both counts.)
           #
           # Raising BASELINE should be a deliberate, explained act. Lowering it
           # is always fine.

@@ -24,4 +24,18 @@ if ! command -v swiftlint >/dev/null 2>&1; then
   exit 0
 fi
 
+# Warn when the local version differs from the one CI pins.
+#
+# Results are genuinely version-dependent: the analyzer's unused_declaration
+# heuristics changed between 0.63.2 and 0.65.0, and the same tree reports 144
+# findings on one and 46 on the other. A silent mismatch means passing locally
+# and failing in CI, or the reverse — with no hint why. Sourced from ci.yml so
+# there is one place to change.
+expected=$(sed -n 's/^  SWIFTLINT_VERSION: "\(.*\)"/\1/p' .github/workflows/ci.yml | head -n 1)
+actual=$(swiftlint version 2>/dev/null)
+if [ -n "$expected" ] && [ -n "$actual" ] && [ "$expected" != "$actual" ]; then
+  echo "warning: swiftlint $actual locally, CI pins $expected — results may differ." >&2
+  echo "         brew upgrade swiftlint  (or install $expected) to match." >&2
+fi
+
 exec swiftlint lint "$@"
