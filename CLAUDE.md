@@ -18,12 +18,15 @@ swift run
 # Build for release (without app bundle)
 swift build -c release
 
-# Run tests (parallel — scripts/run-tests.sh isolates settings per process)
+# Run tests (parallel — settings are isolated per process by AppDefaults,
+# so plain `swift test --parallel` is safe too)
 make test
 
-# Coverage needs --no-parallel: llvm merges one .profraw per process, and
-# parallel workers race the same file.
-swift test --no-parallel --enable-code-coverage
+# Coverage. --parallel is fine: the old advice here was that llvm merges one
+# .profraw per process so parallel workers race it, but measuring 2830 tests
+# gives 53.50% parallel vs 53.54% sequential — 30 lines out of 92,525, which is
+# ordinary run-to-run variance, not lost profile data.
+swift test --parallel --enable-code-coverage
 
 # Run a single test file
 swift test --filter "DataManagerTests"
@@ -31,9 +34,37 @@ swift test --filter "DataManagerTests"
 # Run a specific test
 swift test --filter "DataManagerTests/testSaveAndLoadHistory"
 
+# Lint (wrapper handles the Command Line Tools / Xcode sourcekitd trap, and
+# warns if your SwiftLint differs from the version CI pins)
+scripts/lint.sh
+
 # Clean build artifacts
 make clean
 ```
+
+## Snapshot tests
+
+UI snapshots are a **local-only** tool and are skipped unless opted into:
+
+```bash
+SNAPSHOT_TESTS=1  swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # check
+SNAPSHOT_RECORD=1 swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # re-record
+```
+
+They do not run in CI, deliberately: a GitHub runner has no usable WindowServer,
+so it draws AppKit-backed controls as a yellow "cannot render" placeholder and
+whole views as flat rectangles. Never adopt a CI-rendered image as a baseline.
+
+Two things to know before adding one:
+
+* `ImageRenderer` cannot draw `ScrollView` content — it renders a flat
+  rectangle. Use `ScrollableContent` (Sources/Views/Dashboard) instead, which
+  the test harness flattens. 13 baselines were silently blank before this.
+* Anything time-dependent must be pinned. Records stamped with `Date()` produce
+  a different image every run; see `sampleHistoryRecords()`.
+
+`assertSnapshot` fails any render that is >99.5% a single colour, so a snapshot
+that quietly stops drawing cannot pass by matching an equally blank baseline.
 
 ## Deployment
 
