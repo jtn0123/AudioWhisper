@@ -46,6 +46,13 @@ final class UISnapshotTests: SnapshotTestCase {
         SourceUsageStore.shared.resetForTesting()
     }
 
+    // NOTE: the search field renders as a yellow "cannot render" placeholder in
+    // these baselines. That is not a bug in the view — ImageRenderer cannot draw
+    // an AppKit-backed TextField, the same limitation that makes CI renders
+    // useless. The rest of the view (header, rows, badges, dates, durations) is
+    // real, so the snapshot still catches regressions everywhere except inside
+    // that control. Do not "fix" it by re-recording.
+    //
     // Was Deferred(G1), now fixed. The G1 refactor moved this view from @Query
     // (synchronous on appear) to an async paged fetch, so the snapshot captured
     // the loading state instead of the records. The seam it wanted already

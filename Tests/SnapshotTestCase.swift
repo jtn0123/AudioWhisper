@@ -57,8 +57,9 @@ class SnapshotTestCase: XCTestCase {
     /// - Parameter tolerance: maximum fraction of pixels (0...1) allowed to
     ///   differ before the assertion fails. Defaults to `0` — exact match.
     ///
-    ///   Most views render deterministically: 31 of 39 snapshots are
-    ///   byte-identical across back-to-back recording runs on the same machine.
+    ///   Most views render deterministically: the large majority of the 35
+    ///   snapshots are byte-identical across back-to-back recording runs on the
+    ///   same machine.
     ///   The waveform views are not. They animate, and `WaveformBars.updateLevels`
     ///   feeds `CGFloat.random(in:)` into bar heights, so a captured frame varies
     ///   by up to ~2% of pixels between runs. Those call sites pass a small
