@@ -128,7 +128,8 @@ final class TranscriptionHistoryViewModel {
             page += 1
         } catch {
             if Task.isCancelled { return }
-            errorMessage = "Failed to load transcription history: \(error.localizedDescription)"
+            errorMessage = LocalizedStrings.Errors.historyLoadFailed
+                .substitutingPlaceholder(error.localizedDescription)
             showError = true
             hasMore = false
         }
@@ -142,7 +143,8 @@ final class TranscriptionHistoryViewModel {
             try await dataManager.deleteRecord(record)
             await loadRecords(reset: true, search: search)
         } catch {
-            errorMessage = "Failed to delete record: \(error.localizedDescription)"
+            errorMessage = LocalizedStrings.Errors.historyDeleteFailed
+                .substitutingPlaceholder(error.localizedDescription)
             showError = true
         }
     }
@@ -153,7 +155,8 @@ final class TranscriptionHistoryViewModel {
         do {
             try await dataManager.deleteAllRecords()
         } catch {
-            errorMessage = "Failed to clear all records: \(error.localizedDescription)"
+            errorMessage = LocalizedStrings.Errors.historyClearFailed
+                .substitutingPlaceholder(error.localizedDescription)
             showError = true
         }
         isLoading = false

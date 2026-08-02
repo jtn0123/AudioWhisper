@@ -199,13 +199,13 @@ internal extension ContentView {
         guard !isProcessing else { return }
 
         guard let audioURL = viewModel.lastAudioURL else {
-            viewModel.errorMessage = "No audio file available to retry. Please record again."
+            viewModel.errorMessage = LocalizedStrings.Errors.noAudioFileToRetry
             viewModel.showError = true
             return
         }
 
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            viewModel.errorMessage = "Audio file no longer exists. Please record again."
+            viewModel.errorMessage = LocalizedStrings.Errors.audioFileMissingRetry
             viewModel.showError = true
             viewModel.lastAudioURL = nil
             return
@@ -269,13 +269,13 @@ internal extension ContentView {
 
     func showLastAudioFile() {
         guard let audioURL = viewModel.lastAudioURL else {
-            viewModel.errorMessage = "No audio file available to show."
+            viewModel.errorMessage = LocalizedStrings.Errors.noAudioFileToShow
             viewModel.showError = true
             return
         }
 
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            viewModel.errorMessage = "Audio file no longer exists."
+            viewModel.errorMessage = LocalizedStrings.Errors.audioFileMissing
             viewModel.showError = true
             viewModel.lastAudioURL = nil
             return

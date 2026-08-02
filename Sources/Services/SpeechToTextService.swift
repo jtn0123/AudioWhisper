@@ -14,12 +14,12 @@ internal enum SpeechToTextError: Error, LocalizedError {
             return LocalizedStrings.Errors.invalidAudioFile
         case .transcriptionFailed(let message):
             return LocalizedStrings.Errors.transcriptionFailed
-                .replacingOccurrences(of: "%@", with: message)
+                .substitutingPlaceholder(message)
         case .localTranscriptionFailed(let error):
             return LocalizedStrings.Errors.localTranscriptionFailed
-                .replacingOccurrences(of: "%@", with: error.localizedDescription)
+                .substitutingPlaceholder(error.localizedDescription)
         case .noSpeechDetected:
-            return "No speech detected in the recording. Try speaking louder or closer to the microphone."
+            return LocalizedStrings.Errors.noSpeechDetected
         }
     }
 }

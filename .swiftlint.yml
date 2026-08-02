@@ -104,4 +104,25 @@ custom_rules:
       # Preview-only helper with its own explicit start()/stop() lifecycle.
       - ".*/WaveformPreviewHelpers\\.swift"
 
+  # Every string assigned to `errorMessage` is shown to the user verbatim, so it
+  # belongs in LocalizedStrings.Errors with an NSLocalizedString key. Ten of them
+  # had drifted into raw literals while the rest of the app went through the
+  # localization layer — a half-localized UI is worse than either extreme,
+  # because a translator gets a file that looks complete and isn't.
+  #
+  # Interpolated literals ("Failed: \(error)") are caught by the same regex;
+  # use a `%@` template plus `.substitutingPlaceholder(_:)` instead.
+  no_raw_error_message:
+    name: "Raw errorMessage Literal"
+    # `[^"]` is load-bearing: it lets `errorMessage = ""` through. That is the
+    # empty sentinel meaning "no error", not user-facing copy, and it appears in
+    # the two view models that also assign real messages — so excluding it by
+    # file would switch the rule off exactly where three violations lived.
+    regex: 'errorMessage\s*=\s*"[^"]'
+    message: "User-facing text: add it to LocalizedStrings.Errors instead of assigning a raw literal."
+    severity: warning
+    excluded:
+      # Tests assert on specific rendered copy and must be able to write it out.
+      - "Tests/.*"
+
 reporter: "xcode"

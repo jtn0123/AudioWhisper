@@ -92,6 +92,52 @@ internal enum LocalizedStrings {
         static let fileUploadFailed = NSLocalizedString("errors.file_upload_failed",
             value: "Unable to upload your recording: %@\n\nPlease check your internet connection and try again.",
             comment: "Error when file upload fails")
+
+        static let noSpeechDetected = NSLocalizedString("errors.no_speech_detected",
+            value: "No speech detected in the recording. Try speaking louder or closer to the microphone.",
+            comment: "Error when the recording contains no recognizable speech")
+
+        // MARK: Retry / reveal of the last recording
+
+        static let noAudioFileToRetry = NSLocalizedString("errors.no_audio_file_to_retry",
+            value: "No audio file available to retry. Please record again.",
+            comment: "Error when retrying a transcription but no previous recording is held")
+
+        static let noAudioFileToShow = NSLocalizedString("errors.no_audio_file_to_show",
+            value: "No audio file available to show.",
+            comment: "Error when revealing the last recording in Finder but none is held")
+
+        static let audioFileMissingRetry = NSLocalizedString("errors.audio_file_missing_retry",
+            value: "Audio file no longer exists. Please record again.",
+            comment: "Error when the held recording has been deleted from disk, in a retry context")
+
+        static let audioFileMissing = NSLocalizedString("errors.audio_file_missing",
+            value: "Audio file no longer exists.",
+            comment: "Error when the held recording has been deleted from disk")
+
+        // MARK: Model availability
+
+        static let whisperModelNotDownloaded = NSLocalizedString("errors.whisper_model_not_downloaded",
+            value: "Local Whisper model not downloaded. Opening Settings…",
+            comment: "Error when the selected Whisper model is missing; settings are opened")
+
+        static let parakeetModelNotDownloaded = NSLocalizedString("errors.parakeet_model_not_downloaded",
+            value: "Parakeet model not downloaded. Opening Settings…",
+            comment: "Error when the selected Parakeet model is missing; settings are opened")
+
+        // MARK: Transcription history
+
+        static let historyLoadFailed = NSLocalizedString("errors.history_load_failed",
+            value: "Failed to load transcription history: %@",
+            comment: "Error when the history page cannot be read, %@ is the underlying reason")
+
+        static let historyDeleteFailed = NSLocalizedString("errors.history_delete_failed",
+            value: "Failed to delete record: %@",
+            comment: "Error when deleting one history record fails, %@ is the underlying reason")
+
+        static let historyClearFailed = NSLocalizedString("errors.history_clear_failed",
+            value: "Failed to clear all records: %@",
+            comment: "Error when deleting every history record fails, %@ is the underlying reason")
     }
 
     // MARK: - Local Whisper Errors
@@ -165,5 +211,25 @@ internal enum LocalizedStrings {
         static let modelDownloadStatus = NSLocalizedString("accessibility.model_download_status",
             value: "Model download status",
             comment: "Accessibility label for model download status indicators")
+    }
+}
+
+// MARK: - Placeholder substitution
+
+extension String {
+    /// Substitutes the single `%@` placeholder in a localized template.
+    ///
+    /// Deliberately `replacingOccurrences` rather than `String(format:)`: the
+    /// substituted value is user- or server-supplied (an error description, a
+    /// provider name) and may itself contain a `%`. `String(format:)` reads the
+    /// template only, so that is safe — but the same call site is one refactor
+    /// away from passing the value AS the format string, which would read
+    /// arbitrary text as format specifiers and can crash. This idiom cannot.
+    ///
+    /// A template whose translation drops `%@` silently loses the detail. The
+    /// `LocalizedStringsErrorsTests` placeholder assertions exist to catch that
+    /// on the base strings; add one for any new template.
+    internal func substitutingPlaceholder(_ value: String) -> String {
+        replacingOccurrences(of: "%@", with: value)
     }
 }
