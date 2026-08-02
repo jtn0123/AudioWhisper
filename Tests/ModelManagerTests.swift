@@ -314,12 +314,21 @@ class ModelManagerTests: XCTestCase {
             finishedExpectation.fulfill()
         }
 
-        // Allow the download task to mark state as downloading
-        try? await Task.sleep(for: .milliseconds(20))
-        await MainActor.run {
-            if mockModelManager.downloadingModels.contains(model) {
-                startedExpectation.fulfill()
+        // Poll for the downloading state rather than sleeping a fixed 20ms and
+        // checking once. That single check assumed the download task would be
+        // scheduled within 20ms; on a loaded CI runner it may not be, and the
+        // miss is unrecoverable — startedExpectation never fulfils and the test
+        // fails on the 1s timeout having tested nothing.
+        let deadline = ContinuousClock.now + .seconds(2)
+        while ContinuousClock.now < deadline {
+            let isDownloading = await MainActor.run {
+                mockModelManager.downloadingModels.contains(model)
             }
+            if isDownloading {
+                startedExpectation.fulfill()
+                break
+            }
+            try? await Task.sleep(for: .milliseconds(5))
         }
 
         await fulfillment(of: [startedExpectation, finishedExpectation], timeout: 1.0)
