@@ -26,14 +26,18 @@ ensure_xcode_toolchain() {
 
   # Prefer a released Xcode over a beta; highest version first within each.
   #
-  # Uses `ls` rather than a shell glob with `shopt -s nullglob`: `shopt` is
-  # bash-only, and macOS defaults to zsh, so anyone sourcing this from an
-  # interactive shell would hit "command not found: shopt". The `-d` guard below
-  # makes an unmatched pattern harmless anyway.
+  # Uses `find` with a QUOTED pattern, not a shell glob. `shopt -s nullglob` is
+  # bash-only and macOS defaults to zsh, so anyone sourcing this interactively
+  # would hit "command not found: shopt". But `ls -d /Applications/Xcode_*.app`
+  # is no better: zsh errors on an unmatched glob before `ls` ever runs, so the
+  # `2>/dev/null` catches nothing and the caller sees
+  #   ensure_xcode_toolchain:13: no matches found: /Applications/Xcode_*.app
+  # on any Mac without a versioned Xcode. Quoting the pattern hands it to
+  # `find`, which does its own matching and stays silent when nothing matches.
   local candidate
   for candidate in \
     /Applications/Xcode.app \
-    $(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V -r) \
+    $(find /Applications -maxdepth 1 -name 'Xcode_*.app' 2>/dev/null | sort -V -r) \
     /Applications/Xcode-beta.app; do
     [ -d "$candidate/Contents/Developer" ] || continue
     # Validate by USE, not by probing for a binary at a guessed path: Xcode

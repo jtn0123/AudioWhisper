@@ -27,7 +27,7 @@ A lightweight macOS menu bar app for fast, **fully on-device** audio transcripti
 - **macOS 14.0 (Sonoma) or later**
 - **Apple Silicon** for Parakeet and on-device semantic correction. WhisperKit works on Intel, just slower.
 - **Disk space** — up to ~1.5 GB for Whisper Large Turbo, ~2.5 GB for a Parakeet model, ~0.6–2.4 GB for a correction model. Models cache under `~/.cache/huggingface/hub`.
-- **Building from source: Xcode 16.0+.** Not 15 — the transitive dependency `swift-argument-parser` 1.8.x declares `swift-tools-version: 6.0`, which needs Swift 6 tooling.
+- **Building from source: Xcode 26.0+** (Swift 6.2 tooling). The binding constraint is the `KeyboardShortcuts` 3.x dependency, whose manifest declares `swift-tools-version: 6.2`; older Xcode fails resolution outright with "incompatible tools version". `swift-argument-parser` 1.8.x needs only 6.0, so its floor is no longer the one that bites.
 
 ## Installation 🛠️
 
@@ -155,8 +155,11 @@ Apple Silicon only. Dashboard → **Models** → Parakeet → Install Dependenci
 **Semantic correction not applying**
 Dashboard → **Models** → Correction: confirm the mode is Local MLX and that the selected model is downloaded. Correction fails open — if it errors, you still get the raw transcript.
 
-**Build fails resolving dependencies**
-You're probably on Xcode 15. This project needs Xcode 16+ (Swift 6 tooling).
+**Build fails resolving dependencies** ("incompatible tools version")
+Your Xcode is too old. `KeyboardShortcuts` 3.x declares `swift-tools-version: 6.2`, so this needs **Xcode 26.0+**. Check with `swift --version` — if it reports below 6.2, point at a newer Xcode: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
+
+**Build fails with `Failed to decode version info for '/usr/bin/actool'`**
+`xcode-select -p` is pointing at Command Line Tools, which has no `actool`, and the app compiles an asset catalog. The build scripts work around this automatically via `scripts/lib/xcode-env.sh`; to fix it globally, run the `xcode-select -s` command above.
 
 ## Contributing 🤝
 
