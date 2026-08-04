@@ -93,7 +93,9 @@ internal extension AppDelegate {
 
     private func makeHeaderItem() -> NSMenuItem {
         let item = NSMenuItem()
-        let providerRaw = UserDefaults.standard.string(forKey: "transcriptionProvider") ?? "parakeet"
+        // D4/ADR-0004: was a raw-string read of "transcriptionProvider" from
+        // UserDefaults.standard, duplicating a key AppDefaults already owns.
+        let providerRaw = AppDefaults.transcriptionProvider.rawValue
         let wpm = Int(UsageMetricsStore.shared.snapshot.wordsPerMinute.rounded())
 
         let host = NSHostingView(rootView: MenuHeaderView(

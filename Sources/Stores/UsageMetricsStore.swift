@@ -30,11 +30,6 @@ internal struct UsageSnapshot: Equatable {
         return totalDuration / Double(totalSessions)
     }
 
-    var averageWordsPerSession: Double {
-        guard totalSessions > 0 else { return 0 }
-        return Double(totalWords) / Double(totalSessions)
-    }
-
     var wordsPerMinute: Double {
         guard totalDuration > 0 else { return 0 }
         return Double(totalWords) / (totalDuration / 60.0)
@@ -59,9 +54,6 @@ internal struct UsageSnapshot: Equatable {
 internal final class UsageMetricsStore {
     static let shared = UsageMetricsStore()
 
-    static let defaultTypingWordsPerMinute: Double = UsageMetricsConstants.defaultTypingWordsPerMinute
-    static let averageCharactersPerWord: Double = UsageMetricsConstants.averageCharactersPerWord
-
     private(set) var snapshot: UsageSnapshot
 
     private let defaults: UserDefaults
@@ -74,7 +66,7 @@ internal final class UsageMetricsStore {
         static let lastUpdated = "usage.lastUpdated"
         static let dailyActivity = "usage.dailyActivity"
     }
-    
+
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -88,7 +80,7 @@ internal final class UsageMetricsStore {
         return formatter
     }()
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = AppDefaults.defaults) {
         self.defaults = defaults
         let dailyData = defaults.dictionary(forKey: Keys.dailyActivity) as? [String: Int] ?? [:]
         self.snapshot = UsageSnapshot(
@@ -110,17 +102,17 @@ internal final class UsageMetricsStore {
         updated.totalWords += wordCount
         updated.totalCharacters += characterCount
         updated.lastUpdated = Date()
-        
+
         // Track daily activity
         let today = Self.dateFormatter.string(from: Date())
         updated.dailyActivity[today, default: 0] += wordCount
-        
+
         // Cleanup old daily activity entries (keep last 90 days)
         updated.dailyActivity = cleanupOldDailyActivity(updated.dailyActivity)
-        
+
         persist(updated)
     }
-    
+
     private func cleanupOldDailyActivity(_ activity: [String: Int]) -> [String: Int] {
         // If date calculation fails, return unchanged activity instead of
         // defaulting to Date() which would delete all historical data
@@ -137,28 +129,28 @@ internal final class UsageMetricsStore {
             key >= cutoffString
         }
     }
-    
+
     /// Get daily activity as Date -> Int dictionary for the last N days
     func getDailyActivity(days: Int = 28) -> [Date: Int] {
         let calendar = Calendar.current
         var result: [Date: Int] = [:]
-        
+
         for dayOffset in 0..<days {
             guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
             let dateString = Self.dateFormatter.string(from: date)
             let startOfDay = calendar.startOfDay(for: date)
             result[startOfDay] = snapshot.dailyActivity[dateString] ?? 0
         }
-        
+
         return result
     }
-    
+
     /// Calculate current streak (consecutive days with activity)
     func calculateStreak() -> Int {
         let calendar = Calendar.current
         var streak = 0
         var currentDate = Date()
-        
+
         while true {
             let dateString = Self.dateFormatter.string(from: currentDate)
             if let words = snapshot.dailyActivity[dateString], words > 0 {
@@ -169,7 +161,7 @@ internal final class UsageMetricsStore {
                 break
             }
         }
-        
+
         return streak
     }
 
@@ -185,7 +177,7 @@ internal final class UsageMetricsStore {
             // `recordSession` accumulated live (bug #45). `text.count` would
             // diverge if the stored count and text ever differ.
             rebuilt.totalCharacters += record.characterCount
-            
+
             // Rebuild daily activity from records
             let dateString = Self.dateFormatter.string(from: record.date)
             rebuilt.dailyActivity[dateString, default: 0] += record.wordCount
@@ -193,6 +185,41 @@ internal final class UsageMetricsStore {
         rebuilt.lastUpdated = Date()
         rebuilt.dailyActivity = cleanupOldDailyActivity(rebuilt.dailyActivity)
         persist(rebuilt)
+    }
+
+    /// Subtracts a single record's contribution from the running totals.
+    ///
+    /// B5/G2: `DataManager.deleteRecord` used to fetch EVERY remaining record
+    /// just to recompute these numbers, so deleting one transcript cost a
+    /// full-table load on the main actor — scaling linearly with history size
+    /// under the "Forever" retention setting. All of these fields are plain
+    /// sums, so removing one record is exact arithmetic and needs no fetch.
+    ///
+    /// Values are floored at zero: if the stored snapshot ever drifts below the
+    /// true total (e.g. history was enabled after some sessions were recorded),
+    /// subtracting must not produce negatives. Use `rebuild(using:)` for an
+    /// authoritative recount.
+    func remove(record: TranscriptionRecord) {
+        var updated = snapshot
+        updated.totalSessions = max(0, updated.totalSessions - 1)
+        if let duration = record.duration {
+            updated.totalDuration = max(0, updated.totalDuration - duration)
+        }
+        updated.totalWords = max(0, updated.totalWords - record.wordCount)
+        updated.totalCharacters = max(0, updated.totalCharacters - record.characterCount)
+
+        let dateString = Self.dateFormatter.string(from: record.date)
+        if let existing = updated.dailyActivity[dateString] {
+            let remaining = existing - record.wordCount
+            if remaining > 0 {
+                updated.dailyActivity[dateString] = remaining
+            } else {
+                updated.dailyActivity.removeValue(forKey: dateString)
+            }
+        }
+
+        updated.lastUpdated = Date()
+        persist(updated)
     }
 
     func reset() {
@@ -204,14 +231,14 @@ internal final class UsageMetricsStore {
         let needsDailyActivityBootstrap = snapshot.dailyActivity.isEmpty && dataManager.isHistoryEnabled
         let needsFullBootstrap = snapshot.totalSessions == 0 && snapshot.totalDuration == 0
             && snapshot.totalWords == 0 && dataManager.isHistoryEnabled
-        
+
         guard needsDailyActivityBootstrap || needsFullBootstrap else {
             return
         }
 
         let records = await dataManager.fetchAllRecordsQuietly()
         guard !records.isEmpty else { return }
-        
+
         if needsFullBootstrap {
             rebuild(using: records)
         } else {
@@ -219,17 +246,17 @@ internal final class UsageMetricsStore {
             rebuildDailyActivity(using: records)
         }
     }
-    
+
     /// Rebuild only daily activity from records without resetting other stats
     func rebuildDailyActivity(using records: [TranscriptionRecord]) {
         var updated = snapshot
         updated.dailyActivity = [:]
-        
+
         for record in records {
             let dateString = Self.dateFormatter.string(from: record.date)
             updated.dailyActivity[dateString, default: 0] += record.wordCount
         }
-        
+
         updated.dailyActivity = cleanupOldDailyActivity(updated.dailyActivity)
         persist(updated)
     }

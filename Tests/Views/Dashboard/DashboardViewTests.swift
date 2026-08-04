@@ -16,6 +16,56 @@ final class DashboardThemeTests: XCTestCase {
         XCTAssertNotNil(DashboardTheme.sidebarActive)
     }
 
+    /// Regression guard for the dark-mode sidebar bug: `sidebarHover` and
+    /// `sidebarActive` were literal `Color.black.opacity(...)`. The sidebar is
+    /// drawn over an NSVisualEffectView `.sidebar` material, which is *dark* in
+    /// dark mode — so black-at-7% rendered the selected-nav indicator invisible.
+    ///
+    /// An adaptive overlay must resolve to a materially different value under
+    /// each appearance. A literal black resolves identically in both and fails
+    /// this test.
+    func testSidebarOverlaysAdaptToAppearance() throws {
+        let overlays: [(String, Color)] = [
+            ("sidebarHover", DashboardTheme.sidebarHover),
+            ("sidebarActive", DashboardTheme.sidebarActive)
+        ]
+
+        for (name, color) in overlays {
+            let light = try Self.resolvedBrightness(of: color, appearance: .aqua)
+            let dark = try Self.resolvedBrightness(of: color, appearance: .darkAqua)
+
+            XCTAssertGreaterThan(
+                abs(dark - light), 0.5,
+                "\(name) resolves to nearly the same colour in light (\(light)) and "
+                    + "dark (\(dark)) appearance — it is not adaptive and will be "
+                    + "invisible over the dark sidebar material."
+            )
+            XCTAssertGreaterThan(
+                dark, light,
+                "\(name) should be a LIGHT overlay in dark mode and a DARK overlay "
+                    + "in light mode; got light=\(light) dark=\(dark)."
+            )
+        }
+    }
+
+    /// Resolves `color` under the given appearance and returns its sRGB
+    /// brightness (0 = black, 1 = white). Opacity is deliberately ignored —
+    /// we care about the underlying hue flipping with the appearance.
+    private static func resolvedBrightness(
+        of color: Color,
+        appearance name: NSAppearance.Name
+    ) throws -> CGFloat {
+        let appearance = try XCTUnwrap(
+            NSAppearance(named: name),
+            "Could not construct NSAppearance named \(name.rawValue)"
+        )
+        var brightness: CGFloat?
+        appearance.performAsCurrentDrawingAppearance {
+            brightness = NSColor(color).usingColorSpace(.sRGB)?.brightnessComponent
+        }
+        return try XCTUnwrap(brightness, "Could not resolve \(color) to sRGB")
+    }
+
     func testContentColorsAreDefined() {
         XCTAssertNotNil(DashboardTheme.pageBg)
         XCTAssertNotNil(DashboardTheme.cardBg)

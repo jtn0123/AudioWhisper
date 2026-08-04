@@ -1,5 +1,4 @@
 import XCTest
-import SwiftData
 @testable import AudioWhisper
 
 // Retention-policy tests, split out of DataManagerTests to keep each type

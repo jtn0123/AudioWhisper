@@ -33,12 +33,6 @@ internal final class SemanticCorrectionService {
     private let mlxService = MLXCorrectionService()
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "SemanticCorrection")
 
-    // Chunking configuration for 32k context window
-    // 32k tokens ≈ 24k words (0.75 ratio) ≈ 120k chars
-    // Use conservative 6k words to leave room for system prompt
-    private static let chunkSizeWords = 6000
-    private static let overlapSizeWords = 200 // Small overlap for context continuity
-
     @MainActor
     private func categoryFor(bundleId: String?) -> CategoryDefinition {
         guard let id = bundleId else { return CategoryDefinition.fallback }
@@ -97,38 +91,27 @@ internal final class SemanticCorrectionService {
         }
     }
 
-    // MARK: - Local (MLX)
-    /// Runs the local MLX correction model for `text` using the category-specific
-    /// prompt. Requires Apple Silicon; on non-arm64 returns `text` unchanged.
-    /// Any subprocess or model failure logs and returns the original text silently
-    /// — this preserves the contract for the legacy `correct(...) -> String` API.
-    /// For new callers that want to know about failures, use `correctWithOutcome`,
-    /// which routes through `correctLocallyWithMLXThrowing` and surfaces errors
-    /// as `.failed`.
-    private func correctLocallyWithMLX(text: String, category: CategoryDefinition) async -> String {
-        do {
-            return try await correctLocallyWithMLXThrowing(text: text, category: category)
-        } catch {
-            logger.error("MLX correction failed: \(error.localizedDescription)")
-            return text
-        }
-    }
-
     /// Throwing variant of `correctLocallyWithMLX`. Used by `correctWithOutcome`
     /// so callers can distinguish success from failure. On non-Apple-Silicon
     /// hosts this returns the input unchanged (treated as a successful no-op,
     /// not a failure — there's nothing to recover from).
     private func correctLocallyWithMLXThrowing(text: String, category: CategoryDefinition) async throws -> String {
         guard Arch.isAppleSilicon else { return text }
-        // Preserve the legacy default ("Llama-3.2-1B-Instruct-4bit") when no key is set;
-        // `AppDefaults.semanticCorrectionModelRepo`'s built-in default is "Qwen3-1.7B-4bit".
-        let modelRepo = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
-            ? AppDefaults.semanticCorrectionModelRepo
-            : "mlx-community/Llama-3.2-1B-Instruct-4bit"
+        // B1: honour `AppDefaults.semanticCorrectionModelRepo` unconditionally.
+        // This used to fall back to Llama-3.2-1B whenever the key was unset,
+        // while the Dashboard displayed and badged Qwen3-1.7B as RECOMMENDED —
+        // so users on the implicit default saw one model and ran another.
+        // Existing installs are pinned to the legacy model by
+        // `AppSetupHelper.migrateSemanticCorrectionModelDefault()`.
+        let modelRepo = AppDefaults.semanticCorrectionModelRepo
         let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
         let prompt = loadPrompt(for: category)
         let output = try await mlxService.correct(text: text, modelRepo: modelRepo, pythonPath: pyURL.path, systemPrompt: prompt)
-        let merged = Self.safeMerge(original: text, corrected: output, maxChangeRatio: 0.6)
+        let merged = Self.safeMerge(
+            original: text,
+            corrected: output,
+            maxChangeRatio: Self.maxChangeRatio(for: category.id)
+        )
         if merged == text {
             logger.info("MLX correction produced no accepted change (kept original)")
         } else {
@@ -184,14 +167,35 @@ internal final class SemanticCorrectionService {
         return defaultPrompt
     }
 
-    private func readPromptFile(name: String) -> String? {
-        guard let base = promptsBaseDir() else { return nil }
-        let url = base.appendingPathComponent(name)
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return try? String(contentsOf: url, encoding: .utf8)
+    // MARK: - Safety Guard (internal for testability)
+    /// Maximum share of the transcript a correction may rewrite before it is
+    /// rejected, per category.
+    ///
+    /// A3: this used to be a flat 0.6 everywhere, which actively fought the
+    /// command-line categories. Measured example from the 2026-07-31 model
+    /// benchmark — a correction that is exactly what the Terminal prompt asks
+    /// for, and was thrown away at ratio 0.664:
+    ///
+    ///     in : um so run suit oh apt update and then uh see dee into tilde
+    ///          slash documents and like grep dash v for the error you know
+    ///          then pipe to less
+    ///     out: sudo apt update && cd ~/Documents && grep -v error | less
+    ///
+    /// Good terminal correction legitimately COMPRESSES rambling dictation into
+    /// a terse command, so edit distance from the raw transcript is large by
+    /// design. Prose correction does not do that, and a large edit there really
+    /// does signal the model went off the rails — so prose keeps the tight
+    /// bound. The guard is not weakened globally, only where the tight bound
+    /// was wrong.
+    static func maxChangeRatio(for categoryId: String) -> Double {
+        switch categoryId {
+        case "terminal", "coding":
+            return 0.85
+        default:
+            return 0.6
+        }
     }
 
-    // MARK: - Safety Guard (internal for testability)
     /// Hard ceiling above which we skip the O(m*n) Levenshtein computation.
     /// At ~4k chars the DP runs in well under a second; above that, a 30+ minute
     /// transcript can stall the correction pipeline for many seconds. Load-bearing.

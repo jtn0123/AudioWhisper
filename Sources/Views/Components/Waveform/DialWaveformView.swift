@@ -41,10 +41,19 @@ struct DialWaveformView: View {
                 // Tick dots — band-driven brightness
                 Canvas { context, canvasSize in
                     let cp = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-                    let bandCount = max(1, frequencyBands.count)
+                    // CRASH FIX: this was `max(1, frequencyBands.count)`, which
+                    // was presumably meant to avoid a modulo-by-zero. It does
+                    // the opposite of protecting the subscript: with an EMPTY
+                    // `frequencyBands`, bandCount becomes 1, `index % 1` is 0,
+                    // and `frequencyBands[0]` traps with "Index out of range".
+                    // `frequencyBands` is empty whenever no audio has been
+                    // analysed yet — i.e. every time this style renders at rest,
+                    // which is exactly what the WelcomeView snapshot hit.
+                    // Matches the guard HaloWaveformView already uses.
+                    let bandCount = frequencyBands.count
                     for index in 0..<dotCount {
                         let angle = (CGFloat(index) / CGFloat(dotCount)) * 2 * .pi - .pi / 2
-                        let value: CGFloat = CGFloat(frequencyBands[index % bandCount])
+                        let value: CGFloat = bandCount > 0 ? CGFloat(frequencyBands[index % bandCount]) : 0
                         let brightness = 0.15 + Double(value) * 0.7
                         let dx = cp.x + cos(angle) * ringR
                         let dy = cp.y + sin(angle) * ringR

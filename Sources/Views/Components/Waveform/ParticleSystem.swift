@@ -137,13 +137,20 @@ struct ParticleOverlay: View {
     let audioLevel: Float
     let isActive: Bool
 
+    /// C2: the particle overlay is decoration layered on top of the neon
+    /// waveform. The waveform itself still animates (it visualises live audio);
+    /// only the floating particles are suppressed under Reduce Motion.
+    var reduceMotion: Bool = false
+
     var body: some View {
         GeometryReader { geometry in
-            ParticleEmitterView(
-                audioLevel: audioLevel,
-                isActive: isActive,
-                bounds: geometry.size
-            )
+            if !reduceMotion {
+                ParticleEmitterView(
+                    audioLevel: audioLevel,
+                    isActive: isActive,
+                    bounds: geometry.size
+                )
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)

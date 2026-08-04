@@ -1,11 +1,10 @@
 import XCTest
 import SwiftUI
-import SwiftData
 @testable import AudioWhisper
 
 @MainActor
 final class UISnapshotTests: SnapshotTestCase {
-    let defaults = UserDefaults.standard
+    let defaults = AppDefaults.defaults
 
     override func setUp() async throws {
         try await super.setUp()
@@ -47,13 +46,28 @@ final class UISnapshotTests: SnapshotTestCase {
         SourceUsageStore.shared.resetForTesting()
     }
 
-    func testTranscriptionHistoryViewSnapshot() throws {
-        // Deferred(G1): The G1 refactor switched this view from @Query (synchronous on
-        // appear) to an async paged fetch via DataManager.fetchRecords. The snapshot
-        // is captured before the .task completes, so we see the loading state
-        // rather than the seeded records. Re-enable once the test can deterministically
-        // await the first load (e.g. by exposing an injectable initial-state seam).
-        throw XCTSkip("Async paged fetch makes initial render non-deterministic; see Deferred(G1)")
+    // NOTE: the search field renders as a yellow "cannot render" placeholder in
+    // these baselines. That is not a bug in the view — ImageRenderer cannot draw
+    // an AppKit-backed TextField, the same limitation that makes CI renders
+    // useless. The rest of the view (header, rows, badges, dates, durations) is
+    // real, so the snapshot still catches regressions everywhere except inside
+    // that control. Do not "fix" it by re-recording.
+    //
+    // Was Deferred(G1), now fixed. The G1 refactor moved this view from @Query
+    // (synchronous on appear) to an async paged fetch, so the snapshot captured
+    // the loading state instead of the records. The seam it wanted already
+    // existed: TranscriptionHistoryViewModel takes an injectable
+    // DataManagerProtocol, so the load can be awaited BEFORE rendering rather
+    // than raced against ImageRenderer.
+    func testTranscriptionHistoryViewSnapshot() async {
+        let viewModel = await makeLoadedHistoryViewModel()
+
+        assertSnapshot(
+            TranscriptionHistoryView(viewModel: viewModel),
+            named: "TranscriptionHistoryView-dark",
+            size: CGSize(width: 750, height: 600),
+            colorScheme: .dark
+        )
     }
 
     // MARK: - Provider View Snapshots
@@ -192,10 +206,15 @@ final class UISnapshotTests: SnapshotTestCase {
         SourceUsageStore.shared.resetForTesting()
     }
 
-    func testTranscriptionHistoryViewLightSnapshot() throws {
-        // Deferred(G1): See testTranscriptionHistoryViewSnapshot — async paged fetch
-        // makes the initial render non-deterministic.
-        throw XCTSkip("Async paged fetch makes initial render non-deterministic; see Deferred(G1)")
+    func testTranscriptionHistoryViewLightSnapshot() async {
+        let viewModel = await makeLoadedHistoryViewModel()
+
+        assertSnapshot(
+            TranscriptionHistoryView(viewModel: viewModel),
+            named: "TranscriptionHistoryView-light",
+            size: CGSize(width: 750, height: 600),
+            colorScheme: .light
+        )
     }
 
     // MARK: - Additional Provider View Snapshots (D3)
@@ -280,20 +299,39 @@ extension UISnapshotTests {
         store.recordUsage(for: sources[2], words: 650, characters: 3400)
     }
     
-    func makePreviewContainer() throws -> ModelContainer {
-        let container = try ModelContainer(
-            for: TranscriptionRecord.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-        )
-        let context = ModelContext(container)
-        
-        let sampleRecords = [
+    /// A history view model already holding `sampleHistoryRecords`, with the
+    /// first page load completed.
+    ///
+    /// Awaiting the load here is the whole point: the view renders
+    /// `TranscriptionHistoryLoadingView` until `records` is populated, and
+    /// ImageRenderer captures immediately, so a view model that loads during
+    /// render snapshots the spinner.
+    func makeLoadedHistoryViewModel() async -> TranscriptionHistoryViewModel {
+        let dataManager = MockDataManager()
+        dataManager.recordsToReturn = Self.sampleHistoryRecords()
+
+        let viewModel = TranscriptionHistoryViewModel(dataManager: dataManager, pageSize: 50)
+        await viewModel.loadRecords(reset: true)
+        return viewModel
+    }
+
+    /// Records with FIXED dates.
+    ///
+    /// `TranscriptionRecord.init` always stamps `Date()`, and the row renders it
+    /// through an absolute medium/short `DateFormatter`. Left alone, every
+    /// recording run would produce a different image. Pinning the dates makes
+    /// the render stable indefinitely — an absolute format does not drift the
+    /// way a relative one ("2 minutes ago") would.
+    static func sampleHistoryRecords() -> [TranscriptionRecord] {
+        let anchor = Date(timeIntervalSince1970: 1_767_225_600)  // 2026-01-01 00:00 UTC
+
+        let records = [
             TranscriptionRecord(
                 text: "This is a sample transcription from Parakeet service. "
                     + "It demonstrates how the history view will look with longer text content.",
                 provider: .parakeet,
                 duration: 12.5,
-                modelUsed: "parakeet-ctc-1.1b"
+                modelUsed: "parakeet-tdt-0.6b-v3"
             ),
             TranscriptionRecord(
                 text: "Meeting notes about upcoming launch. Includes key dates and action items.",
@@ -308,11 +346,11 @@ extension UISnapshotTests {
                 modelUsed: "tiny"
             )
         ]
-        
-        for record in sampleRecords {
-            context.insert(record)
+
+        for (index, record) in records.enumerated() {
+            record.date = anchor.addingTimeInterval(Double(-index) * 3600)
         }
-        try context.save()
-        return container
+        return records
     }
+
 }

@@ -14,12 +14,12 @@ internal enum SpeechToTextError: Error, LocalizedError {
             return LocalizedStrings.Errors.invalidAudioFile
         case .transcriptionFailed(let message):
             return LocalizedStrings.Errors.transcriptionFailed
-                .replacingOccurrences(of: "%@", with: message)
+                .substitutingPlaceholder(message)
         case .localTranscriptionFailed(let error):
             return LocalizedStrings.Errors.localTranscriptionFailed
-                .replacingOccurrences(of: "%@", with: error.localizedDescription)
+                .substitutingPlaceholder(error.localizedDescription)
         case .noSpeechDetected:
-            return "No speech detected in the recording. Try speaking louder or closer to the microphone."
+            return LocalizedStrings.Errors.noSpeechDetected
         }
     }
 }
@@ -131,14 +131,13 @@ internal class SpeechToTextService {
         let pythonPath = pyURL.path
         do {
             if shouldWarmup {
-                // Note: this falls back to "mlx-community/Llama-3.2-1B-Instruct-4bit"
-                // (the legacy default), while `AppDefaults.semanticCorrectionModelRepo`
-                // defaults to "mlx-community/Qwen3-1.7B-4bit". Preserve the legacy
-                // warmup-default by reading raw and only using AppDefaults when the
-                // key is set explicitly.
-                let modelRepo = AppDefaults.hasValue(for: .semanticCorrectionModelRepo)
-                    ? AppDefaults.semanticCorrectionModelRepo
-                    : "mlx-community/Llama-3.2-1B-Instruct-4bit"
+                // B1: warm up the SAME model correction will actually run.
+                // This used to hardcode Llama-3.2-1B when the key was unset while
+                // `SemanticCorrectionService` did the same — so both agreed with
+                // each other but disagreed with the Dashboard. Now there is one
+                // source of truth, which also means the warmup is no longer
+                // wasted on a model the correction pass won't use.
+                let modelRepo = AppDefaults.semanticCorrectionModelRepo
                 // Warm up the MLX daemon in parallel, but treat its outcome as
                 // non-fatal: a warmup failure must NOT abort an otherwise-good
                 // transcription. Its error is swallowed (logged by the daemon).

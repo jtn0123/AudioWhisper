@@ -1,5 +1,3 @@
-import Foundation
-
 internal enum SemanticCorrectionMode: String, CaseIterable, Codable, Sendable {
     case off
     case localMLX

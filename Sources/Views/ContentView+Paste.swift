@@ -1,4 +1,3 @@
-import SwiftUI
 import AppKit
 import os.log
 
@@ -38,7 +37,7 @@ internal extension ContentView {
             self.activateTargetAppAndPaste(targetApp)
         }
     }
-    
+
     func findValidTargetApp() -> NSRunningApplication? {
         Logger.paste.debug("findValidTargetApp: checking WindowController.storedTargetApp")
         var targetApp = WindowController.storedTargetApp
@@ -73,10 +72,10 @@ internal extension ContentView {
 
         return targetApp
     }
-    
+
     func findFallbackTargetApp() -> NSRunningApplication? {
         let runningApps = NSWorkspace.shared.runningApplications
-        
+
         return runningApps.first { app in
             app.bundleIdentifier != Bundle.main.bundleIdentifier &&
             app.bundleIdentifier != "com.tinyspeck.slackmacgap" &&
@@ -108,7 +107,7 @@ internal extension ContentView {
             completion?()
         })
     }
-    
+
     func activateTargetAppAndPaste(_ target: NSRunningApplication) {
         Logger.paste.debug("activateTargetAppAndPaste: activating \(target.localizedName ?? "unknown", privacy: .public)")
         Task { @MainActor in
@@ -127,12 +126,12 @@ internal extension ContentView {
 
     func activateApplication(_ target: NSRunningApplication) async throws {
         let success = target.activate(options: [])
-        
+
         if !success {
             if let bundleURL = target.bundleURL {
                 let configuration = NSWorkspace.OpenConfiguration()
                 configuration.activates = true
-                
+
                 return try await withCheckedThrowingContinuation { continuation in
                     NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration) { _, error in
                         if let error = error {
@@ -150,10 +149,10 @@ internal extension ContentView {
                 )
             }
         }
-        
+
         await waitForApplicationActivation(target)
     }
-    
+
     /// Waits for the target application to become active, with a timeout.
     ///
     /// Thread safety notes:

@@ -8,7 +8,7 @@ internal struct RecordingButton: View {
     let transcriptionProvider: TranscriptionProvider
     let onTap: () -> Void
     let onHover: (Bool) -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
             Image(systemName: buttonIcon)
@@ -30,7 +30,7 @@ internal struct RecordingButton: View {
         .help(transcriptionProvider.displayName)
         .onHover(perform: onHover)
     }
-    
+
     private var buttonIcon: String {
         if showSuccess {
             let enableSmartPaste = AppDefaults.enableSmartPaste
@@ -43,7 +43,7 @@ internal struct RecordingButton: View {
             return "mic.slash.fill"
         }
     }
-    
+
     private var buttonColor: Color {
         if showSuccess {
             let enableSmartPaste = AppDefaults.enableSmartPaste
@@ -56,7 +56,7 @@ internal struct RecordingButton: View {
             return .gray
         }
     }
-    
+
     private var accessibilityLabel: String {
         if showSuccess {
             let enableSmartPaste = AppDefaults.enableSmartPaste
@@ -71,7 +71,7 @@ internal struct RecordingButton: View {
             return "Start recording"
         }
     }
-    
+
     private var accessibilityHint: String {
         if showSuccess {
             return "Transcription is complete"

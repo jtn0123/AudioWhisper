@@ -1,5 +1,4 @@
 import XCTest
-import SwiftData
 @testable import AudioWhisper
 
 /// Integration tests for cross-service error propagation

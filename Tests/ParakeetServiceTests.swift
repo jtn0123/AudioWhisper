@@ -14,15 +14,15 @@ class ParakeetServiceTests: IsolatedXCTestCase {
     
     override func setUp() {
         super.setUp()
-        originalRepo = UserDefaults.standard.string(forKey: "selectedParakeetModel")
+        originalRepo = AppDefaults.defaults.string(forKey: "selectedParakeetModel")
         parakeetService = ParakeetService()
     }
     
     override func tearDown() {
         if let originalRepo {
-            UserDefaults.standard.set(originalRepo, forKey: "selectedParakeetModel")
+            AppDefaults.defaults.set(originalRepo, forKey: "selectedParakeetModel")
         } else {
-            UserDefaults.standard.removeObject(forKey: "selectedParakeetModel")
+            AppDefaults.defaults.removeObject(forKey: "selectedParakeetModel")
         }
         parakeetService = nil
         super.tearDown()
@@ -40,15 +40,15 @@ class ParakeetServiceTests: IsolatedXCTestCase {
         let key = "selectedParakeetModel"
 
         // Bogus stored value should resolve to the documented default model.
-        UserDefaults.standard.set("nonexistent-model-name", forKey: key)
+        AppDefaults.defaults.set("nonexistent-model-name", forKey: key)
         XCTAssertEqual(parakeetService.safeSelectedParakeetModel, ParakeetService.defaultModel)
 
         // Empty/missing value should likewise fall back to the default.
-        UserDefaults.standard.removeObject(forKey: key)
+        AppDefaults.defaults.removeObject(forKey: key)
         XCTAssertEqual(parakeetService.safeSelectedParakeetModel, ParakeetService.defaultModel)
 
         // A valid stored value round-trips back to the matching enum case.
-        UserDefaults.standard.set(ParakeetModel.v2English.rawValue, forKey: key)
+        AppDefaults.defaults.set(ParakeetModel.v2English.rawValue, forKey: key)
         XCTAssertEqual(parakeetService.safeSelectedParakeetModel, .v2English)
         // tearDown restores the original value captured in setUp.
     }
@@ -92,7 +92,7 @@ class ParakeetServiceTests: IsolatedXCTestCase {
         guard let uncachedModel = Self.firstUncachedParakeetModel() else {
             throw XCTSkip("Both Parakeet models appear cached locally; cannot exercise modelNotReady path.")
         }
-        UserDefaults.standard.set(uncachedModel.rawValue, forKey: "selectedParakeetModel")
+        AppDefaults.defaults.set(uncachedModel.rawValue, forKey: "selectedParakeetModel")
 
         do {
             try await parakeetService.validateSetup(pythonPath: "/usr/bin/python3")
@@ -147,7 +147,7 @@ class ParakeetServiceTests: IsolatedXCTestCase {
         guard let uncachedModel = Self.firstUncachedParakeetModel() else {
             throw XCTSkip("Both Parakeet models appear cached locally; cannot exercise modelNotReady path.")
         }
-        UserDefaults.standard.set(uncachedModel.rawValue, forKey: "selectedParakeetModel")
+        AppDefaults.defaults.set(uncachedModel.rawValue, forKey: "selectedParakeetModel")
         let testAudioURL = URL(fileURLWithPath: "/tmp/test.m4a")
 
         do {

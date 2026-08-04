@@ -1,5 +1,4 @@
 import XCTest
-import AppKit
 @testable import AudioWhisper
 
 // Duplicate-event regression tests, split out of PressAndHoldKeyMonitorTests

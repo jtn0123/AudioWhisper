@@ -16,7 +16,7 @@ internal enum TranscriptionError {
     case insufficientStorage
     case pythonConfigurationError
     case generalError(message: String)
-    
+
     /// M13: Determines the error type from an `Error` object, preferring
     /// structural NSError `domain`/`code` matching over English substring
     /// matching. On localized macOS systems, AVFoundation / CoreFoundation /
@@ -175,7 +175,7 @@ internal enum TranscriptionError {
         guard signals.contains(where: { lowercased.contains($0) }) else { return nil }
         return .pythonConfigurationError
     }
-    
+
     /// The primary button title for this error type
     var primaryButtonTitle: String {
         switch self {
@@ -194,7 +194,7 @@ internal enum TranscriptionError {
             return "Configure Python"
         }
     }
-    
+
     /// The secondary button title (if applicable)
     var secondaryButtonTitle: String? {
         switch self {
@@ -205,7 +205,7 @@ internal enum TranscriptionError {
             return nil
         }
     }
-    
+
     /// Whether this error should show a settings button
     var shouldShowSettingsButton: Bool {
         switch self {
@@ -215,7 +215,7 @@ internal enum TranscriptionError {
             return false
         }
     }
-    
+
     /// Whether this error should show system settings button
     var shouldShowSystemSettingsButton: Bool {
         switch self {
@@ -225,7 +225,7 @@ internal enum TranscriptionError {
             return false
         }
     }
-    
+
     /// A user-friendly error message
     var userMessage: String {
         switch self {
@@ -257,7 +257,7 @@ internal enum TranscriptionError {
             return message
         }
     }
-    
+
     /// Helper to extract provider name from error message
     private static func extractProvider(from message: String) -> String {
         let lowercased = message.lowercased()
@@ -272,7 +272,7 @@ internal enum TranscriptionError {
         }
         return "API"
     }
-    
+
     /// Helper to extract model name from error message
     private static func extractModel(from message: String) -> String {
         // Try to extract model name from common patterns
@@ -280,14 +280,14 @@ internal enum TranscriptionError {
             let modelPart = String(message[range])
             return modelPart.replacingOccurrences(of: "model '", with: "").replacingOccurrences(of: "'", with: "")
         }
-        
+
         // Look for common model names
         let models = ["tiny", "base", "small", "medium", "large", "turbo"]
         let lowercased = message.lowercased()
         for model in models where lowercased.contains(model) {
             return model.capitalized
         }
-        
+
         return "Unknown"
     }
 }

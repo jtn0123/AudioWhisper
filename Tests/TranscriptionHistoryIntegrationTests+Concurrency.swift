@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 import SwiftData
 @testable import AudioWhisper
 
@@ -173,7 +172,7 @@ extension TranscriptionHistoryIntegrationTests {
         let mockDataManager = MockDataManager()
 
         // Test 1: History enabled
-        UserDefaults.standard.set(true, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")
         mockDataManager.isHistoryEnabled = true
 
         let testRecord = createSampleRecord(text: "Settings integration test", provider: .local)
@@ -186,7 +185,7 @@ extension TranscriptionHistoryIntegrationTests {
         XCTAssertEqual(records.count, 1, "Record should be saved when history is enabled")
 
         // Test 2: History disabled
-        UserDefaults.standard.set(false, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(false, forKey: "transcriptionHistoryEnabled")
         mockDataManager.isHistoryEnabled = false
 
         let anotherRecord = createSampleRecord(text: "Should not be saved", provider: .parakeet)
@@ -217,8 +216,8 @@ extension TranscriptionHistoryIntegrationTests {
         await waitForAsyncOperation()
         
         // Test 1: One month retention
-        UserDefaults.standard.set(RetentionPeriod.oneMonth.rawValue, forKey: "transcriptionRetentionPeriod")
-        let retentionRawValue = UserDefaults.standard.string(forKey: "transcriptionRetentionPeriod") ?? ""
+        AppDefaults.defaults.set(RetentionPeriod.oneMonth.rawValue, forKey: "transcriptionRetentionPeriod")
+        let retentionRawValue = AppDefaults.defaults.string(forKey: "transcriptionRetentionPeriod") ?? ""
         let retentionPeriod = RetentionPeriod(rawValue: retentionRawValue) ?? .oneMonth
         
         XCTAssertEqual(retentionPeriod, .oneMonth, "Retention period should be set to one month")
@@ -234,8 +233,8 @@ extension TranscriptionHistoryIntegrationTests {
         }
         
         // Test 2: Forever retention
-        UserDefaults.standard.set(RetentionPeriod.forever.rawValue, forKey: "transcriptionRetentionPeriod")
-        let foreverRawValue = UserDefaults.standard.string(forKey: "transcriptionRetentionPeriod") ?? ""
+        AppDefaults.defaults.set(RetentionPeriod.forever.rawValue, forKey: "transcriptionRetentionPeriod")
+        let foreverRawValue = AppDefaults.defaults.string(forKey: "transcriptionRetentionPeriod") ?? ""
         let foreverRetention = RetentionPeriod(rawValue: foreverRawValue) ?? .oneMonth
         
         XCTAssertEqual(foreverRetention, .forever, "Retention period should be set to forever")

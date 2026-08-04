@@ -1,5 +1,7 @@
 import XCTest
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AVFoundation
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 @testable import AudioWhisper
 
 /// Tests for audio processing validation including format conversion,

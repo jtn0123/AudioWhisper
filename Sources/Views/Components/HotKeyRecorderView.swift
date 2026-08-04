@@ -6,12 +6,12 @@ internal struct HotKeyRecorderView: View {
     @Binding var recordedModifiers: NSEvent.ModifierFlags
     @Binding var recordedKey: Key?
     let onComplete: (String) -> Void
-    
+
     @State private var displayText = "Press keys..."
     @State private var eventMonitor: Any?
-    
+
     private var accentColor: Color { DashboardTheme.accent }
-    
+
     var body: some View {
         HStack {
             Text(displayText)
@@ -26,7 +26,7 @@ internal struct HotKeyRecorderView: View {
                 .onDisappear {
                     stopRecording()
                 }
-            
+
             Button("Cancel") {
                 stopRecording()
                 isRecording = false
@@ -34,21 +34,21 @@ internal struct HotKeyRecorderView: View {
             .buttonStyle(.bordered)
         }
     }
-    
+
     private func startRecording() {
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             handleKeyEvent(event)
             return nil // Consume the event
         }
     }
-    
+
     private func stopRecording() {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
         }
     }
-    
+
     private func handleKeyEvent(_ event: NSEvent) {
         if event.type == .flagsChanged {
             recordedModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
@@ -56,7 +56,7 @@ internal struct HotKeyRecorderView: View {
         } else if event.type == .keyDown {
             if let key = keyFromKeyCode(event.keyCode) {
                 recordedKey = key
-                
+
                 // Complete the recording if we have both modifiers and a key
                 if (recordedKey != nil && !recordedModifiers.isEmpty) ||
                    (recordedKey != nil && isFunctionKey(key) && recordedModifiers.isEmpty) {
@@ -78,52 +78,52 @@ internal struct HotKeyRecorderView: View {
             }
         }
     }
-    
+
     private func updateDisplayText() {
         var parts: [String] = []
-        
+
         if recordedModifiers.contains(.command) { parts.append("⌘") }
         if recordedModifiers.contains(.shift) { parts.append("⇧") }
         if recordedModifiers.contains(.option) { parts.append("⌥") }
         if recordedModifiers.contains(.control) { parts.append("⌃") }
-        
+
         if let key = recordedKey {
             parts.append(keyToString(key))
         }
-        
+
         displayText = parts.isEmpty ? "Press keys..." : parts.joined()
     }
-    
+
     private func formatHotkey(modifiers: NSEvent.ModifierFlags, key: Key) -> String {
         var parts: [String] = []
-        
+
         if modifiers.contains(.command) { parts.append("⌘") }
         if modifiers.contains(.shift) { parts.append("⇧") }
         if modifiers.contains(.option) { parts.append("⌥") }
         if modifiers.contains(.control) { parts.append("⌃") }
-        
+
         parts.append(keyToString(key))
-        
+
         return parts.joined()
     }
-    
+
     private func isValidHotkey(modifiers: NSEvent.ModifierFlags, key: Key) -> Bool {
         // Allow function keys with no modifiers
         if modifiers.isEmpty {
             return isFunctionKey(key)
         }
-        
+
         // Some keys should not be used as hotkeys (like escape, which is used to cancel)
         let forbiddenKeys: [Key] = [.escape, .delete, .return, .tab]
         if forbiddenKeys.contains(key) {
             return false
         }
-        
+
         // Single modifier keys (like just shift) should require Command or Control
         if modifiers == .shift || modifiers == .option {
             return false
         }
-        
+
         return true
     }
 
@@ -136,7 +136,7 @@ internal struct HotKeyRecorderView: View {
             return false
         }
     }
-    
+
     private func keyFromKeyCode(_ keyCode: UInt16) -> Key? {
         Self.keyCodeMap[keyCode]
     }

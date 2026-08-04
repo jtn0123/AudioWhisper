@@ -3,23 +3,23 @@ import SwiftUI
 internal struct TranscriptionSearchBar: View {
     @Binding var searchText: String
     var isFocused: FocusState<Bool>.Binding
-    
+
     private var isFocusedValue: Bool { isFocused.wrappedValue }
-    
+
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(isFocusedValue ? Color.accentColor : .secondary)
                 .font(.callout)
                 .animation(.easeInOut(duration: 0.2), value: isFocusedValue)
-            
+
             TextField("Search transcriptions...", text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.body)
                 .focused(isFocused)
                 .accessibilityLabel("Search transcriptions")
                 .accessibilityHint("Type to filter transcription records by text or provider. Press Cmd+F to focus.")
-            
+
             if !searchText.isEmpty {
                 Button(action: {
                     searchText = ""

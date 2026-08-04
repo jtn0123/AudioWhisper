@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import os
 
 internal enum PressAndHoldMode: String, CaseIterable, Identifiable {
     case hold
@@ -139,7 +138,10 @@ internal enum PressAndHoldSettings {
     private static let keyIdentifierKey = "pressAndHoldKeyIdentifier"
     private static let modeKey = "pressAndHoldMode"
 
-    static func configuration(using defaults: UserDefaults = .standard) -> PressAndHoldConfiguration {
+    // D4: defaults to AppDefaults.defaults, not .standard, so this honours the
+    // test-suite redirection. It read .standard while tests wrote the redirected
+    // store, which made AppDelegateHotkeysTests fail under --parallel.
+    static func configuration(using defaults: UserDefaults = AppDefaults.defaults) -> PressAndHoldConfiguration {
         let enabled = defaults.object(forKey: enabledKey) as? Bool ?? PressAndHoldConfiguration.defaults.enabled
         let keyIdentifier = defaults.string(forKey: keyIdentifierKey) ?? PressAndHoldConfiguration.defaults.key.rawValue
         let modeIdentifier = defaults.string(forKey: modeKey) ?? PressAndHoldConfiguration.defaults.mode.rawValue
@@ -152,7 +154,7 @@ internal enum PressAndHoldSettings {
         return PressAndHoldConfiguration(enabled: enabled, key: key, mode: mode)
     }
 
-    static func update(_ configuration: PressAndHoldConfiguration, using defaults: UserDefaults = .standard) {
+    static func update(_ configuration: PressAndHoldConfiguration, using defaults: UserDefaults = AppDefaults.defaults) {
         defaults.set(configuration.enabled, forKey: enabledKey)
         defaults.set(configuration.key.rawValue, forKey: keyIdentifierKey)
         defaults.set(configuration.mode.rawValue, forKey: modeKey)
@@ -177,7 +179,22 @@ internal enum PressAndHoldSettings {
 /// Observes global keyboard events so that modifier-only keys (e.g. right command)
 /// can trigger recording. Uses NSEvent global monitors, which continue to fire even
 /// when the app is not focused.
-internal final class PressAndHoldKeyMonitor {
+///
+/// A5: `@unchecked Sendable` rather than `@MainActor`. This type is genuinely
+/// multi-threaded *by design*, and marking it `@MainActor` would contradict that:
+///
+///   * `isPressed` is guarded by `os_unfair_lock` because it sits in the keyboard
+///     hot path, where an actor hop would be too expensive.
+///   * State transitions are deliberately serialised onto `monitorQueue`, a
+///     private serial queue, so events are ordered independently of which thread
+///     NSEvent delivers them on.
+///   * The watchdog `Timer` is installed on the main run loop.
+///
+/// Without this, capturing `self` in the watchdog's `@Sendable` timer block warns.
+/// The annotation asserts what the locking above already provides. (I tried
+/// `@MainActor` first; it forces `processTransition` off `monitorQueue` and
+/// produced five new warnings instead of removing one — the wrong fix.)
+internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
     typealias EventMonitorFactory = (NSEvent.EventTypeMask, @escaping (NSEvent) -> Void) -> Any?
     typealias EventMonitorRemoval = (Any) -> Void
 

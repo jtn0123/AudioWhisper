@@ -121,9 +121,9 @@ final class HotkeyIntegrationTests: IsolatedXCTestCase {
 
     func testPressAndHoldDefaultConfiguration() {
         // Clear any existing settings
-        UserDefaults.standard.removeObject(forKey: "pressAndHoldEnabled")
-        UserDefaults.standard.removeObject(forKey: "pressAndHoldKeyIdentifier")
-        UserDefaults.standard.removeObject(forKey: "pressAndHoldMode")
+        AppDefaults.defaults.removeObject(forKey: "pressAndHoldEnabled")
+        AppDefaults.defaults.removeObject(forKey: "pressAndHoldKeyIdentifier")
+        AppDefaults.defaults.removeObject(forKey: "pressAndHoldMode")
 
         let config = PressAndHoldSettings.configuration()
 
@@ -215,29 +215,29 @@ final class HotkeyIntegrationTests: IsolatedXCTestCase {
     // MARK: - UserDefaults Integration Tests
 
     func testImmediateRecordingSettingPersistence() {
-        let originalValue = UserDefaults.standard.bool(forKey: "immediateRecording")
+        let originalValue = AppDefaults.defaults.bool(forKey: "immediateRecording")
 
-        UserDefaults.standard.set(true, forKey: "immediateRecording")
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: "immediateRecording"))
+        AppDefaults.defaults.set(true, forKey: "immediateRecording")
+        XCTAssertTrue(AppDefaults.defaults.bool(forKey: "immediateRecording"))
 
-        UserDefaults.standard.set(false, forKey: "immediateRecording")
-        XCTAssertFalse(UserDefaults.standard.bool(forKey: "immediateRecording"))
+        AppDefaults.defaults.set(false, forKey: "immediateRecording")
+        XCTAssertFalse(AppDefaults.defaults.bool(forKey: "immediateRecording"))
 
         // Restore
-        UserDefaults.standard.set(originalValue, forKey: "immediateRecording")
+        AppDefaults.defaults.set(originalValue, forKey: "immediateRecording")
     }
 
     func testEnableSmartPasteSettingPersistence() {
-        let originalValue = UserDefaults.standard.bool(forKey: "enableSmartPaste")
+        let originalValue = AppDefaults.defaults.bool(forKey: "enableSmartPaste")
 
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: "enableSmartPaste"))
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
+        XCTAssertTrue(AppDefaults.defaults.bool(forKey: "enableSmartPaste"))
 
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
-        XCTAssertFalse(UserDefaults.standard.bool(forKey: "enableSmartPaste"))
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
+        XCTAssertFalse(AppDefaults.defaults.bool(forKey: "enableSmartPaste"))
 
         // Restore
-        UserDefaults.standard.set(originalValue, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(originalValue, forKey: "enableSmartPaste")
     }
 
     // MARK: - Notification Name Tests

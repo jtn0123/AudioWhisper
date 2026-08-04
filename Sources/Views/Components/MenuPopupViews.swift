@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 // MARK: - MenuHeaderView
 //
@@ -12,6 +11,9 @@ internal struct MenuHeaderView: View {
 
     /// Provider currently selected (matches TranscriptionProvider raw values:
     /// "openai" / "gemini" / "local" / "parakeet").
+    ///
+    /// "openai"/"gemini" are retained for pre-2.0 history records, which persist
+    /// the provider as a raw String — see the note in `DashboardHomeView`.
     let providerRaw: String
     /// Today's average WPM, formatted ("168") — pass nil to hide.
     let todayWPM: Int?

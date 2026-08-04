@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 private actor VerificationMessageStore {
     private var stdout: String = ""
@@ -21,22 +20,22 @@ internal extension DashboardProvidersView {
                 Text("02")
                     .font(DashboardTheme.Fonts.mono(11, weight: .medium))
                     .foregroundStyle(DashboardTheme.accent)
-                
+
                 Text("PARAKEET SETUP")
                     .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
                     .foregroundStyle(DashboardTheme.inkMuted)
                     .tracking(1.5)
             }
-            
+
             VStack(spacing: 0) {
                 // Environment status - prominent
                 environmentStatusSection
-                
+
                 Divider().background(DashboardTheme.rule)
-                
+
                 // Model selection
                 modelSelectionSection
-                
+
                 // Verification message — uses the shared DownloadProgressView
                 // when the message indicates failure so users get a Retry
                 // button consistently across providers. Informational messages
@@ -76,20 +75,20 @@ internal extension DashboardProvidersView {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(DashboardTheme.rule, lineWidth: 1)
             )
-            
+
             // Info footer
             HStack(spacing: DashboardTheme.Spacing.sm) {
                 Image(systemName: "apple.logo")
                     .font(.system(size: 11))
                     .foregroundStyle(DashboardTheme.inkFaint)
-                
+
                 Text("Runs locally on Apple Silicon • ~2.5 GB disk space")
                     .font(DashboardTheme.Fonts.sans(11, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkFaint)
             }
         }
     }
-    
+
     private var environmentStatusSection: some View {
         HStack(spacing: DashboardTheme.Spacing.md) {
             // Status icon
@@ -99,7 +98,7 @@ internal extension DashboardProvidersView {
                         ? Color(red: 0.35, green: 0.60, blue: 0.40).opacity(0.12)
                         : DashboardTheme.accent.opacity(0.12))
                     .frame(width: 44, height: 44)
-                
+
                 if isCheckingEnv {
                     ProgressView()
                         .controlSize(.small)
@@ -109,19 +108,19 @@ internal extension DashboardProvidersView {
                         .foregroundStyle(envReady ? Color(red: 0.35, green: 0.60, blue: 0.40) : DashboardTheme.accent)
                 }
             }
-            
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(envReady ? "Environment Ready" : "Setup Required")
                     .font(DashboardTheme.Fonts.sans(15, weight: .semibold))
                     .foregroundStyle(DashboardTheme.ink)
-                
+
                 Text("Python dependencies for local neural inference")
                     .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkMuted)
             }
-            
+
             Spacer()
-            
+
             if !envReady {
                 Button {
                     runUvSetupSheet(title: "Installing Parakeet dependencies…")
@@ -161,21 +160,30 @@ internal extension DashboardProvidersView {
         }
         .padding(DashboardTheme.Spacing.lg)
     }
-    
+
     private var modelSelectionSection: some View {
         HStack(spacing: DashboardTheme.Spacing.md) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Model")
                     .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                     .foregroundStyle(DashboardTheme.ink)
-                
-                Text("Downloaded on first use")
+
+                // Surface the selected model's trade-off. `description` existed
+                // on ParakeetModel but was never rendered, so the picker gave no
+                // hint that v2 is the more accurate English model and v3 trades
+                // accuracy for language coverage.
+                Text(selectedParakeetModel.description)
                     .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("Downloaded on first use")
+                    .font(DashboardTheme.Fonts.sans(11, weight: .regular))
+                    .foregroundStyle(DashboardTheme.inkFaint)
             }
-            
+
             Spacer()
-            
+
             Picker("", selection: $selectedParakeetModel) {
                 ForEach(ParakeetModel.allCases, id: \.self) { model in
                     Text(model.displayName).tag(model)
@@ -183,6 +191,8 @@ internal extension DashboardProvidersView {
             }
             .labelsHidden()
             .frame(width: 180)
+            .accessibilityLabel("Speech-to-text model")
+            .accessibilityValue("\(selectedParakeetModel.displayName). \(selectedParakeetModel.description)")
         }
         .padding(DashboardTheme.Spacing.md)
         .onChange(of: selectedParakeetModel) { _, _ in
@@ -220,35 +230,6 @@ internal extension DashboardProvidersView {
                     let msg = error.localizedDescription.isEmpty ? String(describing: error) : error.localizedDescription
                     setupLogs += (setupLogs.isEmpty ? "" : "\n") + "Error: \(msg)"
                     envReady = false
-                }
-            }
-        }
-    }
-
-    func checkEnvReady() {
-        isCheckingEnv = true
-        Task {
-            let fm = FileManager.default
-            let py = venvPythonPath()
-            var ready = false
-            if fm.isExecutableFile(atPath: py) {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: py)
-                process.arguments = ["-c", "import mlx_lm; print('OK')"]
-                process.standardOutput = Pipe()
-                process.standardError = Pipe()
-                do {
-                    try process.run()
-                    process.waitUntilExit()
-                    if process.terminationStatus == 0 { ready = true }
-                } catch { ready = false }
-            }
-            await MainActor.run {
-                envReady = ready
-                isCheckingEnv = false
-                if ready {
-                    hasSetupParakeet = true
-                    hasSetupLocalLLM = true
                 }
             }
         }

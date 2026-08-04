@@ -49,7 +49,11 @@ final class MicTestCapture: ObservableObject {
     /// buffer spawned a MainActor Task — under main-actor stalls the queue
     /// grew unboundedly. CACurrentMediaTime is monotonic and immune to
     /// wall-clock jumps.
-    private static let publishInterval: TimeInterval = 1.0 / 60.0
+    /// A5: `nonisolated` because it is read from the audio render callback,
+    /// which is not on the main actor. An immutable `TimeInterval` is trivially
+    /// Sendable, so exposing it outside the actor is safe — unlike the mutable
+    /// state below it, which stays behind `stateLock`.
+    nonisolated private static let publishInterval: TimeInterval = 1.0 / 60.0
     private nonisolated(unsafe) var _lastPublishTime: TimeInterval = 0
 
     private nonisolated var smoothedLevel: Float {

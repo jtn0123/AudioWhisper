@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 
 /// Classic level-based waveform visualization with animated bars.
 /// Features gravity-based physics: bars rise quickly, fall with acceleration, and bounce.

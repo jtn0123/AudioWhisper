@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 internal struct DashboardProvidersView: View {
     // Persistent settings - Transcription
@@ -78,21 +77,13 @@ internal struct DashboardProvidersView: View {
         get { state.isRefreshingMLXModels }
         nonmutating set { state.isRefreshingMLXModels = newValue }
     }
-    private var isVerifyingMLX: Bool {
-        get { state.isVerifyingMLX }
-        nonmutating set { state.isVerifyingMLX = newValue }
-    }
-    private var mlxVerifyMessage: String? {
-        get { state.mlxVerifyMessage }
-        nonmutating set { state.mlxVerifyMessage = newValue }
-    }
     private var isLoaded: Bool {
         get { state.isLoaded }
         nonmutating set { state.isLoaded = newValue }
     }
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: 0) {
                 // Hero header
                 headerSection
@@ -153,14 +144,6 @@ internal struct DashboardProvidersView: View {
         }
     }
 
-    // MARK: - Helpers
-    func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
-            .foregroundStyle(DashboardTheme.inkMuted)
-            .tracking(0.8)
-            .textCase(.uppercase)
-    }
 }
 
 // MARK: - Testable Helpers

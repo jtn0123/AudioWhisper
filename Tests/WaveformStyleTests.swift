@@ -12,12 +12,12 @@ final class WaveformStyleTests: IsolatedXCTestCase {
     override func setUp() {
         super.setUp()
         // Ensure clean state before each test
-        UserDefaults.standard.removeObject(forKey: testDefaultsKey)
+        AppDefaults.defaults.removeObject(forKey: testDefaultsKey)
     }
 
     override func tearDown() {
         // Clean up UserDefaults after each test
-        UserDefaults.standard.removeObject(forKey: testDefaultsKey)
+        AppDefaults.defaults.removeObject(forKey: testDefaultsKey)
         super.tearDown()
     }
 
@@ -149,23 +149,23 @@ final class WaveformStyleTests: IsolatedXCTestCase {
 
     func testDefaultStyleIsClassic() {
         // setUp already clears the value, so no need to remove it again
-        let style = UserDefaults.standard.waveformStyle
+        let style = AppDefaults.defaults.waveformStyle
         XCTAssertEqual(style, .classic, "Default style should be Classic")
     }
 
     func testSetAndGetStyle() {
         for style in WaveformStyle.allCases {
-            UserDefaults.standard.waveformStyle = style
-            XCTAssertEqual(UserDefaults.standard.waveformStyle, style)
+            AppDefaults.defaults.waveformStyle = style
+            XCTAssertEqual(AppDefaults.defaults.waveformStyle, style)
         }
     }
 
     func testStyleReadbackConsistency() {
         // Verify that reading the same value multiple times returns consistent results
         // This tests that the getter doesn't have side effects
-        let initialStyle = UserDefaults.standard.waveformStyle
-        let secondRead = UserDefaults.standard.waveformStyle
-        let thirdRead = UserDefaults.standard.waveformStyle
+        let initialStyle = AppDefaults.defaults.waveformStyle
+        let secondRead = AppDefaults.defaults.waveformStyle
+        let thirdRead = AppDefaults.defaults.waveformStyle
 
         XCTAssertEqual(initialStyle, secondRead, "Consecutive reads should return same value")
         XCTAssertEqual(secondRead, thirdRead, "Consecutive reads should return same value")
@@ -173,15 +173,15 @@ final class WaveformStyleTests: IsolatedXCTestCase {
 
     func testInvalidRawValueDefaultsToClassic() {
         // Manually set an invalid value
-        UserDefaults.standard.set("InvalidStyle", forKey: testDefaultsKey)
+        AppDefaults.defaults.set("InvalidStyle", forKey: testDefaultsKey)
 
-        let style = UserDefaults.standard.waveformStyle
+        let style = AppDefaults.defaults.waveformStyle
         XCTAssertEqual(style, .classic, "Invalid raw value should default to Classic")
     }
 
     func testNilValueDefaultsToClassic() {
         // setUp already clears the value, so we can just read
-        let style = UserDefaults.standard.waveformStyle
+        let style = AppDefaults.defaults.waveformStyle
         XCTAssertEqual(style, .classic, "Nil value should default to Classic")
     }
 

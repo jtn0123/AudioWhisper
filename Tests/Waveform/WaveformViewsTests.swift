@@ -337,3 +337,46 @@ final class WaveformViewsTests: IsolatedXCTestCase {
     }
 
 }
+
+// MARK: - Empty-input rendering
+
+/// Split out of `WaveformViewsTests` to stay under SwiftLint's type_body_length.
+@MainActor
+final class WaveformEmptyInputRenderingTests: XCTestCase {
+    // MARK: - Empty-input rendering (crash regression)
+
+    /// `DialWaveformView` crashed with "Index out of range" whenever
+    /// `frequencyBands` was empty — which is its state before any audio has been
+    /// analysed, i.e. every time the style renders at rest.
+    ///
+    /// The cause was `let bandCount = max(1, frequencyBands.count)`: intended to
+    /// avoid a modulo-by-zero, it instead made `index % 1 == 0` look valid and
+    /// subscripted `frequencyBands[0]` on an empty array.
+    ///
+    /// Nothing caught it because the existing view tests only *construct* views
+    /// (`XCTAssertNotNil(view)`), which never evaluates `body`, and the snapshot
+    /// suite that did render it was disabled by default. This test forces an
+    /// actual render.
+    func testWaveformViewsRenderWithEmptyFrequencyBands() {
+        func render(_ view: some View, _ label: String) {
+            let renderer = ImageRenderer(content: view.frame(width: 320, height: 200))
+            renderer.scale = 1
+            XCTAssertNotNil(renderer.nsImage, "\(label) failed to render with empty inputs")
+        }
+
+        render(DialWaveformView(frequencyBands: [], audioLevel: 0, isActive: false), "DialWaveformView")
+        render(HaloWaveformView(frequencyBands: [], audioLevel: 0, isActive: false), "HaloWaveformView")
+        render(SpectrumWaveformView(frequencyBands: [], isActive: false), "SpectrumWaveformView")
+        render(NeonWaveformView(waveformSamples: [], audioLevel: 0, isActive: false), "NeonWaveformView")
+    }
+
+    /// A single band must not trip the modulo indexing either.
+    func testWaveformViewsRenderWithSingleFrequencyBand() {
+        let renderer = ImageRenderer(
+            content: DialWaveformView(frequencyBands: [0.5], audioLevel: 0.5, isActive: true)
+                .frame(width: 320, height: 200)
+        )
+        renderer.scale = 1
+        XCTAssertNotNil(renderer.nsImage)
+    }
+}

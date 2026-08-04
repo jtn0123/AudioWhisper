@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import AudioWhisper
 
 /// Tests for DashboardCorrectionView logic and calculations
@@ -86,7 +85,7 @@ final class DashboardCorrectionViewTests: XCTestCase {
 
     func testDefaultModelRepo() {
         let defaultRepo = DashboardCorrectionView.testableDefaultModelRepo()
-        XCTAssertEqual(defaultRepo, "mlx-community/Qwen3-1.7B-4bit")
+        XCTAssertEqual(defaultRepo, AppDefaults.defaultSemanticCorrectionModelRepo)
     }
 
     func testDefaultModelRepoIsRecommended() {
@@ -96,13 +95,19 @@ final class DashboardCorrectionViewTests: XCTestCase {
 
     // MARK: - Recommended Badge Tests
 
-    func testQwen3IsRecommended() {
-        XCTAssertTrue(DashboardCorrectionView.testableIsRecommended(repo: "mlx-community/Qwen3-1.7B-4bit"))
+    func testDefaultModelIsTheRecommendedOne() {
+        XCTAssertTrue(
+            DashboardCorrectionView.testableIsRecommended(
+                repo: AppDefaults.defaultSemanticCorrectionModelRepo
+            )
+        )
     }
 
     func testOtherModelsNotRecommended() {
         XCTAssertFalse(DashboardCorrectionView.testableIsRecommended(repo: "mlx-community/gemma-2b-it-4bit"))
-        XCTAssertFalse(DashboardCorrectionView.testableIsRecommended(repo: "mlx-community/Llama-3.2-1B-Instruct-4bit"))
+        XCTAssertFalse(
+            DashboardCorrectionView.testableIsRecommended(repo: "mlx-community/Phi-3.5-mini-instruct-4bit")
+        )
     }
 
     // MARK: - Model Entry Creation Tests
@@ -204,8 +209,10 @@ final class DashboardCorrectionViewTests: XCTestCase {
     }
 
     func testDefaultModelRepoValue() {
-        let defaultRepo = "mlx-community/Qwen3-1.7B-4bit"
-        XCTAssertEqual(defaultRepo, DashboardCorrectionView.testableDefaultModelRepo())
+        XCTAssertEqual(
+            AppDefaults.defaultSemanticCorrectionModelRepo,
+            DashboardCorrectionView.testableDefaultModelRepo()
+        )
     }
 
     // MARK: - Environment State Tests
@@ -354,7 +361,7 @@ final class DashboardCorrectionViewTests: XCTestCase {
             selectedRepo = DashboardCorrectionView.testableDefaultModelRepo()
         }
 
-        XCTAssertEqual(selectedRepo, "mlx-community/Qwen3-1.7B-4bit")
+        XCTAssertEqual(selectedRepo, AppDefaults.defaultSemanticCorrectionModelRepo)
     }
 
 }

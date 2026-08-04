@@ -19,7 +19,7 @@ internal struct DashboardPreferencesView: View {
     private let storageOptions: [Double] = [1, 2, 5, 10, 20]
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                 pageHeader
                 generalSection
@@ -49,7 +49,7 @@ internal struct DashboardPreferencesView: View {
     private var generalSection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("General")
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 SettingsToggleRow(
                     title: "Start at Login",
@@ -116,7 +116,7 @@ internal struct DashboardPreferencesView: View {
     private var historySection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("History")
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 SettingsToggleRow(
                     title: "Save Transcription History",
@@ -167,7 +167,7 @@ internal struct DashboardPreferencesView: View {
     private var storageSection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("Storage")
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 SettingsPickerRow(
                     title: "Max Model Storage",
@@ -189,36 +189,36 @@ internal struct DashboardPreferencesView: View {
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
             sectionHeader("About")
-            
+
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.sm) {
                 HStack(alignment: .firstTextBaseline, spacing: DashboardTheme.Spacing.md) {
                     Text("AudioWhisper")
                         .font(DashboardTheme.Fonts.serif(16, weight: .semibold))
                         .foregroundStyle(DashboardTheme.ink)
-                    
+
                     Text(VersionInfo.fullVersionInfo)
                         .font(DashboardTheme.Fonts.mono(12, weight: .regular))
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
-                
+
                 if VersionInfo.gitHash != "dev-build" && VersionInfo.gitHash != "unknown" {
                     HStack(spacing: DashboardTheme.Spacing.sm) {
                         Text("Git:")
                             .font(DashboardTheme.Fonts.sans(12, weight: .medium))
                             .foregroundStyle(DashboardTheme.inkMuted)
-                        
+
                         Text(VersionInfo.gitHash)
                             .font(DashboardTheme.Fonts.mono(12, weight: .regular))
                             .foregroundStyle(DashboardTheme.inkLight)
                     }
                 }
-                
+
                 if !VersionInfo.buildDate.isEmpty {
                     HStack(spacing: DashboardTheme.Spacing.sm) {
                         Text("Built:")
                             .font(DashboardTheme.Fonts.sans(12, weight: .medium))
                             .foregroundStyle(DashboardTheme.inkMuted)
-                        
+
                         Text(VersionInfo.buildDate)
                             .font(DashboardTheme.Fonts.mono(12, weight: .regular))
                             .foregroundStyle(DashboardTheme.inkLight)

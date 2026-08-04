@@ -7,7 +7,7 @@ internal enum AppStatus: Equatable {
     case success
     case ready
     case permissionRequired
-    
+
     var message: String {
         switch self {
         case .error(let message):
@@ -24,7 +24,7 @@ internal enum AppStatus: Equatable {
             return "Microphone access required"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .error:
@@ -41,7 +41,7 @@ internal enum AppStatus: Equatable {
             return .gray
         }
     }
-    
+
     var icon: String? {
         switch self {
         case .error:
@@ -58,7 +58,7 @@ internal enum AppStatus: Equatable {
             return "mic.slash.fill"
         }
     }
-    
+
     var shouldAnimate: Bool {
         switch self {
         case .recording, .processing:
@@ -67,7 +67,7 @@ internal enum AppStatus: Equatable {
             return false
         }
     }
-    
+
     var showInfoButton: Bool {
         switch self {
         case .permissionRequired:
@@ -80,7 +80,7 @@ internal enum AppStatus: Equatable {
 
 @Observable internal class StatusViewModel {
     var currentStatus: AppStatus = .ready
-    
+
     func updateStatus(
         isRecording: Bool,
         isProcessing: Bool,

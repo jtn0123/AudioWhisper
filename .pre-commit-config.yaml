@@ -5,7 +5,7 @@ repos:
     hooks:
       - id: swiftlint
         name: SwiftLint
-        entry: swiftlint lint --quiet
+        entry: scripts/lint.sh --quiet
         language: system
         files: \.swift$
         require_serial: false

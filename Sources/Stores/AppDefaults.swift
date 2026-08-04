@@ -14,7 +14,53 @@ import Foundation
 enum AppDefaults {
     /// Backing store. Effectively private (only used by `AppDefaults` extensions),
     /// but `internal` so extensions in other files can reach it.
-    static let defaults: UserDefaults = .standard
+    ///
+    /// In production this is always `.standard`. Under test it is redirected to a
+    /// per-process scratch suite — see `makeBackingStore()`.
+    static let defaults: UserDefaults = makeBackingStore()
+
+    /// Resolves the backing store, honouring the `AUDIOWHISPER_DEFAULTS_SUITE`
+    /// test hook.
+    ///
+    /// D1/D4: the suite name gets the **process id** appended. `swift test
+    /// --parallel` spawns several `xctest` processes and every one reads the same
+    /// environment; without the pid they would share a single suite and race it
+    /// exactly as they race the global domain today. With it, each process gets
+    /// its own settings store and the settings-mutating tests stop colliding.
+    ///
+    /// This stays a `let` initialised once, so there is no mutable global and no
+    /// data race — `AppDefaults` is deliberately not actor-isolated so
+    /// non-MainActor services can read settings without a hop.
+    ///
+    /// For this to work, EVERY settings read/write — production and test — must
+    /// go through here. Production no longer touches `UserDefaults.standard`
+    /// directly (see ADR 0004); tests use `AppDefaults.defaults`.
+    private static func makeBackingStore() -> UserDefaults {
+        let environment = ProcessInfo.processInfo.environment
+        let explicitPrefix = environment["AUDIOWHISPER_DEFAULTS_SUITE"]
+
+        // The prefix normally comes from scripts/run-tests.sh. Relying on that
+        // alone made the isolation opt-in, and CI never opted in: ci.yml called
+        // `swift test --parallel` directly, so every worker fell through to
+        // `.standard` and raced it. That produced 24 failures across 7 suites
+        // (leaked waveformStyle, leaked enableSmartPaste, ...) which reproduced
+        // on no developer machine, because everyone ran the script.
+        //
+        // So detect the test runner intrinsically instead: XCTest is only ever
+        // loaded into a test process. Any harness that forgets the variable
+        // still gets an isolated store.
+        let prefix: String
+        if let explicitPrefix, !explicitPrefix.isEmpty {
+            prefix = explicitPrefix
+        } else if NSClassFromString("XCTestCase") != nil {
+            prefix = "com.audiowhisper.tests.autoscratch"
+        } else {
+            return .standard
+        }
+
+        let suiteName = "\(prefix).\(ProcessInfo.processInfo.processIdentifier)"
+        return UserDefaults(suiteName: suiteName) ?? .standard
+    }
 
     // MARK: - Keys
 

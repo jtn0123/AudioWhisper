@@ -1,5 +1,3 @@
-import Foundation
-import AppKit
 @testable import AudioWhisper
 
 /// Mock PressAndHoldKeyMonitor for testing hotkey monitoring

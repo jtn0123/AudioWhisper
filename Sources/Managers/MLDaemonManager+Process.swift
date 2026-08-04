@@ -69,7 +69,15 @@ internal extension MLDaemonManager {
             let data = handle.availableData
             guard !data.isEmpty else { return }
             guard let message = String(bytes: data, encoding: .utf8) else { return }
-            self?.logger.error("ml_daemon stderr: \(message, privacy: .public)")
+            // E2: never log raw Python stderr at `.public`. `ml_daemon`'s
+            // `correct` method takes the full transcript as a parameter, so a
+            // traceback can embed user speech in the exception message and in
+            // echoed source lines. `.public` would put that in the unified log,
+            // which persists on disk and is collected by sysdiagnose.
+            let summary = MLDaemonManager.pythonExceptionSummary(in: message)
+            self?.logger.error(
+                "ml_daemon stderr [\(summary, privacy: .public)]: \(message, privacy: .private)"
+            )
         }
 
         do {
@@ -266,5 +274,78 @@ internal extension MLDaemonManager {
         process = nil
         dead?.terminate()
         completeAllPending(with: MLDaemonError.daemonUnavailable("write failed; daemon torn down"))
+    }
+
+    // MARK: - stderr Sanitisation (E2)
+
+    /// Extracts a public-safe summary from raw Python stderr.
+    ///
+    /// The daemon's `correct` method receives the full transcript, so anything
+    /// it prints on failure may contain user speech — Python embeds offending
+    /// values in exception messages and echoes the failing source line in
+    /// tracebacks. Only the exception *type* is structurally guaranteed to be
+    /// payload-free, so that (and nothing else) is what we expose publicly.
+    ///
+    /// The full text is still logged alongside this at `.private`, which os.log
+    /// redacts in release builds but keeps readable when debugging locally with
+    /// the appropriate logging profile installed.
+    ///
+    /// - Returns: a comma-separated list of distinct Python exception type names
+    ///   in first-seen order, or `"unclassified"` when none is recognised.
+    ///   Capped at `maxSummaryTypes` entries.
+    static func pythonExceptionSummary(in stderr: String) -> String {
+        let types = pythonExceptionTypes(in: stderr)
+        guard !types.isEmpty else { return "unclassified" }
+        return types.prefix(maxSummaryTypes).joined(separator: ", ")
+    }
+
+    /// Upper bound on distinct exception types named in one log record, so a
+    /// pathological traceback chain can't produce an unbounded public string.
+    static let maxSummaryTypes = 4
+
+    /// Distinct Python exception type names appearing in `stderr`, in first-seen
+    /// order. Matches the standard `TypeName: message` traceback terminator,
+    /// including dotted module paths (`mlx.core.MLXError: ...`), and keeps only
+    /// the type — never the message.
+    static func pythonExceptionTypes(in stderr: String) -> [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+
+        for rawLine in stderr.split(separator: "\n", omittingEmptySubsequences: true) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            // A traceback's exception line is `Type: message` at the start of
+            // the line. Indented lines are frames/source echoes — skip those,
+            // since a source echo can itself look like `foo: bar`.
+            guard rawLine.first?.isWhitespace != true else { continue }
+            guard let colon = line.firstIndex(of: ":") else { continue }
+
+            let candidate = String(line[line.startIndex..<colon])
+            guard isPythonExceptionTypeName(candidate) else { continue }
+
+            // Report the bare class name; a dotted path can leak a vendored
+            // module layout but never user text, so keep the last component
+            // for readability.
+            let name = candidate.split(separator: ".").last.map(String.init) ?? candidate
+            if seen.insert(name).inserted {
+                ordered.append(name)
+            }
+        }
+        return ordered
+    }
+
+    /// Whether `candidate` looks like a Python exception class name: a dotted
+    /// identifier path whose final component is UpperCamelCase and ends in a
+    /// conventional exception suffix.
+    private static func isPythonExceptionTypeName(_ candidate: String) -> Bool {
+        guard !candidate.isEmpty, candidate.count <= 100 else { return false }
+        let components = candidate.split(separator: ".")
+        guard let last = components.last, let first = last.first, first.isUppercase else {
+            return false
+        }
+        let validCharacters = candidate.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
+        guard validCharacters else { return false }
+
+        let suffixes = ["Error", "Exception", "Interrupt", "Warning", "Exit"]
+        return suffixes.contains { last.hasSuffix($0) }
     }
 }

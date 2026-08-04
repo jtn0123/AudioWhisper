@@ -1,5 +1,4 @@
 import XCTest
-import AppKit
 @testable import AudioWhisper
 
 /// Tests for DashboardWindowManager lifecycle and behavior

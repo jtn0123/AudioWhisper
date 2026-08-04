@@ -36,25 +36,12 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         XCTAssertNotNil(appDelegate)
     }
 
-    // MARK: - API Key Error Handling
-
-    func testHasAPIKeyWithNonexistentService() {
-        let service = "nonexistent.\(UUID().uuidString)"
-        let hasKey = appDelegate.hasAPIKey(service: service, account: "test")
-        XCTAssertFalse(hasKey)
-    }
-
-    func testHasAPIKeyWithEmptyStrings() {
-        let hasKey = appDelegate.hasAPIKey(service: "", account: "")
-        XCTAssertFalse(hasKey)
-    }
-
-    func testHasAPIKeyWithSpecialCharacters() {
-        let service = "test.service.with-special_chars"
-        let account = "test@account.com"
-        let hasKey = appDelegate.hasAPIKey(service: service, account: account)
-        XCTAssertFalse(hasKey)
-    }
+    // A4: the three testHasAPIKey* cases were removed alongside
+    // `AppDelegate.hasAPIKey`, which had no production callers after the cloud
+    // providers were dropped. They asserted only that a keychain lookup for a
+    // random nonexistent service returns false — i.e. they exercised
+    // KeychainService (already covered by KeychainServiceTests) through a
+    // wrapper nothing called.
 
     // MARK: - Termination
 
@@ -101,7 +88,7 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         let key = "hasCleanedWindowState"
 
         // Reading the key should not crash
-        _ = UserDefaults.standard.bool(forKey: key)
+        _ = AppDefaults.defaults.bool(forKey: key)
 
         XCTAssertNotNil(key)
     }
@@ -110,11 +97,11 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
         let testKey = "testWindowStateCleanup.\(UUID().uuidString)"
 
         // Should be able to set and read the flag
-        UserDefaults.standard.set(true, forKey: testKey)
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: testKey))
+        AppDefaults.defaults.set(true, forKey: testKey)
+        XCTAssertTrue(AppDefaults.defaults.bool(forKey: testKey))
 
         // Cleanup
-        UserDefaults.standard.removeObject(forKey: testKey)
+        AppDefaults.defaults.removeObject(forKey: testKey)
     }
 
     func testSavedApplicationStateDirectoryExists() {

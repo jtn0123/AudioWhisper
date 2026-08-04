@@ -1,5 +1,4 @@
 import XCTest
-import AVFoundation
 @testable import AudioWhisper
 
 @MainActor
@@ -26,7 +25,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         recorder?.cancelRecording()
         recorder = nil
         mockVolumeManager = nil
-        UserDefaults.standard.removeObject(forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.removeObject(forKey: "autoBoostMicrophoneVolume")
         PermissionManager.shared.microphonePermissionState = .unknown
         super.tearDown()
     }
@@ -95,7 +94,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         // recording session begins, the boost must not run — otherwise the matching
         // restore in stop/cancel never fires and the boost is left on permanently.
         // Under tests `startRecording()` early-returns, so no boost should occur.
-        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.set(true, forKey: "autoBoostMicrophoneVolume")
         recorder = makeRecorder(dates: [Date(), Date()])
         PermissionManager.shared.microphonePermissionState = .granted
 
@@ -112,7 +111,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
     }
 
     func testStartRecordingDoesNotBoostVolumeWhenDisabled() async {
-        UserDefaults.standard.set(false, forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.set(false, forKey: "autoBoostMicrophoneVolume")
         recorder = makeRecorder(dates: [Date(), Date()])
         PermissionManager.shared.microphonePermissionState = .granted
 
@@ -124,7 +123,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
     }
 
     func testCancelRecordingRestoresVolume() async {
-        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.set(true, forKey: "autoBoostMicrophoneVolume")
         recorder = makeRecorder(dates: [Date(), Date(), Date()])
         PermissionManager.shared.microphonePermissionState = .granted
 
@@ -198,7 +197,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         // Bug #29 regression: AudioEngineRecorder had no deinit, so a recorder
         // dropped mid-recording never restored boosted mic volume. The deinit must
         // dispatch a restore when auto-boost is enabled.
-        UserDefaults.standard.set(true, forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.set(true, forKey: "autoBoostMicrophoneVolume")
         let localManager = MockMicrophoneVolumeManager()
 
         autoreleasepool {

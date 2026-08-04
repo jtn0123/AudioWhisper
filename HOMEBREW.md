@@ -1,5 +1,24 @@
 # AudioWhisper Homebrew Tap Setup Guide
 
+> [!WARNING]
+> **This document describes UPSTREAM's release process. It does not apply to this fork.**
+>
+> Every repository named below — `mazdak/tap`, `mazdak/homebrew-tap`,
+> `mazdak/AudioWhisper` releases — belongs to
+> [mazdak/AudioWhisper](https://github.com/mazdak/AudioWhisper), not to
+> [jtn0123/AudioWhisper](https://github.com/jtn0123/AudioWhisper). The
+> "Maintenance" steps below end in a `git push` **into someone else's tap
+> repository**. Do not run them.
+>
+> This fork publishes no releases and no Homebrew tap — see
+> [README.md](README.md#installation-️); build from source instead. The
+> `update-brew-cask` and `publish-brew-cask` make targets are disabled for this
+> reason and will refuse to run.
+>
+> Kept for reference only: it documents how the cask is produced if this fork
+> ever publishes its own tap, at which point every `mazdak/...` reference here
+> needs replacing with one you own.
+
 This guide explains how to maintain and use the AudioWhisper Homebrew tap.
 
 ## For Users

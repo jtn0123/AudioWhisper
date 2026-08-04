@@ -1,4 +1,3 @@
-import SwiftUI
 import AppKit
 import AVFoundation
 import os.log
@@ -196,65 +195,17 @@ internal extension ContentView {
         )
     }
 
-    func showConfirmationAndPaste(text: String) {
-        Logger.paste.debug("showConfirmationAndPaste called with text length: \(text.count)")
-        viewModel.showSuccess = true
-        isProcessing = false
-        viewModel.soundManager.playCompletionSound()
-
-        let enableSmartPaste = AppDefaults.enableSmartPaste
-        Logger.paste.debug("showConfirmationAndPaste: enableSmartPaste = \(enableSmartPaste)")
-        if enableSmartPaste {
-            Logger.paste.debug("showConfirmationAndPaste: awaitingSemanticPaste = \(viewModel.awaitingSemanticPaste)")
-            // Capture flag value at schedule time to prevent race condition (#26 fix)
-            let shouldPasteNow = !viewModel.awaitingSemanticPaste
-            if shouldPasteNow {
-                Logger.paste.debug("showConfirmationAndPaste: scheduling performUserTriggeredPaste")
-                // Delay to allow celebration animation to play before hiding window
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                    Logger.paste.debug("showConfirmationAndPaste: executing performUserTriggeredPaste")
-                    performUserTriggeredPaste()
-                }
-            } else {
-                Logger.paste.debug("showConfirmationAndPaste: skipping paste due to awaitingSemanticPaste")
-            }
-        } else {
-            // Note: ContentView is a struct, so no weak self needed.
-            // SwiftUI captures a copy of the struct, and @State properties
-            // are backed by heap storage that remains valid.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                let recordWindow = NSApp.windows.first { window in
-                    window.title == WindowTitles.recording
-                }
-
-                let onFadeComplete = {
-                    NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
-                    self.viewModel.showSuccess = false
-                }
-
-                if let window = recordWindow {
-                    self.fadeOutWindow(window, completion: onFadeComplete)
-                } else if let keyWindow = NSApplication.shared.keyWindow {
-                    self.fadeOutWindow(keyWindow, completion: onFadeComplete)
-                } else {
-                    // No window to fade, execute immediately
-                    onFadeComplete()
-                }
-            }
-        }
-    }
-
     func retryLastTranscription() {
         guard !isProcessing else { return }
 
         guard let audioURL = viewModel.lastAudioURL else {
-            viewModel.errorMessage = "No audio file available to retry. Please record again."
+            viewModel.errorMessage = LocalizedStrings.Errors.noAudioFileToRetry
             viewModel.showError = true
             return
         }
 
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            viewModel.errorMessage = "Audio file no longer exists. Please record again."
+            viewModel.errorMessage = LocalizedStrings.Errors.audioFileMissingRetry
             viewModel.showError = true
             viewModel.lastAudioURL = nil
             return
@@ -318,13 +269,13 @@ internal extension ContentView {
 
     func showLastAudioFile() {
         guard let audioURL = viewModel.lastAudioURL else {
-            viewModel.errorMessage = "No audio file available to show."
+            viewModel.errorMessage = LocalizedStrings.Errors.noAudioFileToShow
             viewModel.showError = true
             return
         }
 
         guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            viewModel.errorMessage = "Audio file no longer exists."
+            viewModel.errorMessage = LocalizedStrings.Errors.audioFileMissing
             viewModel.showError = true
             viewModel.lastAudioURL = nil
             return

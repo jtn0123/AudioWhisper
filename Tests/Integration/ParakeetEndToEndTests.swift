@@ -17,7 +17,9 @@ import XCTest
 /// Run from the command line:
 ///   RUN_E2E=1 swift test --filter ParakeetEndToEndTests
 ///
-/// CI runs this nightly only; per-PR runs skip it via XCTSkip below.
+/// CI runs this nightly (.github/workflows/nightly.yml, RUN_E2E=1) and on
+/// demand via workflow_dispatch; per-PR runs skip it via XCTSkip below, because
+/// a cold run downloads a ~2.5 GB model.
 final class ParakeetEndToEndTests: XCTestCase {
 
     func test_e2e_transcribeShortClip() async throws {

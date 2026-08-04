@@ -5,21 +5,21 @@ internal struct TranscriptionHistoryHeader: View {
     let subtitle: String
     let showClearAll: Bool
     let onClearAll: () -> Void
-    
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.primary)
-                
+
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            
+
             Spacer()
-            
+
             if showClearAll {
                 Button("Clear All", action: onClearAll)
                     .font(.caption)

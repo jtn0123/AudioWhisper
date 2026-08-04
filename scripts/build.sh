@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Needs `actool` (Xcode, not Command Line Tools) for Sources/Assets.xcassets.
+# shellcheck source=scripts/lib/xcode-env.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/xcode-env.sh"
+ensure_xcode_toolchain || exit 1
+
 # AudioWhisper Release Build Script
 # For development, use: swift build && swift run
 # This script is for creating distributable releases
@@ -110,13 +115,57 @@ struct VersionInfo {
 EOF
 fi
 
-# Build for release
+# Build for release, one architecture at a time, then lipo them together.
+#
+# `swift build --arch arm64 --arch x86_64` (the obvious way) cannot be used.
+# Passing --arch routes the build through the XCBuild backend, and that backend
+# rejects the package graph outright:
+#
+#   error: duplicate key found: 'ID(moduleName: "ArgmaxCLI", packageIdentity: argmax-oss-swift)'
+#
+# because argmax-oss-swift 1.0.0 declares two executable products pointing at
+# the SAME target:
+#
+#     .executable(name: "argmax-cli",     targets: ["ArgmaxCLI"]),
+#     .executable(name: "whisperkit-cli", targets: ["ArgmaxCLI"]),
+#
+# It is an upstream bug with no fixed release (v1.0.0 is the newest tag).
+# `--product AudioWhisper` does NOT avoid it — the graph is rejected before
+# product selection. Xcode 26 hits this; a 6.4 toolchain tolerates it, which is
+# why `make build` worked here and failed everywhere else.
+#
+# Building each slice with --triple keeps the ordinary SwiftPM backend, which
+# has no such problem, and `lipo` gives us the same universal binary.
 echo "📦 Building for release..."
-swift build -c release --arch arm64 --arch x86_64
+UNIVERSAL_DIR=".build/universal"
+rm -rf "$UNIVERSAL_DIR"
+mkdir -p "$UNIVERSAL_DIR"
 
-# Check for the actual binary instead of exit code (swift-collections emits spurious errors)
-if [ ! -f ".build/apple/Products/Release/AudioWhisper" ]; then
-  echo "❌ Build failed - binary not found!"
+SLICES=()
+for triple in arm64-apple-macosx x86_64-apple-macosx; do
+  echo "   • $triple"
+  swift build -c release --triple "$triple" --product AudioWhisper
+  # Ask SwiftPM where it put the binary rather than guessing: the layout has
+  # already moved once (.build/apple -> .build/out) and broke this script.
+  slice_dir="$(swift build -c release --triple "$triple" --show-bin-path)"
+  if [ ! -f "$slice_dir/AudioWhisper" ]; then
+    echo "❌ Build failed - no $triple binary at $slice_dir"
+    exit 1
+  fi
+  cp "$slice_dir/AudioWhisper" "$UNIVERSAL_DIR/AudioWhisper-$triple"
+  SLICES+=("$UNIVERSAL_DIR/AudioWhisper-$triple")
+done
+
+RELEASE_BINARY="$UNIVERSAL_DIR/AudioWhisper"
+lipo -create -output "$RELEASE_BINARY" "${SLICES[@]}"
+
+echo "Using release binary: $RELEASE_BINARY"
+
+# Distribution builds must be universal; a single-arch binary here would ship
+# broken to Intel users and is worth failing loudly on.
+if ! lipo -archs "$RELEASE_BINARY" 2>/dev/null | grep -q x86_64 \
+   || ! lipo -archs "$RELEASE_BINARY" 2>/dev/null | grep -q arm64; then
+  echo "❌ Release binary is not universal: $(lipo -archs "$RELEASE_BINARY" 2>/dev/null)"
   exit 1
 fi
 
@@ -130,7 +179,7 @@ mkdir -p AudioWhisper.app/Contents/Resources/bin
 BUILD_NUMBER="${VERSION//./}"
 
 # Copy executable (universal binary)
-cp .build/apple/Products/Release/AudioWhisper AudioWhisper.app/Contents/MacOS/
+cp "$RELEASE_BINARY" AudioWhisper.app/Contents/MacOS/
 
 # Copy dashboard logo
 if [ -f "Sources/Resources/DashboardLogo.jpg" ]; then
@@ -220,12 +269,27 @@ else
   echo "⚠️ No uv available; MLX/Parakeet features will not work"
 fi
 
-# Bundle pyproject.toml and uv.lock if present
+# Bundle pyproject.toml and uv.lock.
+#
+# The lock is load-bearing, not decorative: UvBootstrap runs `uv sync --frozen`
+# against it. Without a bundled lock, the app resolved its entire Python
+# dependency tree fresh from PyPI on first launch, subject only to range
+# constraints — arbitrary code execution in an unsandboxed app holding
+# Microphone and Accessibility permissions. This step previously claimed to
+# bundle uv.lock in its comment but only ever copied pyproject.toml.
 if [ -f "Sources/Resources/pyproject.toml" ]; then
   cp Sources/Resources/pyproject.toml AudioWhisper.app/Contents/Resources/pyproject.toml
   echo "Bundled pyproject.toml"
 else
   echo "ℹ️ No pyproject.toml found in Sources/Resources"
+fi
+
+if [ -f "Sources/Resources/uv.lock" ]; then
+  cp Sources/Resources/uv.lock AudioWhisper.app/Contents/Resources/uv.lock
+  echo "Bundled uv.lock"
+else
+  echo "::warning::No uv.lock in Sources/Resources — the app will fall back to"
+  echo "           unpinned dependency resolution. Run 'uv lock' in that directory."
 fi
 
 # Note: AudioProcessorCLI binary no longer needed - using direct Swift audio processing

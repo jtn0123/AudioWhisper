@@ -13,7 +13,7 @@ internal struct TranscriptionRecordsList: View {
     var onLastRowAppear: () -> Void = {}
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             LazyVStack(spacing: 1) {
                 ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
                     TranscriptionRecordRow(

@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import ApplicationServices
 import Carbon
 import Observation
 import os.log
@@ -22,27 +21,6 @@ private final class ObserverBox: @unchecked Sendable {
             lock.lock()
             defer { lock.unlock() }
             _observer = newValue
-        }
-    }
-}
-
-// Helper class to safely capture cancellation state (bug fix)
-// Avoids capture-by-value issue where timeoutCancelled var was captured by value
-// Marked @unchecked Sendable with lock for thread-safe cross-isolation access
-private final class CancelledFlag: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _value = false
-
-    var value: Bool {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _value
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _value = newValue
         }
     }
 }
@@ -69,7 +47,7 @@ internal enum PasteError: LocalizedError {
     case eventSourceCreationFailed
     case keyboardEventCreationFailed
     case targetAppNotAvailable
-    
+
     var errorDescription: String? {
         switch self {
         case .accessibilityPermissionDenied:
@@ -106,33 +84,8 @@ internal class PasteManager {
         pasteboard.setString(text, forType: .string)
     }
 
-    /// Reads text from the system clipboard.
-    /// - Returns: The text from the clipboard, or nil if no text is available.
-    static func readFromClipboard() -> String? {
-        return NSPasteboard.general.string(forType: .string)
-    }
-
-    /// Clears the system clipboard contents.
-    static func clearClipboard() {
-        NSPasteboard.general.clearContents()
-    }
-
     // MARK: - Paste Operations
 
-    /// Attempts to paste text to the currently active application
-    /// Uses CGEvent to simulate ⌘V
-    func pasteToActiveApp() {
-        let enableSmartPaste = AppDefaults.enableSmartPaste
-
-        if enableSmartPaste {
-            // Use CGEvent to simulate ⌘V
-            performCGEventPaste()
-        } else {
-            // Just copy to clipboard - user will manually paste
-            // Text is already in clipboard from transcription
-        }
-    }
-    
     /// SmartPaste function that attempts to paste text into a specific application
     /// This is the function mentioned in the test requirements
     func smartPaste(into targetApp: NSRunningApplication?, text: String) {
@@ -148,7 +101,7 @@ internal class PasteManager {
             handlePasteResult(.failure(PasteError.targetAppNotAvailable))
             return
         }
-        
+
         // CRITICAL: Check accessibility permission without prompting - never bypass this check
         // If this fails, we must NOT attempt to proceed with CGEvent operations
         guard accessibilityManager.checkPermission() else {
@@ -157,13 +110,13 @@ internal class PasteManager {
             handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
             return
         }
-        
+
         // Validate target application
         guard let targetApp = targetApp, !targetApp.isTerminated else {
             handlePasteResult(.failure(PasteError.targetAppNotAvailable))
             return
         }
-        
+
         // Attempt to activate target application
         let activationSuccess = targetApp.activate(options: [])
         if !activationSuccess {
@@ -171,22 +124,22 @@ internal class PasteManager {
             handlePasteResult(.failure(PasteError.targetAppNotAvailable))
             return
         }
-        
+
         // Wait for app to become active before pasting
         waitForApplicationActivation(targetApp) { [weak self] in
             guard let self = self else { return }
-            
+
             // Double-check permission before performing paste (belt and suspenders approach)
             guard self.accessibilityManager.checkPermission() else {
                 // Permission was revoked between initial check and paste attempt
                 self.handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
                 return
             }
-            
+
             self.performCGEventPaste()
         }
     }
-    
+
     /// Performs paste with completion handler for proper coordination.
     /// Includes a timeout to prevent indefinite hangs if the completion is never called.
     @MainActor
@@ -221,7 +174,7 @@ internal class PasteManager {
             }
         }
     }
-    
+
     /// Performs paste with immediate user interaction context
     /// This should work better than automatic pasting
     func pasteWithUserInteraction(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
@@ -242,9 +195,9 @@ internal class PasteManager {
         Logger.paste.debug("pasteWithUserInteraction: calling performCGEventPaste")
         performCGEventPaste(completion: completion)
     }
-    
+
     // MARK: - CGEvent Paste
-    
+
     private func performCGEventPaste(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
         Logger.paste.debug("performCGEventPaste called")
         // CRITICAL: Prevent any paste operations during tests
@@ -286,53 +239,53 @@ internal class PasteManager {
             completion?(.failure(PasteError.keyboardEventCreationFailed))
         }
     }
-    
+
     // Removed - using AccessibilityPermissionManager instead
-    
+
     private func simulateCmdVPaste() throws {
         // CRITICAL: Prevent any paste operations during tests
         if AppEnvironment.isRunningTests {
             throw PasteError.accessibilityPermissionDenied
         }
-        
+
         // Final permission check before creating any CGEvents
         // This is our last line of defense against unauthorized paste operations
         guard accessibilityManager.checkPermission() else {
             throw PasteError.accessibilityPermissionDenied
         }
-        
+
         // Create event source with proper session state
         guard let source = CGEventSource(stateID: .combinedSessionState) else {
             throw PasteError.eventSourceCreationFailed
         }
-        
+
         // Configure event source to suppress local events during paste operation
         // This prevents interference from local keyboard input
         source.setLocalEventsFilterDuringSuppressionState(
             [.permitLocalMouseEvents, .permitSystemDefinedEvents],
             state: .eventSuppressionStateSuppressionInterval
         )
-        
+
         // Create ⌘V key events for paste operation
         let cmdFlag = CGEventFlags([.maskCommand])
         let vKeyCode = CGKeyCode(kVK_ANSI_V) // V key code
-        
+
         // Create both key down and key up events for complete key press simulation
         guard let keyVDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true),
               let keyVUp = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: false) else {
             throw PasteError.keyboardEventCreationFailed
         }
-        
+
         // Apply Command modifier flag to both events
         keyVDown.flags = cmdFlag
         keyVUp.flags = cmdFlag
-        
+
         // Post the key events to the system
         // This simulates pressing and releasing ⌘V
         keyVDown.post(tap: .cgSessionEventTap)
         keyVUp.post(tap: .cgSessionEventTap)
     }
-    
+
     private func handlePasteResult(_ result: Result<Void, PasteError>) {
         let (name, object): (Notification.Name, Any?) = {
             switch result {
@@ -344,7 +297,7 @@ internal class PasteManager {
     }
 
     // MARK: - App Activation Handling
-    
+
     private func waitForApplicationActivation(_ target: NSRunningApplication, completion: @escaping () -> Void) {
         // If already active, execute completion immediately
         if target.isActive {
@@ -389,5 +342,5 @@ internal class PasteManager {
             }
         }
     }
-    
+
 }

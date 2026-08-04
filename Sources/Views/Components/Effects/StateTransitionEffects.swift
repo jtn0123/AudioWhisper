@@ -21,10 +21,6 @@ struct EntryAnimationModifier: ViewModifier {
 }
 
 extension View {
-    /// Applies entry animation based on visual intensity.
-    func entryAnimation(intensity: VisualIntensity) -> some View {
-        modifier(EntryAnimationModifier(intensity: intensity))
-    }
 }
 
 // MARK: - Recording Start Pulse
@@ -70,8 +66,6 @@ struct ProcessingWave: View {
     let intensity: VisualIntensity
     let isActive: Bool
 
-    @State private var phase: CGFloat = 0
-
     var body: some View {
         if isActive {
             TimelineView(.animation) { timeline in
@@ -112,11 +106,15 @@ struct ShakeModifier: ViewModifier {
 
     @State private var shakeOffset: CGFloat = 0
 
+    /// C2: a shake is the single most motion-sensitive effect here, and the
+    /// error is already conveyed by colour and the status label.
+    let reduceMotion: Bool
+
     func body(content: Content) -> some View {
         content
             .offset(x: shakeOffset)
             .onChange(of: isShaking) { _, shake in
-                if shake {
+                if shake && !reduceMotion {
                     triggerShake()
                 }
             }
@@ -154,8 +152,10 @@ struct ShakeModifier: ViewModifier {
 
 extension View {
     /// Applies shake animation when triggered.
-    func shake(when isShaking: Bool, intensity: VisualIntensity) -> some View {
-        modifier(ShakeModifier(isShaking: isShaking, intensity: intensity))
+    /// `reduceMotion` is passed by the caller (which reads the environment) —
+    /// see the note on `ShakeModifier`.
+    func shake(when isShaking: Bool, intensity: VisualIntensity, reduceMotion: Bool = false) -> some View {
+        modifier(ShakeModifier(isShaking: isShaking, intensity: intensity, reduceMotion: reduceMotion))
     }
 }
 
@@ -202,9 +202,20 @@ struct StatusTransitionOverlay: View {
     let intensity: VisualIntensity
 
     private let accentColor = Color(red: 0.85, green: 0.45, blue: 0.40)
-    private let successColor = Color(red: 0.45, green: 0.75, blue: 0.55)
+
+    /// C2: state changes are also communicated by the status dot and label, so
+    /// the transition flourish is safe to drop under Reduce Motion.
+    var reduceMotion: Bool = false
 
     var body: some View {
+        if reduceMotion {
+            EmptyView()
+        } else {
+            animatedBody
+        }
+    }
+
+    private var animatedBody: some View {
         ZStack {
             // Recording start pulse
             if isTransitionToRecording {

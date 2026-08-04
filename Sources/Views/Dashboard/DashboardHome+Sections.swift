@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 import AppKit
 
 // MARK: - Activity — 28-day waveform timeline

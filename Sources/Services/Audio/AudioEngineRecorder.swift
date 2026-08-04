@@ -1,5 +1,5 @@
-import Accelerate
 import AppKit
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AVFoundation
 import Combine
 import Foundation
@@ -72,11 +72,17 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     }
 
     init(
-        volumeManager: MicrophoneVolumeManaging = MicrophoneVolumeManager.shared,
+        volumeManager: MicrophoneVolumeManaging? = nil,
         dateProvider: @escaping () -> Date = { Date() }
     ) {
+        // A5: resolved in the body rather than as a default argument.
+        // Default-argument expressions are evaluated in the CALLER's
+        // isolation, so referencing a @MainActor `.shared` there warns
+        // ("error in the Swift 6 language mode") even though this type is
+        // itself @MainActor. Same pattern DashboardHomeView already uses.
+
         self.fftProcessor = FFTProcessor()
-        self.volumeManager = volumeManager
+        self.volumeManager = volumeManager ?? MicrophoneVolumeManager.shared
         self.dateProvider = dateProvider
         super.init()
     }

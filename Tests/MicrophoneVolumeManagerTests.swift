@@ -9,7 +9,7 @@ final class MicrophoneVolumeManagerTests: IsolatedXCTestCase {
 
     override func tearDown() {
         // Clean up UserDefaults
-        UserDefaults.standard.removeObject(forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.removeObject(forKey: "autoBoostMicrophoneVolume")
         super.tearDown()
     }
 
@@ -38,25 +38,28 @@ final class MicrophoneVolumeManagerTests: IsolatedXCTestCase {
 
     func testAutoBoostMicrophoneVolumeUserDefaultsKeyGetDefault() {
         // Ensure key is not set
-        UserDefaults.standard.removeObject(forKey: "autoBoostMicrophoneVolume")
+        AppDefaults.defaults.removeObject(forKey: "autoBoostMicrophoneVolume")
 
         // Default should be false
-        XCTAssertFalse(UserDefaults.standard.autoBoostMicrophoneVolume)
+        XCTAssertFalse(AppDefaults.defaults.autoBoostMicrophoneVolume)
     }
 
     func testAutoBoostMicrophoneVolumeUserDefaultsKeySetTrue() {
-        UserDefaults.standard.autoBoostMicrophoneVolume = true
-        XCTAssertTrue(UserDefaults.standard.autoBoostMicrophoneVolume)
+        AppDefaults.defaults.autoBoostMicrophoneVolume = true
+        XCTAssertTrue(AppDefaults.defaults.autoBoostMicrophoneVolume)
     }
 
     func testAutoBoostMicrophoneVolumeUserDefaultsKeySetFalse() {
-        UserDefaults.standard.autoBoostMicrophoneVolume = true
-        UserDefaults.standard.autoBoostMicrophoneVolume = false
-        XCTAssertFalse(UserDefaults.standard.autoBoostMicrophoneVolume)
+        AppDefaults.defaults.autoBoostMicrophoneVolume = true
+        AppDefaults.defaults.autoBoostMicrophoneVolume = false
+        XCTAssertFalse(AppDefaults.defaults.autoBoostMicrophoneVolume)
     }
 
     // MARK: - Protocol Conformance Tests
 
+    // MicrophoneVolumeManager.shared is main-actor isolated; reaching it from
+    // this nonisolated test is an error under the Swift 6 language mode.
+    @MainActor
     func testMicrophoneVolumeManagerConformsToProtocol() {
         let manager: MicrophoneVolumeManaging = MicrophoneVolumeManager.shared
         XCTAssertNotNil(manager)

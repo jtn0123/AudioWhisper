@@ -1,0 +1,90 @@
+name: Nightly
+
+# ParakeetEndToEndTests carried the comment "CI runs this nightly only; per-PR
+# runs skip it via XCTSkip below" — but no scheduled workflow existed. The app's
+# PRIMARY transcription path (download the model, bootstrap the uv venv, run
+# Python, get text back) therefore had ZERO automated coverage; every other test
+# mocks the daemon.
+#
+# Kept out of the per-PR run deliberately: the first execution downloads a
+# ~2.5 GB Parakeet model, which would add minutes to every pull request.
+on:
+  schedule:
+    # 07:00 UTC daily.
+    - cron: '0 7 * * *'
+  workflow_dispatch:      # so it can be run on demand without waiting a day
+
+jobs:
+  parakeet-e2e:
+    name: Parakeet end-to-end (real model, real Python)
+    runs-on: macos-15
+    # Generous: a cold run downloads the model and builds the uv environment.
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # Newest Xcode: KeyboardShortcuts 3.x needs swift-tools-version 6.2,
+          # which Xcode 16 cannot resolve. See ci.yml for the full note.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
+          swift --version
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-spm-
+
+      # The model is the expensive part. Keyed on the pinned repo id so a model
+      # change busts the cache.
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-parakeet-tdt-0.6b-v3
+          restore-keys: hf-${{ runner.os }}-
+
+      - name: Cache uv Python environment
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Application Support/AudioWhisper/python_project
+          key: uv-${{ runner.os }}-${{ hashFiles('Sources/Resources/uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
+
+      - name: Install uv
+        run: |
+          command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Generate VersionInfo.swift
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+
+      - name: Run Parakeet end-to-end test
+        env:
+          RUN_E2E: "1"
+          OS_ACTIVITY_MODE: disable
+        run: |
+          # RUN_E2E=1 is what lifts the XCTSkipUnless gate in
+          # Tests/Integration/ParakeetEndToEndTests.swift.
+          set -o pipefail
+          swift test --no-parallel -Xswiftc -DTESTING \
+            --filter "ParakeetEndToEndTests" 2>&1 | tail -60
+
+      - name: Report
+        if: failure()
+        run: |
+          echo "::error::Parakeet end-to-end run failed. This is the only automated"
+          echo "::error::coverage of the real transcription path — treat a failure here"
+          echo "::error::as a broken app, not a flaky test."

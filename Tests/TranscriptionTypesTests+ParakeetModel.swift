@@ -7,32 +7,63 @@ import Foundation
 extension TranscriptionTypesTests {
     func testParakeetModelCases() {
         let allCases = ParakeetModel.allCases
-        XCTAssertEqual(allCases.count, 2)
+        XCTAssertEqual(allCases.count, 3)
+        XCTAssertTrue(allCases.contains(.tdtCtc110mEnglish))
         XCTAssertTrue(allCases.contains(.v2English))
         XCTAssertTrue(allCases.contains(.v3Multilingual))
+
+        // Picker order is smallest -> largest; assert it rather than relying on
+        // declaration order staying put.
+        XCTAssertEqual(allCases, [.tdtCtc110mEnglish, .v2English, .v3Multilingual])
     }
 
     func testParakeetModelDisplayNames() {
+        XCTAssertEqual(ParakeetModel.tdtCtc110mEnglish.displayName, "110M English (~0.5 GB)")
         XCTAssertEqual(ParakeetModel.v2English.displayName, "v2 English (~2.5 GB)")
         XCTAssertEqual(ParakeetModel.v3Multilingual.displayName, "v3 Multilingual (~2.5 GB)")
     }
 
     func testParakeetModelDescriptions() {
-        XCTAssertEqual(ParakeetModel.v2English.description, "English only, original model")
-        XCTAssertEqual(ParakeetModel.v3Multilingual.description, "25 languages, auto-detection")
+        // Descriptions carry the published Open ASR Leaderboard WER, because the
+        // picker previously implied v2 was merely "the original" when it is in
+        // fact the most accurate English option.
+        XCTAssertEqual(
+            ParakeetModel.tdtCtc110mEnglish.description,
+            "Lightest — 5× smaller, slightly less accurate (7.5% WER)"
+        )
+        XCTAssertEqual(ParakeetModel.v2English.description, "Most accurate for English (6.1% WER)")
+        XCTAssertEqual(
+            ParakeetModel.v3Multilingual.description,
+            "25 languages with auto-detection (6.3% WER)"
+        )
+    }
+
+    /// Every case must be loadable by `parakeet_mlx.from_pretrained`. Guard the
+    /// repo ids so a future addition cannot silently point at a model published
+    /// for the incompatible `mlx-audio` runtime.
+    func testAllParakeetModelsAreMlxCommunityParakeetRepos() {
+        for model in ParakeetModel.allCases {
+            XCTAssertTrue(
+                model.repoId.hasPrefix("mlx-community/parakeet"),
+                "\(model) repo \(model.repoId) is not a parakeet-mlx-compatible repo"
+            )
+        }
     }
 
     func testParakeetModelRawValues() {
+        XCTAssertEqual(ParakeetModel.tdtCtc110mEnglish.rawValue, "mlx-community/parakeet-tdt_ctc-110m")
         XCTAssertEqual(ParakeetModel.v2English.rawValue, "mlx-community/parakeet-tdt-0.6b-v2")
         XCTAssertEqual(ParakeetModel.v3Multilingual.rawValue, "mlx-community/parakeet-tdt-0.6b-v3")
     }
 
     func testParakeetModelRepoId() {
+        XCTAssertEqual(ParakeetModel.tdtCtc110mEnglish.repoId, "mlx-community/parakeet-tdt_ctc-110m")
         XCTAssertEqual(ParakeetModel.v2English.repoId, "mlx-community/parakeet-tdt-0.6b-v2")
         XCTAssertEqual(ParakeetModel.v3Multilingual.repoId, "mlx-community/parakeet-tdt-0.6b-v3")
     }
 
     func testParakeetModelFromRawValue() {
+        XCTAssertEqual(ParakeetModel(rawValue: "mlx-community/parakeet-tdt_ctc-110m"), .tdtCtc110mEnglish)
         XCTAssertEqual(ParakeetModel(rawValue: "mlx-community/parakeet-tdt-0.6b-v2"), .v2English)
         XCTAssertEqual(ParakeetModel(rawValue: "mlx-community/parakeet-tdt-0.6b-v3"), .v3Multilingual)
         XCTAssertNil(ParakeetModel(rawValue: "invalid"))

@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 import AppKit
 
 // MARK: - DashboardTheme (refined)
@@ -30,8 +29,15 @@ internal enum DashboardTheme {
     static let sidebarTextMuted  = Color(nsColor: .secondaryLabelColor)
     static let sidebarTextFaint  = Color(nsColor: .tertiaryLabelColor)
     static let sidebarDivider    = Color(nsColor: .separatorColor)
-    static let sidebarHover      = Color.black.opacity(0.04)
-    static let sidebarActive     = Color.black.opacity(0.07)
+    // Hover/active overlays must be `Color.primary`, not a literal black: the
+    // sidebar is drawn over an NSVisualEffectView `.sidebar` material, which is
+    // DARK in dark mode. Black-at-7% over a dark material is invisible, so the
+    // selected-nav indicator effectively disappeared for dark-mode users.
+    // `Color.primary` resolves to labelColor — black in light, white in dark —
+    // so the light-mode appearance is byte-identical to the previous values
+    // while dark mode now actually renders.
+    static let sidebarHover      = Color.primary.opacity(0.04)
+    static let sidebarActive     = Color.primary.opacity(0.07)
 
     // Main content — native macOS surfaces
     static let pageBg   = Color(nsColor: .windowBackgroundColor)
@@ -96,22 +102,10 @@ internal enum DashboardTheme {
 
     // MARK: - Radius (three-step scale)
     enum Radius {
-        static let xs: CGFloat = 4   // chips
         static let sm: CGFloat = 6   // buttons, inline pills
         static let md: CGFloat = 10  // cards (was 2 — too tight)
-        static let lg: CGFloat = 12  // windows
     }
 
-    // Animation timings used across the dashboard
-    enum Animation {
-        /// Stagger delay between consecutive sections when entering. Index 0 = no delay.
-        static func stagger(_ index: Int) -> Double {
-            Double(index) * 0.05
-        }
-        /// Standard durations used across the dashboard.
-        static let quick: Double = 0.15
-        static let standard: Double = 0.3
-    }
 }
 
 // MARK: - SidebarVisualEffect
@@ -283,6 +277,13 @@ internal struct DashboardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // C1: the icon carries no label of its own, and VoiceOver otherwise
+        // announces these as unlabelled buttons with no indication of which
+        // section is current. `.isSelected` is what makes the active tab audible.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.rawValue)
+        .accessibilityHint("Show the \(item.rawValue) section")
+        .accessibilityAddTraits(isActive ? [.isButton, .isSelected] : .isButton)
     }
 
     private var statsFooter: some View {

@@ -1,3 +1,4 @@
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import Foundation
 @testable import AudioWhisper
 

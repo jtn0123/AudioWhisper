@@ -12,7 +12,7 @@ internal struct DashboardTranscriptsView: View {
                     Image(systemName: "doc.text")
                         .font(.system(size: 32, weight: .light))
                         .foregroundStyle(DashboardTheme.inkFaint)
-                    
+
                     Text("History not available")
                         .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                         .foregroundStyle(DashboardTheme.inkMuted)

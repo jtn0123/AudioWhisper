@@ -1,6 +1,11 @@
 import XCTest
 @testable import AudioWhisper
 
+// A6: @MainActor because HotKeyManager became main-actor isolated when
+// KeyboardShortcuts 3.x isolated its API. Global hotkey registration is
+// main-thread work, so exercising it from the main actor is also more faithful
+// to how the app uses it.
+@MainActor
 final class HotKeyManagerTests: IsolatedXCTestCase {
     // Deferred(D1): HotKeyManager reads `globalHotkey` from UserDefaults.standard
     // directly. Once it accepts an injected UserDefaults, route writes
@@ -20,7 +25,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     
     override func tearDown() {
         hotKeyManager = nil
-        UserDefaults.standard.removeObject(forKey: "globalHotkey")
+        AppDefaults.defaults.removeObject(forKey: "globalHotkey")
         super.tearDown()
     }
     
@@ -38,7 +43,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     }
     
     func testInitializationWithCustomHotkey() {
-        UserDefaults.standard.set("⌘⌥A", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘⌥A", forKey: "globalHotkey")
         
         let manager = HotKeyManager { }
         XCTAssertNotNil(manager)
@@ -48,7 +53,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     
     func testParseBasicHotkey() {
         // We can't directly test the private parsing method, but we can test through notification
-        UserDefaults.standard.set("⌘A", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘A", forKey: "globalHotkey")
         
         NotificationCenter.default.post(
             name: .updateGlobalHotkey,
@@ -60,7 +65,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     }
     
     func testParseComplexHotkey() {
-        UserDefaults.standard.set("⌘⇧⌥⌃A", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘⇧⌥⌃A", forKey: "globalHotkey")
         
         NotificationCenter.default.post(
             name: .updateGlobalHotkey,
@@ -260,7 +265,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     // MARK: - Memory Management Tests
     
     func testDeinitCleanup() {
-        weak var weakManager: HotKeyManager? = hotKeyManager
+        weak let weakManager: HotKeyManager? = hotKeyManager
 
         hotKeyManager = nil
 
@@ -272,7 +277,7 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
 
     func testNotificationObserverCleanup() {
         let manager = HotKeyManager { }
-        weak var weakManager: HotKeyManager? = manager
+        weak let weakManager: HotKeyManager? = manager
 
         // Create a reference and then nil it
         var strongManager: HotKeyManager? = manager
@@ -312,16 +317,16 @@ final class HotKeyManagerTests: IsolatedXCTestCase {
     // MARK: - UserDefaults Integration Tests
     
     func testUserDefaultsIntegration() {
-        UserDefaults.standard.set("⌘⇧X", forKey: "globalHotkey")
+        AppDefaults.defaults.set("⌘⇧X", forKey: "globalHotkey")
         
         let manager = HotKeyManager { }
         XCTAssertNotNil(manager)
         
-        UserDefaults.standard.removeObject(forKey: "globalHotkey")
+        AppDefaults.defaults.removeObject(forKey: "globalHotkey")
     }
     
     func testDefaultHotkeyFallback() {
-        UserDefaults.standard.removeObject(forKey: "globalHotkey")
+        AppDefaults.defaults.removeObject(forKey: "globalHotkey")
         
         let manager = HotKeyManager { }
         XCTAssertNotNil(manager)

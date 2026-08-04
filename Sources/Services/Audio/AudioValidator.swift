@@ -3,20 +3,15 @@ import AVFoundation
 
 /// Service for validating audio files and detecting corruption
 internal class AudioValidator {
-    
+
     // MARK: - Supported Formats
-    
+
     private static let supportedFileExtensions: Set<String> = [
         "m4a", "aac", "mp3", "wav", "aiff", "caf", "flac"
     ]
 
-    private static let supportedMimeTypes: Set<String> = [
-        "audio/mp4", "audio/aac", "audio/mpeg", "audio/wav",
-        "audio/x-wav", "audio/aiff", "audio/x-caf", "audio/flac"
-    ]
-    
     // MARK: - Validation Methods
-    
+
     /// Validates an audio file for format compatibility and corruption
     /// - Parameter url: URL of the audio file to validate
     /// - Returns: Validation result with details
@@ -25,23 +20,23 @@ internal class AudioValidator {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return .invalid(.fileNotFound)
         }
-        
+
         // Check file size (empty files are invalid)
         guard let fileSize = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64,
               fileSize > 0 else {
             return .invalid(.emptyFile)
         }
-        
+
         // Check file extension
         let fileExtension = url.pathExtension.lowercased()
         guard supportedFileExtensions.contains(fileExtension) else {
             return .invalid(.unsupportedFormat(fileExtension))
         }
-        
+
         // Validate with AVFoundation
         return await validateWithAVFoundation(url: url)
     }
-    
+
     /// Quick format check without deep validation
     /// - Parameter url: URL to check
     /// - Returns: True if format appears supported
@@ -49,7 +44,7 @@ internal class AudioValidator {
         let fileExtension = url.pathExtension.lowercased()
         return supportedFileExtensions.contains(fileExtension)
     }
-    
+
     /// Check maximum file size for processing
     /// - Parameters:
     ///   - url: URL to check
@@ -62,9 +57,9 @@ internal class AudioValidator {
         let maxSizeInBytes = Int64(maxSizeInMB * 1024 * 1024)
         return fileSize <= maxSizeInBytes
     }
-    
+
     // MARK: - Private Methods
-    
+
     private static func validateWithAVFoundation(url: URL) async -> AudioValidationResult {
         // Skip AVFoundation validation in tests to avoid CoreMedia framework warnings
         if AppEnvironment.isRunningTests {
@@ -78,7 +73,7 @@ internal class AudioValidator {
 
         // Try to create AVURLAsset
         let asset = AVURLAsset(url: url)
-        
+
         // Check if asset can be loaded (using async API)
         let isReadable: Bool
         do {
@@ -86,11 +81,11 @@ internal class AudioValidator {
         } catch {
             return .invalid(.corruptedFile)
         }
-        
+
         guard isReadable else {
             return .invalid(.corruptedFile)
         }
-        
+
         // Try to get audio tracks (using async API)
         let audioTracks: [AVAssetTrack]
         do {
@@ -98,14 +93,14 @@ internal class AudioValidator {
         } catch {
             return .invalid(.corruptedFile)
         }
-        
+
         guard !audioTracks.isEmpty else {
             return .invalid(.noAudioTracks)
         }
-        
+
         // Validate the first audio track
         let track = audioTracks[0]
-        
+
         // Check track format descriptions (using async API)
         let formatDescriptions: [CMFormatDescription]
         do {
@@ -113,7 +108,7 @@ internal class AudioValidator {
         } catch {
             return .invalid(.corruptedFile)
         }
-        
+
         guard !formatDescriptions.isEmpty else {
             return .invalid(.invalidAudioFormat)
         }
@@ -121,37 +116,37 @@ internal class AudioValidator {
         // Try to create AVAudioFile to ensure it's readable
         do {
             let audioFile = try AVAudioFile(forReading: url)
-            
+
             // Validate basic properties
             let format = audioFile.fileFormat
-            
+
             // Check sample rate (must be positive)
             guard format.sampleRate > 0 else {
                 return .invalid(.invalidSampleRate)
             }
-            
+
             // Check channel count (must be positive)
             guard format.channelCount > 0 else {
                 return .invalid(.invalidChannelCount)
             }
-            
+
             // Check file length
             guard audioFile.length > 0 else {
                 return .invalid(.emptyAudio)
             }
-            
+
             // Try to read a small sample to detect corruption
             let frameCapacity = min(4096, AVAudioFrameCount(audioFile.length))
             if let buffer = AVAudioPCMBuffer(pcmFormat: audioFile.processingFormat, frameCapacity: frameCapacity) {
                 try audioFile.read(into: buffer)
             }
-            
+
             return .valid(AudioFileInfo(
                 format: format,
                 duration: Double(audioFile.length) / format.sampleRate,
                 fileSize: try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 ?? 0
             ))
-            
+
         } catch {
             return .invalid(.corruptedFile)
         }
@@ -163,7 +158,7 @@ internal class AudioValidator {
 internal enum AudioValidationResult {
     case valid(AudioFileInfo)
     case invalid(AudioValidationError)
-    
+
     var isValid: Bool {
         switch self {
         case .valid:
@@ -184,7 +179,7 @@ internal enum AudioValidationError: LocalizedError {
     case invalidSampleRate
     case invalidChannelCount
     case emptyAudio
-    
+
     var errorDescription: String? {
         switch self {
         case .fileNotFound:
@@ -232,29 +227,13 @@ internal struct AudioFileInfo {
     let format: AVAudioFormat
     let duration: TimeInterval
     let fileSize: Int64
-    
+
     var sampleRate: Double {
         return format.sampleRate
     }
-    
+
     var channelCount: UInt32 {
         return format.channelCount
     }
-    
-    var durationString: String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        let secondsPadded = seconds.formatted(
-            .number
-                .grouping(.never)
-                .precision(.integerLength(2...2))
-        )
-        return "\(minutes):\(secondsPadded)"
-    }
-    
-    var fileSizeString: String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: fileSize)
-    }
+
 }

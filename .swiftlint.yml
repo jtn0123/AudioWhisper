@@ -12,8 +12,27 @@ opt_in_rules:
   - fatal_error_message
   - toggle_bool
 
+# Analyzer rules only run under `swiftlint analyze`, never `swiftlint lint`.
+# CI runs both (see .github/workflows/ci.yml, `analyze` job).
 analyzer_rules:
+  # GATED. Triaged to zero by removing each flagged import and rebuilding — the
+  # compiler, not the analyzer, decided. A new finding is real; fix it, or add
+  # `swiftlint:disable:next unused_import` with a reason if the compiler needs it.
   - unused_import
+  # RATCHETED, not gated at zero. CI fails if the count RISES above the
+  # baseline in ci.yml; it may always fall.
+  #
+  # The count is SwiftLint-version-dependent, so the baseline is only meaningful
+  # alongside the pinned SWIFTLINT_VERSION in ci.yml: the same tree reports 144
+  # findings on 0.63.2 and 46 on 0.65.0, because the analyzer got better at
+  # resolving references. Bump the version and the baseline together.
+  #
+  # Gating at zero is not realistic. Much of what remains is structural rather
+  # than defective: protocol requirements reached only through the protocol,
+  # SwiftUI declarations required by position rather than by call
+  # (@NSApplicationDelegateAdaptor, @AppDefault), and Tests/Mocks members that
+  # exist purely to satisfy a conformance. An earlier pass removed 82 genuinely
+  # dead declarations; the ratchet is what stops the pile growing back.
   - unused_declaration
 
 line_length:
@@ -64,5 +83,46 @@ trailing_whitespace:
 
 nesting:
   type_level: 3
+
+custom_rules:
+  # C3/G1: `Timer.publish(...).autoconnect()` starts the moment a view is
+  # created and never stops — including for off-screen views. Use FrameTimer,
+  # which is driven from onAppear/onDisappear and actually cancels.
+  # FrameTimer.swift is the one legitimate site and is excluded below.
+  no_autoconnected_timer:
+    name: "Autoconnected Timer"
+    regex: 'Timer\.publish\([^)]*\)[\s\S]{0,40}?\.autoconnect\(\)'
+    # No `match_kinds`: [identifier] suppresses real code too (the match spans
+    # numbers and argument labels), and `none` is not a valid kind. So the regex
+    # also matches prose that quotes the pattern — keep such prose out of
+    # Sources/, and exclude the two files where it legitimately appears.
+    message: "Use FrameTimer (start/stop from onAppear/onDisappear) — an autoconnected timer runs forever, even off-screen."
+    severity: warning
+    excluded:
+      # Its doc comment quotes the pattern it exists to replace.
+      - ".*/FrameTimer\\.swift"
+      # Preview-only helper with its own explicit start()/stop() lifecycle.
+      - ".*/WaveformPreviewHelpers\\.swift"
+
+  # Every string assigned to `errorMessage` is shown to the user verbatim, so it
+  # belongs in LocalizedStrings.Errors with an NSLocalizedString key. Ten of them
+  # had drifted into raw literals while the rest of the app went through the
+  # localization layer — a half-localized UI is worse than either extreme,
+  # because a translator gets a file that looks complete and isn't.
+  #
+  # Interpolated literals ("Failed: \(error)") are caught by the same regex;
+  # use a `%@` template plus `.substitutingPlaceholder(_:)` instead.
+  no_raw_error_message:
+    name: "Raw errorMessage Literal"
+    # `[^"]` is load-bearing: it lets `errorMessage = ""` through. That is the
+    # empty sentinel meaning "no error", not user-facing copy, and it appears in
+    # the two view models that also assign real messages — so excluding it by
+    # file would switch the rule off exactly where three violations lived.
+    regex: 'errorMessage\s*=\s*"[^"]'
+    message: "User-facing text: add it to LocalizedStrings.Errors instead of assigning a raw literal."
+    severity: warning
+    excluded:
+      # Tests assert on specific rendered copy and must be able to write it out.
+      - "Tests/.*"
 
 reporter: "xcode"

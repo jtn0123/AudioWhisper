@@ -1,6 +1,5 @@
 import XCTest
 import SwiftUI
-import SwiftData
 @testable import AudioWhisper
 
 // Waveform-style and additional view snapshot tests, split out of UISnapshotTests
@@ -26,7 +25,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-classic-recording",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -46,7 +46,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-ready",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.01  // animated view — measured nondeterministic
         )
     }
 
@@ -66,7 +67,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-success",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -88,7 +90,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-processing",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.01  // animated view — measured nondeterministic
         )
     }
 
@@ -108,7 +111,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-error",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -131,7 +135,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-glow-intensity",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -152,7 +157,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-burst-intensity",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -249,18 +255,20 @@ extension UISnapshotTests {
 
     // MARK: - Transcripts View Snapshots
 
-    func testDashboardTranscriptsViewSnapshot() throws {
-        let container = try makePreviewContainer()
-        let view = DashboardTranscriptsView()
-            .modelContainer(container)
-
-        assertSnapshot(
-            view,
-            named: "DashboardTranscriptsView-light",
-            size: CGSize(width: 750, height: 600),
-            colorScheme: .light
-        )
-    }
+    // No DashboardTranscriptsView snapshot, deliberately.
+    //
+    // It is a ~25-line wrapper that shows TranscriptionHistoryView when
+    // DataManager.shared has a model container and a static "History not
+    // available" icon otherwise. Which branch renders depends on whether some
+    // earlier test in the same process called DataManager.shared.initialize(),
+    // so the baseline would flip with test ordering — flaky by construction.
+    //
+    // The branch worth covering (the actual history UI) is covered directly by
+    // testTranscriptionHistoryViewSnapshot / ...LightSnapshot, which inject a
+    // pre-loaded view model. Stabilising this one would mean adding an
+    // in-memory-container seam to DataManager purely to re-test UI that is
+    // already tested. It previously "passed" by comparing one 99.78%-blank
+    // image against another.
 
     // MARK: - Additional Waveform Style Snapshots (D3)
     //
@@ -295,7 +303,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-neon-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.02  // animated view — measured nondeterministic
         )
     }
 
@@ -316,7 +325,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-spectrum-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -340,7 +350,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-halo-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.03  // animated view — measured nondeterministic
         )
     }
 
@@ -361,7 +372,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-heartbeat-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 
@@ -382,7 +394,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-stream-dark",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .dark
+            colorScheme: .dark,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -405,7 +418,8 @@ extension UISnapshotTests {
             view,
             named: "Waveform-spectrum-light",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .light
+            colorScheme: .light,
+            tolerance: 0.05  // animated view — measured nondeterministic
         )
     }
 
@@ -428,7 +442,8 @@ extension UISnapshotTests {
             view,
             named: "WaveformContainer-classic-recording-light",
             size: CGSize(width: 320, height: 200),
-            colorScheme: .light
+            colorScheme: .light,
+            tolerance: 0.05  // animated view — frame content varies per render
         )
     }
 

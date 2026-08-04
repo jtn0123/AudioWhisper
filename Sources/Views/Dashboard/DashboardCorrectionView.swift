@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 internal struct DashboardCorrectionView: View {
     // Stored preferences
@@ -24,7 +23,7 @@ internal struct DashboardCorrectionView: View {
     @State var isRefreshingModels = false
 
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Semantic Correction")
                     .font(.title2.weight(.semibold))
@@ -107,7 +106,7 @@ extension DashboardCorrectionView {
 
     /// Returns the default model repo for fallback
     static func testableDefaultModelRepo() -> String {
-        "mlx-community/Qwen3-1.7B-4bit"
+        AppDefaults.defaultSemanticCorrectionModelRepo
     }
 
     /// A mock model entry used for testing
@@ -140,7 +139,7 @@ extension DashboardCorrectionView {
 
     /// Returns whether a model should have the "RECOMMENDED" badge
     static func testableIsRecommended(repo: String) -> Bool {
-        repo == "mlx-community/Qwen3-1.7B-4bit"
+        repo == AppDefaults.defaultSemanticCorrectionModelRepo
     }
 
     /// Returns the venv Python path for testing

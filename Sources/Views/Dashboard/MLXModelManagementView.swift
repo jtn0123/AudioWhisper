@@ -4,7 +4,7 @@ internal struct MLXModelManagementView: View {
     @Environment(MLXModelManager.self) private var modelManager
     @Binding var selectedModelRepo: String
     @State private var isRefreshing = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // Header
@@ -15,9 +15,9 @@ internal struct MLXModelManagementView: View {
                 Text("MLX Models")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 if modelManager.totalCacheSize > 0 {
                     Text(modelManager.formatBytes(modelManager.totalCacheSize))
                         .font(.caption)
@@ -27,7 +27,7 @@ internal struct MLXModelManagementView: View {
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
-                
+
                 Button(action: {
                     isRefreshing = true
                     Task {
@@ -48,6 +48,8 @@ internal struct MLXModelManagementView: View {
                     }
                 })
                 .buttonStyle(.plain)
+                // C1: icon-only, so it announced as an unlabelled button.
+                .accessibilityLabel(isRefreshing ? "Refreshing model list" : "Refresh model list")
                 .disabled(isRefreshing)
                 .help("Refresh model list to check downloaded models")
             }
@@ -119,19 +121,19 @@ internal struct MLXModelManagementView: View {
                     )
                 }
             }
-            
+
             // Info text with clickable path
             VStack(alignment: .leading, spacing: 4) {
                 Text("Models are stored in:")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                
+
                 HStack {
                     Text("~/.cache/huggingface/hub/")
                         .font(.caption2)
                         .foregroundStyle(.blue)
                         .textSelection(.enabled)
-                    
+
                     Button(action: {
                         let path = FileManager.default.homeDirectoryForCurrentUser
                             .appendingPathComponent(".cache/huggingface/hub")
@@ -142,12 +144,18 @@ internal struct MLXModelManagementView: View {
                     })
                     .buttonStyle(.plain)
                     .help("Open in Finder")
+                    // C1: `.help` is a mouse tooltip — VoiceOver does not read
+                    // it, so the button still needed an explicit label.
+                    .accessibilityLabel("Show models in Finder")
                 }
             }
         }
     }
 
     private func isRecommended(_ repo: String) -> Bool {
-        return repo == "mlx-community/Llama-3.2-1B-Instruct-4bit"
+        // B1: this badged Llama-3.2-1B while DashboardCorrectionView badged
+        // Qwen3-1.7B — two screens telling the user different things. Both now
+        // read the one constant that the correction pipeline also uses.
+        return repo == AppDefaults.defaultSemanticCorrectionModelRepo
     }
 }

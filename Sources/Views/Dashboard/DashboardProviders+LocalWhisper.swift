@@ -10,14 +10,14 @@ internal extension DashboardProvidersView {
                 Text("02")
                     .font(DashboardTheme.Fonts.mono(11, weight: .medium))
                     .foregroundStyle(DashboardTheme.accent)
-                
+
                 Text("LOCAL MODELS")
                     .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
                     .foregroundStyle(DashboardTheme.inkMuted)
                     .tracking(1.5)
-                
+
                 Spacer()
-                
+
                 Button {
                     Task { await modelManager.refreshModelStates() }
                 } label: {
@@ -26,21 +26,22 @@ internal extension DashboardProvidersView {
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Refresh Whisper model status")
             }
-            
+
             VStack(spacing: 0) {
                 // Model list
                 ForEach(WhisperModel.allCases, id: \.self) { model in
                     whisperModelRow(model)
-                    
+
                     if model != WhisperModel.allCases.last {
                         Divider()
                             .background(DashboardTheme.rule)
                     }
                 }
-                
+
                 Divider().background(DashboardTheme.rule)
-                
+
                 // Storage footer
                 storageFooter
             }
@@ -52,7 +53,7 @@ internal extension DashboardProvidersView {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(DashboardTheme.rule, lineWidth: 1)
             )
-            
+
             // Error message — uses the shared DownloadProgressView so retry
             // is exposed consistently across providers. The retry target is
             // the most recently attempted download (derived from
@@ -78,34 +79,34 @@ internal extension DashboardProvidersView {
             }
         }
     }
-    
+
     private func whisperModelRow(_ model: WhisperModel) -> some View {
         let isSelected = selectedWhisperModel == model
         let isDownloaded = modelManager.downloadedModels.contains(model)
         let stage = modelManager.getDownloadStage(for: model)
         let isDownloading = stage?.isActive ?? false
-        
+
         return HStack(spacing: DashboardTheme.Spacing.md) {
             // Selection indicator
             ZStack {
                 Circle()
                     .stroke(isSelected ? DashboardTheme.accent : DashboardTheme.rule, lineWidth: 1.5)
                     .frame(width: 20, height: 20)
-                
+
                 if isSelected {
                     Circle()
                         .fill(DashboardTheme.accent)
                         .frame(width: 10, height: 10)
                 }
             }
-            
+
             // Model info
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: DashboardTheme.Spacing.sm) {
                     Text(model.displayName)
                         .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                         .foregroundStyle(DashboardTheme.ink)
-                    
+
                     if model == .base {
                         Text("RECOMMENDED")
                             .font(DashboardTheme.Fonts.sans(9, weight: .bold))
@@ -116,19 +117,19 @@ internal extension DashboardProvidersView {
                             .clipShape(RoundedRectangle(cornerRadius: 3))
                     }
                 }
-                
+
                 Text(model.description)
                     .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkMuted)
             }
-            
+
             Spacer()
-            
+
             // Size
             Text(model.fileSize)
                 .font(DashboardTheme.Fonts.mono(11, weight: .regular))
                 .foregroundStyle(DashboardTheme.inkMuted)
-            
+
             // Status/Action
             whisperModelStatusAction(model, stage: stage, isDownloaded: isDownloaded, isDownloading: isDownloading)
         }
@@ -188,27 +189,27 @@ internal extension DashboardProvidersView {
             .buttonStyle(.plain)
         }
     }
-    
+
     private var storageFooter: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Storage")
                     .font(DashboardTheme.Fonts.sans(12, weight: .medium))
                     .foregroundStyle(DashboardTheme.ink)
-                
+
                 Text("~/Documents/huggingface/models/")
                     .font(DashboardTheme.Fonts.mono(10, weight: .regular))
                     .foregroundStyle(DashboardTheme.inkFaint)
             }
-            
+
             Spacer()
-            
+
             let limitBytes = Int64(maxModelStorageGB * 1024 * 1024 * 1024)
-            
+
             Text("\(formatBytes(totalModelsSize)) / \(formatBytes(limitBytes))")
                 .font(DashboardTheme.Fonts.mono(11, weight: .medium))
                 .foregroundStyle(DashboardTheme.inkMuted)
-            
+
             Picker("", selection: $maxModelStorageGB) {
                 Text("1 GB").tag(1.0)
                 Text("2 GB").tag(2.0)
@@ -220,7 +221,7 @@ internal extension DashboardProvidersView {
         }
         .padding(DashboardTheme.Spacing.md)
     }
-    
+
     // MARK: - Actions
     private func downloadModel(_ model: WhisperModel) {
         downloadError = nil

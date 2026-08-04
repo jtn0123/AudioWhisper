@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 import os.log
 
 /// Bundles the run-specific context needed to complete a transcription so the
@@ -181,13 +180,13 @@ final class TranscriptionCoordinator {
         if case let SpeechToTextError.localTranscriptionFailed(inner) = error,
            let lwError = inner as? LocalWhisperError,
            lwError == .modelNotDownloaded {
-            viewModel.errorMessage = "Local Whisper model not downloaded. Opening Settings…"
+            viewModel.errorMessage = LocalizedStrings.Errors.whisperModelNotDownloaded
             viewModel.showError = true
             viewModel.markProcessingFinished()
             viewModel.transcriptionStartTime = nil
             present(source.dashboardReason(for: transcriptionProvider))
         } else if let pe = error as? ParakeetError, pe == .modelNotReady {
-            viewModel.errorMessage = "Parakeet model not downloaded. Opening Settings…"
+            viewModel.errorMessage = LocalizedStrings.Errors.parakeetModelNotDownloaded
             viewModel.showError = true
             viewModel.markProcessingFinished()
             viewModel.transcriptionStartTime = nil

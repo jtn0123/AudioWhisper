@@ -1,5 +1,4 @@
 import SwiftUI
-import Observation
 import AppKit
 
 internal struct DashboardCategoriesView: View {
@@ -8,9 +7,9 @@ internal struct DashboardCategoriesView: View {
     @State var sourceUsageStore = SourceUsageStore.shared
     @State private var editingCategory: CategoryDefinition?
     @State private var isCreatingNew = false
-    
+
     var body: some View {
-        ScrollView {
+        ScrollableContent {
             VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xl) {
                 pageHeader
                 categoriesOverview
@@ -41,20 +40,20 @@ internal struct DashboardCategoriesView: View {
             )
         }
     }
-    
+
     // MARK: - Header
     private var pageHeader: some View {
         VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
             Text("Categories")
                 .font(DashboardTheme.Fonts.serif(28, weight: .semibold))
                 .foregroundStyle(DashboardTheme.ink)
-            
+
             Text("Customize how transcriptions are corrected per app")
                 .font(DashboardTheme.Fonts.sans(13, weight: .regular))
                 .foregroundStyle(DashboardTheme.inkMuted)
         }
     }
-    
+
     // MARK: - Categories Overview
     private var categoriesOverview: some View {
         let categories = categoryStore.categories
@@ -62,7 +61,7 @@ internal struct DashboardCategoriesView: View {
             HStack {
                 sectionHeader("Category Types")
                 Spacer()
-                
+
                 Button {
                     isCreatingNew = true
                 } label: {
@@ -71,7 +70,7 @@ internal struct DashboardCategoriesView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(DashboardTheme.accent)
-                
+
                 Button {
                     confirmResetCategories()
                 } label: {
@@ -80,11 +79,11 @@ internal struct DashboardCategoriesView: View {
                 }
                 .buttonStyle(.bordered)
             }
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(categories, id: \.id) { category in
                     categoryRow(category)
-                    
+
                     if category.id != categories.last?.id {
                         Divider().background(DashboardTheme.rule)
                     }
@@ -93,7 +92,7 @@ internal struct DashboardCategoriesView: View {
             .cardStyle()
         }
     }
-    
+
     private func categoryRow(_ category: CategoryDefinition) -> some View {
         Button {
             editingCategory = category
@@ -104,13 +103,13 @@ internal struct DashboardCategoriesView: View {
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
                     .background(category.color, in: RoundedRectangle(cornerRadius: 8))
-                
+
                 VStack(alignment: .leading, spacing: DashboardTheme.Spacing.xs) {
                     HStack(spacing: DashboardTheme.Spacing.sm) {
                         Text(category.displayName)
                             .font(DashboardTheme.Fonts.sans(14, weight: .medium))
                             .foregroundStyle(DashboardTheme.ink)
-                        
+
                         if category.isSystem {
                             Text("System")
                                 .font(DashboardTheme.Fonts.sans(9, weight: .medium))
@@ -120,15 +119,15 @@ internal struct DashboardCategoriesView: View {
                                 .background(DashboardTheme.rule, in: Capsule())
                         }
                     }
-                    
+
                     Text(category.promptDescription)
                         .font(DashboardTheme.Fonts.sans(12, weight: .regular))
                         .foregroundStyle(DashboardTheme.inkMuted)
                         .lineLimit(1)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(DashboardTheme.inkFaint)
@@ -137,8 +136,16 @@ internal struct DashboardCategoriesView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // C1: the row is one Button whose label is an icon plus several Texts;
+        // VoiceOver otherwise reads the fragments separately with no indication
+        // it is actionable or that system categories differ from custom ones.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(category.displayName)
+        .accessibilityValue(category.isSystem ? "System category" : "Custom category")
+        .accessibilityHint("Edit this category")
+        .accessibilityAddTraits(.isButton)
     }
-    
+
     // MARK: - App Mappings
     var appMappingsSection: some View {
         let topSources = sourceUsageStore.topSources(limit: 10)

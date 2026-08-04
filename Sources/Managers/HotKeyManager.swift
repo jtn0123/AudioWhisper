@@ -28,6 +28,11 @@ internal struct ParsedHotkey {
 // `KeyboardShortcuts.Shortcut` and registers a key-down handler with the
 // KeyboardShortcuts library. AppDefaults remains the canonical store; the
 // KeyboardShortcuts UserDefaults entry is a runtime mirror.
+// A6: @MainActor because KeyboardShortcuts 3.x isolated its API to the main
+// actor, and global hotkey registration is inherently main-thread work anyway.
+// (Contrast PressAndHoldKeyMonitor, which is deliberately queue-based and takes
+// @unchecked Sendable instead — see A5.)
+@MainActor
 internal class HotKeyManager {
     private let onHotKeyPressed: () -> Void
 
@@ -48,6 +53,11 @@ internal class HotKeyManager {
     }
 
     private func registerKeyDownHandler() {
+        // Carbon hotkey registration aborts the process outright when there is
+        // no WindowServer connection, and taking over the user's real hotkey
+        // during a test run is an unwanted side effect either way.
+        guard WindowServer.canRegisterGlobalHotkeys else { return }
+
         // Remove any handler previously installed by another instance so we
         // don't accumulate them when multiple managers are created (e.g. in
         // tests). AudioWhisper registers only the `.toggleRecording` name, so
@@ -69,6 +79,8 @@ internal class HotKeyManager {
     }
 
     private func setupHotKeyFromString(_ hotkeyString: String) {
+        guard WindowServer.canRegisterGlobalHotkeys else { return }
+
         let parsed = Self.parseHotkeyString(hotkeyString)
 
         guard let key = parsed.key else {
@@ -89,7 +101,11 @@ internal class HotKeyManager {
     // Same string format as before ("⌘⇧Space", "⌘A", "F5", etc.). Extracted
     // as a static helper so callers (e.g. tests, future migrations) can use
     // it without instantiating the manager.
-    internal static func parseHotkeyString(_ hotkeyString: String) -> ParsedHotkey {
+    // A6: nonisolated because it is a PURE parser — it reads no actor state.
+    // The comment above invites tests and future migrations to call it, which
+    // they cannot do from a nonisolated context if it inherits @MainActor from
+    // the enclosing type.
+    internal nonisolated static func parseHotkeyString(_ hotkeyString: String) -> ParsedHotkey {
         var modifiers: NSEvent.ModifierFlags = []
         var keyString = hotkeyString
 
@@ -110,7 +126,11 @@ internal class HotKeyManager {
     /// Lookup table mapping the uppercased hotkey string fragment to a `Key`.
     /// Using a dictionary keeps `stringToKey` simple and avoids a large
     /// switch statement.
-    private static let keyLookup: [String: Key] = [
+    ///
+    /// A6: `nonisolated` alongside `stringToKey` — an immutable dictionary of
+    /// value types is trivially Sendable, and the lookup that reads it is
+    /// nonisolated.
+    private nonisolated static let keyLookup: [String: Key] = [
         "F1": .f1, "F2": .f2, "F3": .f3, "F4": .f4, "F5": .f5,
         "F6": .f6, "F7": .f7, "F8": .f8, "F9": .f9, "F10": .f10,
         "F11": .f11, "F12": .f12, "F13": .f13, "F14": .f14, "F15": .f15,
@@ -129,7 +149,9 @@ internal class HotKeyManager {
         "←": .leftArrow, "→": .rightArrow
     ]
 
-    private static func stringToKey(_ keyString: String) -> Key? {
+    // A6: nonisolated for the same reason as parseHotkeyString — a pure
+    // dictionary lookup with no actor state.
+    private nonisolated static func stringToKey(_ keyString: String) -> Key? {
         keyLookup[keyString.uppercased()]
     }
 

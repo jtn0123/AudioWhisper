@@ -1,5 +1,3 @@
-import SwiftUI
-
 internal extension ContentView {
     func enhanceProgressMessage(_ message: String) -> String {
         return message
@@ -14,12 +12,6 @@ internal extension ContentView {
             showSuccess: viewModel.showSuccess,
             errorMessage: viewModel.showError ? viewModel.errorMessage : nil
         )
-    }
-
-    func recordSourceUsage(words: Int, characters: Int) {
-        guard words > 0 else { return }
-        let info = currentSourceAppInfo()
-        SourceUsageStore.shared.recordUsage(for: info, words: words, characters: characters)
     }
 
     func currentSourceAppInfo() -> SourceAppInfo {

@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import os.log
 
 internal enum UvError: Error, LocalizedError {
     case uvNotFound
@@ -181,7 +182,7 @@ internal struct UvBootstrap {
 
             let fm = FileManager.default
             // Copy pyproject.toml and uv.lock from bundle to project dir (if present / newer)
-            try copyProjectFilesIfNeeded(to: proj)
+            let haveBundledLock = try copyProjectFilesIfNeeded(to: proj)
 
             // Ensure .venv exists using specified Python (or default)
             let venvDir = proj.appendingPathComponent(".venv", isDirectory: true)
@@ -196,10 +197,33 @@ internal struct UvBootstrap {
                 }
             }
 
-            // Run uv sync in project directory. We do not enforce --frozen so that
-            // a stale lock can be updated to match the bundled pyproject.toml.
+            // Sync dependencies. With a bundled lock we pass `--frozen`, which
+            // means "sync WITHOUT updating uv.lock" — uv installs exactly the
+            // pinned versions and never re-resolves. Without it, uv resolves the
+            // whole tree live from PyPI subject only to the ranges in
+            // pyproject.toml: an unpinned code-execution path into an
+            // unsandboxed, Accessibility-privileged app (E1).
+            //
+            // Note `--frozen` does NOT validate that the lock satisfies
+            // pyproject.toml (that is `--locked`, which errors on drift). If the
+            // two ever disagree, the un-locked dependency is simply not installed
+            // and the Python side fails at import — fail-closed, which is the
+            // direction we want here. CI runs `uv lock --check` to catch drift
+            // before it ships.
+            //
+            // The retry below is for a genuinely broken sync (corrupt or
+            // unreadable lock), not for drift. It is a deliberate security
+            // downgrade, so it is logged as an error rather than passing quietly.
             log?("Syncing project dependencies via uv sync…")
-            let syncResult = runInDir(uv.path, ["sync"], cwd: proj)
+            var syncResult = runInDir(uv.path, haveBundledLock ? ["sync", "--frozen"] : ["sync"], cwd: proj)
+
+            if syncResult.status != 0 && haveBundledLock {
+                let detail = syncResult.stderr.isEmpty ? syncResult.stdout : syncResult.stderr
+                Logger.app.error("SECURITY: pinned uv sync failed; falling back to live PyPI resolution. Detail: \(detail, privacy: .private)")
+                log?("Pinned sync failed; retrying with resolution…")
+                syncResult = runInDir(uv.path, ["sync"], cwd: proj)
+            }
+
             if syncResult.status != 0 {
                 throw UvError.syncFailed(
                     syncResult.stderr.isEmpty ? syncResult.stdout : syncResult.stderr
@@ -280,23 +304,46 @@ internal struct UvBootstrap {
         }
     }
 
-    private static func copyProjectFilesIfNeeded(to proj: URL) throws {
+    /// Copies `pyproject.toml` AND `uv.lock` from the bundle into the per-user
+    /// project directory.
+    ///
+    /// The lock used to be deliberately skipped ("to avoid mismatches"), which
+    /// combined with a plain `uv sync` meant the app resolved its whole Python
+    /// dependency tree live from PyPI on first launch. In an unsandboxed app
+    /// holding Microphone and Accessibility permissions, that is an unpinned
+    /// code-execution path. `ensureVenv` now runs `uv sync --frozen` against the
+    /// copied lock, and handles the mismatch case explicitly instead of avoiding
+    /// it by never shipping the lock (E1).
+    ///
+    /// - Returns: `true` if a bundled lock was copied into place, so the caller
+    ///   knows whether `--frozen` can be enforced.
+    @discardableResult
+    private static func copyProjectFilesIfNeeded(to proj: URL) throws -> Bool {
         let fm = FileManager.default
         // Check both Bundle.main (build.sh) and SPM module bundle (Xcode builds)
         let resourceURLs = [Bundle.main.resourceURL, moduleBundle?.resourceURL].compactMap { $0 }
 
-        // Support both flattened and nested resource layouts for pyproject.toml only.
-        // We intentionally do NOT copy a bundled uv.lock to avoid mismatches.
-        var pyCandidates: [URL] = []
-        for res in resourceURLs {
-            pyCandidates.append(res.appendingPathComponent("pyproject.toml"))
-            pyCandidates.append(res.appendingPathComponent("Resources/pyproject.toml"))
+        // Support both flattened and nested resource layouts.
+        func candidates(for name: String) -> [URL] {
+            var urls: [URL] = []
+            for res in resourceURLs {
+                urls.append(res.appendingPathComponent(name))
+                urls.append(res.appendingPathComponent("Resources/\(name)"))
+            }
+            return urls
         }
 
-        if let src = pyCandidates.first(where: { fm.fileExists(atPath: $0.path) }) {
-            let dest = proj.appendingPathComponent("pyproject.toml")
-            try copyIfDifferent(src: src, dst: dest)
+        if let src = candidates(for: "pyproject.toml").first(where: { fm.fileExists(atPath: $0.path) }) {
+            try copyIfDifferent(src: src, dst: proj.appendingPathComponent("pyproject.toml"))
         }
+
+        guard let lockSrc = candidates(for: "uv.lock").first(where: { fm.fileExists(atPath: $0.path) }) else {
+            // Developer/SPM builds without a bundled lock fall back to unpinned
+            // resolution — acceptable locally, never in a shipped bundle.
+            return false
+        }
+        try copyIfDifferent(src: lockSrc, dst: proj.appendingPathComponent("uv.lock"))
+        return true
     }
 
     // MARK: - Utilities

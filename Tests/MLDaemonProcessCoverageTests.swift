@@ -295,3 +295,112 @@ private actor ResultBox {
     private(set) var value: Result<Data, Error>?
     func set(_ result: Result<Data, Error>) { value = result }
 }
+
+// MARK: - stderr Sanitisation (E2)
+
+/// `ml_daemon` stderr used to be logged at `privacy: .public`. The daemon's
+/// `correct` method receives the full transcript, so a traceback can carry user
+/// speech into the unified log. These tests pin the sanitiser that now decides
+/// what is safe to expose publicly.
+final class MLDaemonStderrSanitisationTests: XCTestCase {
+
+    /// The load-bearing case: a traceback whose exception message and echoed
+    /// source line both contain the user's dictated text. Nothing but the
+    /// exception type may survive into the public summary.
+    func testTranscriptTextNeverReachesThePublicSummary() {
+        let secret = "my bank password is hunter2 and my address is 42 Elm Street"
+        let stderr = """
+        Traceback (most recent call last):
+          File "/Users/someone/Library/Application Support/AudioWhisper/ml_daemon.py", line 88, in correct
+            result = model.generate(prompt + "\(secret)")
+          File "/opt/venv/lib/python3.11/site-packages/mlx_lm/utils.py", line 412, in generate
+            raise ValueError(f"context overflow while correcting: \(secret)")
+        ValueError: context overflow while correcting: \(secret)
+        """
+
+        let summary = MLDaemonManager.pythonExceptionSummary(in: stderr)
+
+        XCTAssertEqual(summary, "ValueError")
+        XCTAssertFalse(
+            summary.contains("hunter2"),
+            "Transcript text leaked into the public log summary: \(summary)"
+        )
+        XCTAssertFalse(
+            summary.contains("Elm Street"),
+            "Transcript text leaked into the public log summary: \(summary)"
+        )
+        XCTAssertFalse(
+            summary.contains("/Users/someone"),
+            "Home-directory path leaked into the public log summary: \(summary)"
+        )
+    }
+
+    func testRecognisesCommonExceptionTypes() {
+        XCTAssertEqual(
+            MLDaemonManager.pythonExceptionSummary(in: "ModuleNotFoundError: No module named 'mlx_lm'"),
+            "ModuleNotFoundError"
+        )
+        XCTAssertEqual(
+            MLDaemonManager.pythonExceptionSummary(in: "KeyboardInterrupt: "),
+            "KeyboardInterrupt"
+        )
+        XCTAssertEqual(
+            MLDaemonManager.pythonExceptionSummary(in: "SystemExit: 1"),
+            "SystemExit"
+        )
+    }
+
+    /// Dotted module paths are reduced to the bare class name.
+    func testDottedExceptionPathReportsBareClassName() {
+        XCTAssertEqual(
+            MLDaemonManager.pythonExceptionSummary(in: "mlx.core.MLXRuntimeError: metal allocation failed"),
+            "MLXRuntimeError"
+        )
+    }
+
+    /// A chained traceback names several types; order is preserved, duplicates
+    /// collapse, and the list is capped.
+    func testChainedExceptionsAreDedupedAndCapped() {
+        let stderr = """
+        ValueError: first
+        During handling of the above exception, another exception occurred:
+        RuntimeError: second
+        ValueError: duplicate of the first
+        TypeError: third
+        OSError: fourth
+        KeyError: fifth should be dropped by the cap
+        """
+
+        let types = MLDaemonManager.pythonExceptionTypes(in: stderr)
+        XCTAssertEqual(types, ["ValueError", "RuntimeError", "TypeError", "OSError", "KeyError"])
+
+        let summary = MLDaemonManager.pythonExceptionSummary(in: stderr)
+        XCTAssertEqual(summary, "ValueError, RuntimeError, TypeError, OSError")
+        XCTAssertFalse(summary.contains("KeyError"), "Cap of \(MLDaemonManager.maxSummaryTypes) not applied")
+    }
+
+    /// An indented source echo can itself look like `word: text`. Indented lines
+    /// are traceback frames, never the exception terminator, so they must not be
+    /// mined for type names — that is exactly how payload would escape.
+    func testIndentedSourceEchoesAreIgnored() {
+        let stderr = """
+          File "/tmp/x.py", line 3, in correct
+            Warning: the user said something private here
+        """
+        XCTAssertEqual(MLDaemonManager.pythonExceptionSummary(in: stderr), "unclassified")
+    }
+
+    /// Progress chatter and warnings that aren't exception terminators produce
+    /// no false classification.
+    func testNonExceptionOutputIsUnclassified() {
+        XCTAssertEqual(MLDaemonManager.pythonExceptionSummary(in: ""), "unclassified")
+        XCTAssertEqual(
+            MLDaemonManager.pythonExceptionSummary(in: "Fetching 12 files: 100%|██████| 12/12"),
+            "unclassified"
+        )
+        XCTAssertEqual(
+            MLDaemonManager.pythonExceptionSummary(in: "loading model: mlx-community/Qwen3-1.7B-4bit"),
+            "unclassified"
+        )
+    }
+}

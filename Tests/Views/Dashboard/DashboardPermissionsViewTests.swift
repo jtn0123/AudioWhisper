@@ -1,6 +1,5 @@
 import XCTest
 import SwiftUI
-import AppKit
 @testable import AudioWhisper
 
 // MARK: - DashboardPermissionsView Tests
@@ -15,11 +14,11 @@ final class DashboardPermissionsViewTests: IsolatedXCTestCase {
     override func setUp() {
         super.setUp()
         // Reset any test-related UserDefaults
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     override func tearDown() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         super.tearDown()
     }
 
@@ -36,7 +35,7 @@ final class DashboardPermissionsViewTests: IsolatedXCTestCase {
     }
 
     func testViewWithSmartPasteEnabled() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
         let view = DashboardPermissionsView()
             .environment(PermissionManager.shared)
         let hosting = NSHostingView(rootView: view)
@@ -44,7 +43,7 @@ final class DashboardPermissionsViewTests: IsolatedXCTestCase {
     }
 
     func testViewWithSmartPasteDisabled() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
         let view = DashboardPermissionsView()
             .environment(PermissionManager.shared)
         let hosting = NSHostingView(rootView: view)
@@ -156,16 +155,16 @@ final class PermissionButtonStyleTests: XCTestCase {
 final class PermissionsViewStateTests: XCTestCase {
 
     func testDefaultSmartPasteState() {
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
         let defaultValue = AppDefaults.enableSmartPaste
         XCTAssertTrue(defaultValue, "SmartPaste should default to enabled")
     }
 
     func testSmartPastePersistence() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: "enableSmartPaste"))
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
+        XCTAssertTrue(AppDefaults.defaults.bool(forKey: "enableSmartPaste"))
 
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
-        XCTAssertFalse(UserDefaults.standard.bool(forKey: "enableSmartPaste"))
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
+        XCTAssertFalse(AppDefaults.defaults.bool(forKey: "enableSmartPaste"))
     }
 }

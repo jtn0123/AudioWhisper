@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 
 internal struct ContentView: View {
     // MARK: - Core Dependencies

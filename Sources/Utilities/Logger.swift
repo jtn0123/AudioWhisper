@@ -15,40 +15,9 @@ internal extension Logger {
     static let dataManager = Logger(subsystem: subsystem, category: "DataManager")
     static let paste = Logger(subsystem: subsystem, category: "Paste")
     static let fileSystem = Logger(subsystem: subsystem, category: "FileSystem")
-    static let uvBootstrap = Logger(subsystem: subsystem, category: "UvBootstrap")
-    static let mlxModel = Logger(subsystem: subsystem, category: "MLXModel")
 }
 
 // MARK: - Logging Helpers
-
-/// Executes a throwing operation and logs any error that occurs.
-/// Returns nil if the operation fails (similar to try? but with logging).
-internal func tryWithLogging<T>(
-    _ operation: () throws -> T,
-    logger: Logger,
-    context: String
-) -> T? {
-    do {
-        return try operation()
-    } catch {
-        logger.error("\(context): \(error.localizedDescription)")
-        return nil
-    }
-}
-
-/// Async version of tryWithLogging for async operations.
-internal func tryWithLogging<T>(
-    _ operation: () async throws -> T,
-    logger: Logger,
-    context: String
-) async -> T? {
-    do {
-        return try await operation()
-    } catch {
-        logger.error("\(context): \(error.localizedDescription)")
-        return nil
-    }
-}
 
 extension String {
     /// Returns a copy with the current user's home directory replaced by `<home>`,

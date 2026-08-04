@@ -30,8 +30,8 @@ final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
         try dataManager?.initialize()
         
         // Ensure history is enabled for tests
-        UserDefaults.standard.set(true, forKey: "transcriptionHistoryEnabled")
-        UserDefaults.standard.set(RetentionPeriod.forever.rawValue, forKey: "transcriptionRetentionPeriod")
+        AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(RetentionPeriod.forever.rawValue, forKey: "transcriptionRetentionPeriod")
     }
     
     override func tearDown() async throws {
@@ -49,8 +49,8 @@ final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
         }
         
         // Clean up UserDefaults
-        UserDefaults.standard.removeObject(forKey: "transcriptionHistoryEnabled")
-        UserDefaults.standard.removeObject(forKey: "transcriptionRetentionPeriod")
+        AppDefaults.defaults.removeObject(forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.removeObject(forKey: "transcriptionRetentionPeriod")
         
         modelContainer = nil
         modelContext = nil
@@ -166,12 +166,12 @@ final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
     
     func testTranscriptionWithHistoryDisabled() async throws {
         // Given - Disable history
-        UserDefaults.standard.set(false, forKey: "transcriptionHistoryEnabled")
+        AppDefaults.defaults.set(false, forKey: "transcriptionHistoryEnabled")
         
         let record = createSampleRecord(text: "Should not be saved")
         
         // When - Attempt to save (simulating DataManager behavior)
-        let isHistoryEnabled = UserDefaults.standard.bool(forKey: "transcriptionHistoryEnabled")
+        let isHistoryEnabled = AppDefaults.defaults.bool(forKey: "transcriptionHistoryEnabled")
         if isHistoryEnabled {
             modelContext.insert(record)
             try modelContext.save()

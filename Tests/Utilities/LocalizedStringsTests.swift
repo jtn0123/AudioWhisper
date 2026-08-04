@@ -132,6 +132,76 @@ final class LocalizedStringsErrorsTests: XCTestCase {
         XCTAssertFalse(LocalizedStrings.Errors.apiKeyMissing.isEmpty)
         XCTAssertFalse(LocalizedStrings.Errors.fileUploadFailed.isEmpty)
     }
+
+    // MARK: Strings promoted out of raw literals
+
+    func testNoSpeechDetected() {
+        let error = LocalizedStrings.Errors.noSpeechDetected
+        XCTAssertTrue(error.contains("speech"))
+        XCTAssertTrue(error.contains("microphone"))
+    }
+
+    func testRetryAndRevealErrorsAreDistinct() {
+        // The retry copy tells the user what to do next ("record again"); the
+        // reveal copy has no such next step. Collapsing them into one string
+        // would put the wrong instruction on the Finder path.
+        XCTAssertTrue(LocalizedStrings.Errors.noAudioFileToRetry.contains("record again"))
+        XCTAssertTrue(LocalizedStrings.Errors.audioFileMissingRetry.contains("record again"))
+        XCTAssertFalse(LocalizedStrings.Errors.noAudioFileToShow.contains("record again"))
+        XCTAssertFalse(LocalizedStrings.Errors.audioFileMissing.contains("record again"))
+    }
+
+    func testModelNotDownloadedErrorsNameTheirProvider() {
+        XCTAssertTrue(LocalizedStrings.Errors.whisperModelNotDownloaded.contains("Whisper"))
+        XCTAssertTrue(LocalizedStrings.Errors.parakeetModelNotDownloaded.contains("Parakeet"))
+    }
+
+    func testHistoryErrorsContainPlaceholder() {
+        // Each of these is completed with the underlying reason at the call
+        // site; without the placeholder the user gets a bare "Failed to…".
+        XCTAssertTrue(LocalizedStrings.Errors.historyLoadFailed.contains("%@"))
+        XCTAssertTrue(LocalizedStrings.Errors.historyDeleteFailed.contains("%@"))
+        XCTAssertTrue(LocalizedStrings.Errors.historyClearFailed.contains("%@"))
+    }
+
+    func testPromotedErrorStringsNotEmpty() {
+        XCTAssertFalse(LocalizedStrings.Errors.noSpeechDetected.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.noAudioFileToRetry.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.noAudioFileToShow.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.audioFileMissingRetry.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.audioFileMissing.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.whisperModelNotDownloaded.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.parakeetModelNotDownloaded.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.historyLoadFailed.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.historyDeleteFailed.isEmpty)
+        XCTAssertFalse(LocalizedStrings.Errors.historyClearFailed.isEmpty)
+    }
+}
+
+// MARK: - Placeholder Substitution Tests
+
+final class LocalizedStringsPlaceholderTests: XCTestCase {
+
+    func testSubstitutesSinglePlaceholder() {
+        XCTAssertEqual("Failed: %@".substitutingPlaceholder("disk full"), "Failed: disk full")
+    }
+
+    func testSubstitutedValueMayContainPercent() {
+        // The whole reason this is not String(format:). A transcription service
+        // that reports "50% packet loss" must not be read as a format specifier.
+        XCTAssertEqual(
+            "Failed: %@".substitutingPlaceholder("50% packet loss"),
+            "Failed: 50% packet loss"
+        )
+    }
+
+    func testTemplateWithoutPlaceholderIsUnchanged() {
+        XCTAssertEqual("No detail here".substitutingPlaceholder("ignored"), "No detail here")
+    }
+
+    func testEveryPlaceholderIsSubstituted() {
+        XCTAssertEqual("%@ then %@".substitutingPlaceholder("a"), "a then a")
+    }
 }
 
 // MARK: - LocalizedStrings LocalWhisper Tests

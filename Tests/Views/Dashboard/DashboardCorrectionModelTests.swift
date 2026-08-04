@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import AudioWhisper
 
 /// Model-management coverage for DashboardCorrectionView. Split out of

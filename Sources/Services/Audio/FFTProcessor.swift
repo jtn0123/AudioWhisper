@@ -1,5 +1,4 @@
 import Accelerate
-import Foundation
 
 /// Real-time FFT processor for audio frequency analysis.
 /// Uses the Accelerate framework for SIMD-optimized processing.

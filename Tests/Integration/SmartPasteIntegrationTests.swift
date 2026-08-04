@@ -140,8 +140,16 @@ final class SmartPasteIntegrationTests: IsolatedXCTestCase {
             object: nil,
             queue: .main
         ) { notification in
-            Task { await capture.set(notification) }
-            expectation.fulfill()
+            // fulfill() MUST be inside the Task, after the store. Fulfilling
+            // outside it signals "done" while `capture.set` is still an
+            // unawaited, fire-and-forget Task, so `fulfillment` below can return
+            // before the value ever lands and `get()` returns nil. That is a
+            // real race, not a theoretical one: it passed locally and on three
+            // consecutive CI runs before failing on the fourth.
+            Task {
+                await capture.set(notification)
+                expectation.fulfill()
+            }
         }
         defer { NotificationCenter.default.removeObserver(observer) }
 
@@ -171,8 +179,11 @@ final class SmartPasteIntegrationTests: IsolatedXCTestCase {
             object: nil,
             queue: .main
         ) { notification in
-            Task { await capture.set(notification) }
-            expectation.fulfill()
+            // Same ordering requirement as testPasteSuccessNotificationPosted.
+            Task {
+                await capture.set(notification)
+                expectation.fulfill()
+            }
         }
         defer { NotificationCenter.default.removeObserver(observer) }
 

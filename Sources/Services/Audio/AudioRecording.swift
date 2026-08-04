@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 /// Protocol defining the interface for audio recording services.
 /// Both `AudioRecorder` (meter-based) and `AudioEngineRecorder` (sample-based) conform to this.

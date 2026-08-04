@@ -122,10 +122,6 @@ internal extension AppDelegate {
         AppSetupHelper.cleanupOldTemporaryFiles()
     }
 
-    func hasAPIKey(service: String, account: String) -> Bool {
-        KeychainService.shared.getQuietly(service: service, account: account) != nil
-    }
-
     func showWelcomeAndSettings() {
         let shouldOpenSettings = WelcomeWindow.showWelcomeDialog()
 

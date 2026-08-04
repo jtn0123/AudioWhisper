@@ -1,5 +1,5 @@
 import XCTest
-import SwiftData
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 @testable import AudioWhisper
 
 /// Stress tests for concurrent operations across key components.

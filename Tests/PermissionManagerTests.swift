@@ -65,8 +65,8 @@ final class PermissionManagerTests: IsolatedXCTestCase {
     }
 
     func testRequestPermissionWithEducationForDeniedPermission() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
-        defer { UserDefaults.standard.removeObject(forKey: "enableSmartPaste") }
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
 
         permissionManager.microphonePermissionState = .denied
 
@@ -147,8 +147,8 @@ final class PermissionManagerTests: IsolatedXCTestCase {
     // MARK: - Edge Cases
 
     func testRequestPermissionInRestrictedState() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
-        defer { UserDefaults.standard.removeObject(forKey: "enableSmartPaste") }
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
 
         permissionManager.microphonePermissionState = .restricted
 
@@ -159,8 +159,8 @@ final class PermissionManagerTests: IsolatedXCTestCase {
     }
 
     func testRequestPermissionWhileAlreadyRequesting() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
-        defer { UserDefaults.standard.removeObject(forKey: "enableSmartPaste") }
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
 
         permissionManager.microphonePermissionState = .requesting
 
@@ -207,7 +207,7 @@ final class PermissionManagerTests: IsolatedXCTestCase {
 
     func testAllPermissionsGrantedWithSmartPasteDisabled() {
         // When SmartPaste is disabled, only microphone permission is required
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
 
         permissionManager.microphonePermissionState = .granted
         permissionManager.accessibilityPermissionState = .denied
@@ -215,12 +215,12 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertTrue(permissionManager.allPermissionsGranted)
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     func testAllPermissionsGrantedWithSmartPasteEnabled() {
         // When SmartPaste is enabled, both microphone and accessibility permissions are required
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
 
         permissionManager.microphonePermissionState = .granted
         permissionManager.accessibilityPermissionState = .denied
@@ -231,12 +231,12 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertTrue(permissionManager.allPermissionsGranted)
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     func testAllPermissionsGrantedWithMicrophoneDenied() {
         // Microphone permission is always required
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
 
         permissionManager.microphonePermissionState = .denied
         permissionManager.accessibilityPermissionState = .granted
@@ -244,13 +244,13 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertFalse(permissionManager.allPermissionsGranted)
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     // MARK: - SmartPaste Permission Logic Tests
 
     func testRequestPermissionWithSmartPasteEnabled() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
 
         permissionManager.microphonePermissionState = .notRequested
         permissionManager.accessibilityPermissionState = .notRequested
@@ -261,11 +261,11 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertFalse(permissionManager.showRecoveryModal)
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     func testRequestPermissionWithSmartPasteDisabled() {
-        UserDefaults.standard.set(false, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(false, forKey: "enableSmartPaste")
 
         permissionManager.microphonePermissionState = .notRequested
         permissionManager.accessibilityPermissionState = .denied  // This should be ignored
@@ -276,11 +276,11 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertFalse(permissionManager.showRecoveryModal)
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 
     func testRequestPermissionWithMixedStates() {
-        UserDefaults.standard.set(true, forKey: "enableSmartPaste")
+        AppDefaults.defaults.set(true, forKey: "enableSmartPaste")
 
         permissionManager.microphonePermissionState = .granted
         permissionManager.accessibilityPermissionState = .denied
@@ -291,6 +291,6 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertTrue(permissionManager.showRecoveryModal)
 
         // Clean up
-        UserDefaults.standard.removeObject(forKey: "enableSmartPaste")
+        AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
     }
 }

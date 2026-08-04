@@ -60,8 +60,35 @@ extension AppDefaults {
         }
     }
 
+    /// The correction model used when the user has not chosen one. This is the
+    /// single source of truth — the Dashboard badges it RECOMMENDED and the
+    /// correction pipeline runs it. Keep those in agreement (audit item B1).
+    /// Chosen by measurement, not release date — see `.claude/bench/`. Best
+    /// correction quality of seven candidates AND 1.8× faster than the previous
+    /// default despite being larger, because it is a non-thinking Instruct
+    /// variant and skips the think-then-retry round trip.
+    static let defaultSemanticCorrectionModelRepo = "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+
+    /// Defaults this app has shipped before, newest first.
+    ///
+    /// Used ONLY by `AppSetupHelper.migrateSemanticCorrectionModelDefault()`.
+    /// A user who never picked a model explicitly should keep running whichever
+    /// of these they already have on disk, rather than being silently switched
+    /// to a new default and made to download it. Do not read this anywhere else.
+    ///
+    /// - `Qwen3-1.7B-4bit` — default between the B1 fix and the A4 benchmark.
+    /// - `Llama-3.2-1B-Instruct-4bit` — the pre-2.0 implicit default, which the
+    ///   correction call sites hardcoded while the UI advertised something else.
+    static let priorSemanticCorrectionModelRepos = [
+        "mlx-community/Qwen3-1.7B-4bit",
+        "mlx-community/Llama-3.2-1B-Instruct-4bit"
+    ]
+
     static var semanticCorrectionModelRepo: String {
-        get { defaults.string(forKey: Key.semanticCorrectionModelRepo.rawValue) ?? "mlx-community/Qwen3-1.7B-4bit" }
+        get {
+            defaults.string(forKey: Key.semanticCorrectionModelRepo.rawValue)
+                ?? defaultSemanticCorrectionModelRepo
+        }
         set { defaults.set(newValue, forKey: Key.semanticCorrectionModelRepo.rawValue) }
     }
 

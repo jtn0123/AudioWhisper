@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 @testable import AudioWhisper
 
 // MARK: - VisualIntensity Tests
@@ -179,21 +178,21 @@ final class VisualIntensityUserDefaultsTests: IsolatedXCTestCase {
 
     func testDefaultVisualIntensityIsBalanced() {
         // Default should be balanced
-        let intensity = UserDefaults.standard.visualIntensity
+        let intensity = AppDefaults.defaults.visualIntensity
         XCTAssertNotNil(intensity)
     }
 
     func testSetAndGetVisualIntensity() {
-        let originalIntensity = UserDefaults.standard.visualIntensity
+        let originalIntensity = AppDefaults.defaults.visualIntensity
 
-        UserDefaults.standard.visualIntensity = .glow
-        XCTAssertEqual(UserDefaults.standard.visualIntensity, .glow)
+        AppDefaults.defaults.visualIntensity = .glow
+        XCTAssertEqual(AppDefaults.defaults.visualIntensity, .glow)
 
-        UserDefaults.standard.visualIntensity = .burst
-        XCTAssertEqual(UserDefaults.standard.visualIntensity, .burst)
+        AppDefaults.defaults.visualIntensity = .burst
+        XCTAssertEqual(AppDefaults.defaults.visualIntensity, .burst)
 
         // Restore original
-        UserDefaults.standard.visualIntensity = originalIntensity
+        AppDefaults.defaults.visualIntensity = originalIntensity
     }
 }
 

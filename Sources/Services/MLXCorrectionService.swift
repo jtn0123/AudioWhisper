@@ -9,7 +9,7 @@ internal enum MLXCorrectionError: Error, LocalizedError, Equatable {
     case dependencyMissing(String, installCommand: String)
     case processTimedOut(TimeInterval)
     case daemonUnavailable(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .pythonNotFound(let path):
@@ -28,12 +28,6 @@ internal enum MLXCorrectionError: Error, LocalizedError, Equatable {
             return "ML daemon unavailable: \(reason)\n\nTry restarting the app"
         }
     }
-}
-
-internal struct MLXCorrectionResponse: Codable {
-    let text: String
-    let success: Bool
-    let error: String?
 }
 
 internal protocol MLDaemonManaging {
@@ -56,10 +50,10 @@ internal final class MLXCorrectionService {
 
     func correct(text: String, modelRepo: String, pythonPath: String, systemPrompt: String? = nil) async throws -> String {
         // pythonPath is kept for API compatibility but daemon manages its own Python
-        
+
         // Use provided prompt, or fall back to user's custom file, or nil for daemon default
         let prompt = systemPrompt ?? promptLoader()
-        
+
         do {
             let result = try await daemon.correct(repo: modelRepo, text: text, prompt: prompt)
             return result
@@ -97,20 +91,20 @@ internal final class MLXCorrectionService {
     func invalidateCache(for pythonPath: String? = nil) {
         // No-op: daemon manages model caching internally
     }
-    
+
     func validateSetup(pythonPath: String) async throws {
         // Validate Python path exists (for settings UI feedback)
         guard FileManager.default.fileExists(atPath: pythonPath) else {
             throw MLXCorrectionError.pythonNotFound(path: pythonPath)
         }
-        
+
         // Use daemon ping to verify the daemon is healthy
         let isHealthy = await daemon.ping()
         if !isHealthy {
             throw MLXCorrectionError.daemonUnavailable("daemon not responding")
         }
     }
-    
+
     // MARK: - Private Helpers
 
     /// Decides whether a daemon `remoteError` message describes a genuinely

@@ -55,6 +55,7 @@ extension DashboardCorrectionView {
             .buttonStyle(.bordered)
             .tint(DashboardTheme.accent)
             .disabled(isCheckingEnv)
+            .accessibilityLabel("Re-check Python environment")
         }
     }
 
@@ -91,6 +92,7 @@ extension DashboardCorrectionView {
                 .buttonStyle(.borderless)
                 .foregroundStyle(DashboardTheme.inkMuted)
                 .disabled(isRefreshingModels)
+                .accessibilityLabel(isRefreshingModels ? "Refreshing model list" : "Refresh model list")
             }
 
             if semanticCorrectionModelRepo.isEmpty || !modelManager.downloadedModels.contains(semanticCorrectionModelRepo) {
@@ -237,8 +239,37 @@ extension DashboardCorrectionView {
     }
 
     // MARK: - Model Entries
+
+    /// Models to show: the curated catalog, plus anything the user already has
+    /// downloaded or selected that is no longer curated.
+    ///
+    /// Without the second half, retiring a model from `recommendedModels` would
+    /// strand anyone using it — their selection would vanish from the picker
+    /// while correction kept running it, and they would have no way to delete
+    /// the weights from this screen. The 2026-07-31 benchmark retired
+    /// Phi-3.5-mini and Llama-3.2-1B, so that case is now reachable.
+    private var visibleModels: [MLXModel] {
+        let curated = MLXModelManager.recommendedModels
+        let curatedRepos = Set(curated.map(\.repo))
+
+        var extraRepos = modelManager.downloadedModels.subtracting(curatedRepos)
+        let selected = semanticCorrectionModelRepo
+        if !selected.isEmpty && !curatedRepos.contains(selected) {
+            extraRepos.insert(selected)
+        }
+
+        let extras = extraRepos.sorted().map { repo in
+            MLXModel(
+                repo: repo,
+                estimatedSize: (modelManager.modelSizes[repo]).map(modelManager.formatBytes) ?? "—",
+                description: "No longer recommended — kept because it is installed"
+            )
+        }
+        return curated + extras
+    }
+
     var mlxEntries: [ModelEntry] {
-        MLXModelManager.recommendedModels.map { model in
+        visibleModels.map { model in
             let startDownload = {
                 Task { @MainActor in
                     modelManager.isDownloading[model.repo] = true
@@ -248,7 +279,7 @@ extension DashboardCorrectionView {
             }
 
             // Badge logic: recommend Qwen3-1.7B as best balance
-            let badge: String? = model.repo == "mlx-community/Qwen3-1.7B-4bit" ? "RECOMMENDED" : nil
+            let badge: String? = model.repo == AppDefaults.defaultSemanticCorrectionModelRepo ? "RECOMMENDED" : nil
 
             return MLXEntry(
                 model: model,

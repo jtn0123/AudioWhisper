@@ -1,5 +1,5 @@
+// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AppKit
-import SwiftUI
 import os.log
 
 /// Centralizes window-presentation routing so individual views don't depend on

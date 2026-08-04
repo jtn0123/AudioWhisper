@@ -7,7 +7,7 @@ internal struct SourceAppInfo: Equatable {
     let displayName: String
     let iconData: Data?
     let fallbackSymbolName: String?
-    
+
     static var unknown: SourceAppInfo {
         SourceAppInfo(
             bundleIdentifier: "unknown",
@@ -16,7 +16,7 @@ internal struct SourceAppInfo: Equatable {
             fallbackSymbolName: "questionmark.app"
         )
     }
-    
+
     static func from(app: NSRunningApplication) -> SourceAppInfo? {
         guard let bundleId = app.bundleIdentifier else {
             return nil
@@ -30,7 +30,7 @@ internal struct SourceAppInfo: Equatable {
             fallbackSymbolName: nil
         )
     }
-    
+
     private static func pngData(from image: NSImage?) -> Data? {
         guard let tiffData = image?.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiffData) else {
@@ -86,15 +86,15 @@ internal struct SourceUsageStats: Codable, Identifiable, Equatable {
 @MainActor
 internal final class SourceUsageStore {
     static let shared = SourceUsageStore()
-    
+
     private let defaults: UserDefaults
     private let storageKey = "sourceUsage.stats"
     private let maxSources = 50
-    
+
     private(set) var orderedStats: [SourceUsageStats] = []
     private var statsByBundle: [String: SourceUsageStats] = [:]
-    
-    init(defaults: UserDefaults = .standard) {
+
+    init(defaults: UserDefaults = AppDefaults.defaults) {
         self.defaults = defaults
         if let data = defaults.data(forKey: storageKey) {
             let decoder = JSONDecoder()
@@ -111,7 +111,7 @@ internal final class SourceUsageStore {
         statsByBundle = [:]
         orderedStats = []
     }
-    
+
     func recordUsage(for info: SourceAppInfo, words: Int, characters: Int) {
         // Record the session even when `words == 0`: `sessionCount`, `lastUsed`
         // and characters must still be tracked so this store agrees with
@@ -145,15 +145,15 @@ internal final class SourceUsageStore {
         trimIfNeeded()
         persist()
     }
-    
+
     func topSources(limit: Int) -> [SourceUsageStats] {
         Array(orderedStats.prefix(limit))
     }
-    
+
     func allSources() -> [SourceUsageStats] {
         orderedStats
     }
-    
+
     private func trimIfNeeded() {
         guard statsByBundle.count > maxSources else { return }
         let surplus = statsByBundle.count - maxSources
@@ -176,11 +176,11 @@ internal final class SourceUsageStore {
             defaults.set(data, forKey: storageKey)
         }
     }
-    
+
     private func refreshOrderedStats() {
         orderedStats = statsByBundle.values.sorted(by: defaultSort)
     }
-    
+
     private var defaultSort: (SourceUsageStats, SourceUsageStats) -> Bool {
         { lhs, rhs in
             if lhs.totalWords == rhs.totalWords {
@@ -242,6 +242,41 @@ internal final class SourceUsageStore {
 
         refreshOrderedStats()
         trimIfNeeded()
+        persist()
+    }
+
+    /// Subtracts a single record's contribution from its source app's stats.
+    ///
+    /// B5/G2: avoids the full-table fetch `DataManager.deleteRecord` previously
+    /// needed to call `rebuild(using:)`.
+    ///
+    /// `totalWords`, `totalCharacters` and `sessionCount` are plain sums, so this
+    /// is exact. `lastUsed` is NOT: `rebuild` derives it as the maximum record
+    /// date for the app, and recovering the next-most-recent date after removing
+    /// the newest would require the very fetch this avoids. It is therefore left
+    /// untouched, which can leave it slightly too recent until the app is used
+    /// again or an explicit rebuild runs. `lastUsed` only affects dashboard sort
+    /// order, so a stale value is cosmetic — unlike a full-table load on every
+    /// delete.
+    ///
+    /// The app's entry is dropped entirely once its session count reaches zero.
+    func remove(record: TranscriptionRecord) {
+        guard let bundleId = record.sourceAppBundleId, !bundleId.isEmpty,
+              var existing = statsByBundle[bundleId] else {
+            return
+        }
+
+        existing.totalWords = max(0, existing.totalWords - record.wordCount)
+        existing.totalCharacters = max(0, existing.totalCharacters - record.characterCount)
+        existing.sessionCount = max(0, existing.sessionCount - 1)
+
+        if existing.sessionCount == 0 {
+            statsByBundle.removeValue(forKey: bundleId)
+        } else {
+            statsByBundle[bundleId] = existing
+        }
+
+        refreshOrderedStats()
         persist()
     }
 

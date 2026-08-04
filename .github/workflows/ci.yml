@@ -1,10 +1,26 @@
 name: CI
 
+# Single source of truth for the SwiftLint version. Both the lint job and the
+# analyze job pin to it; see "Install SwiftLint (pinned)".
+env:
+  SWIFTLINT_VERSION: "0.65.0"
+
 on:
   push:
-    branches: [ main, master, 'claude/**', 'grade-report-sweep' ]
+    # I4: dropped 'grade-report-sweep', a one-off branch from a May 2026 audit
+    # that no longer exists. Replaced the ad-hoc list with globs that cover the
+    # working-branch conventions actually in use, so CI runs on feature branches
+    # without needing this list edited every time.
+    branches:
+      - main
+      - master
+      - 'claude/**'
+      - 'grade-fixes-**'
+      - 'fix/**'
+      - 'feat/**'
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -20,9 +36,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Need Xcode 16+ (Swift 6 tooling): WhisperKit's transitive
-          # dependency swift-jinja 2.x declares swift-tools-version 6.0.
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then
             sudo xcode-select -s "$latest/Contents/Developer"
           else
@@ -63,60 +83,66 @@ jobs:
 
       - name: Run Tests
         run: |
-          # Run tests sequentially. A number of tests still read/write
-          # UserDefaults.standard directly; under --parallel they observe each
-          # other's writes and fail nondeterministically. --no-parallel is the
-          # reliable mode until the IsolatedXCTestCase migration is complete
-          # enough to enforce strict isolation.
-          # Use a temp file to preserve exit code while filtering output
-          set +e
-          swift test --no-parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
+          # ONE run, parallel, with coverage.
+          #
+          # This used to run the whole suite twice — once `--parallel` for speed
+          # and again `--no-parallel --enable-code-coverage`, on the belief that
+          # llvm merges one .profraw per process and parallel workers race it.
+          # Measured on 2830 tests: parallel reports 53.50% line coverage,
+          # sequential 53.54% — 30 lines out of 92,525, which is ordinary
+          # run-to-run variance (the waveform views feed random values into
+          # their layout), not lost profile data. The second full run bought
+          # nothing and doubled this job.
+          #
+          # Tests are isolated per process by AppDefaults' scratch suite, so
+          # --parallel is safe here; see Sources/Stores/AppDefaults.swift.
+          set -o pipefail
+          swift test --parallel --enable-code-coverage 2>&1 | tee /tmp/test_output.txt
           TEST_EXIT_CODE=${PIPESTATUS[0]}
-          # Filter and display cleaned output
           grep -v -E "(CNAccountCollection|ContactsPersistence|com\.apple\.contacts|NSXPCConnection|DetachedSignatures|FrontBoardServices|NSStatusItemScene|BSBlockSentinel|NSStatusItem|assertOnQueue)" /tmp/test_output.txt || true
           exit $TEST_EXIT_CODE
         env:
           OS_ACTIVITY_MODE: disable
 
-      - name: Coverage summary
+      - name: Coverage gate
         if: always()
         run: |
-          set +e
-          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
-          BIN_DIR=$(find .build -type d -name '*.xctest' | head -n 1)
-          if [ -n "$PROFDATA" ] && [ -n "$BIN_DIR" ]; then
-            BIN=$(find "$BIN_DIR/Contents/MacOS" -type f | head -n 1)
-            xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" 2>/dev/null | tail -n 1 || true
-          else
-            echo "No coverage data found"
-          fi
-
-      - name: Coverage threshold gate
-        if: always()
-        run: |
-          set +e
-          PROFDATA=$(find .build -name '*.profdata' | head -n 1)
-          BIN_DIR=$(find .build -type d -name '*.xctest' | head -n 1)
-          if [ -z "$PROFDATA" ] || [ -z "$BIN_DIR" ]; then
-            echo "No coverage data — skipping threshold check"
-            exit 0
-          fi
-          BIN=$(find "$BIN_DIR/Contents/MacOS" -type f | head -n 1)
-          # Pull the line-coverage percentage from the TOTAL line
-          PCT=$(xcrun llvm-cov report "$BIN" -instr-profile "$PROFDATA" 2>/dev/null | tail -n 1 | awk '{print $(NF-1)}' | tr -d '%')
-          if [ -z "$PCT" ]; then
-            echo "Could not parse coverage percent; skipping"
-            exit 0
-          fi
-          echo "Line coverage: $PCT%"
-          THRESHOLD=60
-          # bash's [ ] doesn't do float comparison; cast to int for the check
-          PCT_INT=${PCT%.*}
-          if [ "$PCT_INT" -lt "$THRESHOLD" ]; then
-            echo "::error::Line coverage $PCT% below threshold $THRESHOLD%"
+          # Reads SwiftPM's codecov JSON rather than scraping `llvm-cov report`.
+          #
+          # The old gate did `... | tail -n 1 | awk '{print $(NF-1)}'`, and on the
+          # TOTAL line $(NF-1) is MISSED BRANCHES, not line coverage — the line
+          # percentage is several columns earlier. With no branch data the last
+          # fields are "0  -", so the value never parsed, and the gate answered
+          # "Could not parse coverage percent; skipping" and exited 0. It had
+          # never enforced anything: the threshold was 60% while real line
+          # coverage was 53.5%.
+          #
+          # Missing data is now an error, not a silent skip. A gate that cannot
+          # find its input is broken, and should say so rather than pass.
+          set -e
+          COV_JSON=$(swift test --show-codecov-path 2>/dev/null || true)
+          if [ -z "$COV_JSON" ] || [ ! -f "$COV_JSON" ]; then
+            echo "::error::No coverage JSON at '${COV_JSON:-<empty>}'. The test step must run"
+            echo "::error::with --enable-code-coverage for this gate to mean anything."
             exit 1
           fi
-          echo "Coverage $PCT% >= threshold $THRESHOLD%"
+
+          COV_LINE=$(python3 -c 'import json,sys; t=json.load(open(sys.argv[1]))["data"][0]["totals"]["lines"]; print(round(t["percent"], 2), t["covered"], t["count"])' "$COV_JSON")
+          PCT=$(echo "$COV_LINE" | awk '{print $1}')
+          COVERED=$(echo "$COV_LINE" | awk '{print $2}')
+          TOTAL=$(echo "$COV_LINE" | awk '{print $3}')
+
+          echo "Line coverage: $PCT% ($COVERED/$TOTAL lines)"
+
+          # RATCHET, not an aspiration. 60 was aspirational and unenforced; a
+          # threshold above the real number only stays green by being broken.
+          # Raise this as coverage improves; never lower it to make CI pass.
+          THRESHOLD=53
+          if [ "${PCT%.*}" -lt "$THRESHOLD" ]; then
+            echo "::error::Line coverage $PCT% is below the $THRESHOLD% ratchet."
+            exit 1
+          fi
+          echo "Coverage $PCT% >= ratchet $THRESHOLD%"
 
   lint:
     runs-on: macos-14
@@ -124,8 +150,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SwiftLint
-        run: brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+      - name: Install SwiftLint (pinned)
+        run: |
+          # PINNED, not `brew install swiftlint`.
+          #
+          # Homebrew always installs the latest, so the version drifted silently:
+          # this repo's checked-in expectations were written against 0.63.x while
+          # CI had moved to 0.65.0. The analyzer's unused_declaration heuristics
+          # changed between them — the same tree reports 144 findings on 0.63.2
+          # and 46 on 0.65.0. That is a 3x swing in a number the ratchet below
+          # compares against, so an unrelated Homebrew bump could fail the build
+          # for nobody's mistake, and local results would not match CI's either.
+          #
+          # Bump SWIFTLINT_VERSION deliberately, re-measure the ratchet baseline
+          # in the same commit, and tell developers to match it locally:
+          #   brew upgrade swiftlint   (or install the same release)
+          set -euo pipefail
+          curl -sSL --retry 3 -o /tmp/swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          unzip -q -o /tmp/swiftlint.zip -d /tmp/swiftlint
+          echo "/tmp/swiftlint" >> "$GITHUB_PATH"
+          /tmp/swiftlint/swiftlint version
 
       - name: SwiftLint (strict)
         run: swiftlint --strict --reporter github-actions-logging
@@ -134,20 +179,68 @@ jobs:
         run: |
           set -e
           violations=$(grep -rn --include='*.swift' -E '^\s*print\(' Sources/ | grep -v '//.*print' || true)
-          # Filter out lines that appear inside a #if DEBUG block by checking surrounding lines
+          # Filter out lines that appear inside a #if DEBUG block by checking surrounding lines.
+          #
+          # NOTE: the loop reads from a process substitution rather than a pipe.
+          # `echo "$violations" | while ...` runs the loop body in a SUBSHELL, so
+          # an `exit 1` inside it only terminates that subshell — the step then
+          # falls through to the success echo and exits 0. This gate silently
+          # passed on every run until that was fixed.
+          failed=0
           if [ -n "$violations" ]; then
-            echo "$violations" | while IFS=: read -r file line _rest; do
+            while IFS=: read -r file line _rest; do
+              [ -n "$file" ] || continue
               # Search 50 lines back for #if DEBUG, then check if a #endif came between
               ctx=$(sed -n "1,${line}p" "$file" | tail -n 50)
               last_debug=$(echo "$ctx" | grep -n '#if DEBUG' | tail -n 1 | cut -d: -f1 || true)
               last_endif=$(echo "$ctx" | grep -n '#endif' | tail -n 1 | cut -d: -f1 || true)
               if [ -z "$last_debug" ] || { [ -n "$last_endif" ] && [ "$last_endif" -gt "$last_debug" ]; }; then
                 echo "::error file=$file,line=$line::print() outside #if DEBUG"
-                exit 1
+                failed=1
               fi
-            done
+            done < <(echo "$violations")
+          fi
+          if [ "$failed" -ne 0 ]; then
+            echo "Production print() found — wrap in #if DEBUG or use Logger."
+            exit 1
           fi
           echo "No production print() found"
+
+      - name: Python lockfile is in sync with pyproject.toml
+        run: |
+          # UvBootstrap ships uv.lock and installs with `uv sync --frozen`, which
+          # never re-resolves. `--frozen` does NOT verify the lock matches
+          # pyproject.toml, so drift would ship as a dependency that silently
+          # fails to install. `uv lock --check` is the assertion that catches it.
+          set -e
+          if ! command -v uv >/dev/null 2>&1; then
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            export PATH="$HOME/.local/bin:$PATH"
+          fi
+          cd Sources/Resources
+          if [ ! -f uv.lock ]; then
+            echo "::error::Sources/Resources/uv.lock is missing. Run 'uv lock' there."
+            exit 1
+          fi
+          uv lock --check || {
+            echo "::error::uv.lock is out of date with pyproject.toml. Run 'uv lock' in Sources/Resources and commit the result."
+            exit 1
+          }
+          echo "uv.lock is in sync with pyproject.toml"
+
+      - name: Python unit tests
+        run: |
+          # Tests/test_correction_sanitize.py guards sanitize_model_output, the
+          # function that decides whether a correction survives safeMerge or gets
+          # silently thrown away. Every fixture in it is a verbatim capture of a
+          # model output that DID get discarded, so a regression here is a silent
+          # quality loss with no error anywhere.
+          #
+          # These were unreferenced by any workflow until now. They import
+          # ml.correction, whose mlx imports are lazy, so plain system python is
+          # enough — no uv, no venv, no model download.
+          set -e
+          python3 Tests/test_correction_sanitize.py
 
       - name: TODO/FIXME audit (warn only)
         run: |
@@ -164,8 +257,13 @@ jobs:
 
       - name: Select Xcode
         run: |
-          # Need Xcode 16+ (Swift 6 tooling) — see build-and-test job.
-          latest=$(ls -d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1)
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$latest" ]; then
             sudo xcode-select -s "$latest/Contents/Developer"
           else
@@ -204,3 +302,155 @@ jobs:
         run: |
           du -sh AudioWhisper.app
           ls -lh AudioWhisper.app/Contents/MacOS/AudioWhisper
+
+  # There is deliberately no snapshot job.
+  #
+  # Turning the suite on in CI once was worthwhile — it found a real crash,
+  # DialWaveformView trapping on an empty frequencyBands array (fixed in this
+  # branch, now covered by a direct render test in WaveformViewsTests). But the
+  # job could never do more than that. A GitHub runner has no usable
+  # WindowServer, so it draws AppKit-backed controls as the yellow "cannot
+  # render" placeholder and whole views as flat rectangles: measured
+  # 2026-08-01, all 34 renders it produced diverged from the local baselines by
+  # 19-100% of pixels. The comparison step could only ever be report-only, and
+  # its artifact looked authoritative while being a picture of a broken render.
+  #
+  # Snapshots are a local-only tool: SNAPSHOT_TESTS=1 to check,
+  # SNAPSHOT_RECORD=1 to re-record. See Tests/SnapshotTestCase.swift.
+  analyze:
+    name: SwiftLint analyze
+    runs-on: macos-15
+    # xcodebuild build-for-testing plus a full analyze pass. 30 was too tight
+    # even after dropping from three analyze runs to one.
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # Select the NEWEST Xcode, not the newest 16.x. This used to pin to
+          # Xcode_16*, written when 16 was current — but KeyboardShortcuts 3.x
+          # declares swift-tools-version 6.2, which Xcode 16 cannot resolve
+          # ("incompatible tools version"). Runners carry Xcode 26.x alongside
+          # 16.x, so take the highest available and let the floor be enforced by
+          # the packages themselves.
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
+          swift --version
+
+      - name: Install SwiftLint (pinned)
+        run: |
+          # PINNED, not `brew install swiftlint`.
+          #
+          # Homebrew always installs the latest, so the version drifted silently:
+          # this repo's checked-in expectations were written against 0.63.x while
+          # CI had moved to 0.65.0. The analyzer's unused_declaration heuristics
+          # changed between them — the same tree reports 144 findings on 0.63.2
+          # and 46 on 0.65.0. That is a 3x swing in a number the ratchet below
+          # compares against, so an unrelated Homebrew bump could fail the build
+          # for nobody's mistake, and local results would not match CI's either.
+          #
+          # Bump SWIFTLINT_VERSION deliberately, re-measure the ratchet baseline
+          # in the same commit, and tell developers to match it locally:
+          #   brew upgrade swiftlint   (or install the same release)
+          set -euo pipefail
+          curl -sSL --retry 3 -o /tmp/swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          unzip -q -o /tmp/swiftlint.zip -d /tmp/swiftlint
+          echo "/tmp/swiftlint" >> "$GITHUB_PATH"
+          /tmp/swiftlint/swiftlint version
+
+      - name: Generate VersionInfo.swift
+        run: |
+          VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
+              -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
+              -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
+              Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+
+      - name: Build with xcodebuild (analyzer needs a compiler log)
+        run: |
+          # `swift build -v` does NOT emit a log swiftlint can parse — SPM's new
+          # build system omits the per-file swiftc invocations the analyzer
+          # reads, and it errors with "Cannot index file at path ...".
+          # xcodebuild does produce a compatible log. build-for-testing is used
+          # so Tests/ are included; without them every *ForTesting helper is
+          # reported as unused.
+          set -o pipefail
+          xcodebuild -scheme AudioWhisper -destination 'platform=macOS' \
+            build-for-testing 2>&1 | tee xcodebuild.log | tail -5
+
+      - name: Analyze (single pass)
+        run: |
+          # ONE analyze run, saved to a file that the summary and the gate below
+          # both read. This used to invoke `swiftlint analyze` three times —
+          # twice here, once in the gate — and each pass over 355 files takes
+          # ~10 minutes. The job took 28.5 minutes when it passed and was killed
+          # by its own 30-minute timeout when it did not. The gate step was the
+          # one cancelled, so the job reported "cancelled" rather than anything
+          # that pointed at the real cause.
+          swiftlint analyze --compiler-log-path xcodebuild.log \
+            --reporter github-actions-logging 2>/dev/null | tee analyze.txt || true
+          echo "--- summary ---"
+          grep -oE '\((unused_declaration|unused_import)\)' analyze.txt | sort | uniq -c || true
+
+      - name: Gate on unused_import
+        run: |
+          # unused_import IS enforced. The backlog was triaged by removing each
+          # flagged import and rebuilding — the compiler, not the analyzer, is
+          # the oracle. 95 were genuinely unused and removed; 20 were false
+          # positives (umbrella imports like Cocoa, modules needed only for @objc
+          # or a type in a signature, and `@testable import AudioWhisper`) and
+          # carry an inline swiftlint:disable:next with that justification.
+          # The rule now reports 0, so any new finding is real.
+          # Reads the single analyze pass above; does not re-run it.
+          count=$(grep -c '(unused_import)' analyze.txt || true)
+          if [ "${count:-0}" -ne 0 ]; then
+            # analyze.txt holds the reporter's raw "::warning file=...,line=..."
+            # lines. GitHub turns those into annotations and hides the file path
+            # from the log, so the first time this gate fired it said only that
+            # ONE import was unused, with no way to tell which. Neutralise the
+            # "::" prefix so the paths actually print.
+            echo "offending imports:"
+            grep '(unused_import)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
+          fi
+          if [ "${count:-0}" -ne 0 ]; then
+            echo "::error::$count unused import(s). Remove them, or if the compiler"
+            echo "::error::genuinely needs one, add swiftlint:disable:next with a reason."
+            exit 1
+          fi
+          echo "unused_import: 0"
+
+      - name: Ratchet on unused_declaration
+        run: |
+          # NOT gated at zero, and probably never should be — much of what
+          # remains is structural rather than defective: protocol requirements
+          # reached only through the protocol, SwiftUI declarations required by
+          # position rather than by call, Tests/Mocks members that exist purely
+          # to satisfy a conformance.
+          #
+          # A RATCHET instead: the count may fall, never rise. That catches
+          # genuinely dead code as it appears — which is the actual risk — without
+          # demanding a triage pass nobody has time for.
+          #
+          # BASELINE is only valid for the pinned SWIFTLINT_VERSION. The same
+          # tree reports 144 findings on 0.63.2 and 46 on 0.65.0, so bump the
+          # two together or this gate becomes noise. (The note that used to live
+          # here claimed 215 with 87 in Tests/Mocks — stale on both counts.)
+          #
+          # Raising BASELINE should be a deliberate, explained act. Lowering it
+          # is always fine.
+          BASELINE=46
+          count=$(grep -c '(unused_declaration)' analyze.txt || true)
+          echo "unused_declaration: $count (baseline $BASELINE)"
+          if [ "${count:-0}" -gt "$BASELINE" ]; then
+            echo "::error::unused_declaration rose from $BASELINE to $count. Findings:"
+            grep '(unused_declaration)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
+            exit 1
+          fi
+          if [ "${count:-0}" -lt "$BASELINE" ]; then
+            echo "::notice::unused_declaration fell to $count — lower BASELINE to lock it in."
+          fi

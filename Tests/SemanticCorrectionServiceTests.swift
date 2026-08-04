@@ -239,4 +239,66 @@ final class SemanticCorrectionServiceTests: XCTestCase {
         XCTAssertEqual(SemanticCorrectionMode.off.displayName, "Off")
         XCTAssertEqual(SemanticCorrectionMode.localMLX.displayName, "Local (MLX)")
     }
+
+    // MARK: - Per-category change ratio (A3)
+
+    /// Prose keeps the tight bound: a large edit there really does mean the
+    /// model went off the rails.
+    func testProseCategoriesKeepTheTightThreshold() {
+        for categoryId in ["general", "email", "writing", "chat", "unknown-id"] {
+            XCTAssertEqual(
+                SemanticCorrectionService.maxChangeRatio(for: categoryId), 0.6,
+                "\(categoryId) should keep the prose threshold"
+            )
+        }
+    }
+
+    /// Command-line categories get headroom, because good correction there
+    /// legitimately compresses rambling dictation into a terse command.
+    func testCommandLineCategoriesGetHeadroom() {
+        XCTAssertEqual(SemanticCorrectionService.maxChangeRatio(for: "terminal"), 0.85)
+        XCTAssertEqual(SemanticCorrectionService.maxChangeRatio(for: "coding"), 0.85)
+    }
+
+    /// The exact case the 2026-07-31 benchmark measured being discarded at
+    /// ratio 0.664: a correct shell command rejected by the flat 0.6 bound.
+    func testRealTerminalCorrectionSurvivesUnderTerminalThreshold() {
+        let original = "um so run suit oh apt update and then uh see dee into tilde slash "
+            + "documents and like grep dash v for the error you know then pipe to less"
+        let corrected = "sudo apt update && cd ~/Documents && grep -v error | less"
+
+        let underProse = SemanticCorrectionService.safeMerge(
+            original: original,
+            corrected: corrected,
+            maxChangeRatio: SemanticCorrectionService.maxChangeRatio(for: "general")
+        )
+        XCTAssertEqual(
+            underProse, original,
+            "This is the bug: under the prose bound the good correction is discarded"
+        )
+
+        let underTerminal = SemanticCorrectionService.safeMerge(
+            original: original,
+            corrected: corrected,
+            maxChangeRatio: SemanticCorrectionService.maxChangeRatio(for: "terminal")
+        )
+        XCTAssertEqual(
+            underTerminal, corrected,
+            "Under the terminal bound the correction must be accepted"
+        )
+    }
+
+    /// Headroom must not become "anything goes" — a total rewrite is still
+    /// rejected even in the terminal category.
+    func testTerminalThresholdStillRejectsATotalRewrite() {
+        let original = "list the files in my home directory"
+        let garbage = String(repeating: "zqx ", count: 60)
+
+        let merged = SemanticCorrectionService.safeMerge(
+            original: original,
+            corrected: garbage,
+            maxChangeRatio: SemanticCorrectionService.maxChangeRatio(for: "terminal")
+        )
+        XCTAssertEqual(merged, original, "A total rewrite must still be rejected")
+    }
 }

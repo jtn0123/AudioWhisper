@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import SwiftUI
 import os.log
 
 @MainActor
@@ -125,8 +124,4 @@ internal final class CategoryStore {
 }
 
 extension CategoryStore {
-    func reloadForPreviews() {
-        categories = CategoryDefinition.defaults
-        rebuildIndex()
-    }
 }

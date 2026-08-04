@@ -139,3 +139,6 @@ AudioWhisper.iconset/
 # CI coverage artifacts
 coverage.lcov
 sonar-coverage.xml
+coverage-python.xml
+.coverage
+.pycov/

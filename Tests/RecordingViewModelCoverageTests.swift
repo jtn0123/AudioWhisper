@@ -1,5 +1,4 @@
 import XCTest
-import AppKit
 @testable import AudioWhisper
 
 /// Coverage tests for `RecordingViewModel` lifecycle, success UI, and the
