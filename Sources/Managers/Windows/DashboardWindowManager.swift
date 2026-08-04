@@ -33,13 +33,26 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
         Array(recentRecordsCache.prefix(limit))
     }
 
+    /// How many records the cache holds. The status menu's "Recent" section
+    /// asks for 3 (`AppDelegate+Menu`); 10 leaves room without paying for it.
+    private static let recentCacheSize = 10
+
     /// Reloads the recent-records cache from the data layer.
+    ///
+    /// Fetches only what the cache holds. This used to call
+    /// `fetchAllRecordsQuietly()` and then sort the whole history in memory to
+    /// take `.prefix(10)` — so opening the menu loaded every transcript ever
+    /// recorded to display three of them. `fetchRecords(limit:offset:search:)`
+    /// sorts by date descending in the store and applies `fetchLimit`, so the
+    /// work is bounded by `recentCacheSize` rather than by history size.
     func refreshRecentRecordsCache() async {
-        let records = await DataManager.shared.fetchAllRecordsQuietly()
-        recentRecordsCache = records
-            .sorted { $0.date > $1.date }
-            .prefix(10)
-            .map { $0 }
+        // `?? []` preserves the previous failure behaviour: the old
+        // `...Quietly` call swallowed errors and yielded an empty list.
+        recentRecordsCache = (try? await DataManager.shared.fetchRecords(
+            limit: Self.recentCacheSize,
+            offset: 0,
+            search: nil
+        )) ?? []
     }
 
     /// Shows the dashboard window, creating it if necessary or bringing existing one to front
