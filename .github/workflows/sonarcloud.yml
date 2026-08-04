@@ -65,10 +65,43 @@ jobs:
             --ignore-filename-regex='(\.build|/checkouts/|Tests/)' > coverage.lcov
           python3 scripts/lcov-to-sonar.py coverage.lcov sonar-coverage.xml "$PWD"
 
+      - name: Export Python coverage for SonarCloud
+        run: |
+          # sonar-project.properties sets `sonar.sources=Sources` and
+          # `sonar.python.version=3.11`, so Sonar ANALYZES the bundled Python
+          # under Sources/ml — but this job only ever uploaded Swift coverage.
+          # A file Sonar analyzes with no coverage report counts as 0% covered,
+          # so Sources/ml/correction.py reported 0.0% no matter how well tested
+          # it was, and was the single largest contributor to the "Coverage on
+          # New Code" quality-gate failure on PR #27. Its real line coverage is
+          # ~31%. Tests/test_correction_sanitize.py existed and passed the whole
+          # time; nothing was ever measuring it.
+          #
+          # coverage.py writes `filename` as project-root-relative
+          # (Sources/ml/correction.py), which is exactly what Sonar matches
+          # against sonar.sources — no path rewriting needed.
+          #
+          # A venv rather than `pip install` because PEP 668 marks the runner's
+          # system Python as externally managed.
+          set -e
+          python3 -m venv .pycov
+          .pycov/bin/pip install --quiet coverage
+          # Same invocation as ci.yml's "Python unit tests" step. ml.correction's
+          # mlx imports are lazy, so no uv, venv-for-the-app, or model download.
+          .pycov/bin/python -m coverage run --source=Sources/ml \
+            Tests/test_correction_sanitize.py
+          .pycov/bin/python -m coverage xml -o coverage-python.xml
+          if [ ! -s coverage-python.xml ]; then
+            echo "::error::coverage-python.xml missing or empty. Sonar would"
+            echo "::error::silently score Sources/ml as 0% — failing instead."
+            exit 1
+          fi
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v7
         with:
           args: >
             -Dsonar.coverageReportPaths=sonar-coverage.xml
+            -Dsonar.python.coverage.reportPaths=coverage-python.xml
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
