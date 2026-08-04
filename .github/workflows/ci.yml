@@ -119,6 +119,14 @@ jobs:
           #
           # Missing data is now an error, not a silent skip. A gate that cannot
           # find its input is broken, and should say so rather than pass.
+          #
+          # The threshold was also measuring the wrong thing. `data[0].totals`
+          # spans every instrumented file, which includes the dependency sources
+          # SwiftPM builds under .build/checkouts — 53.7% all-files against
+          # 28.4% for our own code. That gate flattered us (most "covered" lines
+          # were WhisperKit's, not ours) and was movable without touching a
+          # test: a dependency bump can raise or lower it on its own. The gate
+          # now scores Sources/ only, via scripts/coverage-gate.py.
           set -e
           COV_JSON=$(swift test --show-codecov-path 2>/dev/null || true)
           if [ -z "$COV_JSON" ] || [ ! -f "$COV_JSON" ]; then
@@ -127,22 +135,21 @@ jobs:
             exit 1
           fi
 
-          COV_LINE=$(python3 -c 'import json,sys; t=json.load(open(sys.argv[1]))["data"][0]["totals"]["lines"]; print(round(t["percent"], 2), t["covered"], t["count"])' "$COV_JSON")
-          PCT=$(echo "$COV_LINE" | awk '{print $1}')
-          COVERED=$(echo "$COV_LINE" | awk '{print $2}')
-          TOTAL=$(echo "$COV_LINE" | awk '{print $3}')
-
-          echo "Line coverage: $PCT% ($COVERED/$TOTAL lines)"
-
           # RATCHET, not an aspiration. 60 was aspirational and unenforced; a
           # threshold above the real number only stays green by being broken.
           # Raise this as coverage improves; never lower it to make CI pass.
-          THRESHOLD=53
-          if [ "${PCT%.*}" -lt "$THRESHOLD" ]; then
-            echo "::error::Line coverage $PCT% is below the $THRESHOLD% ratchet."
-            exit 1
-          fi
-          echo "Coverage $PCT% >= ratchet $THRESHOLD%"
+          #
+          # 27 is CI's measured baseline, NOT a local one. This runner reports
+          # ~0.5pp lower than a local machine — 27.86% (9601/34461) here against
+          # 28.35% (9748/34390) locally — because several tests skip on
+          # environment: "WhisperKit storage directory unavailable", "Both
+          # Parakeet models appear cached locally", "A real model directory
+          # exists". A dev box with models cached runs a different set than a
+          # clean runner does.
+          #
+          # So measure HERE before moving this number. Setting it from a local
+          # run is what made the first attempt at this gate fail.
+          python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 27
 
   lint:
     runs-on: macos-14

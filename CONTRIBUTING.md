@@ -75,8 +75,8 @@ swift run --verbose
 # Run all tests (recommended - uses make)
 make test
 
-# Run all tests directly, sequentially (matches CI)
-swift test --no-parallel
+# Run all tests directly, in parallel (matches CI)
+swift test --parallel
 
 # Run specific test suite
 swift test --filter AudioRecorderTests
@@ -84,23 +84,25 @@ swift test --filter SpeechToTextServiceTests
 swift test --filter SettingsViewTests
 
 # Run tests with verbose output
-swift test --no-parallel --verbose
+swift test --parallel --verbose
 
 # Run tests with code coverage (matches CI exactly)
-swift test --no-parallel --enable-code-coverage
+swift test --parallel --enable-code-coverage
 ```
 
-**Note**: Tests run sequentially (`--no-parallel`) to match CI
-(`.github/workflows/ci.yml`). A number of tests still read and write
-`UserDefaults.standard` directly; under `--parallel` they observe each
-other's writes and fail nondeterministically. Tests that touch
-`UserDefaults.standard` should subclass `IsolatedXCTestCase` (see
-`Tests/Utilities/IsolatedXCTestCase.swift`) and store their settings in a
-UUID-scoped suite via `UserDefaults(suiteName: UUID().uuidString)!`. The
-base class can be put in strict mode
-(`AUDIOWHISPER_TEST_ISOLATION=strict swift test`) to fail any test that
-leaks state into `.standard`. Once enough tests are isolated, `--parallel`
-can become the default.
+**Note**: Tests run in parallel, matching CI (`.github/workflows/ci.yml`).
+This used to require `--no-parallel`: tests read and wrote
+`UserDefaults.standard` directly, so under `--parallel` they observed each
+other's writes and failed nondeterministically. Settings are now isolated
+per process, so parallel is the default.
+
+Keep it that way. Tests that touch `UserDefaults.standard` should subclass
+`IsolatedXCTestCase` (see `Tests/Utilities/IsolatedXCTestCase.swift`) and
+store their settings in a UUID-scoped suite via
+`UserDefaults(suiteName: UUID().uuidString)!`. The base class can be put in
+strict mode (`AUDIOWHISPER_TEST_ISOLATION=strict swift test`) to fail any
+test that leaks state into `.standard` — worth running before adding a test
+that touches settings.
 
 ### Code Quality Checks
 
@@ -318,7 +320,17 @@ AudioWhisper/
 - Write unit tests for business logic
 - Test error conditions
 - Mock external dependencies
-- Aim for high code coverage
+- CI gates line coverage over `Sources/` at a ratchet (currently 27%, see
+  `scripts/coverage-gate.py`). The ratchet only goes up — if your change drops
+  it, add tests rather than lowering the number.
+- Two things make local coverage numbers disagree with CI's, so re-measure in
+  CI before touching the threshold:
+  - It counts *our* code only. SwiftPM's own total runs ~25 points higher
+    because it includes dependency sources under `.build/checkouts`.
+  - A local run reads ~0.5pp higher than CI, because several tests skip on
+    environment (cached Parakeet models, an existing WhisperKit storage
+    directory). A dev box with models cached runs a different set than a clean
+    runner does.
 
 ### Security
 - Never hardcode API keys
