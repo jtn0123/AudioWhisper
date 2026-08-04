@@ -137,9 +137,19 @@ jobs:
 
           # RATCHET, not an aspiration. 60 was aspirational and unenforced; a
           # threshold above the real number only stays green by being broken.
-          # 28 is the measured Sources-only baseline. Raise it as coverage
-          # improves; never lower it to make CI pass.
-          python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 28
+          # Raise this as coverage improves; never lower it to make CI pass.
+          #
+          # 27 is CI's measured baseline, NOT a local one. This runner reports
+          # ~0.5pp lower than a local machine — 27.86% (9601/34461) here against
+          # 28.35% (9748/34390) locally — because several tests skip on
+          # environment: "WhisperKit storage directory unavailable", "Both
+          # Parakeet models appear cached locally", "A real model directory
+          # exists". A dev box with models cached runs a different set than a
+          # clean runner does.
+          #
+          # So measure HERE before moving this number. Setting it from a local
+          # run is what made the first attempt at this gate fail.
+          python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 27
 
   lint:
     runs-on: macos-14

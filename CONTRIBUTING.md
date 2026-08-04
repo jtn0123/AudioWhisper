@@ -320,11 +320,17 @@ AudioWhisper/
 - Write unit tests for business logic
 - Test error conditions
 - Mock external dependencies
-- CI gates line coverage over `Sources/` at a ratchet (currently 28%, see
+- CI gates line coverage over `Sources/` at a ratchet (currently 27%, see
   `scripts/coverage-gate.py`). The ratchet only goes up — if your change drops
-  it, add tests rather than lowering the number. Note this counts *our* code
-  only; SwiftPM's own total is ~25 points higher because it includes
-  dependency sources.
+  it, add tests rather than lowering the number.
+- Two things make local coverage numbers disagree with CI's, so re-measure in
+  CI before touching the threshold:
+  - It counts *our* code only. SwiftPM's own total runs ~25 points higher
+    because it includes dependency sources under `.build/checkouts`.
+  - A local run reads ~0.5pp higher than CI, because several tests skip on
+    environment (cached Parakeet models, an existing WhisperKit storage
+    directory). A dev box with models cached runs a different set than a clean
+    runner does.
 
 ### Security
 - Never hardcode API keys
