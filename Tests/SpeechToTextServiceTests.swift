@@ -9,13 +9,11 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
     var service: SpeechToTextService!
-    var mockKeychain: MockKeychainService!
     var testAudioURL: URL!
 
     override func setUp() {
         super.setUp()
-        mockKeychain = MockKeychainService()
-        service = SpeechToTextService(keychainService: mockKeychain)
+        service = SpeechToTextService()
 
         // Create a temporary test audio file
         testAudioURL = createTestAudioFile()
@@ -26,7 +24,6 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
             try? FileManager.default.removeItem(at: url)
         }
         service = nil
-        mockKeychain = nil
         testAudioURL = nil
         super.tearDown()
     }

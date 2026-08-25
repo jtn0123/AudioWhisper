@@ -105,15 +105,19 @@ internal class TranscriptionPipeline {
 
     // MARK: - Private Helpers
 
+    /// Audit item A4: calls `transcribeValidated`, not `transcribeRaw`. Step 1
+    /// of `transcribe(audioURL:config:)` has already run `AudioValidator` on
+    /// this URL; `transcribeRaw` would run it again, opening and inspecting the
+    /// same file a second time on every transcription.
     private func performTranscription(audioURL: URL, config: TranscriptionPipelineConfig) async throws -> String {
         switch config.provider {
         case .local:
             guard let model = config.whisperModel else {
                 throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
             }
-            return try await speechService.transcribeRaw(audioURL: audioURL, provider: .local, model: model)
+            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .local, model: model)
         case .parakeet:
-            return try await speechService.transcribeRaw(audioURL: audioURL, provider: .parakeet)
+            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .parakeet)
         }
     }
 

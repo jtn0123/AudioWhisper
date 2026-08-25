@@ -2,10 +2,16 @@ import Foundation
 @testable import AudioWhisper
 
 /// Protocol for speech-to-text service to enable mocking
+/// Test-only protocol mirroring the surface `SpeechToTextService` actually
+/// vends. `SpeechToTextService` does not conform to it — only the mock does —
+/// so it has to be kept in step by hand.
+///
+/// Audit item B4: the two `transcribe(...)` overloads were dropped here when
+/// they were deleted from the real service. Leaving them would have kept the
+/// mock advertising an API the production type no longer has, which is how a
+/// mock surface drifts into fiction.
 protocol SpeechToTextServiceProtocol {
     func transcribeRaw(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel?) async throws -> String
-    func transcribe(audioURL: URL) async throws -> String
-    func transcribe(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel?) async throws -> String
 }
 
 /// Mock implementation for testing transcription flows
@@ -34,30 +40,6 @@ final class MockSpeechToTextService: SpeechToTextServiceProtocol {
 
         let result = transcribeRawResult ?? transcriptionResult
         return try result.get()
-    }
-
-    func transcribe(audioURL: URL) async throws -> String {
-        callCount += 1
-        lastAudioURL = audioURL
-
-        if simulatedDelay > 0 {
-            try? await Task.sleep(for: .milliseconds(Int(simulatedDelay * 1000)))
-        }
-
-        return try transcriptionResult.get()
-    }
-
-    func transcribe(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel?) async throws -> String {
-        callCount += 1
-        lastAudioURL = audioURL
-        lastProvider = provider
-        lastModel = model
-
-        if simulatedDelay > 0 {
-            try? await Task.sleep(for: .milliseconds(Int(simulatedDelay * 1000)))
-        }
-
-        return try transcriptionResult.get()
     }
 
     // MARK: - Test Helpers
