@@ -24,6 +24,10 @@ internal struct SettingsSectionCard<Content: View>: View {
                 .foregroundStyle(DashboardTheme.inkMuted)
                 .tracking(0.8)
                 .textCase(.uppercase)
+                // Audit item C2: without this VoiceOver reads section titles as
+                // ordinary text, so rotor-by-heading navigation skips every
+                // settings section.
+                .accessibilityAddTraits(.isHeader)
 
             // Content card
             VStack(alignment: .leading, spacing: 0) {
@@ -70,6 +74,18 @@ internal struct SettingsToggleRow: View {
                 .labelsHidden()
         }
         .padding(DashboardTheme.Spacing.md)
+        // Audit item C2. `Toggle("")` plus `.labelsHidden()` is correct
+        // visually — the title is drawn by the sibling `Text` — but it leaves
+        // the switch with NO accessibility label, so VoiceOver announced a bare
+        // "switch, off" and the title as unrelated text next to it. Combining
+        // the row into one element and naming it explicitly makes the control
+        // self-describing. This is a shared row used across every Dashboard
+        // settings screen, so it is the single highest-leverage a11y fix here.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityHint(subtitle ?? "")
+        .accessibilityAddTraits(.isToggle)
     }
 }
 
@@ -146,6 +162,12 @@ internal struct SettingsPickerRow<Selection: Hashable>: View {
                 )
             }
             .menuStyle(.borderlessButton)
+            // Audit item C2: the menu's visible label is only the CURRENT
+            // value, so VoiceOver announced e.g. "1 month" with no indication
+            // of what setting it belongs to.
+            .accessibilityLabel(title)
+            .accessibilityValue(display(selection))
+            .accessibilityHint(subtitle ?? "")
         }
         .padding(DashboardTheme.Spacing.md)
     }
@@ -198,6 +220,12 @@ internal struct SettingsButtonRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // Audit item C2: collapse the title/subtitle/chevron stack into one
+        // named button rather than three separate elements VoiceOver reads in
+        // sequence without connecting them.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityHint(subtitle ?? "")
     }
 }
 
