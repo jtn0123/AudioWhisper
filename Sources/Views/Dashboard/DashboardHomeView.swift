@@ -229,17 +229,52 @@ extension DashboardHomeView {
 
 // MARK: - Data loading
 extension DashboardHomeView {
+    /// Number of transcripts the "Recent" section renders. The view only ever
+    /// shows `recentRecords.prefix(5)`, so fetching more is pure waste.
+    static let recentRecordsDisplayLimit = 5
+
+    /// Page size for the provider-stats / daily-activity scan.
+    private static let aggregatePageSize = 500
+
     func loadDashboardData() {
         Task {
             await metricsStore.bootstrapIfNeeded(dataManager: dataManager)
-            let records = await dataManager.fetchAllRecordsQuietly()
+
+            // Audit item B1/G2: this used to call `fetchAllRecordsQuietly()` and
+            // hold the ENTIRE transcript history in memory — to render five rows
+            // and two aggregates. With retention set to *forever* that grows
+            // without bound, and both the dashboard open and the metrics
+            // bootstrap paid for it.
+            //
+            // Now: a bounded fetch for the rows, and a paged scan for the
+            // aggregates so peak memory is one page regardless of history size.
+            let recent = await dataManager.fetchRecordsQuietly(
+                limit: Self.recentRecordsDisplayLimit,
+                offset: 0,
+                search: nil
+            )
+
+            var providerWords: [String: Int] = [:]
+            var activityFromRecords: [Date: Int] = [:]
+            let calendar = Calendar.current
+            try? await dataManager.forEachRecordPage(pageSize: Self.aggregatePageSize) { page in
+                for record in page {
+                    providerWords[record.provider, default: 0] += record.wordCount
+                    let day = calendar.startOfDay(for: record.date)
+                    activityFromRecords[day, default: 0] += record.wordCount
+                }
+            }
+
+            let stats = Self.providerStats(from: providerWords)
+            let merged = Self.mergeDailyActivity(
+                base: metricsStore.getDailyActivity(days: 28),
+                dailyWords: activityFromRecords
+            )
+
             await MainActor.run {
-                recentRecords = records
-                providerStats = Self.computeProviderStats(from: records)
-                dailyActivity = Self.mergeDailyActivity(
-                    base: metricsStore.getDailyActivity(days: 28),
-                    records: records
-                )
+                recentRecords = recent
+                providerStats = stats
+                dailyActivity = merged
             }
         }
     }
@@ -383,7 +418,14 @@ extension DashboardHomeView {
     ) -> [ProviderStat] {
         var stats: [String: Int] = [:]
         for record in records { stats[record.provider, default: 0] += record.wordCount }
-        return stats
+        return providerStats(from: stats)
+    }
+
+    /// Builds the sorted stat rows from already-accumulated per-provider word
+    /// counts, so a paged scan can accumulate without materialising the records
+    /// (audit item B1/G2).
+    static func providerStats(from wordsByProvider: [String: Int]) -> [ProviderStat] {
+        wordsByProvider
             .map { ProviderStat(provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
             .sorted { $0.words > $1.words }
     }
@@ -392,13 +434,25 @@ extension DashboardHomeView {
         base: [Date: Int],
         records: [TranscriptionRecord]
     ) -> [Date: Int] {
-        var activity = base
         let calendar = Calendar.current
+        var dailyWords: [Date: Int] = [:]
         for record in records {
-            let day = calendar.startOfDay(for: record.date)
-            if activity[day] == nil || activity[day] == 0 {
-                activity[day, default: 0] += record.wordCount
-            }
+            dailyWords[calendar.startOfDay(for: record.date), default: 0] += record.wordCount
+        }
+        return mergeDailyActivity(base: base, dailyWords: dailyWords)
+    }
+
+    /// Fills gaps in `base` from per-day word counts a paged scan accumulated
+    /// (audit item B1/G2). A day already present and non-zero in `base` wins —
+    /// the store's own figure is authoritative; records only backfill days it
+    /// has no number for.
+    static func mergeDailyActivity(
+        base: [Date: Int],
+        dailyWords: [Date: Int]
+    ) -> [Date: Int] {
+        var activity = base
+        for (day, words) in dailyWords where activity[day] == nil || activity[day] == 0 {
+            activity[day, default: 0] += words
         }
         return activity
     }

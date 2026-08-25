@@ -141,6 +141,24 @@ private final class TestDataManager: DataManagerProtocol {
         records
     }
 
+    /// Audit item B1/G2: pages in the same order as the real DataManager so
+    /// a paged rebuild yields the same totals a whole-table fetch would.
+    func fetchRecordsQuietly(limit: Int, offset: Int, search: String?) async -> [TranscriptionRecord] {
+        (try? await fetchRecords(limit: limit, offset: offset, search: search)) ?? []
+    }
+
+    func forEachRecordPage(
+        pageSize: Int,
+        _ body: ([TranscriptionRecord]) -> Void
+    ) async throws {
+        guard pageSize > 0 else { return }
+        var offset = 0
+        while offset < records.count {
+            body(Array(records[offset..<min(offset + pageSize, records.count)]))
+            offset += pageSize
+        }
+    }
+
     func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord] {
         records
     }
