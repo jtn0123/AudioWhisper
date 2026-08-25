@@ -93,7 +93,9 @@ final class RecordingViewModel {
 
     // MARK: - Internal State
 
-    private var processingTask: Task<Void, Never>?
+    /// Not `private` because the transcription flow lives in the
+    /// `RecordingViewModel+Transcription.swift` extension (audit item A1).
+    var processingTask: Task<Void, Never>?
     /// Not `private` because `setupNotificationObservers` / `stopNotificationObservers`
     /// live in the `RecordingViewModel+Paste.swift` extension.
     var notificationTasks: [Task<Void, Never>] = []
@@ -143,6 +145,18 @@ final class RecordingViewModel {
         isProcessing = false
     }
 
+    /// Read/write access to `isProcessing` for the transcription flow in
+    /// `RecordingViewModel+Transcription.swift` (audit item A1).
+    ///
+    /// Declared here rather than in that extension because `private(set)` is
+    /// file-scoped: only code in *this* file can assign `isProcessing`. The
+    /// public property keeps its `private(set)`, so the view layer still cannot
+    /// write it — `ContentView.isProcessing` remains a read-only forwarder.
+    var isProcessingForFlow: Bool {
+        get { isProcessing }
+        set { isProcessing = newValue }
+    }
+
     // MARK: - Deinit
 
     /// Cancels any notification-observer Tasks the VM is holding. Without
@@ -180,7 +194,15 @@ final class RecordingViewModel {
 
     // MARK: - Recording Actions
 
-    func startRecording(audioRecorder: AudioEngineRecorder, permissionManager: PermissionManager) {
+    /// Generic over `AudioRecording` rather than taking the concrete
+    /// `AudioEngineRecorder` (audit item A1/D1): `AudioEngineRecorder` is
+    /// `final`, so a concrete parameter cannot be substituted in a test. The
+    /// protocol already declares everything this flow needs, and
+    /// `MockAudioEngineRecorder` conforms to it.
+    func startRecording<Recorder: AudioRecording>(
+        audioRecorder: Recorder,
+        permissionManager: PermissionManager
+    ) {
         if permissionManager.microphonePermissionState != .granted {
             permissionManager.requestPermissionWithEducation()
             return
@@ -202,7 +224,9 @@ final class RecordingViewModel {
 
     // MARK: - Private Helpers
 
-    private func isLocalModelInvocationPlanned(transcriptionProvider: TranscriptionProvider) -> Bool {
+    /// Not `private` because `RecordingViewModel+Transcription.swift` computes
+    /// the first-model-use hint from it (audit item A1).
+    func isLocalModelInvocationPlanned(transcriptionProvider: TranscriptionProvider) -> Bool {
         if transcriptionProvider == .local || transcriptionProvider == .parakeet {
             return true
         }

@@ -109,11 +109,15 @@ final class ContentViewCompositionTests: XCTestCase {
         XCTAssertFalse(view.isHovered)
     }
 
-    func testContentViewProcessingTaskInitiallyNil() {
+    /// Audit item A1: the in-flight transcription Task moved from the view's
+    /// `@State` onto `RecordingViewModel`, which is what owns and cancels it
+    /// now. Asserting on the view's copy would have kept passing while
+    /// `ContentView+Lifecycle`'s cancel calls silently became no-ops.
+    func testProcessingTaskInitiallyNilAndOwnedByTheViewModel() {
         let recorder = AudioEngineRecorder()
         let view = ContentView(audioRecorder: recorder)
 
-        XCTAssertNil(view.processingTask)
+        XCTAssertNil(view.viewModel.processingTask)
     }
 
     // MARK: - AppStorage Default Values Tests

@@ -18,7 +18,6 @@ internal struct ContentView: View {
     // MARK: - View-Local State
 
     @State var isHovered = false
-    @State var processingTask: Task<Void, Never>?
     @State var notificationCoordinator = NotificationCoordinator()
 
     // MARK: - Read-Only Forwarder
