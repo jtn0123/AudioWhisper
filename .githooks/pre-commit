@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# Audit item I3. Runs the gates CI already enforces, but locally, before a push.
+#
+# SwiftLint strict, the production-print() check, and `uv lock --check` are all
+# fast and deterministic, yet none of them ran until a macOS CI runner picked up
+# the branch — and the lint job installs a pinned SwiftLint from GitHub releases
+# before it can even start checking. A trailing print() therefore cost a full
+# round trip to discover.
+#
+# Opt in with:
+#     git config core.hooksPath .githooks
+#
+# Bypass a single commit with `git commit --no-verify`.
+#
+# This adds NO new gates: everything here already fails CI. It only moves the
+# feedback earlier. Keep it under a couple of seconds, or people will disable it.
+set -uo pipefail
+
+repo_root=$(git rev-parse --show-toplevel)
+cd "$repo_root" || exit 1
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -n "$staged" ] || exit 0
+
+status=0
+
+staged_swift=$(printf '%s\n' "$staged" | grep -E '\.swift$' || true)
+
+# --- 1. SwiftLint (strict), staged Swift files only -------------------------
+if [ -n "$staged_swift" ]; then
+  if command -v swiftlint >/dev/null 2>&1; then
+    # `swiftlint lint` needs no sourcekitd for most rules, but scripts/lint.sh
+    # handles the Command Line Tools trap; reuse its toolchain resolution.
+    # shellcheck source=scripts/lib/xcode-env.sh
+    . "scripts/lib/xcode-env.sh" 2>/dev/null && ensure_xcode_toolchain >/dev/null 2>&1 || true
+    if ! printf '%s\n' "$staged_swift" \
+        | xargs swiftlint lint --strict --quiet --use-script-input-file-list 2>/dev/null \
+        && ! printf '%s\n' "$staged_swift" | xargs swiftlint lint --strict --quiet; then
+      echo "pre-commit: SwiftLint (strict) failed."
+      status=1
+    fi
+  else
+    echo "pre-commit: swiftlint not installed — skipping (CI still enforces it)."
+  fi
+fi
+
+# --- 2. No production print() outside #if DEBUG -----------------------------
+# Mirrors the ci.yml gate. Staged files only, so it stays fast.
+if [ -n "$staged_swift" ]; then
+  while IFS= read -r file; do
+    case "$file" in Sources/*) ;; *) continue ;; esac
+    [ -f "$file" ] || continue
+    while IFS=: read -r line _; do
+      [ -n "${line:-}" ] || continue
+      ctx=$(sed -n "1,${line}p" "$file" | tail -n 50)
+      last_debug=$(printf '%s\n' "$ctx" | grep -n '#if DEBUG' | tail -n 1 | cut -d: -f1 || true)
+      last_endif=$(printf '%s\n' "$ctx" | grep -n '#endif'    | tail -n 1 | cut -d: -f1 || true)
+      if [ -z "$last_debug" ] || { [ -n "$last_endif" ] && [ "$last_endif" -gt "$last_debug" ]; }; then
+        echo "pre-commit: $file:$line — print() outside #if DEBUG"
+        status=1
+      fi
+    done < <(grep -n -E '^\s*print\(' "$file" | grep -v '//.*print' | cut -d: -f1 | sed 's/$/:/')
+  done < <(printf '%s\n' "$staged_swift")
+fi
+
+# --- 3. Python lockfile in sync --------------------------------------------
+# Only when pyproject.toml is staged: `uv sync --frozen` does not detect drift,
+# so this is the assertion that catches it.
+if printf '%s\n' "$staged" | grep -q '^Sources/Resources/pyproject.toml$'; then
+  if command -v uv >/dev/null 2>&1; then
+    if ! (cd Sources/Resources && uv lock --check >/dev/null 2>&1); then
+      echo "pre-commit: uv.lock is out of date. Run 'uv lock' in Sources/Resources."
+      status=1
+    fi
+  else
+    echo "pre-commit: uv not installed — skipping lockfile check (CI still enforces it)."
+  fi
+fi
+
+if [ "$status" -ne 0 ]; then
+  echo "pre-commit: commit blocked. Fix the above, or use --no-verify to bypass."
+fi
+exit "$status"

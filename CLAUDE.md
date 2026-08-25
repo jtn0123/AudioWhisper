@@ -8,6 +8,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build Commands
 
+> **Toolchain:** the package compiles `Sources/Assets.xcassets`, which needs
+> `actool` — Xcode only, **not** Command Line Tools. If `xcode-select -p` points
+> at `/Library/Developer/CommandLineTools` (which happens silently after a CLT
+> update), every bare `swift build` / `swift test` dies with
+> `Failed to decode version info for '/usr/bin/actool'` followed by
+> `error: fatalError`, naming neither the cause nor the fix.
+>
+> The `make` targets and `scripts/*.sh` all source `scripts/lib/xcode-env.sh`,
+> which sets `DEVELOPER_DIR` for that process and recovers automatically — so
+> **prefer `make build` / `make test`**. Bare `swift` commands bypass that
+> recovery; if you use them on a CLT-selected machine, prefix them:
+>
+> ```bash
+> DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --parallel
+> ```
+
 ```bash
 # Build release app bundle
 make build
@@ -18,8 +34,10 @@ swift run
 # Build for release (without app bundle)
 swift build -c release
 
-# Run tests (parallel — settings are isolated per process by AppDefaults,
-# so plain `swift test --parallel` is safe too)
+# Run tests. Prefer this over bare `swift test`: it recovers from a
+# CLT-selected toolchain (see the note above) and sweeps the scratch settings
+# domains. Settings are isolated per process by AppDefaults, so the --parallel
+# it runs is safe.
 make test
 
 # Coverage. --parallel is fine: the old advice here was that llvm merges one
@@ -103,7 +121,7 @@ open /Applications/AudioWhisper.app
 - `SourceUsageStore.swift` - Provider usage tracking
 
 ### Managers (`Sources/Managers/`)
-- `HotKeyManager.swift` - Global keyboard shortcuts via HotKey library
+- `HotKeyManager.swift` - Global keyboard shortcuts via KeyboardShortcuts
 - `PasteManager.swift` - Clipboard and SmartPaste functionality
 - `PressAndHoldKeyMonitor.swift` - Push-to-talk modifier key handling
 - `PermissionManager.swift` - Microphone/Accessibility permission checks
@@ -120,12 +138,27 @@ Python dependencies are managed via bundled `uv` binary. `UvBootstrap.swift` han
 
 ## Key Dependencies
 
+Only two direct SwiftPM dependencies — see `Package.swift`. Everything else is
+an Apple framework or the embedded Python runtime.
+
+**SwiftPM:**
+- **KeyboardShortcuts** (sindresorhus, 3.x) - Global hotkeys and the recorder UI
+- **WhisperKit** via **argmax-oss-swift** (1.x) - CoreML local transcription
+
+**Apple frameworks:**
 - **SwiftUI + AppKit** - UI and menu bar integration
-- **AVFoundation** - Audio recording
-- **Alamofire** - HTTP requests and model downloads
-- **WhisperKit** - CoreML-based local transcription
-- **HotKey** - Global keyboard shortcuts
-- **KeychainAccess** - Secure API key storage (via Keychain)
+- **AVFoundation** - Audio recording and file duration
+- **Accelerate (vDSP)** - FFT and level metering for the waveform
+- **SwiftData** - Transcription history persistence
+- **CryptoKit** - SHA-256 for model and `uv` binary integrity checks
+
+**Embedded Python** (uv-managed, see ADR 0002): `parakeet-mlx` for Parakeet
+transcription and `mlx-lm` for semantic correction.
+
+There is **no Swift HTTP client** — `URLSession` appears nowhere in `Sources/`.
+Model downloads go through WhisperKit and, for MLX/Parakeet, `huggingface_hub`
+in the Python subprocess. There is likewise no Keychain usage: this fork removed
+the cloud providers (ADR 0005), so there are no API keys to store.
 
 ## Code Patterns
 

@@ -49,7 +49,26 @@ jobs:
               Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
 
       - name: Run tests with coverage
-        run: swift test --no-parallel --enable-code-coverage
+        # Audit item I1: `--parallel`, not `--no-parallel`.
+        #
+        # ci.yml already made this call and wrote down the measurement: on 2830
+        # tests, parallel reports 53.50% line coverage against sequential's
+        # 53.54% — 30 lines out of 92,525, ordinary run-to-run variance rather
+        # than lost profile data (the waveform views feed random values into
+        # their layout). It dropped its second sequential run for exactly that
+        # reason. This job kept doing it, so every push and PR to master ran the
+        # full suite TWICE, and the second time the slow way.
+        #
+        # Tests are isolated per process by AppDefaults' scratch suite, so
+        # parallel is safe here too; see Sources/Stores/AppDefaults.swift.
+        #
+        # Further consolidation is available and not done here: build-and-test
+        # in ci.yml could upload its codecov JSON as an artifact for this job to
+        # convert, removing the second test run altogether and guaranteeing
+        # Sonar reports the same number the coverage gate enforced. That needs
+        # cross-workflow artifact plumbing (workflow_run or a merged workflow),
+        # which is a structural change worth making deliberately.
+        run: swift test --parallel --enable-code-coverage
         env:
           OS_ACTIVITY_MODE: disable
 

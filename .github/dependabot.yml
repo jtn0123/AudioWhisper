@@ -4,7 +4,26 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+
   - package-ecosystem: "github-actions"
     directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Audit item E2/F1. Sources/Resources/pyproject.toml pins the MLX + audio
+  # stack (mlx-lm, parakeet-mlx, librosa, numba, llvmlite, numpy, scipy,
+  # scikit-learn) with EXCLUSIVE upper bounds, and UvBootstrap installs it with
+  # `uv sync --frozen`, which never re-resolves. That combination means the lock
+  # cannot move on its own — so without this entry a published advisory for any
+  # of those packages produced no signal anywhere in the repo, even though they
+  # are native-code libraries executed on the user's machine.
+  #
+  # Most PRs from this will be closed unmerged: bumping these bounds requires
+  # re-verifying the API surface Sources/ml/ uses (those libraries break it
+  # across minors) per the checklist in pyproject.toml. The value is the
+  # "a new version exists / this one has a CVE" signal, which nothing else here
+  # can generate.
+  - package-ecosystem: "uv"
+    directory: "/Sources/Resources"
     schedule:
       interval: "weekly"
