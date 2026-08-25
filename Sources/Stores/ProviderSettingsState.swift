@@ -38,9 +38,7 @@ final class ProviderSettingsState {
 
     // MARK: - Initialization
 
-    init(keychainService: KeychainServiceProtocol = KeychainService.shared) {
-        // keychainService parameter kept for API compatibility but no longer used
-    }
+    init() {}
 
     // MARK: - Status Helpers
 

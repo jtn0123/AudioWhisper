@@ -1,10 +1,9 @@
 import XCTest
 @testable import AudioWhisper
 
-/// Integration tests for provider selection and KeychainService
+/// Integration tests for provider selection
 @MainActor
 final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
-    var mockKeychain: MockKeychainService!
     var speechService: SpeechToTextService!
     var testDefaults: UserDefaults!
 
@@ -15,18 +14,13 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
         let suiteName = "ProviderSelectionIntegrationTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
-        // Set up mock keychain
-        mockKeychain = MockKeychainService()
-
-        // Create speech service with mock keychain
-        speechService = SpeechToTextService(keychainService: mockKeychain)
+        // Create speech service
+        speechService = SpeechToTextService()
     }
 
     override func tearDown() async throws {
-        mockKeychain.clear()
         testDefaults.removePersistentDomain(forName: testDefaults.description)
 
-        mockKeychain = nil
         speechService = nil
         testDefaults = nil
 
@@ -53,58 +47,6 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
         try? FileManager.default.removeItem(at: url)
     }
 
-    // MARK: - Local Provider Tests
-
-    func testLocalProviderDoesNotRequireApiKey() {
-        // Given - No API keys in keychain
-        mockKeychain.clear()
-
-        // When - Check keychain (there should be no keys)
-        let anyKey = mockKeychain.getQuietly(service: "AudioWhisper", account: "TestKey")
-
-        // Then - No keys, but local should still work (doesn't need keychain)
-        XCTAssertNil(anyKey)
-        // Local provider validation is separate - no keychain dependency
-    }
-
-    // MARK: - Keychain Service Integration
-
-    func testKeychainServiceSaveAndRetrieve() throws {
-        // Given
-        let testKey = "test-api-key-xyz"
-        let service = "AudioWhisper"
-        let account = "TestAccount"
-
-        // When
-        try mockKeychain.save(testKey, service: service, account: account)
-        let retrievedKey = mockKeychain.getQuietly(service: service, account: account)
-
-        // Then
-        XCTAssertEqual(retrievedKey, testKey)
-    }
-
-    func testKeychainServiceDelete() throws {
-        // Given
-        let testKey = "key-to-delete"
-        try mockKeychain.save(testKey, service: "AudioWhisper", account: "DeleteTest")
-
-        // When
-        try mockKeychain.delete(service: "AudioWhisper", account: "DeleteTest")
-        let retrievedKey = mockKeychain.getQuietly(service: "AudioWhisper", account: "DeleteTest")
-
-        // Then
-        XCTAssertNil(retrievedKey)
-    }
-
-    func testKeychainServiceContains() throws {
-        // Given
-        try mockKeychain.save("some-key", service: "AudioWhisper", account: "ContainsTest")
-
-        // When/Then
-        XCTAssertTrue(mockKeychain.contains(service: "AudioWhisper", account: "ContainsTest"))
-        XCTAssertFalse(mockKeychain.contains(service: "AudioWhisper", account: "NonExistent"))
-    }
-
     // MARK: - Provider Enum Tests
 
     func testAllProvidersHaveDisplayNames() {
@@ -123,40 +65,6 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
         XCTAssertEqual(allProviders.count, 2)
         XCTAssertTrue(allProviders.contains(.local))
         XCTAssertTrue(allProviders.contains(.parakeet))
-    }
-
-    // MARK: - Error Handling Integration
-
-    func testKeychainErrorHandling() {
-        // Given - Configure mock to throw errors
-        mockKeychain.shouldThrow = true
-        mockKeychain.throwError = .itemNotFound
-
-        // When
-        let result = mockKeychain.getQuietly(service: "AudioWhisper", account: "Test")
-
-        // Then - getQuietly should return nil on error
-        XCTAssertNil(result)
-    }
-
-    func testKeychainConcurrentAccess() async {
-        // Given - Multiple concurrent operations
-        let key = "concurrent-test-key"
-        let keychain = mockKeychain!
-
-        // When - Perform concurrent saves
-        for index in 0..<10 {
-            try? keychain.save("\(key)-\(index)", service: "AudioWhisper", account: "Concurrent\(index)")
-        }
-
-        // Wait for operations to complete
-        try? await Task.sleep(for: .milliseconds(100))
-
-        // Then - All keys should be accessible
-        for index in 0..<10 {
-            let retrieved = keychain.getQuietly(service: "AudioWhisper", account: "Concurrent\(index)")
-            XCTAssertEqual(retrieved, "\(key)-\(index)")
-        }
     }
 
     // MARK: - Model Selection Tests

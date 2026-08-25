@@ -118,8 +118,8 @@ final class AppDelegateLifecycleTests: IsolatedXCTestCase {
 
     // A4: testHasAPIKeyWithValidKey / testHasAPIKeyWithMissingKey were removed
     // alongside `AppDelegate.hasAPIKey`, which had no production callers once the
-    // cloud providers were dropped. Their round-trip (save -> read -> delete) is
-    // already covered directly against KeychainService in KeychainServiceTests.
+    // cloud providers were dropped. A2 then removed KeychainService itself — this
+    // fork stores no API keys — so the round-trip they exercised no longer exists.
 
     // MARK: - Initial State Tests
 

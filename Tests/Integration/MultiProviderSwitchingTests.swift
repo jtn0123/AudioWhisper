@@ -9,7 +9,6 @@ final class MultiProviderSwitchingTests: IsolatedXCTestCase {
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
     var testDefaults: UserDefaults!
-    var mockKeychain: MockKeychainService!
     var suiteName: String!
 
     override func setUp() async throws {
@@ -25,9 +24,6 @@ final class MultiProviderSwitchingTests: IsolatedXCTestCase {
         // Create isolated UserDefaults for testing
         suiteName = "MultiProviderSwitchingTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
-
-        // Set up mock keychain
-        mockKeychain = MockKeychainService()
 
         // Enable history
         testDefaults.set(true, forKey: "transcriptionHistoryEnabled")
@@ -49,7 +45,6 @@ final class MultiProviderSwitchingTests: IsolatedXCTestCase {
 
         modelContainer = nil
         modelContext = nil
-        mockKeychain = nil
         testDefaults = nil
         suiteName = nil
 

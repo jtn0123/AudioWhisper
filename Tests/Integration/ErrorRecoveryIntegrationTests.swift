@@ -8,7 +8,6 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
 
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
-    var mockKeychain: MockKeychainService!
     var testDefaults: UserDefaults!
     var suiteName: String!
 
@@ -25,9 +24,6 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
         // Create isolated UserDefaults for testing
         suiteName = "ErrorRecoveryIntegrationTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
-
-        // Set up mock keychain
-        mockKeychain = MockKeychainService()
 
         // Enable test environment for ErrorPresenter
         ErrorPresenter.shared.isTestEnvironment = true
@@ -50,7 +46,6 @@ final class ErrorRecoveryIntegrationTests: XCTestCase {
 
         modelContainer = nil
         modelContext = nil
-        mockKeychain = nil
         testDefaults = nil
         suiteName = nil
 

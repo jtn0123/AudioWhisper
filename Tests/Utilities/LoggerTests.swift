@@ -25,11 +25,6 @@ final class LoggerExtensionTests: XCTestCase {
         XCTAssertNotNil(logger)
     }
 
-    func testKeychainLoggerExists() {
-        let logger = Logger.keychain
-        XCTAssertNotNil(logger)
-    }
-
     func testAppLoggerExists() {
         let logger = Logger.app
         XCTAssertNotNil(logger)
@@ -57,11 +52,11 @@ final class LoggerExtensionTests: XCTestCase {
             ("audioRecorder", Logger.audioRecorder),
             ("microphoneVolume", Logger.microphoneVolume),
             ("speechToText", Logger.speechToText),
-            ("keychain", Logger.keychain),
             ("app", Logger.app),
             ("settings", Logger.settings),
             ("dataManager", Logger.dataManager),
-            ("paste", Logger.paste)
+            ("paste", Logger.paste),
+            ("fileSystem", Logger.fileSystem)
         ]
 
         // Verify each logger exists
@@ -90,21 +85,12 @@ final class LoggerExtensionTests: XCTestCase {
 // MARK: - Logger Category Tests
 final class LoggerCategoryTests: XCTestCase {
 
-    func testExpectedCategories() {
-        let expectedCategories = [
-            "ModelManager",
-            "AudioRecorder",
-            "MicrophoneVolume",
-            "SpeechToText",
-            "Keychain",
-            "App",
-            "Settings",
-            "DataManager",
-            "Paste"
-        ]
-
-        XCTAssertEqual(expectedCategories.count, 9)
-    }
+    // `testExpectedCategories` was removed here. It declared a local array of
+    // category-name strings and asserted that array's own `count`, so it never
+    // referenced `Logger` and could not fail for any reason involving it — it
+    // only broke when audit item A2 deleted `Logger.keychain`, changing a
+    // hardcoded literal. `Logger` exposes no way to read back a category, so
+    // existence and distinctness (below) is all that can honestly be asserted.
 
     func testSubsystemFormat() {
         // Subsystem should be bundle identifier or fallback
