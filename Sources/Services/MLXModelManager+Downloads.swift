@@ -80,64 +80,48 @@ extension MLXModelManager {
     }
 
     /// Parses one stdout line from the download script and updates UI progress.
+    ///
+    /// Audit item B2: the substring fallbacks that used to live here (scanning
+    /// for `"Downloading"`, `"%"`, `"MB/s"`, `".safetensors"` …) are gone. They
+    /// guessed at `huggingface_hub`'s progress-bar format, which is not a
+    /// stable contract, and in practice never fired — HF writes its bars to
+    /// stderr, not stdout. Structured JSON is now the only thing that moves the
+    /// UI; anything else is logged and ignored.
     @MainActor
     private func applyDownloadProgressLine(_ lineStr: String, for repo: String) {
-        if let jsonData = lineStr.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-           let message = json["message"] as? String {
-            downloadProgress[repo] = message
-            logger.info("Download progress for \(repo): \(message)")
+        let event = MLXDownloadEvent.parse(line: lineStr)
+
+        if case .unstructured(let raw) = event {
+            if !raw.isEmpty { logger.debug("Download stdout (unstructured) for \(repo): \(raw)") }
             return
         }
 
-        if lineStr.contains("Downloading") || lineStr.contains("%") || lineStr.contains("model.safetensors") {
-            if let percentRange = lineStr.range(of: #"\d+%"#, options: .regularExpression) {
-                downloadProgress[repo] = "Downloading: \(String(lineStr[percentRange]))"
-            } else if lineStr.contains("MB/s") || lineStr.contains("GB/s") {
-                if let fileName = lineStr.split(separator: ":").first {
-                    downloadProgress[repo] = "Downloading: \(fileName)..."
-                }
-            } else {
-                downloadProgress[repo] = "Downloading model files..."
-            }
-            return
-        }
-
-        if lineStr.contains(".json") || lineStr.contains(".safetensors") {
-            if let fileName = lineStr.split(separator: ":").first {
-                downloadProgress[repo] = "Fetching: \(fileName)"
-            }
+        if let text = event.displayText {
+            downloadProgress[repo] = text
+            logger.info("Download progress for \(repo): \(text)")
         }
     }
 
-    /// Classifies stderr output as a real error vs. progress noise.
+    /// Records stderr for diagnostics. Deliberately does not classify it.
+    ///
+    /// Audit item B2. This used to decide error-vs-progress by substring —
+    /// `"error"`, `"traceback"`, `"no module"` meant failure; `"Fetching"`,
+    /// `"%"`, `"MB/s"` meant progress — and on a "real error" it wrote
+    /// `downloadProgress[repo] = "Error: …"`. Two ways that misfires: an
+    /// ordinary `huggingface_hub` progress bar containing the word "error"
+    /// (a repo or filename can) surfaced as a failure, and a genuine failure
+    /// whose text happened to contain "%" was silently swallowed as progress,
+    /// leaving a spinner that never resolved.
+    ///
+    /// Failure is now decided where it is actually knowable: the script's
+    /// `{"status": "error"}` line on stdout, and the process exit code checked
+    /// in `launchDownloadProcess`. Both are contracts we own. stderr is
+    /// `huggingface_hub`'s own output, whose format we do not control, so it is
+    /// logged and nothing more.
     private nonisolated func handleDownloadStderr(_ error: String, for repo: String) {
-        let lowerError = error.lowercased()
-        let isRealError = (lowerError.contains("error") ||
-                          lowerError.contains("exception") ||
-                          lowerError.contains("failed") ||
-                          lowerError.contains("traceback") ||
-                          lowerError.contains("no module") ||
-                          lowerError.contains("not found")) &&
-                         !lowerError.contains("process exited with status: 0")
-
-        let isProgress = error.contains("Fetching") ||
-                       error.contains("Downloading") ||
-                       error.contains("%") ||
-                       error.contains("it/s") ||
-                       error.contains("MB/s") ||
-                       error.contains("GB/s")
-
-        if isRealError && !isProgress {
-            logger.error("Python stderr: \(error)")
-            Task { @MainActor [weak self] in
-                guard let self = self else { return }
-                let errorLines = error.split(separator: "\n").prefix(2).joined(separator: " ")
-                self.downloadProgress[repo] = "Error: \(errorLines)"
-            }
-        } else if isProgress {
-            logger.info("Python progress (stderr): \(error)")
-        }
+        let trimmed = error.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        logger.info("Python stderr for \(repo): \(trimmed)")
     }
 
     /// Builds a configured Python process for a download script.
