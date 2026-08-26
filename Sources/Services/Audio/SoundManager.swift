@@ -45,16 +45,4 @@ internal class SoundManager: ObservableObject {
         soundProvider.sound(named: "Ping")?.play()
     }
 
-    /// Alternative completion sounds that can be used
-    private enum CompletionSound: String, CaseIterable {
-        case glass = "Glass"           // Gentle chime - recommended
-        case tink = "Tink"            // Soft metallic sound
-        case pop = "Pop"              // Gentle pop
-        case purr = "Purr"            // Very soft sound
-
-        var name: String {
-            rawValue
-        }
-    }
-
 }

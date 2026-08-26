@@ -188,20 +188,6 @@ if [ -f "Sources/Resources/DashboardLogo.jpg" ]; then
 fi
 
 # Copy Python scripts for Parakeet and MLX support
-if [ -f "Sources/parakeet_transcribe_pcm.py" ]; then
-  cp Sources/parakeet_transcribe_pcm.py AudioWhisper.app/Contents/Resources/
-  echo "Copied Parakeet PCM Python script"
-else
-  echo "⚠️ parakeet_transcribe_pcm.py not found, Parakeet functionality will not work"
-fi
-
-if [ -f "Sources/mlx_semantic_correct.py" ]; then
-  cp Sources/mlx_semantic_correct.py AudioWhisper.app/Contents/Resources/
-  echo "Copied MLX semantic correction Python script"
-else
-  echo "⚠️ mlx_semantic_correct.py not found, MLX semantic correction will not work"
-fi
-
 # Copy verify scripts
 if [ -f "Sources/verify_parakeet.py" ]; then
   cp Sources/verify_parakeet.py AudioWhisper.app/Contents/Resources/

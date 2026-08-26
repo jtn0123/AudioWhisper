@@ -34,12 +34,6 @@ internal enum ParakeetError: Error, LocalizedError, Equatable {
     }
 }
 
-internal struct ParakeetResponse: Codable {
-    let text: String
-    let success: Bool
-    let error: String?
-}
-
 internal class ParakeetService {
     static let shared = ParakeetService()
 

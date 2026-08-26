@@ -32,8 +32,6 @@ let package = Package(
             exclude: ["VersionInfo.swift.template"],
             resources: [
                 .process("Assets.xcassets"),
-                .copy("parakeet_transcribe_pcm.py"),
-                .copy("mlx_semantic_correct.py"),
                 .copy("verify_parakeet.py"),
                 .copy("verify_mlx.py"),
                 .copy("ml_daemon.py"),

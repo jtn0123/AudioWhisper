@@ -46,27 +46,3 @@ func withTimeout<T: Sendable>(
 }
 
 // MARK: - Callback Bridge Utilities
-
-/// A thread-safe wrapper that ensures a callback is only invoked once.
-/// Useful when bridging callback-based APIs (like Alamofire) to Swift Concurrency,
-/// where the callback might be called multiple times but continuation.resume() must only be called once.
-final class OnceCallback<T>: @unchecked Sendable {
-    private var hasBeenCalled = false
-    private let lock = NSLock()
-    private let handler: (Result<T, Error>) -> Void
-
-    init(handler: @escaping (Result<T, Error>) -> Void) {
-        self.handler = handler
-    }
-
-    /// Invokes the handler if it hasn't been called yet.
-    /// Thread-safe: only the first call will execute the handler.
-    func callOnce(_ result: Result<T, Error>) {
-        lock.lock()
-        defer { lock.unlock() }
-        guard !hasBeenCalled else { return }
-        hasBeenCalled = true
-        handler(result)
-    }
-
-}
