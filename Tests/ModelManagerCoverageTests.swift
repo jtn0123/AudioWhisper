@@ -149,15 +149,6 @@ final class ModelManagerCoverageTests: IsolatedXCTestCase {
         XCTAssertNil(manager.getDownloadStage(for: .largeTurbo))
     }
 
-    func testGetEstimatedTimeRemainingReturnsStoredEstimate() {
-        let snapshot = manager.downloadEstimates
-        defer { manager.downloadEstimates = snapshot }
-
-        manager.downloadEstimates[.small] = 42.0
-        XCTAssertEqual(manager.getEstimatedTimeRemaining(for: .small), 42.0)
-        XCTAssertNil(manager.getEstimatedTimeRemaining(for: .base))
-    }
-
     // MARK: - refreshModelStates
 
     func testRefreshModelStatesUpdatesLastRefresh() async {

@@ -73,14 +73,6 @@ final class ProviderSettingsState {
         }
     }
 
-    func updateModelDownloadState(_ model: WhisperModel, isDownloading: Bool) {
-        if isDownloading {
-            downloadStartTime[model] = Date()
-        } else {
-            downloadStartTime.removeValue(forKey: model)
-        }
-    }
-
     // MARK: - Setup Operations
 
     func beginSetup(title: String) {

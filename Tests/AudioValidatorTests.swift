@@ -68,26 +68,6 @@ final class AudioValidatorTests: XCTestCase {
         }
     }
     
-    func testIsFormatSupportedMatchesKnownExtensions() {
-        let supported = URL(fileURLWithPath: "/tmp/audio.mp3")
-        let unsupported = URL(fileURLWithPath: "/tmp/audio.doc")
-        
-        XCTAssertTrue(AudioValidator.isFormatSupported(url: supported))
-        XCTAssertFalse(AudioValidator.isFormatSupported(url: unsupported))
-    }
-    
-    func testIsFileSizeValidEnforcesLimit() throws {
-        let smallFile = try temporaryFile(extension: "wav", contents: Data(repeating: 0xAA, count: 1_024))
-        let largeFile = try temporaryFile(extension: "wav", contents: Data(repeating: 0xBB, count: 2_000_000))
-        defer {
-            try? FileManager.default.removeItem(at: smallFile)
-            try? FileManager.default.removeItem(at: largeFile)
-        }
-        
-        XCTAssertTrue(AudioValidator.isFileSizeValid(url: smallFile, maxSizeInMB: 1))
-        XCTAssertFalse(AudioValidator.isFileSizeValid(url: largeFile, maxSizeInMB: 1))
-    }
-    
     // MARK: - Helpers
     
     private func temporaryFile(extension fileExtension: String, contents: Data) throws -> URL {

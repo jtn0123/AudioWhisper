@@ -257,16 +257,6 @@ final class DiskMutationSerializerTests: XCTestCase {
         XCTAssertEqual(firstHash.count, 64, "SHA-256 hex digest should be 64 chars")
     }
 
-    func test_modelIntegrity_quietVerifyReturnsFalseOnMismatch() throws {
-        let tmpDir = makeTempDir()
-        let modelURL = tmpDir.appendingPathComponent("model.bin")
-        try Data([0x01]).write(to: modelURL)
-        try ModelIntegrity.record(at: modelURL)
-        try Data([0x02]).write(to: modelURL)
-
-        XCTAssertFalse(ModelIntegrity.quietVerify(at: modelURL))
-    }
-
     // MARK: - Helpers
 
     private func makeTempDir() -> URL {

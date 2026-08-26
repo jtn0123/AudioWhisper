@@ -41,31 +41,4 @@ final class AccessibilityPermissionManagerTests: XCTestCase {
         XCTAssertTrue(status.troubleshootingInfo?.contains("System Settings") ?? false)
     }
 
-    func testRequestPermissionReturnsTrueWhenAlreadyAuthorized() {
-        let counter = Counter()
-        let manager = makeManager(granted: true, counter: counter)
-        let expectation = expectation(description: "Completion called with granted status")
-
-        manager.requestPermissionWithExplanation { isGranted in
-            XCTAssertTrue(isGranted)
-            XCTAssertEqual(counter.value, 1)
-            expectation.fulfill()
-        }
-
-        wait(for: [expectation], timeout: 0.1)
-    }
-
-    func testRequestPermissionShortCircuitsInTestEnvironmentWhenDenied() {
-        let counter = Counter()
-        let manager = makeManager(granted: false, counter: counter)
-        let expectation = expectation(description: "Completion called with denied status in test env")
-
-        manager.requestPermissionWithExplanation { isGranted in
-            XCTAssertFalse(isGranted)
-            XCTAssertEqual(counter.value, 1)
-            expectation.fulfill()
-        }
-
-        wait(for: [expectation], timeout: 0.1)
-    }
 }

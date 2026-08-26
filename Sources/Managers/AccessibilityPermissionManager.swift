@@ -47,11 +47,6 @@ internal class AccessibilityPermissionManager {
         monitorPermissionStatus(completion: completion)
     }
 
-    /// Legacy method for backwards compatibility - now just calls requestPermissionDirect
-    func requestPermissionWithExplanation(completion: @escaping (Bool) -> Void) {
-        requestPermissionDirect(completion: completion)
-    }
-
     /// Monitors permission status after opening System Settings.
     /// Automatically cancels any previous polling to prevent parallel chains.
     private func monitorPermissionStatus(completion: @escaping (Bool) -> Void) {

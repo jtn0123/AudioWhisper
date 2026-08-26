@@ -176,18 +176,6 @@ internal enum ModelIntegrity {
         }
     }
 
-    /// Returns true if integrity verification passes; false on any mismatch,
-    /// missing-file error, or unreadable file. Never throws — useful for
-    /// background verification where we don't want to surface noise.
-    static func quietVerify(at modelURL: URL, modelIdentifier: String? = nil) -> Bool {
-        do {
-            try verify(at: modelURL, modelIdentifier: modelIdentifier)
-            return true
-        } catch {
-            return false
-        }
-    }
-
     /// Where the trust-on-first-use hash for `modelURL` is stored.
     ///
     /// Audit item E3: this used to be `modelURL.appendingPathExtension(...)` —

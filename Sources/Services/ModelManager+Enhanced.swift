@@ -87,8 +87,4 @@ extension ModelManager {
         return downloadStages[model]
     }
 
-    @MainActor
-    func getEstimatedTimeRemaining(for model: WhisperModel) -> TimeInterval? {
-        return downloadEstimates[model]
-    }
 }
