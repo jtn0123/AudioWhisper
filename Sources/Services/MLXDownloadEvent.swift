@@ -36,14 +36,17 @@ internal enum MLXDownloadEvent: Equatable {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .unstructured("") }
 
-        guard let data = trimmed.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard let object = try? JSONDecoder().decode(JSONValue.self, from: Data(trimmed.utf8)),
+              object.objectValue != nil else {
             return .unstructured(trimmed)
         }
 
-        let message = (object["message"] as? String) ?? ""
+        // `stringValue` is nil for a non-string member, which lands on the same
+        // branches the old `as? String` casts did — a numeric `message` still
+        // reads as absent rather than derailing the whole line.
+        let message = object["message"]?.stringValue ?? ""
 
-        switch object["status"] as? String {
+        switch object["status"]?.stringValue {
         case "error":
             // An error line with no message still has to read as an error.
             return .failure(message.isEmpty ? "Download failed" : message)

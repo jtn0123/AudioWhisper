@@ -87,19 +87,31 @@ extension MLXModelManager {
     /// stable contract, and in practice never fired — HF writes its bars to
     /// stderr, not stdout. Structured JSON is now the only thing that moves the
     /// UI; anything else is logged and ignored.
+    /// `internal`, not `private`, because the Parakeet download in
+    /// `MLXModelManager+Cache` parses the same line format. It used to do so
+    /// with its own `JSONSerialization ... as? [String: String]` cast, which is
+    /// how the B2 fix ended up applied to one of the two download paths and not
+    /// the other: the Parakeet copy required BOTH `status` and `message` to be
+    /// strings or it dropped the line entirely, and had no `error` branch at
+    /// all. Swift `private` is file-scoped, so sharing this is the fix.
+    ///
+    /// Returns the parsed event so a caller can act on it further — the
+    /// Parakeet path also marks the model present on `.complete`.
     @MainActor
-    private func applyDownloadProgressLine(_ lineStr: String, for repo: String) {
+    @discardableResult
+    func applyDownloadProgressLine(_ lineStr: String, for repo: String) -> MLXDownloadEvent {
         let event = MLXDownloadEvent.parse(line: lineStr)
 
         if case .unstructured(let raw) = event {
             if !raw.isEmpty { logger.debug("Download stdout (unstructured) for \(repo): \(raw)") }
-            return
+            return event
         }
 
         if let text = event.displayText {
             downloadProgress[repo] = text
             logger.info("Download progress for \(repo): \(text)")
         }
+        return event
     }
 
     /// Records stderr for diagnostics. Deliberately does not classify it.

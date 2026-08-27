@@ -18,10 +18,10 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testTranscribeSuccessReturnsText() async throws {
         await manager.setTestResponder { method, params in
-            XCTAssertEqual(method, "transcribe")
-            XCTAssertEqual(params["repo"] as? String, "test-repo")
-            XCTAssertEqual(params["pcm_path"] as? String, "/tmp/audio.pcm")
-            return ["success": true, "text": "hello world", "error": NSNull()]
+            XCTAssertEqual(method, .transcribe)
+            XCTAssertEqual(params["repo"]?.stringValue, "test-repo")
+            XCTAssertEqual(params["pcm_path"]?.stringValue, "/tmp/audio.pcm")
+            return ["success": true, "text": "hello world", "error": nil]
         }
 
         let text = try await manager.transcribe(repo: "test-repo", pcmPath: "/tmp/audio.pcm")
@@ -30,7 +30,7 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testTranscribeFailureReturnsRemoteError() async throws {
         await manager.setTestResponder { method, _ in
-            guard method == "transcribe" else {
+            guard method == .transcribe else {
                 return ["success": false, "text": "", "error": "Unknown method"]
             }
             return ["success": false, "text": "", "error": "Model not found"]
@@ -51,11 +51,11 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testCorrectionSuccessReturnsText() async throws {
         await manager.setTestResponder { method, params in
-            XCTAssertEqual(method, "correct")
-            XCTAssertEqual(params["repo"] as? String, "correction-repo")
-            XCTAssertEqual(params["text"] as? String, "hello wrold")
+            XCTAssertEqual(method, .correct)
+            XCTAssertEqual(params["repo"]?.stringValue, "correction-repo")
+            XCTAssertEqual(params["text"]?.stringValue, "hello wrold")
             XCTAssertNil(params["prompt"])
-            return ["success": true, "text": "hello world", "error": NSNull()]
+            return ["success": true, "text": "hello world", "error": nil]
         }
 
         let corrected = try await manager.correct(repo: "correction-repo", text: "hello wrold", prompt: nil)
@@ -64,9 +64,9 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testCorrectionWithPromptPassesPrompt() async throws {
         await manager.setTestResponder { method, params in
-            XCTAssertEqual(method, "correct")
-            XCTAssertEqual(params["prompt"] as? String, "Fix grammar")
-            return ["success": true, "text": "corrected text", "error": NSNull()]
+            XCTAssertEqual(method, .correct)
+            XCTAssertEqual(params["prompt"]?.stringValue, "Fix grammar")
+            return ["success": true, "text": "corrected text", "error": nil]
         }
 
         let corrected = try await manager.correct(repo: "repo", text: "text", prompt: "Fix grammar")
@@ -75,8 +75,8 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testCorrectionRemoteErrorIsPropagated() async throws {
         await manager.setTestResponder { method, _ in
-            guard method == "correct" else {
-                return ["success": true, "text": "", "error": NSNull()]
+            guard method == .correct else {
+                return ["success": true, "text": "", "error": nil]
             }
             throw MLDaemonError.remoteError("correction failed")
         }
@@ -96,13 +96,20 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testWarmupSuccessDoesNotThrow() async throws {
         await manager.setTestResponder { method, params in
-            XCTAssertEqual(method, "warmup")
-            XCTAssertEqual(params["type"] as? String, "transcription")
-            XCTAssertEqual(params["repo"] as? String, "warmup-repo")
+            XCTAssertEqual(method, .warmup)
+            // The wire value, not the Swift case name. rpc.py branches on this
+            // exact string and raises "Unknown warmup type" for anything else.
+            //
+            // This assertion used to read "transcription", which rpc.py has
+            // never accepted — the old stub took an untyped String and never
+            // validated it, so a value the daemon rejects sailed through the
+            // test. MLWarmupKind makes it unrepresentable.
+            XCTAssertEqual(params["type"]?.stringValue, "parakeet")
+            XCTAssertEqual(params["repo"]?.stringValue, "warmup-repo")
             return ["success": true]
         }
 
-        try await manager.warmup(type: "transcription", repo: "warmup-repo")
+        try await manager.warmup(type: .parakeet, repo: "warmup-repo")
         // Should complete without throwing
     }
 
@@ -113,7 +120,7 @@ final class MLDaemonManagerTests: XCTestCase {
         }
 
         do {
-            try await manager.warmup(type: "invalid", repo: "repo")
+            try await manager.warmup(type: .mlx, repo: "repo")
             // Note: This may or may not throw depending on WarmupResult's optional handling
             // If WarmupResult.success is optional, this won't throw
         } catch {
@@ -127,7 +134,7 @@ final class MLDaemonManagerTests: XCTestCase {
 
     func testPingReturnsTrueWhenDaemonResponds() async throws {
         await manager.setTestResponder { method, _ in
-            XCTAssertEqual(method, "ping")
+            XCTAssertEqual(method, .ping)
             return ["pong": true]
         }
 
@@ -198,10 +205,10 @@ final class MLDaemonManagerTests: XCTestCase {
         var callCount = 0
         await manager.setTestResponder { method, _ in
             callCount += 1
-            if method == "ping" {
+            if method == .ping {
                 return ["pong": true]
-            } else if method == "transcribe" {
-                return ["success": true, "text": "transcription \(callCount)", "error": NSNull()]
+            } else if method == .transcribe {
+                return ["success": true, "text": .string("transcription \(callCount)"), "error": nil]
             }
             return ["success": false, "text": "", "error": "unknown"]
         }

@@ -142,6 +142,24 @@ The app embeds Python scripts for MLX-based features:
 
 Python dependencies are managed via bundled `uv` binary. `UvBootstrap.swift` handles environment setup.
 
+### The Swift ↔ Python RPC contract
+
+The daemon speaks JSON-RPC over stdin/stdout. The wire format is stated twice —
+once in `Sources/Managers/MLRPCProtocol.swift`, once in `Sources/ml/protocol.py`
+— because no type system spans a process boundary. Renaming a key on one side
+compiles clean and type-checks clean on both, then fails at runtime as a
+60-second timeout.
+
+`Tests/MLRPCContractTests.swift` is what closes that gap: it runs the real
+`ml_daemon.py` and asserts against it using the **production** encoder and
+decoder, so a fixture cannot drift from the code it polices. It needs no venv
+and no models — every mlx/parakeet import in `Sources/ml` is lazy, so the daemon
+boots on stock `python3` and the model-backed methods fail at their import,
+which is itself the signal that the parameters were accepted.
+
+Change a wire key and you must change it in three places: the Swift type, the
+Python reader, and nothing else — the test tells you if you missed one.
+
 ## Key Dependencies
 
 Only two direct SwiftPM dependencies — see `Package.swift`. Everything else is

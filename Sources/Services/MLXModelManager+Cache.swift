@@ -143,15 +143,16 @@ extension MLXModelManager {
             guard let self = self else { return }
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            if let line = String(data: data, encoding: .utf8),
-               let jsonData = line.trimmingCharacters(in: .whitespacesAndNewlines).data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: String],
-               let message = json["message"],
-               let status = json["status"] {
+            guard let output = String(data: data, encoding: .utf8) else { return }
+            // A single read can carry several lines; the previous version parsed
+            // the whole chunk as one JSON object, so two lines arriving together
+            // produced nothing at all.
+            for line in output.split(separator: "\n") {
+                let lineStr = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
+                if lineStr.isEmpty { continue }
                 Task { @MainActor [weak self] in
                     guard let self = self else { return }
-                    self.downloadProgress[repo] = message
-                    if status == "complete" {
+                    if case .complete = self.applyDownloadProgressLine(lineStr, for: repo) {
                         self.downloadedModels.insert(repo)
                     }
                 }

@@ -23,9 +23,8 @@ internal struct VerificationOutputCollector {
     /// is ignored rather than guessed at.
     mutating func ingestStdout(_ chunk: String) {
         for line in chunk.split(separator: "\n").map(String.init) {
-            guard let data = line.data(using: .utf8),
-                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let message = object["message"] as? String else { continue }
+            guard let object = try? JSONDecoder().decode(JSONValue.self, from: Data(line.utf8)),
+                  let message = object["message"]?.stringValue else { continue }
             lastStdoutMessage = message
         }
     }

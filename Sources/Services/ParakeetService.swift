@@ -276,7 +276,7 @@ internal class ParakeetService {
         }
 
         do {
-            try await daemon.warmup(type: "parakeet", repo: selectedRepo)
+            try await daemon.warmup(type: .parakeet, repo: selectedRepo)
         } catch {
             logger.error("Parakeet warmup failed: \(error.localizedDescription)")
             throw ParakeetError.transcriptionFailed("Parakeet daemon unavailable: \(error.localizedDescription)")

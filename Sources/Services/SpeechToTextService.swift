@@ -172,7 +172,7 @@ internal class SpeechToTextService {
                 // Warm up the MLX daemon in parallel, but treat its outcome as
                 // non-fatal: a warmup failure must NOT abort an otherwise-good
                 // transcription. Its error is swallowed (logged by the daemon).
-                async let warmupTask: Void = MLDaemonManager.shared.warmup(type: "mlx", repo: modelRepo)
+                async let warmupTask: Void = MLDaemonManager.shared.warmup(type: .mlx, repo: modelRepo)
                 let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
                 try? await warmupTask
                 return try Self.cleanedNonEmptyTranscription(text)
