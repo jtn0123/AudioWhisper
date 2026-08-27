@@ -4,6 +4,10 @@ name: CI
 # analyze job pin to it; see "Install SwiftLint (pinned)".
 env:
   SWIFTLINT_VERSION: "0.65.0"
+  # Read back by scripts/typecheck.sh so a local run warns when it drifts.
+  # mypy adds checks in minor releases, so an unpinned upgrade would fail the
+  # build for nobody's mistake.
+  MYPY_VERSION: "1.20.0"
 
 on:
   push:
@@ -234,6 +238,25 @@ jobs:
             exit 1
           }
           echo "uv.lock is in sync with pyproject.toml"
+
+      - name: Python type check (mypy --strict)
+        run: |
+          # Sources/ml is the only code here that ships without a compiler in
+          # front of it — 574 lines in a subprocess behind a JSON-RPC boundary,
+          # previously checked by nothing. The first --strict run found 28
+          # errors, including _set_offline_env returning dict[str, str | None]
+          # through an annotation that claimed dict[str, str] while its own
+          # caller tested `is None`.
+          #
+          # Pinned (see MYPY_VERSION): mypy adds checks in minor releases, so an
+          # unpinned upgrade turns CI red on code nobody touched.
+          #
+          # No venv and no models needed — mypy.ini exempts the ML imports
+          # per-module so this runs against a bare checkout in seconds.
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check "mypy==${MYPY_VERSION}"
+          mypy --version
+          mypy
 
       - name: Python unit tests
         run: |

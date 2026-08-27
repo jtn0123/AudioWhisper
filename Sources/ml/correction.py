@@ -14,6 +14,30 @@ DEFAULT_CORRECTION_PROMPT = (
 )
 
 
+def _require_str(value: Any, source: str) -> str:
+    """Assert that an untyped mlx-lm call actually handed back a string.
+
+    Both `apply_chat_template` and `generate` are untyped, so their results
+    arrive as `Any` and mypy cannot tell a string from anything else. `cast()`
+    would silence that without checking — the same lie `_set_offline_env` used
+    to tell about its return type.
+
+    The check earns its keep: mlx-lm's surface moves across minor versions (see
+    the upgrade checklist in Sources/Resources/pyproject.toml). If `generate`
+    ever returns a structured result instead of a bare string, the current code
+    carries it into `generated.startswith(chat_prompt)` and dies with an
+    AttributeError several frames away from the cause. This fails at the
+    boundary instead, naming the call that broke.
+
+    Raises RuntimeError, deliberately NOT TypeError: `_safe_generate` catches
+    TypeError to fall back between mlx-lm sampler signatures, and a wrong return
+    type is not a signature mismatch to retry.
+    """
+    if not isinstance(value, str):
+        raise RuntimeError(f"{source} returned {type(value).__name__}, expected str")
+    return value
+
+
 def _safe_chat_template(
     tokenizer: Any,
     messages: List[Dict[str, str]],
@@ -22,12 +46,17 @@ def _safe_chat_template(
 ) -> str:
     try:
         # Keep thinking enabled for better quality - we strip <think> tags from output
-        return tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
+        return _require_str(
+            tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            ),
+            "tokenizer.apply_chat_template",
         )
     except Exception:
+        # Includes the _require_str failure: a non-string template result
+        # degrades to the plain-text prompt rather than propagating.
         return f"{system_prompt}\n\n{text}"
 
 
@@ -74,37 +103,46 @@ def _safe_generate(
     sampler = _build_sampler()
     if sampler is not None:
         try:
-            return generate(
-                model,
-                tokenizer,
-                prompt=chat_prompt,
-                max_tokens=max_tokens,
-                sampler=sampler,
-                verbose=False,
+            return _require_str(
+                generate(
+                    model,
+                    tokenizer,
+                    prompt=chat_prompt,
+                    max_tokens=max_tokens,
+                    sampler=sampler,
+                    verbose=False,
+                ),
+                "mlx_lm.generate",
             )
         except TypeError:
             pass
 
     # Legacy mlx-lm (< 0.20) took the sampling knobs directly.
     try:
-        return generate(
-            model,
-            tokenizer,
-            prompt=chat_prompt,
-            max_tokens=max_tokens,
-            temp=CORRECTION_TEMP,
-            top_p=CORRECTION_TOP_P,
-            verbose=False,
+        return _require_str(
+            generate(
+                model,
+                tokenizer,
+                prompt=chat_prompt,
+                max_tokens=max_tokens,
+                temp=CORRECTION_TEMP,
+                top_p=CORRECTION_TOP_P,
+                verbose=False,
+            ),
+            "mlx_lm.generate",
         )
     except TypeError:
         # Last resort: default (greedy) sampling. Correction still works, it
         # just loses the temperature tuning.
-        return generate(
-            model,
-            tokenizer,
-            prompt=chat_prompt,
-            max_tokens=max_tokens,
-            verbose=False,
+        return _require_str(
+            generate(
+                model,
+                tokenizer,
+                prompt=chat_prompt,
+                max_tokens=max_tokens,
+                verbose=False,
+            ),
+            "mlx_lm.generate",
         )
 
 
@@ -209,8 +247,11 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
     # If result is empty (all thinking, no answer), retry with thinking disabled
     if not cleaned:
         try:
-            chat_prompt_no_think = tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True, enable_thinking=False
+            chat_prompt_no_think = _require_str(
+                tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True, enable_thinking=False
+                ),
+                "tokenizer.apply_chat_template",
             )
             generated = _safe_generate(model, tokenizer, chat_prompt_no_think, max_tokens)
             if generated.startswith(chat_prompt_no_think):

@@ -56,6 +56,12 @@ swift test --filter "DataManagerTests/testSaveAndLoadHistory"
 # warns if your SwiftLint differs from the version CI pins)
 scripts/lint.sh
 
+# Type-check the bundled Python (mypy --strict, config in mypy.ini).
+# Sources/ml is the only code here with no compiler in front of it, so this is
+# the equivalent gate. Needs no venv and no models — mypy.ini exempts the ML
+# imports per-module — so it runs on a bare checkout in seconds.
+make typecheck
+
 # Clean build artifacts
 make clean
 ```

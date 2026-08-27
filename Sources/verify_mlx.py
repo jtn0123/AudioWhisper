@@ -5,11 +5,11 @@ import json
 import traceback
 
 
-def emit(status, message):
+def emit(status: str, message: str) -> None:
     print(json.dumps({"status": status, "message": message}), flush=True)
 
 
-def main():
+def main() -> int:
     repo = sys.argv[1] if len(sys.argv) > 1 else ""
     if not repo:
         emit("error", "No repo specified")
