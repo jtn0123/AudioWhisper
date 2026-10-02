@@ -273,8 +273,14 @@ jobs:
           # These were unreferenced by any workflow until now. They import
           # ml.correction, whose mlx imports are lazy, so plain system python is
           # enough — no uv, no venv, no model download.
+          #
+          # Tests/test_hub.py guards the two model-cache rules in ml/hub.py:
+          # loads never touch the network, and a pinned download is visible to
+          # offline lookup. It runs against a fake huggingface_hub, so it too
+          # needs only system python.
           set -e
           python3 Tests/test_correction_sanitize.py
+          python3 Tests/test_hub.py
 
       - name: TODO/FIXME audit (warn only)
         run: |
@@ -326,6 +332,12 @@ jobs:
           # Confirm Python bootstrap binary made it into the bundle
           test -f "$APP/Contents/Resources/bin/uv" -o -f "$APP/Contents/Resources/uv" \
             || echo "::warning::uv binary not found in bundled Resources (may be missing for dev builds)"
+          # The Python entry points the app launches, and the package they all
+          # import. A missing one is not a build error — it surfaces at runtime
+          # as a model that can never be downloaded, verified, or loaded.
+          for py in ml_daemon.py download_model.py verify_parakeet.py verify_mlx.py ml/hub.py ml/rpc.py; do
+            test -f "$APP/Contents/Resources/$py" || { echo "::error::Missing bundled Resources/$py"; exit 1; }
+          done
           # Confirm version was stamped (not left as a placeholder)
           if grep -q "VERSION_PLACEHOLDER\|BUILD_PLACEHOLDER" "$APP/Contents/MacOS/AudioWhisper" 2>/dev/null; then
             echo "::warning::Version placeholders found unsubstituted in binary"

@@ -196,6 +196,16 @@ if [ -f "Sources/verify_mlx.py" ]; then
   cp Sources/verify_mlx.py AudioWhisper.app/Contents/Resources/
 fi
 
+# Model downloads run this. Like the verify scripts it imports the ml package,
+# so it must sit beside Resources/ml. Missing it breaks every MLX and Parakeet
+# download, so fail the build rather than ship that.
+if [ -f "Sources/download_model.py" ]; then
+  cp Sources/download_model.py AudioWhisper.app/Contents/Resources/
+else
+  echo "❌ Sources/download_model.py not found; model downloads would not work"
+  exit 1
+fi
+
 # Copy ML daemon entrypoint and package
 if [ -f "Sources/ml_daemon.py" ]; then
   cp Sources/ml_daemon.py AudioWhisper.app/Contents/Resources/

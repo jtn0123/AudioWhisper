@@ -137,7 +137,13 @@ open /Applications/AudioWhisper.app
 The app embeds Python scripts for MLX-based features:
 - `Sources/ml_daemon.py` - Entrypoint for the long-lived JSON-RPC daemon `MLDaemonManager` launches
 - `Sources/ml/` - Python ML package the daemon runs: Parakeet transcription (`parakeet.py`), MLX semantic correction (`correction.py`), and the RPC layer (`rpc.py`, `protocol.py`)
+- `Sources/download_model.py` - Downloads a model snapshot; for shipped models, at the commit pinned in `Sources/Models/ModelPins.swift` (ADR 0006)
 - `Sources/verify_parakeet.py`, `Sources/verify_mlx.py` - Model verification
+
+Model **loads** never touch the network: they resolve the cached snapshot with
+`local_files_only=True` (`Sources/ml/hub.py`). Setting `HF_HUB_OFFLINE` after
+`huggingface_hub` is imported does nothing — it is read once at import — which
+is how loads were silently going online before.
 
 Python dependencies are managed via bundled `uv` binary. `UvBootstrap.swift` handles environment setup.
 

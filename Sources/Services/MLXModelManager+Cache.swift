@@ -64,7 +64,7 @@ extension MLXModelManager {
         // Best-effort integrity verification. TOFU on first hit; failures
         // are logged at the call site that triggers a re-download.
         do {
-            try ModelIntegrity.verify(at: refsMain, modelIdentifier: repo)
+            try ModelIntegrity.verify(at: refsMain)
             return true
         } catch {
             logger.error(
@@ -133,7 +133,10 @@ extension MLXModelManager {
             downloadProgress[repo] = "Downloading Parakeet model..."
         }
 
-        let process = makeDownloadProcess(pythonPath: pythonPath, script: Self.parakeetScript, repo: repo)
+        guard let process = makeDownloadProcess(pythonPath: pythonPath, repo: repo) else {
+            await reportMissingDownloadScript(for: repo)
+            return
+        }
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
@@ -227,30 +230,6 @@ extension MLXModelManager {
             }
         }
     }
-
-    /// Static Python source for the Parakeet model download. The repo name is
-    /// read from `sys.argv[1]` — never interpolated into the source.
-    private static let parakeetScript = """
-        import json, sys, traceback, os
-
-        # Allow downloads; avoid implicit token usage
-        os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
-        os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', '0')
-
-        if len(sys.argv) < 2:
-            print(json.dumps({"status": "error", "message": "Missing repo argument"}), flush=True)
-            sys.exit(2)
-        repo = sys.argv[1]
-
-        try:
-            from parakeet_mlx import from_pretrained
-            # Trigger download if not cached; load from cache otherwise
-            from_pretrained(repo)
-            print(json.dumps({"status": "complete", "message": "Model ready"}), flush=True)
-        except Exception as e:
-            print(json.dumps({"status": "error", "message": str(e)}), flush=True)
-            sys.exit(1)
-        """
 
     func deleteModel(_ repo: String) async {
         // L2: validate the repo string before treating it as a path component.

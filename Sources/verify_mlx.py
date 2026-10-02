@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""Verify an MLX correction model loads, downloading it first if not cached.
+
+Usage: verify_mlx.py <repo> [revision]
+
+`revision` is the commit the app pins for the models it ships; a download
+fetches exactly that commit. The cache check never touches the network — see
+ml/hub.py for why that has to be a per-call guarantee rather than an
+environment variable.
+"""
+
 import os
 import sys
 import json
@@ -14,24 +24,23 @@ def main() -> int:
     if not repo:
         emit("error", "No repo specified")
         return 1
+    revision = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     try:
         emit("checking", "Importing mlx-lm…")
         from mlx_lm import load
+        from ml.hub import cached_snapshot_path, download_snapshot
 
-        # Try offline first
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
         try:
             emit("loading", "Trying offline cache…")
-            _m, _t = load(repo)
-            emit("complete", "Model ready (offline)")
+            path = cached_snapshot_path(repo)
+            ready = "Model ready (offline)"
         except Exception as e:
-            os.environ.pop("HF_HUB_OFFLINE", None)
-            os.environ.pop("TRANSFORMERS_OFFLINE", None)
             emit("downloading", "Offline unavailable: {}. Downloading…".format(str(e)))
-            _m, _t = load(repo)
-            emit("complete", "Model downloaded and ready")
+            path = download_snapshot(repo, revision)
+            ready = "Model downloaded and ready"
+        _m, _t = load(path)
+        emit("complete", ready)
     except ImportError as e:
         emit(
             "error",

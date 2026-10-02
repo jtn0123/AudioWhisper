@@ -44,13 +44,14 @@ target a report:
   runtime** bootstrapped with a bundled `uv`
   ([ADR 0002](docs/adr/0002-embedded-uv-python.md)). The `uv` binary is verified
   at runtime against a SHA-256 stamped at build time.
-- **Model integrity is only partly enforced**
-  ([ADR 0006](docs/adr/0006-model-integrity.md)). This is a **known gap**, not a
-  finding: `ModelIntegrity.knownHashes` is empty, so app-shipped models fall
-  through to trust-on-first-use rather than the documented hard-fail. The ADR's
-  *Implementation status* section states this. A report that pinned hashes are
-  unenforced is already tracked; a report of a way to *bypass* verification that
-  is supposed to work is not.
+- **Model provenance is pinned for MLX and Parakeet, not for WhisperKit**
+  ([ADR 0006](docs/adr/0006-model-integrity.md)). The MLX and Parakeet models the
+  app offers download at a commit fixed in `ModelPins`; loading them never
+  touches the network. WhisperKit's download API cannot request a revision, so
+  WhisperKit models — and any user-added repo — are trusted as first fetched over
+  TLS, then checked against that record. Both limits are **known**, not findings.
+  A way to make the app load a model revision other than its pin, or to reach
+  the network while loading, is a finding.
 
 ## Particularly interesting areas
 

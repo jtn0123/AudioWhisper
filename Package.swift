@@ -34,6 +34,7 @@ let package = Package(
                 .process("Assets.xcassets"),
                 .copy("verify_parakeet.py"),
                 .copy("verify_mlx.py"),
+                .copy("download_model.py"),
                 .copy("ml_daemon.py"),
                 .copy("ml"),
                 // Bundle additional resources like uv binary and lock files
@@ -44,7 +45,7 @@ let package = Package(
             name: "AudioWhisperTests",
             dependencies: ["AudioWhisper"],
             path: "Tests",
-            exclude: ["README.md", "test_correction_sanitize.py", "__Snapshots__"],
+            exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "__Snapshots__"],
             resources: [
                 .copy("Resources")
             ]

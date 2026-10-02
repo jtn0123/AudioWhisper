@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""Verify a Parakeet model loads, downloading it first if it is not cached.
+
+Usage: verify_parakeet.py [repo] [revision]
+
+`revision` is the commit the app pins for the models it ships; a download
+fetches exactly that commit. The cache check never touches the network — see
+ml/hub.py for why that has to be a per-call guarantee rather than an
+environment variable.
+"""
+
 import os
 import json
 import traceback
@@ -13,24 +23,22 @@ def main() -> int:
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     # Default to v3 multilingual model if not specified
     repo = sys.argv[1] if len(sys.argv) > 1 else "mlx-community/parakeet-tdt-0.6b-v3"
+    revision = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
     try:
         emit("checking", "Importing parakeet-mlx…")
         from parakeet_mlx import from_pretrained
+        from ml.hub import cached_snapshot_path, download_snapshot
 
-        # Try offline first
-        os.environ["HF_HUB_OFFLINE"] = "1"
-        os.environ["TRANSFORMERS_OFFLINE"] = "1"
         try:
             emit("loading", "Trying offline cache…")
-            _ = from_pretrained(repo)
-            emit("complete", "Model ready (offline)")
+            path = cached_snapshot_path(repo)
+            ready = "Model ready (offline)"
         except Exception as e:
-            # Fallback online
-            os.environ.pop("HF_HUB_OFFLINE", None)
-            os.environ.pop("TRANSFORMERS_OFFLINE", None)
             emit("downloading", "Offline unavailable: {}. Downloading…".format(str(e)))
-            _ = from_pretrained(repo)
-            emit("complete", "Model downloaded and ready")
+            path = download_snapshot(repo, revision)
+            ready = "Model downloaded and ready"
+        _ = from_pretrained(path)
+        emit("complete", ready)
     except ImportError as e:
         emit(
             "error",
