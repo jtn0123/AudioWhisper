@@ -251,12 +251,16 @@ jobs:
           # Pinned (see MYPY_VERSION): mypy adds checks in minor releases, so an
           # unpinned upgrade turns CI red on code nobody touched.
           #
-          # No venv and no models needed — mypy.ini exempts the ML imports
-          # per-module so this runs against a bare checkout in seconds.
+          # No app venv and no models needed — mypy.ini exempts the ML imports
+          # per-module so this runs against a bare checkout in seconds. mypy
+          # itself goes in a throwaway venv: PEP 668 marks the runner's Homebrew
+          # python as externally managed, so a bare `pip install` is refused
+          # (same reason as the coverage venv in sonarcloud.yml).
           set -euo pipefail
-          python3 -m pip install --quiet --disable-pip-version-check "mypy==${MYPY_VERSION}"
-          mypy --version
-          mypy
+          python3 -m venv .mypy-venv
+          .mypy-venv/bin/pip install --quiet --disable-pip-version-check "mypy==${MYPY_VERSION}"
+          .mypy-venv/bin/mypy --version
+          .mypy-venv/bin/mypy
 
       - name: Python unit tests
         run: |
@@ -472,8 +476,8 @@ jobs:
           # here claimed 215 with 87 in Tests/Mocks — stale on both counts.)
           #
           # Raising BASELINE should be a deliberate, explained act. Lowering it
-          # is always fine.
-          BASELINE=46
+          # is always fine. (46 → 30 after the two dead-code passes.)
+          BASELINE=30
           count=$(grep -c '(unused_declaration)' analyze.txt || true)
           echo "unused_declaration: $count (baseline $BASELINE)"
           if [ "${count:-0}" -gt "$BASELINE" ]; then

@@ -1,5 +1,4 @@
 import CoreAudio
-import Foundation
 
 /// The Core Audio HAL operations `MicrophoneVolumeManager` needs.
 ///

@@ -1,5 +1,4 @@
 import CoreAudio
-import Foundation
 
 /// The real Core Audio HAL binding for microphone volume.
 ///

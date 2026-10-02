@@ -1,5 +1,3 @@
-import Foundation
-
 /// Fixed-capacity ring buffer holding the most recent `capacity` mono samples.
 ///
 /// Audit item G1. The recorder previously kept the recent-sample window in a

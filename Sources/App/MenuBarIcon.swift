@@ -35,12 +35,16 @@ internal final class MenuBarIconRenderer {
     static let amber     = NSColor(red: 0.89, green: 0.65, blue: 0.27, alpha: 1.0)
     static let sage      = NSColor(red: 0.37, green: 0.66, blue: 0.46, alpha: 1.0)
 
-    private weak var button: NSStatusBarButton?
+    // `NSButton`, not `NSStatusBarButton`: only `image` is ever touched, and a
+    // status-bar button can only be had from `NSStatusBar.system`, which aborts a
+    // process with no WindowServer (CI runners — see `WindowServer`). Taking the
+    // superclass lets tests drive the state machine with a plain button.
+    private weak var button: NSButton?
     private var animationTimer: DispatchSourceTimer?
     private(set) var state: MenuBarIconState = .idle
     private var successResetWork: DispatchWorkItem?
 
-    init(button: NSStatusBarButton) {
+    init(button: NSButton) {
         self.button = button
     }
 

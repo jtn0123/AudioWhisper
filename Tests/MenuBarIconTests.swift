@@ -108,13 +108,18 @@ final class MenuBarIconTests: XCTestCase {
 
     // MARK: - State machine
 
+    // The renderer holds its button weakly (the status item owns it in the app),
+    // so each test keeps its own strong reference for the renderer's lifetime.
+
     func testRendererStartsIdle() {
-        let renderer = MenuBarIconRenderer(button: makeButton())
+        let button = makeButton()
+        let renderer = MenuBarIconRenderer(button: button)
         XCTAssertEqual(renderer.state, .idle)
     }
 
     func testSetStateRecordsTheNewState() {
-        let renderer = MenuBarIconRenderer(button: makeButton())
+        let button = makeButton()
+        let renderer = MenuBarIconRenderer(button: button)
 
         renderer.setState(.recording)
         XCTAssertEqual(renderer.state, .recording)
@@ -126,35 +131,59 @@ final class MenuBarIconTests: XCTestCase {
         XCTAssertEqual(renderer.state, .error)
     }
 
+    /// Each static state must reach the button with the right template flag:
+    /// idle is the only one AppKit may recolour; the rest carry status colour.
+    func testSetStateAppliesTheStatesImageToTheButton() {
+        let button = makeButton()
+        let renderer = MenuBarIconRenderer(button: button)
+
+        for state: MenuBarIconState in [.processing, .success, .error] {
+            renderer.setState(state)
+            let image = try? XCTUnwrap(button.image, "\(state) must set an image")
+            XCTAssertEqual(image?.isTemplate, false, "\(state) is tinted, so must not be a template")
+        }
+
+        renderer.setState(.idle)
+        XCTAssertEqual(button.image?.isTemplate, true, "idle must be a template so it follows the menu bar")
+    }
+
     /// `setState` early-returns on an unchanged state. That guard is what stops
     /// the recording pulse timer being torn down and restarted on every audio
     /// level update, which would visibly stutter the animation.
     func testSettingTheSameStateTwiceIsANoOp() {
-        let renderer = MenuBarIconRenderer(button: makeButton())
+        let button = makeButton()
+        let renderer = MenuBarIconRenderer(button: button)
 
-        renderer.setState(.recording)
-        renderer.setState(.recording)
+        renderer.setState(.processing)
+        button.image = nil
+        renderer.setState(.processing)
 
-        XCTAssertEqual(renderer.state, .recording)
+        XCTAssertEqual(renderer.state, .processing)
+        XCTAssertNil(button.image, "a repeated state must not re-render")
     }
 
     func testCanReturnToIdleFromEveryState() {
         for state: MenuBarIconState in [.recording, .processing, .success, .error] {
-            let renderer = MenuBarIconRenderer(button: makeButton())
+            let button = makeButton()
+            let renderer = MenuBarIconRenderer(button: button)
             renderer.setState(state)
             renderer.setState(.idle)
             XCTAssertEqual(renderer.state, .idle, "must be able to return to idle from \(state)")
+            XCTAssertEqual(button.image?.isTemplate, true, "returning from \(state) must restore the idle image")
         }
     }
 
-    func testRefreshDoesNotChangeState() {
-        let renderer = MenuBarIconRenderer(button: makeButton())
+    func testRefreshReRendersWithoutChangingState() {
+        let button = makeButton()
+        let renderer = MenuBarIconRenderer(button: button)
         renderer.setState(.processing)
+        button.image = nil
 
         renderer.refresh()
 
         XCTAssertEqual(renderer.state, .processing,
                        "refresh only re-renders; it must not alter the state machine")
+        XCTAssertNotNil(button.image, "refresh must redraw the current state's image")
     }
 
     // MARK: - Palette
@@ -175,15 +204,10 @@ final class MenuBarIconTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func makeButton() -> NSStatusBarButton {
-        // A detached status item gives a real NSStatusBarButton without
-        // requiring the item to be visible in the menu bar.
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        addTeardownBlock { NSStatusBar.system.removeStatusItem(item) }
-        guard let button = item.button else {
-            XCTFail("status item should vend a button")
-            return NSStatusBarButton()
-        }
-        return button
+    private func makeButton() -> NSButton {
+        // A plain button, not one vended by `NSStatusBar.system`: creating a
+        // status item needs a WindowServer connection and aborts the whole test
+        // process on a CI runner. The renderer only ever sets `image`.
+        NSButton(frame: NSRect(x: 0, y: 0, width: 22, height: 22))
     }
 }

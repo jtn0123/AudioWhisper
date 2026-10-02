@@ -1,5 +1,3 @@
-import AppKit
-
 /// Thin delegation to `RecordingViewModel`'s paste implementation.
 ///
 /// Audit item J1 — the paste-layer twin of A1, and a sharper problem than the

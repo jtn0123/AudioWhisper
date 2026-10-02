@@ -1,5 +1,3 @@
-import Foundation
-
 /// A fully-typed JSON value.
 ///
 /// Exists for one job: carrying a JSON subtree whose shape is not known at the

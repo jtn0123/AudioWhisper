@@ -1,5 +1,3 @@
-import Foundation
-
 /// The JSON-RPC contract between `MLDaemonManager` and `Sources/ml/rpc.py`.
 ///
 /// This protocol used to exist only as string literals typed out twice — once
