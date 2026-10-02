@@ -188,7 +188,8 @@ internal enum PressAndHoldSettings {
 ///   * State transitions are deliberately serialised onto `monitorQueue`, a
 ///     private serial queue, so events are ordered independently of which thread
 ///     NSEvent delivers them on.
-///   * The watchdog `Timer` is installed on the main run loop.
+///   * The watchdog `Timer` is installed on the main run loop, but a release
+///     clears it from `monitorQueue`, so the reference itself is lock-guarded too.
 ///
 /// Without this, capturing `self` in the watchdog's `@Sendable` timer block warns.
 /// The annotation asserts what the locking above already provides. (I tried
@@ -213,7 +214,13 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
     /// Global flagsChanged events can be missed (sleep, monitor restart, event consumed
     /// elsewhere); without this, a missed key-up would leave `isPressed` stuck true and
     /// the next press ignored. Runs only while pressed and is cheap.
-    private var watchdogTimer: Timer?
+    ///
+    /// Guarded by `watchdogLock`, and only touched through `swapWatchdogTimer`:
+    /// it is installed on the main thread but cleared on `monitorQueue` when a
+    /// release arrives. It used to be a plain property read and written from
+    /// both, a data race on a class reference (and so on its retain count).
+    private var _watchdogTimer: Timer?
+    private var watchdogLock = os_unfair_lock()
     private static let watchdogInterval: TimeInterval = 0.25
 
     /// Reads the current physical modifier state. Injectable for tests.
@@ -245,6 +252,16 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
         guard _isPressed != pressed else { return false }
         _isPressed = pressed
         return true
+    }
+
+    /// Installs `timer` as the watchdog and returns the one it displaced, as one
+    /// atomic step. The caller invalidates the returned timer.
+    private func swapWatchdogTimer(_ timer: Timer?) -> Timer? {
+        os_unfair_lock_lock(&watchdogLock)
+        defer { os_unfair_lock_unlock(&watchdogLock) }
+        let previous = _watchdogTimer
+        _watchdogTimer = timer
+        return previous
     }
 
     init(
@@ -359,8 +376,10 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
         Task { @MainActor [weak self] in
             guard let self else { return }
             // Re-check: a release may have already arrived before this main-actor hop.
+            // One that lands between this check and the swap below leaves a timer
+            // running while released; its first tick sees `isPressed` false and
+            // stops it (`checkPhysicalKeyState`).
             guard self.isPressed else { return }
-            self.watchdogTimer?.invalidate()
             let timer = Timer(
                 timeInterval: Self.watchdogInterval,
                 repeats: true
@@ -368,7 +387,7 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
                 self?.checkPhysicalKeyState()
             }
             RunLoop.main.add(timer, forMode: .common)
-            self.watchdogTimer = timer
+            self.swapWatchdogTimer(timer)?.invalidate()
         }
     }
 
@@ -380,9 +399,7 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
         // Capture the timer locally so we don't need to retain `self`, and
         // marshal to the main RunLoop (where the timer was scheduled) if
         // necessary. `invalidate()` must be called from the scheduling thread.
-        let timer = watchdogTimer
-        watchdogTimer = nil
-        guard let timer else { return }
+        guard let timer = swapWatchdogTimer(nil) else { return }
         if Thread.isMainThread {
             timer.invalidate()
         } else {
