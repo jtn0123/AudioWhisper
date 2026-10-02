@@ -171,64 +171,7 @@ extension MLXModelManager {
             }
         }
 
-        launchParakeetProcess(process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe)
-    }
-
-    private func launchParakeetProcess(
-        _ process: Process,
-        repo: String,
-        outputPipe: Pipe,
-        errorPipe: Pipe
-    ) {
-        do {
-            try process.run()
-
-            // Wait for process in background to avoid blocking main thread
-            Task.detached { [outputPipe, errorPipe] in
-                process.waitUntilExit()
-
-                let exitStatus = process.terminationStatus
-
-                await MainActor.run { [weak self] in
-                    // L4: stop listening before declaring completion so a late
-                    // stdout callback can't overwrite the cleared progress
-                    // string with stale "Downloading…" text.
-                    outputPipe.fileHandleForReading.readabilityHandler = nil
-                    errorPipe.fileHandleForReading.readabilityHandler = nil
-                    self?.isDownloading[repo] = false
-                    if exitStatus != 0 {
-                        self?.downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
-                    } else {
-                        self?.downloadProgress.removeValue(forKey: repo)
-                    }
-
-                    if exitStatus == 0 {
-                        self?.recordIntegrity(for: repo)
-                        Task {
-                            await self?.refreshModelList()
-                        }
-                        self?.logger.info("Successfully downloaded Parakeet model: \(repo)")
-                    } else {
-                        self?.logger.error(
-                            "Failed to download Parakeet model: \(repo) with exit code: \(exitStatus)"
-                        )
-                    }
-                }
-            }
-        } catch {
-            // M9: clean up pipes opened above before bailing out so that a
-            // failed spawn doesn't leak file descriptors and readability
-            // handlers.
-            outputPipe.fileHandleForReading.readabilityHandler = nil
-            errorPipe.fileHandleForReading.readabilityHandler = nil
-            try? outputPipe.fileHandleForReading.close()
-            try? errorPipe.fileHandleForReading.close()
-            logger.error("Failed to launch Python process for Parakeet: \(error)")
-            Task { @MainActor [weak self] in
-                self?.isDownloading[repo] = false
-                self?.downloadProgress[repo] = "Error: \(error.localizedDescription)"
-            }
-        }
+        await runDownloadProcess(process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe)
     }
 
     func deleteModel(_ repo: String) async {

@@ -129,6 +129,34 @@ final class UvBootstrapTests: XCTestCase {
         XCTAssertTrue(invocations.contains(where: { $0.contains("sync") }))
     }
 
+    /// The stub uv above accepts `sync` with or without a project, so the test
+    /// above passes even when no pyproject.toml was ever copied. That is exactly
+    /// what happened under SwiftPM's native build layout, where the resource
+    /// bundle sits beside the .xctest rather than inside it: the real `uv sync`
+    /// found nothing to sync, and the nightly end-to-end run failed every night.
+    func testEnsureVenvCopiesTheBundledProjectAndSyncsFrozen() async throws {
+        let logURL = tempHome.appendingPathComponent("uv_invocations.log")
+        try writeUvStub(version: "0.8.6", logFile: logURL)
+        let project = try UvBootstrap.projectDir()
+        let pythonBin = project.appendingPathComponent(".venv/bin", isDirectory: true)
+        try FileManager.default.createDirectory(at: pythonBin, withIntermediateDirectories: true)
+        try writeExecutable("#!/bin/bash\necho python\n", to: pythonBin.appendingPathComponent("python3"))
+
+        _ = try await UvBootstrap.ensureVenv(userPython: nil)
+
+        for name in ["pyproject.toml", "uv.lock"] {
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: project.appendingPathComponent(name).path),
+                "\(name) was not copied from the resource bundle into \(project.path)"
+            )
+        }
+        let invocations = try String(contentsOf: logURL, encoding: .utf8).split(separator: "\n")
+        XCTAssertTrue(
+            invocations.contains(where: { $0.hasSuffix(":: sync --frozen") }),
+            "with a bundled lock, sync must be --frozen; got \(invocations)"
+        )
+    }
+
     // MARK: - Helpers
 
     private func whichUVPath() -> String? {

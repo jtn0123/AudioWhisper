@@ -79,7 +79,7 @@ extension MLXModelManager {
             self.handleDownloadStderr(errorOutput, for: repo)
         }
 
-        launchDownloadProcess(process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe)
+        await runDownloadProcess(process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe)
     }
 
     /// Parses one stdout line from the download script and updates UI progress.
@@ -130,7 +130,7 @@ extension MLXModelManager {
     ///
     /// Failure is now decided where it is actually knowable: the script's
     /// `{"status": "error"}` line on stdout, and the process exit code checked
-    /// in `launchDownloadProcess`. Both are contracts we own. stderr is
+    /// in `runDownloadProcess`. Both are contracts we own. stderr is
     /// `huggingface_hub`'s own output, whose format we do not control, so it is
     /// logged and nothing more.
     private nonisolated func handleDownloadStderr(_ error: String, for repo: String) {
@@ -172,62 +172,67 @@ extension MLXModelManager {
         }
     }
 
-    /// Launches a download process and handles completion/cleanup off the main thread.
-    private func launchDownloadProcess(
-        _ process: Process,
-        repo: String,
-        outputPipe: Pipe,
-        errorPipe: Pipe
-    ) {
+    /// Runs a download process to completion, then records the outcome.
+    ///
+    /// This used to launch the process and return at once, leaving a detached
+    /// task to wait for it. Every `await downloadModel(_:)` therefore resumed
+    /// while the download had barely started, which broke the two things that
+    /// awaited it: `downloadSerializer` guarded only the launch, so a second
+    /// request for the same repo started a second download, and the nightly
+    /// end-to-end test checked the cache one second into a 2.5 GB fetch and
+    /// failed every night with `modelNotReady`.
+    ///
+    /// Not `private`: the Parakeet download in `MLXModelManager+Cache.swift`
+    /// runs through it too.
+    func runDownloadProcess(_ process: Process, repo: String, outputPipe: Pipe, errorPipe: Pipe) async {
+        let exitStatus: Int32
         do {
-            logger.info("Launching Python process...")
-            try process.run()
-            logger.info("Python process launched, waiting for completion...")
-
-            Task.detached { [outputPipe, errorPipe] in
-                process.waitUntilExit()
-
-                let exitStatus = process.terminationStatus
-
-                await MainActor.run { [weak self] in
-                    // L4: stop listening for stdout/stderr BEFORE we declare
-                    // completion. Clearing handlers after `removeValue` allowed
-                    // a late callback to overwrite the cleared progress string
-                    // with stale "Downloading…" text.
-                    outputPipe.fileHandleForReading.readabilityHandler = nil
-                    errorPipe.fileHandleForReading.readabilityHandler = nil
-                    self?.isDownloading[repo] = false
-                    if exitStatus != 0 {
-                        self?.downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
-                    } else {
-                        self?.downloadProgress.removeValue(forKey: repo)
-                    }
-
-                    if exitStatus == 0 {
-                        self?.recordIntegrity(for: repo)
-                        Task {
-                            await self?.refreshModelList()
-                        }
-                        self?.logger.info("Successfully downloaded model: \(repo)")
-                    } else {
-                        self?.logger.error(
-                            "Failed to download model: \(repo) with exit code: \(exitStatus)"
-                        )
-                    }
-                }
-            }
+            logger.info("Launching download process for \(repo)")
+            exitStatus = try await Self.runToExit(process)
         } catch {
-            // M9: pipes opened above leak (file descriptors + readability
-            // handlers) if `process.run()` throws. Clear and close them
-            // before bailing out.
+            // M9: pipes opened by the caller leak (file descriptors + readability
+            // handlers) if `process.run()` throws. Clear and close them.
             outputPipe.fileHandleForReading.readabilityHandler = nil
             errorPipe.fileHandleForReading.readabilityHandler = nil
             try? outputPipe.fileHandleForReading.close()
             try? errorPipe.fileHandleForReading.close()
-            logger.error("Failed to launch Python process: \(error)")
-            Task { @MainActor [weak self] in
-                self?.isDownloading[repo] = false
-                self?.downloadProgress[repo] = "Error: \(error.localizedDescription)"
+            logger.error("Failed to launch download process for \(repo): \(error)")
+            isDownloading[repo] = false
+            downloadProgress[repo] = "Error: \(error.localizedDescription)"
+            return
+        }
+
+        // L4: stop listening for stdout/stderr BEFORE declaring completion, so a
+        // late callback cannot overwrite the cleared progress string with stale
+        // "Downloading…" text.
+        outputPipe.fileHandleForReading.readabilityHandler = nil
+        errorPipe.fileHandleForReading.readabilityHandler = nil
+        isDownloading[repo] = false
+
+        guard exitStatus == 0 else {
+            downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
+            logger.error("Failed to download model: \(repo) with exit code: \(exitStatus)")
+            return
+        }
+        downloadProgress.removeValue(forKey: repo)
+        recordIntegrity(for: repo)
+        await refreshModelList()
+        logger.info("Successfully downloaded model: \(repo)")
+    }
+
+    /// Starts `process` and suspends until it exits, without parking a thread
+    /// on `waitUntilExit()` for the length of a multi-gigabyte download.
+    nonisolated static func runToExit(_ process: Process) async throws -> Int32 {
+        try await withCheckedThrowingContinuation { continuation in
+            // Installed before `run()`, so an instant exit cannot be missed.
+            process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
+            do {
+                try process.run()
+            } catch {
+                // A process that never started never terminates, so this is the
+                // only resume on this path.
+                process.terminationHandler = nil
+                continuation.resume(throwing: error)
             }
         }
     }

@@ -81,29 +81,9 @@ internal actor VenvSerializer {
     }
 }
 
-private class BundleFinder {}
-
 internal struct UvBootstrap {
     static let minUvVersion = "0.8.5"
     static let defaultPythonVersion = "3.11"
-
-    /// Safe accessor for the SPM module bundle that returns nil instead of crashing
-    /// when the bundle is not found (e.g., when built with build.sh instead of SPM)
-    private static var moduleBundle: Bundle? {
-        let bundleName = "AudioWhisper_AudioWhisper"
-        let candidates = [
-            Bundle.main.resourceURL,
-            Bundle(for: BundleFinder.self).resourceURL,
-            Bundle.main.bundleURL
-        ]
-        for candidate in candidates {
-            let bundlePath = candidate?.appendingPathComponent(bundleName + ".bundle")
-            if let bundle = bundlePath.flatMap(Bundle.init(url:)) {
-                return bundle
-            }
-        }
-        return nil
-    }
 
     // Where we keep the app-managed project (contains pyproject + .venv)
     static func projectDir() throws -> URL {
@@ -136,7 +116,7 @@ internal struct UvBootstrap {
         // Xcode/SPM build: AudioWhisper_AudioWhisper.bundle/Contents/Resources/Resources/bin/uv
         let bundleCandidates: [URL] = [
             Bundle.main.resourceURL,
-            moduleBundle?.resourceURL
+            ResourceLocator.moduleBundle?.resourceURL
         ].compactMap { $0 }
 
         for resURL in bundleCandidates {
@@ -278,7 +258,7 @@ internal struct UvBootstrap {
     private static func isBundledUv(_ url: URL) -> Bool {
         let bundleCandidates: [URL] = [
             Bundle.main.resourceURL,
-            moduleBundle?.resourceURL
+            ResourceLocator.moduleBundle?.resourceURL
         ].compactMap { $0 }
         for resURL in bundleCandidates {
             let paths = [
@@ -321,7 +301,7 @@ internal struct UvBootstrap {
     private static func copyProjectFilesIfNeeded(to proj: URL) throws -> Bool {
         let fm = FileManager.default
         // Check both Bundle.main (build.sh) and SPM module bundle (Xcode builds)
-        let resourceURLs = [Bundle.main.resourceURL, moduleBundle?.resourceURL].compactMap { $0 }
+        let resourceURLs = [Bundle.main.resourceURL, ResourceLocator.moduleBundle?.resourceURL].compactMap { $0 }
 
         // Support both flattened and nested resource layouts.
         func candidates(for name: String) -> [URL] {

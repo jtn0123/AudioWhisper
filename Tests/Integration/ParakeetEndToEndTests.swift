@@ -22,6 +22,7 @@ import XCTest
 /// a cold run downloads a ~2.5 GB model.
 final class ParakeetEndToEndTests: XCTestCase {
 
+    @MainActor
     func test_e2e_transcribeShortClip() async throws {
         try XCTSkipUnless(
             ProcessInfo.processInfo.environment["RUN_E2E"] == "1"
@@ -47,13 +48,24 @@ final class ParakeetEndToEndTests: XCTestCase {
         // canonical entry point used by the in-app Settings flow; calling it
         // here means a fresh CI box can run this test end-to-end without a
         // manual pre-cache step. `ensureParakeetModel()` short-circuits when
-        // the cache is already populated.
-        await MLXModelManager.shared.ensureParakeetModel()
+        // the cache is already populated, and otherwise returns only once the
+        // download has finished.
+        let manager = MLXModelManager.shared
+        let repo = MLXModelManager.parakeetRepo
+        await manager.ensureParakeetModel()
 
-        // Step 2: Warm up the daemon and verify the cache is consistent. This
-        // throws `ParakeetError.modelNotReady` if the download above failed
-        // (e.g. no network on a sandboxed runner) so the test fails with a
-        // clear signal instead of a generic transcription error.
+        // A failed download is recorded in `downloadProgress`, not thrown.
+        // Surface it here: without this, every cause (no network, no uv
+        // project, a broken script) reached the log as the same bare
+        // `modelNotReady` from step 2, which is how this test failed every
+        // night for six weeks without saying why.
+        guard manager.isModelCachedOnDisk(repo: repo) else {
+            let status = manager.downloadProgress[repo] ?? "no status was recorded"
+            XCTFail("\(repo) is not on disk after ensureParakeetModel(): \(status)")
+            return
+        }
+
+        // Step 2: Warm up the daemon and verify the cache is consistent.
         let service = ParakeetService.shared
         try await service.validateSetup()
 
