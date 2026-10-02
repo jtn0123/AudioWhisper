@@ -35,12 +35,16 @@ final class ParakeetEndToEndTests: XCTestCase {
             "Parakeet requires Apple Silicon."
         )
 
+        // Not test_audio.wav: that is a 0.1 s 440 Hz tone, for which an empty
+        // transcript is the CORRECT answer. This test used it until it first
+        // ran to completion and failed on exactly that. speech_sample.wav is
+        // `say -v Samantha` reading the sentence below, at 16 kHz mono.
         guard let fixtureURL = Bundle.module.url(
-            forResource: "test_audio",
+            forResource: "speech_sample",
             withExtension: "wav",
             subdirectory: "Resources"
         ) else {
-            XCTFail("Missing Tests/Resources/test_audio.wav fixture")
+            XCTFail("Missing Tests/Resources/speech_sample.wav fixture")
             return
         }
 
@@ -72,11 +76,21 @@ final class ParakeetEndToEndTests: XCTestCase {
         // Step 3: Transcribe the fixture.
         let text = try await service.transcribe(audioFileURL: fixtureURL)
 
-        XCTAssertFalse(
-            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-            "Parakeet returned an empty transcript -- check daemon logs."
+        // The fixture says "The quick brown fox jumps over the lazy dog."
+        // Checked by words rather than exact text, so casing and punctuation
+        // cannot fail it, but loosely enough (4 of 5) that one misheard word
+        // does not either. The model revision is pinned (ModelPins), so the
+        // output only changes when someone bumps the pin.
+        let heard = Set(
+            text.lowercased()
+                .components(separatedBy: CharacterSet.letters.inverted)
+                .filter { !$0.isEmpty }
         )
-        // Don't assert on exact text content -- the model is non-deterministic
-        // across versions; presence-of-output is sufficient.
+        let expected = ["quick", "brown", "fox", "lazy", "dog"]
+        let matched = expected.filter(heard.contains)
+        XCTAssertGreaterThanOrEqual(
+            matched.count, 4,
+            "Transcript \"\(text)\" matched only \(matched) of \(expected)"
+        )
     }
 }

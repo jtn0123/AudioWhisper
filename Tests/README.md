@@ -66,7 +66,7 @@ file covers behaviour.
 | `Mocks/` | test doubles for audio, model managers, data, speech-to-text, uv, windows |
 | `Views/`, `Waveform/`, `Design/` | SwiftUI view logic and layout |
 | `Stores/`, `Models/`, `ViewModels/`, `Utilities/` | as named |
-| `Resources/` | `test_audio.wav`, the fixture for real transcription |
+| `Resources/` | `speech_sample.wav` (a spoken sentence, for the end-to-end test) and `test_audio.wav` (a 0.1 s tone, for audio decoding) |
 | `__Snapshots__/` | UI snapshot baselines (local-only; see below) |
 
 ## The Swift ↔ Python contract
@@ -100,7 +100,7 @@ RUN_E2E=1 swift test --filter ParakeetEndToEndTests
 
 This is the only test of the real transcription path: it builds the uv
 environment, downloads the pinned Parakeet model (~2.5 GB on first run), starts
-the daemon and transcribes `Resources/test_audio.wav`. Without `RUN_E2E=1` it
+the daemon, transcribes `Resources/speech_sample.wav`, and checks the words. Without `RUN_E2E=1` it
 skips, so per-PR CI stays fast. `.github/workflows/nightly.yml` runs it on a
 schedule and on `workflow_dispatch`. Treat a failure there as a broken app.
 
