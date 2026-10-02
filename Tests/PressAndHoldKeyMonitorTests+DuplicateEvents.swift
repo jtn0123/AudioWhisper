@@ -135,7 +135,7 @@ extension PressAndHoldKeyMonitorTests {
         }
 
         group.wait()
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
+        drainMainActor(until: { lock.lock(); defer { lock.unlock() }; return downCount > 0 })
 
         lock.lock()
         XCTAssertEqual(downCount, 1, "Concurrent key-down events should only trigger once")
@@ -151,11 +151,23 @@ extension PressAndHoldKeyMonitorTests {
         }
 
         group.wait()
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
+        drainMainActor(until: { lock.lock(); defer { lock.unlock() }; return upCount > 0 })
 
         lock.lock()
         XCTAssertEqual(upCount, 1, "Concurrent key-up events should only trigger once")
         lock.unlock()
+    }
+
+    /// Handlers run in `Task { @MainActor }`, so they only fire while the main
+    /// run loop spins. A fixed 0.2s spin was too short under a loaded `--parallel`
+    /// run. Spin until the first handler lands (bounded), then a little longer so
+    /// a duplicate — the thing these tests exist to catch — has time to land too.
+    private func drainMainActor(until firstHandlerRan: () -> Bool, timeout: TimeInterval = 5) {
+        let deadline = Date(timeIntervalSinceNow: timeout)
+        while !firstHandlerRan(), Date() < deadline {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.01))
+        }
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
     }
 
 }

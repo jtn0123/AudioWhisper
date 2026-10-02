@@ -51,20 +51,38 @@ export AUDIOWHISPER_DEFAULTS_SUITE="$SUITE_PREFIX"
 # drops the in-memory domain) followed by `rm` is durable. A best-effort EXIT
 # sweep still runs, so a single interactive run usually leaves nothing behind;
 # worst case the leak is bounded to one run and the next run reclaims it.
+#
+# Both sweeps run DETACHED. Nothing in a run depends on them — every xctest
+# process gets its own pid-keyed domain, so a stale one is never read — and
+# `defaults delete` is an XPC round-trip to cfprefsd per domain. Normally that
+# is ~10ms (357 domains in 3s), but a backed-up cfprefsd has been seen taking
+# ~15s each, which held a foreground sweep for 25+ minutes before a single
+# test ran. Housekeeping must not be able to block the suite.
+#
+# $1 = a domain prefix to leave alone (the current run's), or empty.
 sweep_scratch_domains() {
+  local keep="${1:-}"
   local prefs="$HOME/Library/Preferences"
   shopt -s nullglob
   local plist base
   for plist in "$prefs"/com.audiowhisper.tests.*.plist; do
     base=$(basename "$plist" .plist)
+    if [[ -n "$keep" && "$base" == "$keep".* ]]; then continue; fi
     defaults delete "$base" >/dev/null 2>&1 || true
     rm -f "$plist" 2>/dev/null || true
   done
   shopt -u nullglob
 }
 
-sweep_scratch_domains                       # reclaim anything from earlier runs
-trap 'sleep 1; sweep_scratch_domains' EXIT  # best effort for this run
+# Detached and silent, so a slow sweep neither delays the run nor holds open
+# the stdout of whoever is reading this script's output.
+sweep_in_background() {
+  (sweep_scratch_domains "${1:-}") </dev/null >/dev/null 2>&1 &
+  disown
+}
+
+sweep_in_background "$SUITE_PREFIX"               # reclaim earlier runs, not this one
+trap 'sleep 1; sweep_in_background' EXIT          # best effort for this run
 
 PARALLEL_FLAG="--parallel"
 for arg in "$@"; do

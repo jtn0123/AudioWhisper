@@ -135,9 +135,8 @@ open /Applications/AudioWhisper.app
 
 ### Python Integration
 The app embeds Python scripts for MLX-based features:
-- `Sources/parakeet_transcribe_pcm.py` - Parakeet transcription
-- `Sources/mlx_semantic_correct.py` - MLX semantic correction
-- `Sources/ml/` - Python ML package
+- `Sources/ml_daemon.py` - Entrypoint for the long-lived JSON-RPC daemon `MLDaemonManager` launches
+- `Sources/ml/` - Python ML package the daemon runs: Parakeet transcription (`parakeet.py`), MLX semantic correction (`correction.py`), and the RPC layer (`rpc.py`, `protocol.py`)
 - `Sources/verify_parakeet.py`, `Sources/verify_mlx.py` - Model verification
 
 Python dependencies are managed via bundled `uv` binary. `UvBootstrap.swift` handles environment setup.
