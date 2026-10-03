@@ -45,7 +45,7 @@ let package = Package(
             name: "AudioWhisperTests",
             dependencies: ["AudioWhisper"],
             path: "Tests",
-            exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "test_rpc.py", "__Snapshots__"],
+            exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "test_rpc.py", "test_verify_scripts.py", "__Snapshots__"],
             resources: [
                 .copy("Resources")
             ]
