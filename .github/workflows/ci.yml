@@ -278,9 +278,18 @@ jobs:
           # loads never touch the network, and a pinned download is visible to
           # offline lookup. It runs against a fake huggingface_hub, so it too
           # needs only system python.
+          #
+          # Tests/test_rpc.py covers the daemon's request handling and wire
+          # validation (ml.rpc, ml.protocol) with the model calls faked.
+          #
+          # Tests/test_verify_scripts.py runs verify_parakeet.py and
+          # verify_mlx.py (the Settings "Verify" buttons) against fake model
+          # libraries: offline hit, pinned download on a miss, and each error.
           set -e
           python3 Tests/test_correction_sanitize.py
           python3 Tests/test_hub.py
+          python3 Tests/test_rpc.py
+          python3 Tests/test_verify_scripts.py
 
       - name: TODO/FIXME audit (warn only)
         run: |

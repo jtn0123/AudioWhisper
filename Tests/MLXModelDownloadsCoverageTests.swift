@@ -209,4 +209,20 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         let process = try XCTUnwrap(manager.makeDownloadProcess(pythonPath: "/usr/bin/python3", repo: uniqueRepo()))
         XCTAssertEqual(process.environment, MLDaemonManager.daemonEnvironment())
     }
+
+    /// A bundle without download_model.py must not leave the row spinning:
+    /// the busy flag clears and the row says why, since a retry cannot help.
+    func testAMissingDownloadScriptClearsTheBusyStateWithAnError() async {
+        let repo = uniqueRepo()
+        manager.isDownloading[repo] = true
+        defer {
+            manager.isDownloading[repo] = nil
+            manager.downloadProgress[repo] = nil
+        }
+
+        await manager.reportMissingDownloadScript(for: repo)
+
+        XCTAssertEqual(manager.isDownloading[repo], false)
+        XCTAssertEqual(manager.downloadProgress[repo], "Error: Download script missing from the app bundle")
+    }
 }

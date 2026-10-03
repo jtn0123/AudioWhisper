@@ -268,6 +268,14 @@ class TestDownloadModelScript(HubTestCase):
         self.assertEqual(code, 1)
         self.assertEqual(events[-1], {"status": "error", "message": "connection reset"})
 
+    def test_missing_huggingface_hub_is_named_in_the_error(self) -> None:
+        sys.modules["huggingface_hub"] = None  # type: ignore[assignment]  # makes the import raise
+        code, events = self.run_main(["download_model.py", "org/model", PINNED])
+
+        self.assertEqual(code, 1)
+        self.assertEqual(events[-1]["status"], "error")
+        self.assertTrue(events[-1]["message"].startswith("huggingface_hub not installed:"))
+
 
 class TestDaemonEntrypoint(unittest.TestCase):
     def test_offline_flags_are_set_before_the_daemon_imports_anything(self) -> None:
