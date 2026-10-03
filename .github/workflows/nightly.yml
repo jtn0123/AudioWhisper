@@ -58,7 +58,16 @@ jobs:
 
       - name: Install uv
         run: |
-          command -v uv >/dev/null 2>&1 || curl -LsSf https://astral.sh/uv/install.sh | sh
+          # pipefail + retries: without them a failed download passed this step
+          # and surfaced later as a confusing failure (see ci.yml's lockfile step).
+          set -euo pipefail
+          if ! command -v uv >/dev/null 2>&1; then
+            curl -LsSf --retry 5 --retry-all-errors --retry-delay 5 https://astral.sh/uv/install.sh | sh || {
+              echo "::error::Could not install uv; see the output above."
+              exit 1
+            }
+            command -v "$HOME/.local/bin/uv" >/dev/null 2>&1 || { echo "::error::uv is missing after installing it."; exit 1; }
+          fi
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Generate VersionInfo.swift
