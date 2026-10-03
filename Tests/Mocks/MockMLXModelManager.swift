@@ -31,9 +31,10 @@ final class MockMLXModelManager: MLXModelManaging {
     var downloadProgress: [String: String] = [:]
     var totalCacheSize: Int64 = 0
 
+    /// Mirrors `MLXModelManager.unusedModels`: retired correction models only.
     var unusedModelCount: Int {
-        let recommendedRepos = Set(MLXModelManager.recommendedModels.map { $0.repo })
-        return downloadedModels.filter { !recommendedRepos.contains($0) }.count
+        let selected = AppDefaults.semanticCorrectionModelRepo
+        return MLXModelManager.retiredCorrectionModels.filter { downloadedModels.contains($0) && $0 != selected }.count
     }
 
     // MARK: - Call Tracking

@@ -164,12 +164,14 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         XCTAssertEqual(manager.unusedModelCount, 0)
     }
 
-    func testUnusedModelCountCountsNonRecommendedModels() {
+    /// Models this app never recommended — another app's, in the shared
+    /// cache — are not this app's to clean up. (This used to count them.)
+    func testUnusedModelCountIgnoresModelsThisAppNeverRecommended() {
         let snapshot = manager.downloadedModels
         defer { manager.downloadedModels = snapshot }
 
         manager.downloadedModels = ["some-org/unexpected-model", "another-org/odd-model"]
-        XCTAssertEqual(manager.unusedModelCount, 2)
+        XCTAssertEqual(manager.unusedModelCount, 0)
     }
 
     // MARK: - formatBytes

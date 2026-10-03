@@ -218,21 +218,32 @@ extension MLXModelManager {
         }
     }
 
-    /// Delete all models not in the recommended list
-    func cleanupUnusedModels() async {
-        let recommendedRepos = Set(Self.recommendedModels.map { $0.repo })
-        let modelsToDelete = downloadedModels.filter { !recommendedRepos.contains($0) }
+    /// What "Clean up old models" deletes: cached retired correction models,
+    /// except the one correction is set to use. In `retiredCorrectionModels`
+    /// order.
+    ///
+    /// This used to be every cached model outside `recommendedModels`, which
+    /// took in the Parakeet model the app transcribes with, any MLX model
+    /// another app had put in the shared cache, and — for a user the default
+    /// migration kept on Llama-3.2-1B — the correction model in use.
+    var unusedModels: [String] {
+        let selected = AppDefaults.semanticCorrectionModelRepo
+        return Self.retiredCorrectionModels.filter { downloadedModels.contains($0) && $0 != selected }
+    }
 
+    var unusedModelCount: Int { unusedModels.count }
+
+    /// Tooltip for the cleanup buttons: what a click will delete, by name.
+    var cleanupHelpText: String {
+        let names = unusedModels.map { $0.split(separator: "/").last.map(String.init) ?? $0 }
+        return "Deletes " + names.joined(separator: ", ")
+    }
+
+    func cleanupUnusedModels() async {
+        let modelsToDelete = unusedModels
         for repo in modelsToDelete {
             await deleteModel(repo)
         }
-
         logger.info("Cleaned up \(modelsToDelete.count) unused models")
-    }
-
-    /// Count of models that are downloaded but not in recommended list
-    var unusedModelCount: Int {
-        let recommendedRepos = Set(Self.recommendedModels.map { $0.repo })
-        return downloadedModels.filter { !recommendedRepos.contains($0) }.count
     }
 }
