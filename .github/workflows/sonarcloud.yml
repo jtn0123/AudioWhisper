@@ -114,6 +114,8 @@ jobs:
             Tests/test_correction_sanitize.py
           .pycov/bin/python -m coverage run --append --source=Sources/ml \
             Tests/test_hub.py
+          .pycov/bin/python -m coverage run --append --source=Sources/ml \
+            Tests/test_rpc.py
           .pycov/bin/python -m coverage xml -o coverage-python.xml
           if [ ! -s coverage-python.xml ]; then
             echo "::error::coverage-python.xml missing or empty. Sonar would"

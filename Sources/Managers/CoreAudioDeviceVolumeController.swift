@@ -4,11 +4,12 @@ import CoreAudio
 ///
 /// Audit item D3: lifted verbatim out of `MicrophoneVolumeManager` so the
 /// boost/restore state machine could be tested without a physical input device.
-/// This type stays untested on purpose — it is a thin translation of
-/// `AudioObjectGetPropertyData`/`AudioObjectSetPropertyData` calls against the
-/// machine's actual default input device, and a test of it would either need
-/// real hardware or would be asserting on a mock of Core Audio, which proves
-/// nothing. The logic worth testing was moved above it, not down here.
+/// This type is a thin translation of `AudioObjectGetPropertyData` /
+/// `AudioObjectSetPropertyData` calls against the machine's actual default input
+/// device; the logic worth testing was moved above it, not down here. Its tests
+/// (`CoreAudioDeviceVolumeControllerTests`) use only a nonexistent object ID, so
+/// they check the status-to-`VolumeError` mapping without touching a real
+/// microphone's volume.
 internal struct CoreAudioDeviceVolumeController: AudioDeviceVolumeControlling {
     func defaultInputDeviceID() async throws -> AudioDeviceID {
         return try await withCheckedThrowingContinuation { continuation in
