@@ -1,6 +1,6 @@
 # AudioWhisper Test Suite
 
-About 2,800 XCTest cases plus two Python test files. Everything runs offline
+About 2,800 XCTest cases plus four Python test files. Everything runs offline
 on a stock checkout except the opt-in end-to-end test (see below).
 
 ## Running
@@ -13,6 +13,8 @@ swift test --filter "DataManagerTests/testSaveAndLoadHistory"   # one test
 
 python3 Tests/test_correction_sanitize.py        # Python: correction output sanitising
 python3 Tests/test_hub.py                        # Python: pinned downloads, offline loads
+python3 Tests/test_rpc.py                        # Python: daemon request handling, wire validation
+python3 Tests/test_verify_scripts.py             # Python: the Settings "Verify" scripts
 ```
 
 Prefer `make test` over bare `swift test`. It recovers when `xcode-select`
@@ -78,8 +80,8 @@ every ML import in `Sources/ml` is lazy, so the daemon boots on stock `python3`.
 See CLAUDE.md, "The Swift ↔ Python RPC contract".
 
 The Python files run in CI's "Python unit tests" step, and their coverage is
-uploaded to SonarCloud. `Sources/ml` is also type-checked with `make typecheck`
-(mypy `--strict`).
+uploaded to SonarCloud. The bundled Python (`Sources/ml` and the scripts beside
+it) is also type-checked with `make typecheck` (mypy `--strict`).
 
 ## Snapshot tests (local only)
 
