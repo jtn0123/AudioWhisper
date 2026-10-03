@@ -3,18 +3,31 @@ import Foundation
 private class BundleFinder {}
 
 internal enum ResourceLocator {
-    /// Safe accessor for the SPM module bundle that returns nil instead of crashing
-    /// when the bundle is not found (e.g., when built with build.sh instead of SPM)
-    private static var moduleBundle: Bundle? {
-        let bundleName = "AudioWhisper_AudioWhisper"
-        let candidates = [
+    /// The SwiftPM resource bundle, or nil instead of crashing when there is
+    /// none (the `.app` that build.sh assembles copies resources flat into
+    /// Contents/Resources, so it has no separate bundle).
+    ///
+    /// `UvBootstrap` used to keep its own copy of this lookup; both now share it.
+    static var moduleBundle: Bundle? {
+        let bundleName = "AudioWhisper_AudioWhisper.bundle"
+        let codeBundle = Bundle(for: BundleFinder.self)
+        var candidates = [
             Bundle.main.resourceURL,
-            Bundle(for: BundleFinder.self).resourceURL,
+            codeBundle.resourceURL,
             Bundle.main.bundleURL
         ]
+        // Under `swift test`, SwiftPM's native build system (the default on CI's
+        // Swift 6.2 toolchain) puts the resource bundle BESIDE the .xctest;
+        // Swift Build, the default from 6.4, puts it inside. Missing this case meant a test
+        // process found no pyproject.toml or uv.lock, so the nightly end-to-end
+        // run could never build its Python environment. Only looked for next to
+        // a test bundle, so a shipped app never loads resources from whatever
+        // folder it happens to sit in.
+        if codeBundle.bundleURL.pathExtension == "xctest" {
+            candidates.append(codeBundle.bundleURL.deletingLastPathComponent())
+        }
         for candidate in candidates {
-            let bundlePath = candidate?.appendingPathComponent(bundleName + ".bundle")
-            if let bundle = bundlePath.flatMap(Bundle.init(url:)) {
+            if let bundle = candidate.flatMap({ Bundle(url: $0.appendingPathComponent(bundleName)) }) {
                 return bundle
             }
         }

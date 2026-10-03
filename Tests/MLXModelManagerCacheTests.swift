@@ -155,7 +155,6 @@ final class MLXModelManagerCacheTests: XCTestCase {
         selectParakeetRepo(repo)
 
         await manager.ensureParakeetModel()
-        await waitForDownloadToFinish(repo)
 
         XCTAssertEqual(manager.isDownloading[repo], false)
         XCTAssertNil(manager.downloadProgress[repo], "a finished download clears its progress text")
@@ -175,7 +174,6 @@ final class MLXModelManagerCacheTests: XCTestCase {
         selectParakeetRepo(repo)
 
         await manager.downloadParakeetModel()
-        await waitForDownloadToFinish(repo)
 
         XCTAssertEqual(manager.isDownloading[repo], false)
         let progress = manager.downloadProgress[repo] ?? ""
@@ -208,13 +206,30 @@ final class MLXModelManagerCacheTests: XCTestCase {
             """)
 
         await manager.downloadModel(repo)
-        await waitForDownloadToFinish(repo)
 
         XCTAssertEqual(manager.isDownloading[repo], false)
         XCTAssertNil(manager.downloadProgress[repo], "a finished download clears its progress text")
         let args = try String(contentsOf: argsFile, encoding: .utf8).split(separator: "\n").map(String.init)
         XCTAssertEqual(args.map { URL(fileURLWithPath: $0).lastPathComponent }.first, "download_model.py")
         XCTAssertEqual(Array(args.dropFirst()), [repo], "a user-added repo is unpinned: script + repo only")
+    }
+
+    /// `downloadModel` returns when the download has finished, not when it has
+    /// started. It used to return at launch, so the per-repo serializer guarded
+    /// only the launch and the nightly e2e test checked the cache a second into
+    /// a 2.5 GB fetch. A stub that takes a moment makes the difference visible.
+    func testDownloadModelReturnsOnlyOnceTheDownloadHasFinished() async throws {
+        let repo = uniqueRepo()
+        try installStubPython(body: """
+            sleep 0.5
+            echo '{"status": "complete", "message": "Download complete"}'
+            exit 0
+            """)
+
+        await manager.downloadModel(repo)
+
+        XCTAssertEqual(manager.isDownloading[repo], false, "still downloading after downloadModel returned")
+        XCTAssertNil(manager.downloadProgress[repo])
     }
 
     func testAFailedMLXDownloadIsReportedAsAnError() async throws {
@@ -225,7 +240,6 @@ final class MLXModelManagerCacheTests: XCTestCase {
             """)
 
         await manager.downloadModel(repo)
-        await waitForDownloadToFinish(repo)
 
         XCTAssertEqual(manager.isDownloading[repo], false)
         let progress = manager.downloadProgress[repo] ?? ""
@@ -349,16 +363,5 @@ private extension MLXModelManagerCacheTests {
     func writeExecutable(_ contents: String, to url: URL) throws {
         try Data(contents.utf8).write(to: url)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
-    }
-
-    /// The download returns once the subprocess has been started or, in later
-    /// versions, once it has exited; either way this waits for the exit.
-    func waitForDownloadToFinish(_ repo: String, timeout: Duration = .seconds(20)) async {
-        let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: timeout)
-        while manager.isDownloading[repo] == true, clock.now < deadline {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        XCTAssertNotEqual(manager.isDownloading[repo], true, "download of \(repo) never finished")
     }
 }

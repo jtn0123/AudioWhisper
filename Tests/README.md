@@ -1,399 +1,115 @@
 # AudioWhisper Test Suite
 
-A comprehensive test suite for the AudioWhisper macOS application covering all major components and functionality.
+About 2,800 XCTest cases plus four Python test files. Everything runs offline
+on a stock checkout except the opt-in end-to-end test (see below).
 
-## Overview
-
-This test suite provides thorough coverage of the AudioWhisper application including:
-- Audio recording and processing
-- Speech-to-text API integration
-- Settings and preferences management
-- Keychain security operations
-- UI components and user interactions
-- Utility functions and helpers
-
-## Test Structure
-
-```
-Tests/
-├── README.md                      # This documentation
-├── Mocks/                         # Mock objects for external dependencies
-│   ├── MockAVAudioEngine.swift    # AVFoundation audio engine mock
-│   ├── MockAVAudioRecorder.swift  # Audio recorder mock
-│   ├── MockKeychain.swift         # Keychain operations mock
-│   └── MockURLSession.swift       # Network session mock
-├── AudioRecorderTests.swift       # Audio recording functionality tests
-├── SpeechToTextServiceTests.swift # API integration and transcription tests
-├── SettingsViewTests.swift        # Settings and preferences tests
-└── UtilityTests.swift             # Utility functions and helpers tests
-```
-
-## Running Tests
-
-### Prerequisites
-
-- macOS 14.0 or later
-- Swift 5.9 or later
-- Xcode 15.0 or later (for UI tests)
-
-### Command Line
+## Running
 
 ```bash
-# Run all tests (recommended - uses make)
-make test
+make test                                        # whole suite, parallel (preferred)
+scripts/run-tests.sh --no-parallel               # sequential
+swift test --filter "DataManagerTests"           # one class
+swift test --filter "DataManagerTests/testSaveAndLoadHistory"   # one test
 
-# Run all tests directly, sequentially (matches CI)
-swift test --no-parallel
-
-# Run specific test file
-swift test --filter AudioRecorderTests
-
-# Run specific test case
-swift test --filter AudioRecorderTests.testStartRecordingUpdatesState
-
-# Run tests with verbose output
-swift test --no-parallel --verbose
+python3 Tests/test_correction_sanitize.py        # Python: correction output sanitising
+python3 Tests/test_hub.py                        # Python: pinned downloads, offline loads
+python3 Tests/test_rpc.py                        # Python: daemon request handling, wire validation
+python3 Tests/test_verify_scripts.py             # Python: the Settings "Verify" scripts
 ```
 
-**Note**: Tests run sequentially (`--no-parallel`) to match CI
-(`.github/workflows/ci.yml`). A number of tests still read and write
-`UserDefaults.standard` directly; under `--parallel` they observe each
-other's writes and fail nondeterministically. Tests that touch
-`UserDefaults.standard` should subclass `IsolatedXCTestCase` (see the
-[Test isolation](#test-isolation) section below) and use a UUID-scoped
-suite. Once enough tests are isolated, `--parallel` can become the default.
+Prefer `make test` over bare `swift test`. It recovers when `xcode-select`
+points at Command Line Tools (the asset catalog needs Xcode's `actool`; see
+CLAUDE.md), filters macOS framework noise, and gives each run its own settings
+domain.
 
-## Test isolation
+## Settings isolation (why `--parallel` is safe)
 
-`Tests/Utilities/IsolatedXCTestCase.swift` provides a base class that
-detects tests which mutate `UserDefaults.standard`. Most service, store,
-and manager tests now inherit from it. The default enforcement mode is
-**warn**: a test that leaks/mutates `.standard` prints
-`[IsolatedXCTestCase] WARNING:` but does not fail. Tests can override:
+Production and test code reach settings only through `AppDefaults`, never
+`UserDefaults.standard`. `scripts/run-tests.sh` points `AppDefaults` at a
+scratch suite (`AUDIOWHISPER_DEFAULTS_SUITE`), and `AppDefaults` appends the
+process ID. So each xctest process that `--parallel` spawns has its own settings
+store, and the scratch domains are swept afterwards.
 
-- `AUDIOWHISPER_TEST_ISOLATION=off swift test` — silence the
-  warning entirely (use only when debugging unrelated output noise).
-- `AUDIOWHISPER_TEST_ISOLATION=warn swift test` — explicit
-  warn mode (same as default).
-- `AUDIOWHISPER_TEST_ISOLATION=strict swift test` — `XCTFail`
-  on leaks/mutations and roll `.standard` back to its pre-test value. This
-  is the target mode for CI once every offender has been migrated to a
-  UUID-scoped suite or explicitly opted out.
+`Tests/Utilities/IsolatedXCTestCase.swift` is the safety net. Tests that run
+settings-touching business logic subclass it, and it reports any test that
+still mutates `.standard`. Control it with `AUDIOWHISPER_TEST_ISOLATION`:
 
-To write a new isolated test, prefer a UUID-scoped suite over `.standard`:
+| Value | Effect |
+|---|---|
+| `warn` (default) | log `[IsolatedXCTestCase] WARNING:` and continue |
+| `strict` | `XCTFail` and roll `.standard` back |
+| `off` | silent |
+
+A new test that needs settings should use a UUID-scoped suite rather than
+`.standard`:
 
 ```swift
 final class MyServiceTests: IsolatedXCTestCase {
-    var defaults: UserDefaults!
-
-    override func setUp() async throws {
-        try await super.setUp()
-        defaults = UserDefaults(suiteName: UUID().uuidString)!
-    }
-
     func testReadsInjectedDefaults() {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
         defaults.set("expected", forKey: "myKey")
-        let sut = MyService(defaults: defaults)
-        XCTAssertEqual(sut.read(), "expected")
+        XCTAssertEqual(MyService(defaults: defaults).read(), "expected")
     }
 }
 ```
 
-If a test legitimately must mutate `.standard` (e.g. it exercises a
-migration that targets the global domain), opt out with:
+## Layout
 
-```swift
-override var enforcesStandardUserDefaultsIsolation: Bool { false }
+Most test files sit at the top level, named after the type they cover
+(`DataManagerTests.swift`, `MLXModelManagerTests.swift`, …). Larger classes
+split into extensions: `PressAndHoldKeyMonitorTests+ThreadSafety.swift`.
+`*CoverageTests.swift` files fill branch coverage for a type whose main test
+file covers behaviour.
+
+| Directory | Contents |
+|---|---|
+| `AppDelegate/` | the app delegate's extensions: hotkeys, lifecycle, menu, notifications, recording window |
+| `Integration/` | multi-component flows, plus the opt-in `ParakeetEndToEndTests` |
+| `Mocks/` | test doubles for audio, model managers, data, speech-to-text, uv, windows |
+| `Views/`, `Waveform/`, `Design/` | SwiftUI view logic and layout |
+| `Stores/`, `Models/`, `ViewModels/`, `Utilities/` | as named |
+| `Resources/` | `speech_sample.wav` (a spoken sentence, for the end-to-end test) and `test_audio.wav` (a 0.1 s tone, for audio decoding) |
+| `__Snapshots__/` | UI snapshot baselines (local-only; see below) |
+
+## The Swift ↔ Python contract
+
+`MLRPCContractTests` runs the real `Sources/ml_daemon.py` and checks it against
+the production Swift encoder and decoder. That is the only thing tying the two
+sides of the JSON-RPC wire format together. It needs no venv and no models:
+every ML import in `Sources/ml` is lazy, so the daemon boots on stock `python3`.
+See CLAUDE.md, "The Swift ↔ Python RPC contract".
+
+The Python files run in CI's "Python unit tests" step, and their coverage is
+uploaded to SonarCloud. The bundled Python (`Sources/ml` and the scripts beside
+it) is also type-checked with `make typecheck` (mypy `--strict`).
+
+## Snapshot tests (local only)
+
+```bash
+SNAPSHOT_TESTS=1  swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # check
+SNAPSHOT_RECORD=1 swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # re-record
 ```
 
-…and add a `// TODO(D2): …` comment explaining the constraint so the
-exception can be revisited once the relevant production code accepts an
-injected `UserDefaults`.
+They are skipped unless opted in, and never run in CI: a GitHub runner has no
+usable WindowServer, so its renders are placeholders. CLAUDE.md lists the rules
+for adding one (`ScrollableContent` instead of `ScrollView`, pinned dates).
 
-### Xcode
-
-1. Open the project in Xcode
-2. Select the test target
-3. Use `⌘+U` to run all tests
-4. Use `⌘+Ctrl+U` to run tests in the current file
-
-## Test Categories
-
-### 1. AudioRecorderTests
-**Focus**: Audio recording functionality, state management, and audio level monitoring
-
-**Key Test Areas**:
-- Recording state transitions (`isRecording` property)
-- Audio level monitoring and normalization
-- File URL generation and uniqueness
-- Timer-based level updates
-- Performance of recording operations
-- Error handling for recording failures
-
-**Critical Tests**:
-- `testStartRecordingUpdatesState()` - Ensures recording state updates correctly
-- `testAudioLevelUpdatesWhileRecording()` - Verifies audio level monitoring
-- `testNormalizeLevelWithValidInput()` - Tests dB to linear conversion
-- `testRecordingURLGeneration()` - Validates file naming and path generation
-
-### 2. SpeechToTextServiceTests
-**Focus**: API integration, provider selection, and transcription workflows
-
-**Key Test Areas**:
-- OpenAI Whisper API integration
-- Google Gemini API integration
-- Provider selection logic
-- Error handling for API failures
-- Keychain API key management
-- Response parsing and validation
-
-**Critical Tests**:
-- `testProviderSelectionDefaultsToOpenAI()` - Verifies default provider logic
-- `testWhisperResponseDecoding()` - Tests JSON response parsing
-- `testGeminiResponseDecoding()` - Tests Gemini response structure
-- `testAPIKeyFromKeychain()` - Validates secure key retrieval
-
-### 3. SettingsViewTests
-**Focus**: User preferences, microphone discovery, and system integration
-
-**Key Test Areas**:
-- UserDefaults persistence
-- Microphone device discovery
-- API key storage and retrieval
-- Provider selection preferences
-- Global hotkey configuration
-- Start-at-login functionality
-
-**Critical Tests**:
-- `testMicrophoneDiscovery()` - Ensures audio device enumeration works
-- `testAPIKeyKeychain()` - Validates secure key storage
-- `testProviderSelectionPersistence()` - Tests preference persistence
-- `testConcurrentAPIKeyOperations()` - Verifies thread safety
-
-### 4. UtilityTests
-**Focus**: Helper functions, data conversion, and system utilities
-
-**Key Test Areas**:
-- File system operations
-- Data encoding/decoding
-- URL validation
-- Timer operations
-- String manipulation
-- Memory management
-
-**Critical Tests**:
-- `testTemporaryFileCreation()` - Validates file handling
-- `testBase64AudioEncoding()` - Tests audio data conversion
-- `testTimerCreation()` - Ensures timer functionality
-- `testMemoryLeakPrevention()` - Prevents memory leaks
-
-## Mock Objects
-
-### MockAVAudioRecorder
-Simulates `AVAudioRecorder` behavior without requiring actual audio hardware:
-- Controllable recording states
-- Configurable audio levels
-- Simulate recording failures
-- Test delegate callbacks
-
-### MockURLSession
-Provides network request mocking for API tests:
-- Configurable responses
-- Error simulation
-- Request validation
-- Async operation testing
-
-### MockKeychain
-Simulates keychain operations without system keychain access:
-- In-memory storage
-- Error condition simulation
-- Thread-safe operations
-- Cleanup utilities
-
-### MockAVAudioEngine
-Mocks audio engine functionality:
-- Input node simulation
-- Running state control
-- Audio processing pipeline
-
-## Test Data Management
-
-### Temporary Files
-Tests that require file operations use temporary files that are automatically cleaned up:
-```swift
-let tempDir = FileManager.default.temporaryDirectory
-let testFile = tempDir.appendingPathComponent("test_audio.m4a")
-// File automatically cleaned up in tearDown()
-```
-
-### UserDefaults Isolation
-Each test clears relevant UserDefaults keys to ensure test isolation:
-```swift
-override func tearDown() {
-    UserDefaults.standard.removeObject(forKey: "selectedMicrophone")
-    UserDefaults.standard.removeObject(forKey: "useOpenAI")
-    super.tearDown()
-}
-```
-
-### API Key Testing
-Tests that require API keys use mock keychain service for secure testing:
-```swift
-let mockKeychain = MockKeychainService()
-mockKeychain.saveQuietly("test-key", service: "AudioWhisper", account: "OpenAI")
-// Test code
-// Cleanup handled automatically by test teardown
-```
-
-## Performance Testing
-
-Performance tests are included to ensure the application remains responsive:
-
-### Audio Processing Performance
-- Recording start/stop operations
-- Audio level normalization
-- File I/O operations
-
-### API Response Processing
-- JSON parsing performance
-- Large response handling
-- Concurrent request processing
-
-### UI Responsiveness
-- Settings loading time
-- Microphone discovery performance
-- Keychain operations
-
-## Test Coverage Goals
-
-- **Functionality**: All major features tested
-- **Edge Cases**: Error conditions and boundary values
-- **Integration**: Component interactions
-- **Performance**: Response time requirements
-- **Security**: Keychain and API key handling
-- **Concurrency**: Thread safety and race conditions
-
-## End-to-End Tests
-
-Opt-in integration tests are gated by env vars to keep per-PR runs fast.
-Currently:
-
-| Env Var | What it runs | Cost |
-|---------|--------------|------|
-| `RUN_E2E=1` | Full Parakeet flow (and any future MLX e2e tests) incl. venv bootstrap, model download, real transcription | ~30s + first-run 2.5 GB download |
-
-`RUN_PARAKEET_E2E=1` is still honored as a deprecated alias for the
-Parakeet-specific path; new tests should gate on `RUN_E2E`.
-
-Example:
+## End-to-end (opt-in, nightly)
 
 ```bash
 RUN_E2E=1 swift test --filter ParakeetEndToEndTests
 ```
 
-The Parakeet test self-downloads the model via the same `MLXModelManager`
-flow used by Settings, so a clean CI runner only needs network access on
-the first run. Subsequent runs reuse the HuggingFace cache.
+This is the only test of the real transcription path: it builds the uv
+environment, downloads the pinned Parakeet model (~2.5 GB on first run), starts
+the daemon, transcribes `Resources/speech_sample.wav`, and checks the words. Without `RUN_E2E=1` it
+skips, so per-PR CI stays fast. `.github/workflows/nightly.yml` runs it on a
+schedule and on `workflow_dispatch`. Treat a failure there as a broken app.
 
-Without the env var these tests skip cleanly, so `swift test` and CI remain fast.
+## Tooling that runs over the tests in CI
 
-## Common Test Patterns
-
-### Async Testing
-```swift
-func testAsyncOperation() async {
-    do {
-        let result = try await service.transcribe(audioURL: testURL)
-        XCTAssertFalse(result.isEmpty)
-    } catch {
-        XCTFail("Unexpected error: \(error)")
-    }
-}
-```
-
-### Publisher Testing (Combine)
-```swift
-func testPublisher() {
-    let expectation = XCTestExpectation(description: "Publisher should emit")
-    
-    audioRecorder.$isRecording
-        .sink { isRecording in
-            XCTAssertTrue(isRecording)
-            expectation.fulfill()
-        }
-        .store(in: &cancellables)
-    
-    audioRecorder.startRecording()
-    wait(for: [expectation], timeout: 1.0)
-}
-```
-
-### Error Testing
-```swift
-func testErrorHandling() {
-    do {
-        _ = try await service.transcribe(audioURL: invalidURL)
-        XCTFail("Expected error")
-    } catch let error as SpeechToTextError {
-        XCTAssertEqual(error, .invalidURL)
-    } catch {
-        XCTFail("Unexpected error type")
-    }
-}
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Permission Dialogs**: Some tests may trigger system permission dialogs
-   - Run tests in a clean environment
-   - Grant microphone permissions when prompted
-
-2. **Network Tests**: API tests may fail without internet connection
-   - Tests are designed to work offline by testing error conditions
-   - Mock objects prevent actual network calls
-
-3. **Keychain Access**: Keychain tests may fail in sandboxed environments
-   - Tests use isolated keychain items
-   - Cleanup ensures no interference between tests
-
-4. **Audio Device Tests**: May fail in virtual environments
-   - Tests detect available audio devices
-   - Fallback to system defaults when no devices available
-
-### Test Isolation
-
-Each test is designed to be independent:
-- No shared state between tests
-- Clean setup and teardown
-- Mock objects reset between tests
-- Temporary files automatically cleaned up
-
-## Contributing
-
-When adding new tests:
-
-1. **Follow naming conventions**: `test[ComponentName][Behavior]()`
-2. **Include setup/teardown**: Clean state for each test
-3. **Use descriptive assertions**: Clear error messages
-4. **Add performance tests**: For new functionality
-5. **Document complex tests**: Add comments for complex test logic
-6. **Test edge cases**: Include boundary conditions and error cases
-
-## Continuous Integration
-
-The test suite is designed to run in CI environments:
-- No external dependencies required
-- Mock objects prevent flaky tests
-- Performance tests have reasonable timeouts
-- Clean shutdown and resource cleanup
-
-## Future Enhancements
-
-Potential test suite improvements:
-- UI testing with XCTest UI framework
-- Integration tests with real API endpoints
-- Stress testing with large audio files
-- Accessibility testing
-- Localization testing for multiple languages
+- **SwiftLint** (`scripts/lint.sh`), plus `swiftlint analyze`, which gates on
+  unused imports and ratchets unused declarations.
+- **ThreadSanitizer** is not in CI. For concurrency work, run the relevant
+  tests with `swift test --sanitize=thread --filter <Class>`; it found a data
+  race in `PressAndHoldKeyMonitor` that the tests themselves passed over.
