@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 /// Consolidated single-page welcome.
 ///

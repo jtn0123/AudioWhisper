@@ -21,22 +21,34 @@ internal enum StandardWindow {
         window.isReleasedWhenClosed = false
         window.isRestorable = false
         window.center()
-        guard let name = frameAutosaveName else { return }
         // Replaces the centring above with the saved frame, if there is one.
-        window.setFrameAutosaveName(name)
-        // A frame saved on a display that has since been unplugged would
-        // reopen the window where it cannot be seen.
-        let onScreen = NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) }
-        if !onScreen {
-            window.center()
+        // AppKit itself moves a frame saved on a since-unplugged display back
+        // onto a screen.
+        if let frameAutosaveName {
+            window.setFrameAutosaveName(frameAutosaveName)
         }
     }
+
+    /// Configures a new window, runs `onClose` when it closes, and shows it.
+    /// Returns the window's delegate for the caller to keep: a window holds
+    /// its delegate weakly.
+    static func open(_ window: NSWindow, frameAutosaveName: String?,
+                     onClose: @escaping () -> Void) -> StandardWindowDelegate {
+        configure(window, frameAutosaveName: frameAutosaveName)
+        let delegate = StandardWindowDelegate(onClose: onClose)
+        window.delegate = delegate
+        present(window)
+        return delegate
+    }
+
+    /// Shows the windows. Tests swap in one that activates nothing.
+    static var presenter: WindowPresenter = .shared
 
     /// Brings `window` to the front, restoring it if minimised, and makes
     /// AudioWhisper the active app — on a desktop, not over another app's
     /// full-screen window (`WindowPresenter`).
     static func present(_ window: NSWindow) {
-        WindowPresenter.shared.present(window)
+        presenter.present(window)
     }
 }
 

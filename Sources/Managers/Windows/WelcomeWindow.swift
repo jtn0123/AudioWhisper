@@ -29,20 +29,16 @@ internal enum WelcomeWindow {
         )
         window.contentViewController = NSHostingController(rootView: WelcomeView())
         window.title = "Welcome to AudioWhisper"
-        StandardWindow.configure(window, frameAutosaveName: nil)
 
         // However it closes — "Get started" or the close button — the user
         // has now seen it. Closing with the button used to leave
         // `lastWelcomeVersion` unset, so it came back at every launch.
-        delegate = StandardWindowDelegate {
+        self.window = window
+        delegate = StandardWindow.open(window, frameAutosaveName: nil) {
             markSeen()
             WelcomeWindow.window = nil
             WelcomeWindow.delegate = nil
         }
-        window.delegate = delegate
-
-        self.window = window
-        StandardWindow.present(window)
     }
 
     /// "Get started": records the welcome as seen, opens the Dashboard and

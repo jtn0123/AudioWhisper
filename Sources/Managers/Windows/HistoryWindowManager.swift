@@ -53,15 +53,11 @@ internal final class HistoryWindowManager: NSObject {
         window.title = "Transcription History"
         window.setContentSize(NSSize(width: 800, height: 500))
         window.minSize = NSSize(width: 700, height: 400)
-        StandardWindow.configure(window, frameAutosaveName: "AudioWhisperHistory")
-
-        windowDelegate = StandardWindowDelegate { [weak self] in
-            self?.windowWillClose()
-        }
-        window.delegate = windowDelegate
 
         historyWindow = window
-        StandardWindow.present(window)
+        windowDelegate = StandardWindow.open(window, frameAutosaveName: "AudioWhisperHistory") { [weak self] in
+            self?.windowWillClose()
+        }
 
         Logger.app.info("History window created and shown")
     }

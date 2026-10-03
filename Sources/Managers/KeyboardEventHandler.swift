@@ -32,17 +32,22 @@ internal class KeyboardEventHandler {
         // Note: local monitor closure must return `NSEvent?`, so the early
         // exit returns `event` (pass through) rather than `nil`.
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self,
-                  let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }),
-                  window.isVisible,
-                  Self.isForRecordingWindow(eventWindowNumber: event.windowNumber,
-                                            recordingWindowNumber: window.windowNumber)
-            else { return event }
-            // The recording window has no text input, so nothing aimed at it
-            // should fall through to AppKit.
-            _ = self.handleKeyEvent(event, for: window)
-            return nil
+            guard let self else { return event }
+            let window = NSApp.windows.first { $0.title == WindowTitles.recording && $0.isVisible }
+            return self.handleLocalKeyEvent(event, recordingWindow: window)
         }
+    }
+
+    /// What the local monitor does with a key event sent to AudioWhisper:
+    /// one aimed at the recording window is a recording command and goes no
+    /// further — that window has no text input — and any other is passed on.
+    func handleLocalKeyEvent(_ event: NSEvent, recordingWindow: NSWindow?) -> NSEvent? {
+        guard let recordingWindow,
+              Self.isForRecordingWindow(eventWindowNumber: event.windowNumber,
+                                        recordingWindowNumber: recordingWindow.windowNumber)
+        else { return event }
+        handleKeyEvent(event, for: recordingWindow)
+        return nil
     }
 
     /// Whether a key event delivered to AudioWhisper is aimed at the recording

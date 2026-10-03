@@ -170,11 +170,7 @@ extension WindowPresenter.Environment {
         isAppActive: { NSApp.isActive },
         activateApp: { NSApp.activate() },
         requestAttention: { _ = NSApp.requestUserAttention(.informationalRequest) },
-        after: { delay, body in
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                MainActor.assumeIsolated { body() }
-            }
-        },
+        after: runOnMainQueue(after:_:),
         orderFront: { window in
             if window.isMiniaturized {
                 window.deminiaturize(nil)
@@ -196,4 +192,11 @@ extension WindowPresenter.Environment {
         appNotifications: .default,
         workspaceNotifications: NSWorkspace.shared.notificationCenter
     )
+
+    @MainActor
+    static func runOnMainQueue(after delay: TimeInterval, _ body: @escaping @MainActor () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            MainActor.assumeIsolated { body() }
+        }
+    }
 }

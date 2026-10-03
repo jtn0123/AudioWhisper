@@ -95,15 +95,10 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
 
-        StandardWindow.configure(window, frameAutosaveName: "AudioWhisperDashboard")
-
-        windowDelegate = StandardWindowDelegate { [weak self] in
+        dashboardWindow = window
+        windowDelegate = StandardWindow.open(window, frameAutosaveName: "AudioWhisperDashboard") { [weak self] in
             self?.windowWillClose()
         }
-        window.delegate = windowDelegate
-
-        dashboardWindow = window
-        StandardWindow.present(window)
 
         Logger.app.info("Dashboard window created and shown")
     }

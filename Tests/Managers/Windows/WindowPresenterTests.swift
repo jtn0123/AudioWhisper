@@ -236,3 +236,61 @@ final class WindowPresenterTests: XCTestCase {
         timers.remove(at: index).body()
     }
 }
+
+/// The real AppKit side of `WindowPresenter`, on a borderless window far off
+/// every screen, so nothing appears while the suite runs.
+@MainActor
+final class WindowPresenterLiveEnvironmentTests: XCTestCase {
+    private let live = WindowPresenter.Environment.live
+    private var window: NSWindow!
+
+    override func setUp() {
+        super.setUp()
+        window = NSWindow(contentRect: NSRect(x: -30_000, y: -30_000, width: 10, height: 10),
+                          styleMask: [.borderless], backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+    }
+
+    override func tearDown() {
+        window.orderOut(nil)
+        window = nil
+        super.tearDown()
+    }
+
+    func testDelayedWorkRunsLaterOnTheMainQueue() {
+        var ran = false
+        let done = expectation(description: "ran")
+
+        live.after(0) {
+            ran = true
+            done.fulfill()
+        }
+
+        XCTAssertFalse(ran, "it must not run before the caller has finished")
+        wait(for: [done], timeout: 1)
+    }
+
+    func testOrderingFrontPutsTheWindowOnScreen() {
+        live.orderFront(window)
+
+        XCTAssertTrue(window.isVisible)
+    }
+
+    func testAWindowNotOnScreenIsNotStranded() {
+        XCTAssertFalse(live.isStranded(window), "a closed window has no Space to be left behind on")
+    }
+
+    /// `.moveToActiveSpace` is only for the one move: kept, the window would
+    /// jump to whichever Space is active each time AudioWhisper is.
+    func testMovingAWindowToTheActiveSpaceDoesNotLeaveItFollowingSpaces() {
+        let behavior = window.collectionBehavior
+        let restored = expectation(description: "behaviour restored")
+
+        live.moveToActiveSpace(window)
+        DispatchQueue.main.async { restored.fulfill() }
+        wait(for: [restored], timeout: 1)
+
+        XCTAssertTrue(window.isVisible)
+        XCTAssertEqual(window.collectionBehavior, behavior)
+    }
+}

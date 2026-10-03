@@ -122,12 +122,6 @@ final class AppDelegateMenuTests: XCTestCase {
         XCTAssertTrue(tapped, "onTap closure should fire when invoked")
     }
 
-    func testShowHelpDoesNotCrash() {
-        // This would normally show a dialog, but in test mode it may not
-        // Just verify no crash
-        // Note: This might show UI in non-test mode
-    }
-
     // MARK: - Transcribe Audio File Tests
 
     func testTranscribeAudioFileAllowedContentTypes() {

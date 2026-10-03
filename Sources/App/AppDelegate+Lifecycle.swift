@@ -125,7 +125,7 @@ internal extension AppDelegate {
         )
     }
 
-    @objc func handleReopenEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+    @objc func handleReopenEvent(_: NSAppleEventDescriptor, withReplyEvent _: NSAppleEventDescriptor) {
         DashboardWindowManager.shared.showDashboardWindow()
     }
 

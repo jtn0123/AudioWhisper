@@ -197,6 +197,43 @@ final class StandardWindowTests: XCTestCase {
 
         XCTAssertTrue(closed)
     }
+
+    func testOpeningAWindowConfiguresShowsAndWatchesIt() {
+        let spy = PresenterSpy()
+        spy.install()
+        defer { spy.uninstall() }
+        var closed = false
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: true)
+
+        let delegate = StandardWindow.open(window, frameAutosaveName: nil) { closed = true }
+        window.close()
+
+        XCTAssertTrue(window.delegate === delegate, "the window must report to the delegate returned")
+        XCTAssertEqual(window.collectionBehavior, StandardWindow.collectionBehavior)
+        XCTAssertEqual(spy.shown, [window])
+        XCTAssertTrue(closed)
+    }
+
+    /// A frame saved on a display that has since been unplugged must not put
+    /// the window back where it cannot be seen. AppKit sees to that for a
+    /// titled window — `configure` relies on it.
+    func testAFrameSavedOffEveryScreenComesBackOnScreen() {
+        let name = "StandardWindowTests-\(UUID().uuidString)"
+        let frameKey = "NSWindow Frame \(name)"
+        UserDefaults.standard.set("-30000 -30000 400 300 -30000 -30000 1920 1080 ", forKey: frameKey)
+        defer { UserDefaults.standard.removeObject(forKey: frameKey) }
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: true)
+
+        StandardWindow.configure(window, frameAutosaveName: name)
+
+        XCTAssertEqual(window.frameAutosaveName, name, "the window must keep saving its frame")
+        if !NSScreen.screens.isEmpty {
+            XCTAssertTrue(NSScreen.screens.contains { $0.visibleFrame.intersects(window.frame) },
+                          "the window must be on a screen, not at \(window.frame)")
+        }
+    }
 }
 
 @MainActor
@@ -241,6 +278,22 @@ final class RecordingWindowStyleTests: XCTestCase {
         let origin = RecordingWindowStyle.frameOrigin(for: mostlyOffscreen, on: laptop)
 
         XCTAssertEqual(origin, NSPoint(x: 570, y: 378))
+    }
+
+    func testShowingTheRecordingWindowBringsItOntoAScreen() {
+        let farAway = NSPoint(x: -30_000, y: -30_000)
+        let window = ChromelessWindow(contentRect: NSRect(origin: farAway, size: LayoutMetrics.RecordingWindow.size),
+                                      styleMask: [.borderless], backing: .buffered, defer: true)
+
+        RecordingWindowStyle.moveToActiveScreen(window)
+
+        if NSScreen.screens.isEmpty {
+            XCTAssertEqual(window.frame.origin, farAway, "with no screen there is nowhere to move it")
+        } else {
+            let centre = NSPoint(x: window.frame.midX, y: window.frame.midY)
+            XCTAssertTrue(NSScreen.screens.contains { $0.visibleFrame.contains(centre) },
+                          "the recording window must be on a screen, not at \(window.frame)")
+        }
     }
 }
 

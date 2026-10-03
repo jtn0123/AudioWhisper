@@ -71,9 +71,12 @@ final class WelcomeViewUserDefaultsKeysTests: XCTestCase {
 final class WelcomeWindowTests: XCTestCase {
     private let keys: [AppDefaults.Key] = [.transcriptionProvider, .hasCompletedWelcome, .lastWelcomeVersion]
     private var saved: [AppDefaults.Key: Any] = [:]
+    private var presenter: PresenterSpy!
 
     override func setUp() {
         super.setUp()
+        presenter = PresenterSpy()
+        presenter.install()
         saved = [:]
         for key in keys {
             saved[key] = AppDefaults.defaults.object(forKey: key.rawValue)
@@ -82,6 +85,9 @@ final class WelcomeWindowTests: XCTestCase {
     }
 
     override func tearDown() {
+        presenter.shown.forEach { $0.close() }
+        presenter.uninstall()
+        presenter = nil
         for key in keys {
             if let value = saved[key] {
                 AppDefaults.defaults.set(value, forKey: key.rawValue)
@@ -127,5 +133,47 @@ final class WelcomeWindowTests: XCTestCase {
         WelcomeWindow.finish()
 
         wait(for: [completed], timeout: 1.0)
+    }
+
+    // MARK: - The window
+
+    func testAskingForTheWelcomeAgainBringsBackTheSameWindow() {
+        WelcomeWindow.show()
+        WelcomeWindow.show()
+
+        XCTAssertEqual(presenter.shown.count, 2)
+        XCTAssertTrue(presenter.shown.first === presenter.shown.last, "a second welcome window must not open")
+        XCTAssertEqual(presenter.shown.first?.title, "Welcome to AudioWhisper")
+    }
+
+    /// Closing the window with its close button used to leave the version
+    /// unset, so the welcome came back at every launch.
+    func testClosingTheWindowCountsAsSeen() throws {
+        WelcomeWindow.show()
+        let window = try XCTUnwrap(presenter.shown.first)
+
+        window.close()
+
+        XCTAssertTrue(AppDefaults.hasCompletedWelcome)
+        XCTAssertEqual(AppDefaults.lastWelcomeVersion, AppSetupHelper.currentWelcomeVersion)
+    }
+
+    func testGetStartedClosesTheWindow() throws {
+        WelcomeWindow.show()
+
+        WelcomeWindow.finish()
+        WelcomeWindow.show()
+
+        XCTAssertEqual(presenter.shown.count, 2)
+        XCTAssertFalse(presenter.shown.first === presenter.shown.last,
+                       "once closed, asking for the welcome must open it afresh")
+    }
+
+    /// There is no help book; Help shows the welcome instead of "Help isn't
+    /// available for AudioWhisper".
+    func testHelpOpensTheWelcome() {
+        AppDelegate().showHelp()
+
+        XCTAssertEqual(presenter.shown.map(\.title), ["Welcome to AudioWhisper"])
     }
 }

@@ -291,18 +291,10 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
     func start() {
         stop()
 
-        let modifierFlag = configuration.key.modifierFlag
-        if modifierFlag == .command || modifierFlag == .option || modifierFlag == .control || modifierFlag == .function {
-            monitor(.flagsChanged) { [weak self] event in
-                self?.handleModifierEvent(event)
-            }
-        } else {
-            monitor(.keyDown) { [weak self] event in
-                self?.handleKeyEvent(event, isKeyDown: true)
-            }
-            monitor(.keyUp) { [weak self] event in
-                self?.handleKeyEvent(event, isKeyDown: false)
-            }
+        // Every `PressAndHoldKey` is a modifier, and a modifier key reports
+        // only as `flagsChanged` — never as keyDown or keyUp.
+        monitor(.flagsChanged) { [weak self] event in
+            self?.handleModifierEvent(event)
         }
     }
 
@@ -351,18 +343,6 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
 
         monitorQueue.async { [weak self] in
             self?.processTransition(isKeyDownEvent: keyIsCurrentlyDown)
-        }
-    }
-
-    private func handleKeyEvent(_ event: NSEvent, isKeyDown: Bool) {
-        guard event.keyCode == configuration.key.keyCode else { return }
-
-        if isKeyDown, event.isARepeat {
-            return
-        }
-
-        monitorQueue.async { [weak self] in
-            self?.processTransition(isKeyDownEvent: isKeyDown)
         }
     }
 

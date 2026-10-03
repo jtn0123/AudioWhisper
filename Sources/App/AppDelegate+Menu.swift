@@ -221,7 +221,7 @@ internal extension AppDelegate {
     /// and a regular app may not have windows on another app's full-screen
     /// Space, so the activation policy is settled first
     /// (`ActivationPolicyController.statusMenuWillOpen()`).
-    @objc func openStatusMenu(_ sender: Any?) {
+    @objc func openStatusMenu(_: Any?) {
         guard let statusItem, let statusMenu else { return }
         ActivationPolicyController.shared.statusMenuWillOpen()
         statusItem.menu = statusMenu
