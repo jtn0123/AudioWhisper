@@ -33,14 +33,33 @@ internal class KeyboardEventHandler {
         // exit returns `event` (pass through) rather than `nil`.
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            // Check if recording window is visible
-            if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }), window.isVisible {
-                // Always consume events when recording window is visible to prevent passthrough
-                _ = self.handleKeyEvent(event, for: window)
-                return nil // Consume the event to prevent it from reaching other apps
-            }
-            return event
+            let window = NSApp.windows.first { $0.title == WindowTitles.recording && $0.isVisible }
+            return self.handleLocalKeyEvent(event, recordingWindow: window)
         }
+    }
+
+    /// What the local monitor does with a key event sent to AudioWhisper:
+    /// one aimed at the recording window is a recording command and goes no
+    /// further — that window has no text input — and any other is passed on.
+    func handleLocalKeyEvent(_ event: NSEvent, recordingWindow: NSWindow?) -> NSEvent? {
+        guard let recordingWindow,
+              Self.isForRecordingWindow(eventWindowNumber: event.windowNumber,
+                                        recordingWindowNumber: recordingWindow.windowNumber)
+        else { return event }
+        handleKeyEvent(event, for: recordingWindow)
+        return nil
+    }
+
+    /// Whether a key event delivered to AudioWhisper is aimed at the recording
+    /// window. Only then is it a recording command.
+    ///
+    /// The local monitor used to take every key event while the recording
+    /// window was visible, whichever window it was for. The recording window
+    /// stays up showing an error, and the same error opens the Dashboard — so
+    /// the Dashboard could not be typed in, or closed with ⌘W, until the
+    /// recording window was dismissed, and Space in it started a recording.
+    static func isForRecordingWindow(eventWindowNumber: Int, recordingWindowNumber: Int) -> Bool {
+        recordingWindowNumber > 0 && eventWindowNumber == recordingWindowNumber
     }
 
     @discardableResult

@@ -189,15 +189,16 @@ internal class AppSetupHelper {
         return false
     }
 
+    /// The welcome screen's version. Bump it to show the welcome again to
+    /// existing users. "1.1" is the version that introduced SmartPaste.
+    static let currentWelcomeVersion = "1.1"
+
     static func checkFirstRun() -> Bool {
         let hasExistingProvider = AppDefaults.hasValue(for: .transcriptionProvider)
         let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
         let lastWelcomeVersion = AppDefaults.lastWelcomeVersion
 
-        // Current version that includes SmartPaste feature
-        let currentWelcomeVersion = "1.1" // Update this when SmartPaste feature is released
-
-        // Show welcome for new users OR existing users who haven't seen the SmartPaste welcome
+        // Show welcome for new users OR existing users who haven't seen the current welcome
         let shouldShowWelcome = (!hasExistingProvider && !hasCompletedWelcome) || (lastWelcomeVersion != currentWelcomeVersion)
 
         if shouldShowWelcome {

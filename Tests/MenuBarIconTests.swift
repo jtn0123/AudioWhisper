@@ -117,6 +117,19 @@ final class MenuBarIconTests: XCTestCase {
         XCTAssertEqual(renderer.state, .idle)
     }
 
+    /// The menu bar icon was blank from launch until the first recording:
+    /// the renderer starts idle, so the app's `setState(.idle)` hit the
+    /// unchanged-state guard and never drew anything. The status item still
+    /// took clicks, in an empty slot nobody could see.
+    func testANewRendererDrawsTheIdleIcon() {
+        let button = makeButton()
+
+        let renderer = MenuBarIconRenderer(button: button)
+
+        XCTAssertEqual(renderer.state, .idle)
+        XCTAssertEqual(button.image?.isTemplate, true, "the idle icon must be on the button from the start")
+    }
+
     func testSetStateRecordsTheNewState() {
         let button = makeButton()
         let renderer = MenuBarIconRenderer(button: button)

@@ -178,10 +178,6 @@ internal enum LocalizedStrings {
             value: "Quit",
             comment: "Menu item to quit the app")
 
-        static let closeWindow = NSLocalizedString("menu.close_window",
-            value: "Close Window",
-            comment: "Menu item to close current window")
-
         static let history = NSLocalizedString("menu.history",
             value: "History...",
             comment: "Menu item to open transcription history")

@@ -14,8 +14,10 @@ internal protocol DashboardWindowManaging {
 internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     static let shared = DashboardWindowManager()
 
-    private weak var dashboardWindow: NSWindow?
-    private var windowDelegate: DashboardWindowDelegate?
+    /// Held strongly from creation until it closes, so a minimised or
+    /// background Dashboard is the same window the next request brings back.
+    private var dashboardWindow: NSWindow?
+    private var windowDelegate: StandardWindowDelegate?
     private let isTestEnvironment: Bool
 
     /// Most-recent transcripts, newest first. Read synchronously by the status
@@ -56,14 +58,17 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     }
 
     /// Shows the dashboard window, creating it if necessary or bringing existing one to front
+    ///
+    /// "Existing" includes a minimised Dashboard. This used to check
+    /// `isVisible`, which is false for a window in the Dock, so asking for the
+    /// Dashboard while it was minimised opened a second one beside it.
     func showDashboardWindow() {
         if isTestEnvironment {
             return
         }
 
-        if let existingWindow = dashboardWindow, existingWindow.isVisible {
-            existingWindow.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+        if let existingWindow = dashboardWindow {
+            StandardWindow.present(existingWindow)
             return
         }
 
@@ -81,26 +86,19 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
             defer: false
         )
 
-        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
         window.contentViewController = hostingController
         window.title = "AudioWhisper Dashboard"
         window.setContentSize(initialSize)
         window.minSize = minimumSize
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.isRestorable = false
 
         // Follow system appearance
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
 
-        windowDelegate = DashboardWindowDelegate(manager: self)
-        window.delegate = windowDelegate
-
         dashboardWindow = window
-
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        windowDelegate = StandardWindow.open(window, frameAutosaveName: "AudioWhisperDashboard") { [weak self] in
+            self?.windowWillClose()
+        }
 
         Logger.app.info("Dashboard window created and shown")
     }
@@ -109,22 +107,5 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
         dashboardWindow = nil
         windowDelegate = nil
         Logger.app.info("Dashboard window closed and references cleaned up")
-    }
-}
-
-private class DashboardWindowDelegate: NSObject, NSWindowDelegate {
-    private weak var manager: DashboardWindowManager?
-
-    init(manager: DashboardWindowManager) {
-        self.manager = manager
-        super.init()
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        manager?.windowWillClose()
-    }
-
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        return true
     }
 }

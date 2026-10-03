@@ -46,6 +46,7 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
             keyDownHandler: keyDownHandler,
             keyUpHandler: keyUpHandler,
             addGlobalMonitor: addMonitor,
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: removeMonitor
         )
     }
@@ -140,6 +141,7 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
                 startCount += 1
                 return "mock" as Any
             },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in stopCount += 1 }
         )
 
@@ -276,6 +278,7 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
             keyDownHandler: {},
             keyUpHandler: { keyUpExpectation.fulfill() },
             addGlobalMonitor: { _, _ in "mock" as Any },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in },
             currentModifierFlags: { flagsBox.value }
         )
@@ -303,6 +306,7 @@ final class PressAndHoldKeyMonitorTests: XCTestCase {
             keyDownHandler: {},
             keyUpHandler: { keyUpCalled = true },
             addGlobalMonitor: { _, _ in "mock" as Any },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in },
             currentModifierFlags: { flagsBox.value }
         )

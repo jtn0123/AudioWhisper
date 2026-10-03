@@ -1,5 +1,4 @@
 import SwiftUI
-import AppKit
 
 /// Consolidated single-page welcome.
 ///
@@ -240,19 +239,7 @@ internal struct WelcomeView: View {
         guard !isDismissing else { return }
         isDismissing = true
 
-        // Default to local provider (preserved from old WelcomeView behavior)
-        //
-        // D4/ADR-0004: these went through `UserDefaults.standard` with raw key
-        // STRINGS, duplicating keys that AppDefaults already owns — the exact
-        // two-sources-of-truth problem ADR 0004 describes. It also meant this
-        // screen wrote somewhere AppDefaults might not be reading.
-        AppDefaults.transcriptionProvider = .local
-        AppDefaults.hasCompletedWelcome = true
-        AppDefaults.lastWelcomeVersion = "1.1"
-
-        NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
-        DashboardWindowManager.shared.showDashboardWindow()
-        NSApplication.shared.stopModal(withCode: .OK)
+        WelcomeWindow.finish()
     }
 }
 

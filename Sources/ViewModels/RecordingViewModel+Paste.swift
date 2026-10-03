@@ -122,12 +122,12 @@ extension RecordingViewModel {
         }
     }
 
+    /// Fades out the recording window, if there is one. Only that window: this
+    /// used to fall back to `NSApp.keyWindow`, which after a paste was
+    /// usually the Dashboard, so pasting could make the Dashboard vanish.
     private func hideRecordingWindow() {
-        let recordWindow = NSApp.windows.first { $0.title == WindowTitles.recording }
-        if let window = recordWindow {
+        if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }) {
             fadeOutWindow(window)
-        } else if let keyWindow = NSApplication.shared.keyWindow {
-            fadeOutWindow(keyWindow)
         }
     }
 

@@ -1,63 +1,67 @@
 import AppKit
 import SwiftUI
 
-internal class WelcomeWindow {
-    static func showWelcomeDialog() -> Bool {
-        // Show the new SwiftUI welcome window
-        let welcomeView = WelcomeView()
-        let hostingController = NSHostingController(rootView: welcomeView)
+/// The welcome window, shown on first run and from "Help / Welcome".
+///
+/// It is an ordinary window. It used to run modally (`NSApp.runModal`), which
+/// froze the rest of the app while it was open: the menu bar icon would not
+/// open its menu, so a welcome window that had fallen behind another app could
+/// only be found again with Mission Control.
+@MainActor
+internal enum WelcomeWindow {
+    private static var window: NSWindow?
+    private static var delegate: StandardWindowDelegate?
 
-        // Get the main screen dimensions for proper centering
-        let screenFrame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1920, height: 1080)
-        let windowWidth = LayoutMetrics.Welcome.windowSize.width
-        let windowHeight = LayoutMetrics.Welcome.windowSize.height
+    /// Shows the welcome window, or brings it forward if it is already open.
+    /// "Get started" closes it and posts `.welcomeCompleted`, which opens the
+    /// Dashboard.
+    static func show() {
+        if let window {
+            StandardWindow.present(window)
+            return
+        }
 
         let window = NSWindow(
-            contentRect: NSRect(
-                x: (screenFrame.width - windowWidth) / 2,
-                y: (screenFrame.height - windowHeight) / 2,
-                width: windowWidth,
-                height: windowHeight
-            ),
+            contentRect: NSRect(origin: .zero, size: LayoutMetrics.Welcome.windowSize),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
-
-        window.contentViewController = hostingController
+        window.contentViewController = NSHostingController(rootView: WelcomeView())
         window.title = "Welcome to AudioWhisper"
-        window.isReleasedWhenClosed = false
 
-        // Add window delegate to handle close button properly
-        let delegate = WelcomeWindowDelegate()
-        window.delegate = delegate
-
-        // Ensure proper focus and activation
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-
-        // Force focus after a brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            NSApplication.shared.activate(ignoringOtherApps: true)
-            window.makeKey()
+        // However it closes — "Get started" or the close button — the user
+        // has now seen it. Closing with the button used to leave
+        // `lastWelcomeVersion` unset, so it came back at every launch.
+        self.window = window
+        delegate = StandardWindow.open(window, frameAutosaveName: nil) {
+            markSeen()
+            WelcomeWindow.window = nil
+            WelcomeWindow.delegate = nil
         }
-
-        // Run the window modally
-        let response = NSApplication.shared.runModal(for: window)
-        window.close()
-
-        return response == .OK
     }
-}
 
-internal class WelcomeWindowDelegate: NSObject, NSWindowDelegate {
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        // The user has seen the welcome window; closing it via the red button
-        // counts as "completed" so the next hotkey press isn't silently dropped
-        // by the first-run guard in WindowController.
+    /// "Get started": records the welcome as seen, opens the Dashboard and
+    /// closes the welcome window.
+    static func finish() {
+        // Only a first run has no provider yet. "Help / Welcome" reopens this
+        // screen for existing users, and finishing it used to set `.local`
+        // regardless — so reading the welcome again switched a Parakeet user
+        // to Whisper.
+        if !AppDefaults.hasValue(for: .transcriptionProvider) {
+            AppDefaults.transcriptionProvider = .local
+        }
+        markSeen()
+
+        // AppDelegate opens the Dashboard on this.
+        NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
+        window?.close()
+    }
+
+    /// Records that this version of the welcome has been seen, so
+    /// `AppSetupHelper.checkFirstRun()` does not show it again.
+    static func markSeen() {
         AppDefaults.hasCompletedWelcome = true
-        NSApplication.shared.stopModal(withCode: .cancel)
-        return true
+        AppDefaults.lastWelcomeVersion = AppSetupHelper.currentWelcomeVersion
     }
 }

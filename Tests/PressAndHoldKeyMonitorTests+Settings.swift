@@ -225,6 +225,7 @@ extension PressAndHoldKeyMonitorTests {
                 keyDownHandler: {},
                 keyUpHandler: nil,
                 addGlobalMonitor: { _, _ in "mock" as Any },
+                addLocalMonitor: { _, _ in nil },
                 removeMonitor: { _ in stopCalled = true }
             )
         }
@@ -244,6 +245,7 @@ extension PressAndHoldKeyMonitorTests {
                 keyDownHandler: {},
                 keyUpHandler: nil,
                 addGlobalMonitor: { _, _ in "mock" as Any },
+                addLocalMonitor: { _, _ in nil },
                 removeMonitor: { _ in removeCount += 1 }
             )
             monitor.start()
@@ -265,6 +267,7 @@ extension PressAndHoldKeyMonitorTests {
                 addCount += 1
                 return "mock\(addCount)" as Any
             },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in removeCount += 1 }
         )
 
@@ -290,6 +293,7 @@ extension PressAndHoldKeyMonitorTests {
                 addCount += 1
                 return "mock" as Any
             },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in removeCount += 1 }
         )
 
@@ -313,6 +317,7 @@ extension PressAndHoldKeyMonitorTests {
             },
             keyUpHandler: nil,
             addGlobalMonitor: { _, _ in "mock" as Any },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in }
         )
 

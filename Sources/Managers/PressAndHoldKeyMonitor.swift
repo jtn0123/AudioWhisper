@@ -176,9 +176,14 @@ internal enum PressAndHoldSettings {
     }
 }
 
-/// Observes global keyboard events so that modifier-only keys (e.g. right command)
-/// can trigger recording. Uses NSEvent global monitors, which continue to fire even
-/// when the app is not focused.
+/// Observes keyboard events so that modifier-only keys (e.g. right command)
+/// can trigger recording, whichever app is focused.
+///
+/// That takes two monitors per event type. A global monitor sees only events
+/// sent to *other* apps, and a local monitor only those sent to this one. This
+/// used to install the global ones alone, so the key did nothing while one of
+/// AudioWhisper's own windows — the Dashboard — had focus, and a key released
+/// while the Dashboard was focused never ended a hold-to-record.
 ///
 /// A5: `@unchecked Sendable` rather than `@MainActor`. This type is genuinely
 /// multi-threaded *by design*, and marking it `@MainActor` would contradict that:
@@ -197,17 +202,18 @@ internal enum PressAndHoldSettings {
 /// produced five new warnings instead of removing one — the wrong fix.)
 internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
     typealias EventMonitorFactory = (NSEvent.EventTypeMask, @escaping (NSEvent) -> Void) -> Any?
+    typealias LocalEventMonitorFactory = (NSEvent.EventTypeMask, @escaping (NSEvent) -> NSEvent?) -> Any?
     typealias EventMonitorRemoval = (Any) -> Void
 
     private let configuration: PressAndHoldConfiguration
     private let keyDownHandler: () -> Void
     private let keyUpHandler: (() -> Void)?
     private let addGlobalMonitor: EventMonitorFactory
+    private let addLocalMonitor: LocalEventMonitorFactory
     private let removeMonitor: EventMonitorRemoval
 
-    private var flagsMonitor: Any?
-    private var keyDownMonitor: Any?
-    private var keyUpMonitor: Any?
+    /// Every installed monitor, global and local, for `stop()` to remove.
+    private var monitors: [Any] = []
     private let monitorQueue = DispatchQueue(label: "com.audiowhisper.pressAndHoldMonitor")
 
     /// Watchdog that reconciles `isPressed` against the real physical modifier state.
@@ -269,6 +275,7 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
         keyDownHandler: @escaping () -> Void,
         keyUpHandler: (() -> Void)? = nil,
         addGlobalMonitor: @escaping EventMonitorFactory = NSEvent.addGlobalMonitorForEvents(matching:handler:),
+        addLocalMonitor: @escaping LocalEventMonitorFactory = NSEvent.addLocalMonitorForEvents(matching:handler:),
         removeMonitor: @escaping EventMonitorRemoval = NSEvent.removeMonitor(_:),
         currentModifierFlags: @escaping () -> NSEvent.ModifierFlags = { NSEvent.modifierFlags }
     ) {
@@ -276,6 +283,7 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
         self.keyDownHandler = keyDownHandler
         self.keyUpHandler = keyUpHandler
         self.addGlobalMonitor = addGlobalMonitor
+        self.addLocalMonitor = addLocalMonitor
         self.removeMonitor = removeMonitor
         self.currentModifierFlags = currentModifierFlags
     }
@@ -283,34 +291,35 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
     func start() {
         stop()
 
-        let modifierFlag = configuration.key.modifierFlag
-        if modifierFlag == .command || modifierFlag == .option || modifierFlag == .control || modifierFlag == .function {
-            flagsMonitor = addGlobalMonitor(.flagsChanged) { [weak self] event in
-                self?.handleModifierEvent(event)
-            }
-        } else {
-            keyDownMonitor = addGlobalMonitor(.keyDown) { [weak self] event in
-                self?.handleKeyEvent(event, isKeyDown: true)
-            }
-            keyUpMonitor = addGlobalMonitor(.keyUp) { [weak self] event in
-                self?.handleKeyEvent(event, isKeyDown: false)
-            }
+        // Every `PressAndHoldKey` is a modifier, and a modifier key reports
+        // only as `flagsChanged` — never as keyDown or keyUp.
+        monitor(.flagsChanged) { [weak self] event in
+            self?.handleModifierEvent(event)
+        }
+    }
+
+    /// Sends `mask` events to `handler` whichever app they are for: a global
+    /// monitor for other apps' events, a local one for this app's. The local
+    /// one passes the event on — the key still does whatever it does in the
+    /// focused window.
+    private func monitor(_ mask: NSEvent.EventTypeMask, handler: @escaping (NSEvent) -> Void) {
+        if let global = addGlobalMonitor(mask, handler) {
+            monitors.append(global)
+        }
+        let local = addLocalMonitor(mask) { event in
+            handler(event)
+            return event
+        }
+        if let local {
+            monitors.append(local)
         }
     }
 
     func stop() {
-        if let monitor = flagsMonitor {
+        for monitor in monitors {
             removeMonitor(monitor)
-            flagsMonitor = nil
         }
-        if let monitor = keyDownMonitor {
-            removeMonitor(monitor)
-            keyDownMonitor = nil
-        }
-        if let monitor = keyUpMonitor {
-            removeMonitor(monitor)
-            keyUpMonitor = nil
-        }
+        monitors.removeAll()
         stopWatchdog()
         isPressed = false
     }
@@ -334,18 +343,6 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
 
         monitorQueue.async { [weak self] in
             self?.processTransition(isKeyDownEvent: keyIsCurrentlyDown)
-        }
-    }
-
-    private func handleKeyEvent(_ event: NSEvent, isKeyDown: Bool) {
-        guard event.keyCode == configuration.key.keyCode else { return }
-
-        if isKeyDown, event.isARepeat {
-            return
-        }
-
-        monitorQueue.async { [weak self] in
-            self?.processTransition(isKeyDownEvent: isKeyDown)
         }
     }
 

@@ -77,15 +77,7 @@ internal extension AppDelegate {
         window.title = WindowTitles.recording
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
-        window.backgroundColor = .clear
-        // Use floating level - fullscreen visibility is handled by .fullScreenAuxiliary collectionBehavior,
-        // not window level. .screenSaver is unnecessarily high and may interfere with input/focus.
-        window.level = .floating
-        window.hidesOnDeactivate = false
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
-        window.hasShadow = true
-        window.isOpaque = false
+        RecordingWindowStyle.configure(window)
 
         guard let container = DataManager.shared.sharedModelContainer ?? createFallbackModelContainer() else {
             Logger.app.error("Cannot create recording window: Failed to create ModelContainer")
@@ -100,7 +92,6 @@ internal extension AppDelegate {
 
         window.contentView = NSHostingView(rootView: contentView)
         window.center()
-        window.isRestorable = false
 
         window.standardWindowButton(.closeButton)?.isHidden = true
         window.standardWindowButton(.miniaturizeButton)?.isHidden = true

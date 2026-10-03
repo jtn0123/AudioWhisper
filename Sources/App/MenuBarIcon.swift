@@ -11,8 +11,7 @@ import AppKit
 //   private var iconRenderer: MenuBarIconRenderer?
 //   ...
 //   if let button = statusItem?.button {
-//       iconRenderer = MenuBarIconRenderer(button: button)
-//       iconRenderer?.setState(.idle)
+//       iconRenderer = MenuBarIconRenderer(button: button)   // draws the idle icon
 //   }
 //   // ...later:
 //   iconRenderer?.setState(.recording)
@@ -44,8 +43,11 @@ internal final class MenuBarIconRenderer {
     private(set) var state: MenuBarIconState = .idle
     private var successResetWork: DispatchWorkItem?
 
+    /// Draws the idle icon straight away: `setState(.idle)` cannot, since the
+    /// renderer already starts idle.
     init(button: NSButton) {
         self.button = button
+        button.image = Self.renderBars(tint: nil, level: 0)
     }
 
     deinit {

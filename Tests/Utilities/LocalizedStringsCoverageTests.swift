@@ -64,7 +64,6 @@ final class LocalizedStringsCoverageTests: XCTestCase {
             LocalizedStrings.Menu.record,
             LocalizedStrings.Menu.settings,
             LocalizedStrings.Menu.quit,
-            LocalizedStrings.Menu.closeWindow,
             LocalizedStrings.Menu.history
         ]
         strings.forEach { XCTAssertFalse($0.isEmpty) }

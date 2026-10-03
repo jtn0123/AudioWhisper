@@ -12,6 +12,8 @@ internal extension AppDelegate {
             return
         }
 
+        installReopenHandler()
+
         // Clear any corrupted window state restoration data (one-time migration)
         if !AppDefaults.hasCleanedWindowState {
             if let bundleId = Bundle.main.bundleIdentifier {
@@ -43,13 +45,14 @@ internal extension AppDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
             iconRenderer = MenuBarIconRenderer(button: button)
-            iconRenderer?.setState(.idle)
-            // Note: no button action/target — assigning a menu to the
-            // NSStatusItem means a click always shows the menu and never
-            // invokes a button action. Recording is reachable via the menu's
-            // "Start Recording" item and the global hotkey.
+            // A click opens the menu through this action rather than through
+            // a menu assigned to the status item, so the activation policy is
+            // settled before AppKit builds the menu's windows.
+            button.target = self
+            button.action = #selector(openStatusMenu(_:))
+            button.sendAction(on: [.leftMouseDown, .rightMouseDown])
         }
-        statusItem?.menu = makeStatusMenu()
+        statusMenu = makeStatusMenu()
 
         // Warm the menu's "Recent" cache so the first open has data.
         Task { await DashboardWindowManager.shared.refreshRecentRecordsCache() }
@@ -80,7 +83,7 @@ internal extension AppDelegate {
         // dashboard fallback below.
         if AppSetupHelper.checkFirstRun() {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.showWelcomeAndSettings()
+                self?.showWelcome()
             }
             return
         }
@@ -104,6 +107,28 @@ internal extension AppDelegate {
         false // Keep app running in menu bar
     }
 
+    /// Opening AudioWhisper while it is already running — from Finder,
+    /// Spotlight or Launchpad, or by clicking its Dock icon — shows the
+    /// Dashboard, as reopening any Mac app shows its window. It used to do
+    /// nothing, which looked like the app had failed to launch.
+    ///
+    /// This takes over the reopen Apple event rather than implementing
+    /// `applicationShouldHandleReopen(_:hasVisibleWindows:)`: SwiftUI handles
+    /// reopen itself without consulting that, and opened its empty `Settings`
+    /// scene window instead.
+    func installReopenHandler() {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleReopenEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kCoreEventClass),
+            andEventID: AEEventID(kAEReopenApplication)
+        )
+    }
+
+    @objc func handleReopenEvent(_: NSAppleEventDescriptor, withReplyEvent _: NSAppleEventDescriptor) {
+        DashboardWindowManager.shared.showDashboardWindow()
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // H7: the ML daemon is a Python subprocess; if the app exits before
         // `shutdown()` finishes, the subprocess is orphaned. Defer
@@ -122,11 +147,8 @@ internal extension AppDelegate {
         AppSetupHelper.cleanupOldTemporaryFiles()
     }
 
-    func showWelcomeAndSettings() {
-        let shouldOpenSettings = WelcomeWindow.showWelcomeDialog()
-
-        if shouldOpenSettings {
-            DashboardWindowManager.shared.showDashboardWindow()
-        }
+    /// "Get started" opens the Dashboard through `.welcomeCompleted`.
+    func showWelcome() {
+        WelcomeWindow.show()
     }
 }

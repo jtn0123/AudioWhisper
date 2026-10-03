@@ -31,14 +31,15 @@ final class KeyboardEventHandlerTests: XCTestCase {
         characters: String,
         charactersIgnoringModifiers: String? = nil,
         modifiers: NSEvent.ModifierFlags = [],
-        keyCode: UInt16 = 0
+        keyCode: UInt16 = 0,
+        windowNumber: Int = 0
     ) -> NSEvent? {
         return NSEvent.keyEvent(
             with: .keyDown,
             location: .zero,
             modifierFlags: modifiers,
             timestamp: 0,
-            windowNumber: 0,
+            windowNumber: windowNumber,
             context: nil,
             characters: characters,
             charactersIgnoringModifiers: charactersIgnoringModifiers ?? characters,
@@ -120,5 +121,51 @@ final class KeyboardEventHandlerTests: XCTestCase {
         let result = handler.handleKeyEvent(event, for: window)
 
         XCTAssertNotNil(result, "Non-command keys should pass through")
+    }
+
+    // MARK: - Keys sent to AudioWhisper (local monitor)
+
+    func testAKeyAimedAtTheRecordingWindowGoesNoFurther() throws {
+        let recording = numberedWindow()
+        let event = try XCTUnwrap(keyEvent(characters: "a", windowNumber: recording.windowNumber))
+
+        XCTAssertNil(handler.handleLocalKeyEvent(event, recordingWindow: recording),
+                     "the recording window has no text input for the key to reach")
+    }
+
+    func testARecordingCommandAimedAtTheRecordingWindowIsCarriedOut() throws {
+        let recording = numberedWindow()
+        let escape = String(Character(UnicodeScalar(27)))
+        let event = try XCTUnwrap(keyEvent(characters: escape, keyCode: 53, windowNumber: recording.windowNumber))
+        let dismissed = expectation(forNotification: .escapeKeyPressed, object: nil)
+
+        _ = handler.handleLocalKeyEvent(event, recordingWindow: recording)
+
+        wait(for: [dismissed], timeout: 1)
+    }
+
+    /// The Dashboard opens beside a recording window showing an error: a key
+    /// typed into the Dashboard must reach the Dashboard.
+    func testAKeyAimedAtAnotherWindowIsPassedOn() throws {
+        let recording = numberedWindow()
+        let dashboard = numberedWindow()
+        let event = try XCTUnwrap(keyEvent(characters: " ", keyCode: 49, windowNumber: dashboard.windowNumber))
+
+        XCTAssertTrue(handler.handleLocalKeyEvent(event, recordingWindow: recording) === event)
+    }
+
+    func testWithNoRecordingWindowEveryKeyIsPassedOn() throws {
+        let event = try XCTUnwrap(keyEvent(characters: " ", keyCode: 49, windowNumber: numberedWindow().windowNumber))
+
+        XCTAssertTrue(handler.handleLocalKeyEvent(event, recordingWindow: nil) === event)
+    }
+
+    /// A window that is not deferred has a window number before it is shown.
+    private func numberedWindow() -> NSWindow {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 200, height: 200),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        XCTAssertGreaterThan(window.windowNumber, 0)
+        return window
     }
 }

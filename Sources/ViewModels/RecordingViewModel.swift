@@ -303,10 +303,9 @@ final class RecordingViewModel {
                     self.showSuccess = false
                 }
 
+                // Only the recording window — see `hideRecordingWindow()`.
                 if let window = recordWindow {
                     self.fadeOutWindow(window, completion: onFadeComplete)
-                } else if let keyWindow = NSApplication.shared.keyWindow {
-                    self.fadeOutWindow(keyWindow, completion: onFadeComplete)
                 } else {
                     onFadeComplete()
                 }

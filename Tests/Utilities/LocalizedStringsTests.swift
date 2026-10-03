@@ -257,10 +257,6 @@ final class LocalizedStringsMenuTests: XCTestCase {
         XCTAssertEqual(LocalizedStrings.Menu.quit, "Quit")
     }
 
-    func testCloseWindow() {
-        XCTAssertEqual(LocalizedStrings.Menu.closeWindow, "Close Window")
-    }
-
     func testHistory() {
         XCTAssertEqual(LocalizedStrings.Menu.history, "History...")
     }
@@ -269,7 +265,6 @@ final class LocalizedStringsMenuTests: XCTestCase {
         XCTAssertFalse(LocalizedStrings.Menu.record.isEmpty)
         XCTAssertFalse(LocalizedStrings.Menu.settings.isEmpty)
         XCTAssertFalse(LocalizedStrings.Menu.quit.isEmpty)
-        XCTAssertFalse(LocalizedStrings.Menu.closeWindow.isEmpty)
         XCTAssertFalse(LocalizedStrings.Menu.history.isEmpty)
     }
 }
