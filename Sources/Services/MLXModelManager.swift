@@ -73,16 +73,47 @@ internal final class MLXModelManager {
         )
     ]
 
+    /// Correction models earlier versions recommended — and so may have
+    /// downloaded — that `recommendedModels` has since dropped. Newest first.
+    ///
+    /// These are the only models "Clean up old models" may delete. The Hugging
+    /// Face cache is shared with every other tool on the Mac, so "cached but not
+    /// recommended" is not "ours and unused": `downloadedModels` also holds the
+    /// Parakeet transcription model and any MLX model another app fetched.
+    /// Cleanup used to delete all of those.
+    static let retiredCorrectionModels = [
+        // The 2026-07-31 benchmark (see above).
+        "mlx-community/Phi-3.5-mini-instruct-4bit",
+        "mlx-community/Llama-3.2-1B-Instruct-4bit",
+        "mlx-community/gemma-3-1b-it-4bit",  // replaced by its QAT build
+        // 2025-12-17.
+        "mlx-community/Llama-3.2-3B-Instruct-4bit",
+        "mlx-community/Qwen3-4B-Instruct-2507-5bit",
+        // 2025-08-11.
+        "mlx-community/gemma-2-2b-it-4bit"
+    ]
+
     // Note: model/repo download logic lives in `MLXModelManager+Downloads.swift`.
     // The Parakeet download path drives the Python `parakeet_mlx` package, and the
     // selected repo is resolved from `selectedParakeetModel` (see `parakeetRepo`).
 
-    private init() {
-        self.cacheDirectory = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/huggingface/hub")
+    private convenience init() {
+        self.init(cacheDirectory: FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache/huggingface/hub"))
         Task {
             await refreshModelList()
         }
+    }
+
+    /// The app uses `shared`, on the real cache. This exists so tests can run
+    /// deletion against a temporary cache: on `shared`, a test that exercises
+    /// `cleanupUnusedModels` could delete models the developer really has.
+    ///
+    /// Unlike `shared`, it does not scan the cache in the background — a scan
+    /// finishing mid-test could re-add a model the test had just deleted. Call
+    /// `refreshModelList()`.
+    init(cacheDirectory: URL) {
+        self.cacheDirectory = cacheDirectory
     }
 
     func refreshModelList() async {
@@ -214,18 +245,31 @@ internal final class MLXModelManager {
     /// Returns the next preferred MLX selection after deleting `deletedRepo`.
     ///
     /// Preference order:
-    /// 1. Any other already-downloaded model (preserves user's local cache).
-    /// 2. The first recommended model that is downloaded (apart from the deleted one).
+    /// 1. The first downloaded model in `recommendedModels`.
+    /// 2. The first downloaded model in `retiredCorrectionModels`.
     /// 3. `nil`, meaning no MLX model is currently installed — callers should
     ///    surface a clear "no MLX model installed" affordance.
+    ///
+    /// Only correction models qualify. This used to take any other entry in
+    /// `downloadedModels` first, in Set order, which could switch correction to
+    /// the Parakeet transcription model or to another app's model.
     func nextSelectionAfterDeletion(deletedRepo: String) -> String? {
-        if let alt = downloadedModels.first(where: { $0 != deletedRepo }) {
-            return alt
+        let candidates = Self.recommendedModels.map(\.repo) + Self.retiredCorrectionModels
+        return candidates.first { $0 != deletedRepo && downloadedModels.contains($0) }
+    }
+
+    /// The installed correction models the picker lists below the catalog:
+    /// cached retired models, plus `selected` if it is not in the catalog.
+    ///
+    /// Not every non-catalog entry in `downloadedModels`: that includes Parakeet
+    /// and whatever else is in the shared cache, none of which is a correction
+    /// model to offer.
+    func noLongerRecommendedModels(selected: String) -> [String] {
+        let curated = Set(Self.recommendedModels.map(\.repo))
+        var repos = Set(Self.retiredCorrectionModels).intersection(downloadedModels)
+        if !selected.isEmpty && !curated.contains(selected) {
+            repos.insert(selected)
         }
-        for model in Self.recommendedModels
-        where model.repo != deletedRepo && downloadedModels.contains(model.repo) {
-            return model.repo
-        }
-        return nil
+        return repos.sorted()
     }
 }

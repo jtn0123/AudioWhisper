@@ -140,6 +140,7 @@ extension DashboardCorrectionView {
                             .font(DashboardTheme.Fonts.sans(11, weight: .medium))
                     }
                     .buttonStyle(PaperButtonStyle())
+                    .help(modelManager.cleanupHelpText)
                 }
             }
         }
@@ -240,8 +241,8 @@ extension DashboardCorrectionView {
 
     // MARK: - Model Entries
 
-    /// Models to show: the curated catalog, plus anything the user already has
-    /// downloaded or selected that is no longer curated.
+    /// Models to show: the curated catalog, plus any retired correction model
+    /// the user still has downloaded or selected.
     ///
     /// Without the second half, retiring a model from `recommendedModels` would
     /// strand anyone using it — their selection would vanish from the picker
@@ -250,15 +251,7 @@ extension DashboardCorrectionView {
     /// Phi-3.5-mini and Llama-3.2-1B, so that case is now reachable.
     private var visibleModels: [MLXModel] {
         let curated = MLXModelManager.recommendedModels
-        let curatedRepos = Set(curated.map(\.repo))
-
-        var extraRepos = modelManager.downloadedModels.subtracting(curatedRepos)
-        let selected = semanticCorrectionModelRepo
-        if !selected.isEmpty && !curatedRepos.contains(selected) {
-            extraRepos.insert(selected)
-        }
-
-        let extras = extraRepos.sorted().map { repo in
+        let extras = modelManager.noLongerRecommendedModels(selected: semanticCorrectionModelRepo).map { repo in
             MLXModel(
                 repo: repo,
                 estimatedSize: (modelManager.modelSizes[repo]).map(modelManager.formatBytes) ?? "—",

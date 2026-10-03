@@ -158,6 +158,7 @@ extension DashboardProvidersView {
                                 .font(DashboardTheme.Fonts.sans(10, weight: .medium))
                         }
                         .buttonStyle(PaperButtonStyle())
+                        .help(mlxModelManager.cleanupHelpText)
                     }
                 }
             }
