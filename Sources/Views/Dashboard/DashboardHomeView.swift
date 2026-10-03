@@ -236,47 +236,65 @@ extension DashboardHomeView {
     /// Page size for the provider-stats / daily-activity scan.
     private static let aggregatePageSize = 500
 
+    /// What the Overview page shows. Gathered by `loadData`, which is static so
+    /// it can be tested without a rendered view: a `View`'s `@State` writes go
+    /// nowhere outside a rendering context.
+    struct DashboardData {
+        let recentRecords: [TranscriptionRecord]
+        let providerStats: [ProviderStat]
+        let dailyActivity: [Date: Int]
+    }
+
     func loadDashboardData() {
         Task {
-            await metricsStore.bootstrapIfNeeded(dataManager: dataManager)
-
-            // Audit item B1/G2: this used to call `fetchAllRecordsQuietly()` and
-            // hold the ENTIRE transcript history in memory — to render five rows
-            // and two aggregates. With retention set to *forever* that grows
-            // without bound, and both the dashboard open and the metrics
-            // bootstrap paid for it.
-            //
-            // Now: a bounded fetch for the rows, and a paged scan for the
-            // aggregates so peak memory is one page regardless of history size.
-            let recent = await dataManager.fetchRecordsQuietly(
-                limit: Self.recentRecordsDisplayLimit,
-                offset: 0,
-                search: nil
-            )
-
-            var providerWords: [String: Int] = [:]
-            var activityFromRecords: [Date: Int] = [:]
-            let calendar = Calendar.current
-            try? await dataManager.forEachRecordPage(pageSize: Self.aggregatePageSize) { page in
-                for record in page {
-                    providerWords[record.provider, default: 0] += record.wordCount
-                    let day = calendar.startOfDay(for: record.date)
-                    activityFromRecords[day, default: 0] += record.wordCount
-                }
+            let data = await Self.loadData(dataManager: dataManager, metricsStore: metricsStore)
+            await MainActor.run {
+                recentRecords = data.recentRecords
+                providerStats = data.providerStats
+                dailyActivity = data.dailyActivity
             }
+        }
+    }
 
-            let stats = Self.providerStats(from: providerWords)
-            let merged = Self.mergeDailyActivity(
+    static func loadData(
+        dataManager: DataManagerProtocol,
+        metricsStore: UsageMetricsStore
+    ) async -> DashboardData {
+        await metricsStore.bootstrapIfNeeded(dataManager: dataManager)
+
+        // Audit item B1/G2: this used to call `fetchAllRecordsQuietly()` and
+        // hold the ENTIRE transcript history in memory — to render five rows
+        // and two aggregates. With retention set to *forever* that grows
+        // without bound, and both the dashboard open and the metrics
+        // bootstrap paid for it.
+        //
+        // Now: a bounded fetch for the rows, and a paged scan for the
+        // aggregates so peak memory is one page regardless of history size.
+        let recent = await dataManager.fetchRecordsQuietly(
+            limit: recentRecordsDisplayLimit,
+            offset: 0,
+            search: nil
+        )
+
+        var providerWords: [String: Int] = [:]
+        var activityFromRecords: [Date: Int] = [:]
+        let calendar = Calendar.current
+        try? await dataManager.forEachRecordPage(pageSize: aggregatePageSize) { page in
+            for record in page {
+                providerWords[record.provider, default: 0] += record.wordCount
+                let day = calendar.startOfDay(for: record.date)
+                activityFromRecords[day, default: 0] += record.wordCount
+            }
+        }
+
+        return DashboardData(
+            recentRecords: recent,
+            providerStats: providerStats(from: providerWords),
+            dailyActivity: mergeDailyActivity(
                 base: metricsStore.getDailyActivity(days: 28),
                 dailyWords: activityFromRecords
             )
-
-            await MainActor.run {
-                recentRecords = recent
-                providerStats = stats
-                dailyActivity = merged
-            }
-        }
+        )
     }
 
     /// Returns the last 28 daily word counts, oldest → newest. Missing days = 0.

@@ -273,8 +273,12 @@ jobs:
           # These were unreferenced by any workflow until now. They import
           # ml.correction, whose mlx imports are lazy, so plain system python is
           # enough — no uv, no venv, no model download.
+          #
+          # Tests/test_rpc.py covers the daemon's request handling and wire
+          # validation (ml.rpc, ml.protocol) with the model calls faked.
           set -e
           python3 Tests/test_correction_sanitize.py
+          python3 Tests/test_rpc.py
 
       - name: TODO/FIXME audit (warn only)
         run: |
