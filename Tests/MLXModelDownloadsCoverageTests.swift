@@ -210,6 +210,52 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         XCTAssertEqual(process.environment, MLDaemonManager.daemonEnvironment())
     }
 
+    func testRunToExitReturnsTheExitStatus() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "exit 3"]
+
+        let status = try await MLXModelManager.runToExit(process)
+
+        XCTAssertEqual(status, 3)
+        XCTAssertFalse(process.isRunning)
+    }
+
+    func testRunToExitThrowsWhenTheProcessCannotStart() async {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/nonexistent/python3-\(UUID().uuidString)")
+
+        do {
+            _ = try await MLXModelManager.runToExit(process)
+            XCTFail("a process that cannot start must throw, not hang or return a status")
+        } catch {
+            XCTAssertNil(process.terminationHandler, "the handler must not outlive a failed launch")
+        }
+    }
+
+    /// A download whose interpreter is gone ends in an error row, not a spinner.
+    func testADownloadProcessThatCannotLaunchIsReportedAsAnError() async {
+        let repo = uniqueRepo()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/nonexistent/python3-\(UUID().uuidString)")
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        outputPipe.fileHandleForReading.readabilityHandler = { _ in }
+        errorPipe.fileHandleForReading.readabilityHandler = { _ in }
+        manager.isDownloading[repo] = true
+        defer {
+            manager.isDownloading[repo] = nil
+            manager.downloadProgress[repo] = nil
+        }
+
+        await manager.runDownloadProcess(process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe)
+
+        XCTAssertEqual(manager.isDownloading[repo], false)
+        XCTAssertTrue(manager.downloadProgress[repo]?.hasPrefix("Error: ") == true)
+        XCTAssertNil(outputPipe.fileHandleForReading.readabilityHandler, "M9: handlers cleared on a failed launch")
+        XCTAssertNil(errorPipe.fileHandleForReading.readabilityHandler)
+    }
+
     /// A bundle without download_model.py must not leave the row spinning:
     /// the busy flag clears and the row says why, since a retry cannot help.
     func testAMissingDownloadScriptClearsTheBusyStateWithAnError() async {
