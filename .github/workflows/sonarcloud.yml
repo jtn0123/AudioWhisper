@@ -103,6 +103,11 @@ jobs:
           # (Sources/ml/correction.py), which is exactly what Sonar matches
           # against sonar.sources — no path rewriting needed.
           #
+          # --source=Sources, not Sources/ml: the entry scripts beside the
+          # package (ml_daemon.py, download_model.py, verify_*.py) are analyzed
+          # too, and measuring only Sources/ml scored them 0% however well
+          # Tests/test_hub.py and Tests/test_verify_scripts.py exercised them.
+          #
           # A venv rather than `pip install` because PEP 668 marks the runner's
           # system Python as externally managed.
           set -e
@@ -110,14 +115,18 @@ jobs:
           .pycov/bin/pip install --quiet coverage
           # Same invocation as ci.yml's "Python unit tests" step. ml.correction's
           # mlx imports are lazy, so no uv, venv-for-the-app, or model download.
-          .pycov/bin/python -m coverage run --source=Sources/ml \
+          .pycov/bin/python -m coverage run --source=Sources \
             Tests/test_correction_sanitize.py
-          .pycov/bin/python -m coverage run --append --source=Sources/ml \
+          .pycov/bin/python -m coverage run --append --source=Sources \
+            Tests/test_hub.py
+          .pycov/bin/python -m coverage run --append --source=Sources \
             Tests/test_rpc.py
+          .pycov/bin/python -m coverage run --append --source=Sources \
+            Tests/test_verify_scripts.py
           .pycov/bin/python -m coverage xml -o coverage-python.xml
           if [ ! -s coverage-python.xml ]; then
             echo "::error::coverage-python.xml missing or empty. Sonar would"
-            echo "::error::silently score Sources/ml as 0% — failing instead."
+            echo "::error::silently score the bundled Python as 0% — failing instead."
             exit 1
           fi
 

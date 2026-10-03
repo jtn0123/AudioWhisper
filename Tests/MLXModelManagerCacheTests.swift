@@ -2,8 +2,8 @@ import XCTest
 @testable import AudioWhisper
 
 /// Tests for `MLXModelManager+Cache.swift`: repo validation, cache detection,
-/// deletion, and the Parakeet download driven end to end against a stub `uv`
-/// and a fake venv python.
+/// deletion, and the Parakeet and MLX downloads driven end to end against a
+/// stub `uv` and a fake venv python.
 ///
 /// Anything that touches the Hugging Face cache uses a UUID-scoped repo name at
 /// the real cache path (`integrityFileURL` resolves from the OS home directory
@@ -195,6 +195,55 @@ final class MLXModelManagerCacheTests: XCTestCase {
         manager.downloadProgress.removeValue(forKey: repo)
     }
 
+    // MARK: - downloadModel (MLX correction models)
+
+    func testAnMLXDownloadRunsTheBundledScriptAndClearsItsProgress() async throws {
+        let repo = uniqueRepo()
+        let argsFile = tempRoot.appendingPathComponent("python-args.txt")
+        try installStubPython(body: """
+            printf '%s\\n' "$@" > '\(argsFile.path)'
+            echo '{"status": "downloading", "message": "Downloading model files..."}'
+            echo '{"status": "complete", "message": "Download complete"}'
+            exit 0
+            """)
+
+        await manager.downloadModel(repo)
+        await waitForDownloadToFinish(repo)
+
+        XCTAssertEqual(manager.isDownloading[repo], false)
+        XCTAssertNil(manager.downloadProgress[repo], "a finished download clears its progress text")
+        let args = try String(contentsOf: argsFile, encoding: .utf8).split(separator: "\n").map(String.init)
+        XCTAssertEqual(args.map { URL(fileURLWithPath: $0).lastPathComponent }.first, "download_model.py")
+        XCTAssertEqual(Array(args.dropFirst()), [repo], "a user-added repo is unpinned: script + repo only")
+    }
+
+    func testAFailedMLXDownloadIsReportedAsAnError() async throws {
+        let repo = uniqueRepo()
+        try installStubPython(body: """
+            echo '{"status": "error", "message": "Repository not found"}'
+            exit 1
+            """)
+
+        await manager.downloadModel(repo)
+        await waitForDownloadToFinish(repo)
+
+        XCTAssertEqual(manager.isDownloading[repo], false)
+        let progress = manager.downloadProgress[repo] ?? ""
+        XCTAssertTrue(progress.hasPrefix("Error: "), "got \(progress.debugDescription)")
+        manager.downloadProgress.removeValue(forKey: repo)
+    }
+
+    func testAnMLXDownloadWithNoUsablePythonEnvironmentReportsIt() async throws {
+        let repo = uniqueRepo()
+        try installStubUv(venvSucceeds: false)
+
+        await manager.downloadModel(repo)
+
+        XCTAssertEqual(manager.isDownloading[repo], false)
+        XCTAssertEqual(manager.downloadProgress[repo], "Error: Could not prepare Python environment")
+        manager.downloadProgress.removeValue(forKey: repo)
+    }
+
     // MARK: - deleteModel
 
     func testDeleteModelRemovesTheCachedModel() async throws {
@@ -231,21 +280,23 @@ final class MLXModelManagerCacheTests: XCTestCase {
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: victim.path))
     }
+}
 
-    // MARK: - Helpers
+// MARK: - Helpers
 
-    private func uniqueRepo() -> String {
+private extension MLXModelManagerCacheTests {
+    func uniqueRepo() -> String {
         "audiowhisper-test/cache-\(UUID().uuidString)"
     }
 
-    private func selectParakeetRepo(_ repo: String) {
+    func selectParakeetRepo(_ repo: String) {
         AppDefaults.defaults.set(repo, forKey: AppDefaults.Key.selectedParakeetModel.rawValue)
         XCTAssertEqual(MLXModelManager.parakeetRepo, repo)
     }
 
     /// `<hub>/models--<escaped>/{refs/main, snapshots/<rev>/, blobs/}` at the
     /// real cache path, removed again at teardown.
-    private func makeFakeHFCache(repo: String, revision: String, createSnapshotDir: Bool = true) throws -> URL {
+    func makeFakeHFCache(repo: String, revision: String, createSnapshotDir: Bool = true) throws -> URL {
         let refsMain = try XCTUnwrap(manager.integrityFileURL(for: repo))
         let modelDir = refsMain.deletingLastPathComponent().deletingLastPathComponent()
         addTeardownBlock { try? FileManager.default.removeItem(at: modelDir) }
@@ -266,7 +317,7 @@ final class MLXModelManagerCacheTests: XCTestCase {
     /// Puts a stub `uv` first on PATH and points UvBootstrap's project dir into
     /// the temp root. `uv` on PATH is preferred over a bundled one, so this is
     /// what `ensureVenv` runs.
-    private func installStubUv(venvSucceeds: Bool) throws {
+    func installStubUv(venvSucceeds: Bool) throws {
         let bin = tempRoot.appendingPathComponent("bin", isDirectory: true)
         try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
         try writeExecutable("""
@@ -285,7 +336,7 @@ final class MLXModelManagerCacheTests: XCTestCase {
 
     /// Installs the stub uv plus a venv whose `python3` is a bash script with
     /// `body`, standing in for the download script.
-    private func installStubPython(body: String) throws {
+    func installStubPython(body: String) throws {
         try installStubUv(venvSucceeds: true)
         let python = try UvBootstrap.projectDir().appendingPathComponent(".venv/bin/python3")
         try FileManager.default.createDirectory(
@@ -295,14 +346,14 @@ final class MLXModelManagerCacheTests: XCTestCase {
         try writeExecutable("#!/bin/bash\n\(body)\n", to: python)
     }
 
-    private func writeExecutable(_ contents: String, to url: URL) throws {
+    func writeExecutable(_ contents: String, to url: URL) throws {
         try Data(contents.utf8).write(to: url)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
     }
 
     /// The download returns once the subprocess has been started or, in later
     /// versions, once it has exited; either way this waits for the exit.
-    private func waitForDownloadToFinish(_ repo: String, timeout: Duration = .seconds(20)) async {
+    func waitForDownloadToFinish(_ repo: String, timeout: Duration = .seconds(20)) async {
         let clock = ContinuousClock()
         let deadline = clock.now.advanced(by: timeout)
         while manager.isDownloading[repo] == true, clock.now < deadline {

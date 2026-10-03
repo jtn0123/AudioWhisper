@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
-# Keep HF from grabbing a token implicitly; don't force offline globally here.
+from .hub import cached_snapshot_path
+
+# Keep HF from grabbing a token implicitly. (Offline is guaranteed per call by
+# `cached_snapshot_path`, and the daemon also sets it before any import.)
 os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 
@@ -15,29 +18,12 @@ os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
 # to be `Any` and neither loader could state what it returned.
 _PARAKEET_CACHE: Dict[str, Any] = {}
 _CORRECTION_CACHE: Dict[str, Tuple[Any, Any]] = {}
-HF_ENV_KEYS = ("HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE")
 
-
-def _set_offline_env() -> Dict[str, Optional[str]]:
-    """Enable offline flags, returning previous values for restoration.
-
-    Values are `Optional[str]` because a key may be UNSET, which is distinct
-    from being set to "". `_restore_env` relies on that distinction to pop
-    rather than assign, so the two must agree.
-    """
-    previous = {k: os.environ.get(k) for k in HF_ENV_KEYS}
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    os.environ["TRANSFORMERS_OFFLINE"] = "1"
-    return previous
-
-
-def _restore_env(previous: Dict[str, Optional[str]]) -> None:
-    """Restore HF offline flags to their prior state."""
-    for key, value in previous.items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
+# Both loaders resolve the cached snapshot to a local directory first and load
+# from that path. This file used to set HF_HUB_OFFLINE around each load and
+# restore it afterwards, which never worked — huggingface_hub reads the flag
+# once at import, and the model libraries had imported it already — so every
+# load went online. See ml/hub.py.
 
 
 def load_parakeet_model(repo: str) -> Any:
@@ -50,13 +36,10 @@ def load_parakeet_model(repo: str) -> Any:
     except Exception as exc:
         raise RuntimeError(f"parakeet-mlx import failed: {exc}") from exc
 
-    previous = _set_offline_env()
     try:
-        model = from_pretrained(repo)
+        model = from_pretrained(cached_snapshot_path(repo))
     except Exception as exc:
-        _restore_env(previous)
         raise RuntimeError(f"Model not available offline: {exc}") from exc
-    _restore_env(previous)
 
     _PARAKEET_CACHE[repo] = model
     return model
@@ -72,16 +55,12 @@ def load_correction_model(repo: str) -> Tuple[Any, Any]:
     except Exception as exc:
         raise RuntimeError(f"mlx-lm import failed: {exc}") from exc
 
-    previous = _set_offline_env()
     try:
-        model, tokenizer = load(repo)
+        model, tokenizer = load(cached_snapshot_path(repo))
     except Exception as exc:
-        _restore_env(previous)
         raise RuntimeError(
             "MLX model not available offline. Please open Settings to download it."
         ) from exc
-    _restore_env(previous)
 
     _CORRECTION_CACHE[repo] = (model, tokenizer)
     return _CORRECTION_CACHE[repo]
-

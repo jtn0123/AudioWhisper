@@ -180,25 +180,49 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         XCTAssertTrue(manager.formatBytes(5 * 1024 * 1024 * 1024).contains("GB"))
     }
 
-    // MARK: - Command-injection hardening (audit #1)
+    // MARK: - Download process (audit #1: command injection; pinning)
 
-    /// The download scripts must read the repo name from `sys.argv` and must
-    /// NOT interpolate it into the Python source — a hostile repo string with
-    /// a quote/newline would otherwise break out of the literal and run code.
-    func testDownloadScriptsReadRepoFromArgvNotInterpolation() throws {
-        let downloadsSource = URL(fileURLWithPath: #file)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Sources/Services/MLXModelManager+Downloads.swift")
-        let content = try String(contentsOf: downloadsSource)
+    /// The repo travels as its own argv entry to the bundled script — never
+    /// interpolated into Python source — so a hostile name stays inert data.
+    /// This replaces a test that grepped this file's source for
+    /// `repo = sys.argv[1]`, which stopped meaning anything once the Python
+    /// moved out of Swift string literals and into download_model.py.
+    func testDownloadProcessPassesRepoAsASingleArgument() throws {
+        let hostile = "evil/repo\"); import os; os.system(\"touch /tmp/pwned"
+        let process = try XCTUnwrap(manager.makeDownloadProcess(pythonPath: "/usr/bin/python3", repo: hostile))
+        let args = try XCTUnwrap(process.arguments)
 
-        // No raw interpolation of `repo` into the embedded Python literals.
-        XCTAssertFalse(content.contains("repo = \"\\(repo)\""),
-                       "downloadScript must not interpolate repo into Python source")
-        XCTAssertFalse(content.contains("from_pretrained(\\\"\\(repo)\\\")"),
-                       "parakeetScript must not interpolate repo into Python source")
-        // The scripts read the repo from argv instead.
-        XCTAssertTrue(content.contains("repo = sys.argv[1]"),
-                      "Download scripts should read the repo from sys.argv")
+        XCTAssertEqual(args.count, 2, "an unpinned repo gets script + repo, nothing else")
+        XCTAssertEqual(URL(fileURLWithPath: args[0]).lastPathComponent, "download_model.py")
+        XCTAssertEqual(args[1], hostile, "the repo must arrive verbatim as one argument")
+        XCTAssertFalse(args.contains("-c"), "no inline Python source")
+    }
+
+    func testDownloadProcessPinsShippedModels() throws {
+        let repo = ParakeetModel.v3Multilingual.rawValue
+        let process = try XCTUnwrap(manager.makeDownloadProcess(pythonPath: "/usr/bin/python3", repo: repo))
+
+        XCTAssertEqual(Array((process.arguments ?? []).dropFirst()), [repo, try XCTUnwrap(ModelPins.revision(for: repo))])
+    }
+
+    func testDownloadProcessUsesTheAllowlistedEnvironment() throws {
+        let process = try XCTUnwrap(manager.makeDownloadProcess(pythonPath: "/usr/bin/python3", repo: uniqueRepo()))
+        XCTAssertEqual(process.environment, MLDaemonManager.daemonEnvironment())
+    }
+
+    /// A bundle without download_model.py must not leave the row spinning:
+    /// the busy flag clears and the row says why, since a retry cannot help.
+    func testAMissingDownloadScriptClearsTheBusyStateWithAnError() async {
+        let repo = uniqueRepo()
+        manager.isDownloading[repo] = true
+        defer {
+            manager.isDownloading[repo] = nil
+            manager.downloadProgress[repo] = nil
+        }
+
+        await manager.reportMissingDownloadScript(for: repo)
+
+        XCTAssertEqual(manager.isDownloading[repo], false)
+        XCTAssertEqual(manager.downloadProgress[repo], "Error: Download script missing from the app bundle")
     }
 }

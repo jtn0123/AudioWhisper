@@ -117,7 +117,8 @@ final class ResourceLocatorPythonScriptTests: XCTestCase {
         let knownScripts = [
             "ml_daemon",
             "verify_parakeet",
-            "verify_mlx"
+            "verify_mlx",
+            "download_model"
         ]
 
         for script in knownScripts {

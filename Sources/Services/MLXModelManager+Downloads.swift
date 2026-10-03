@@ -46,7 +46,10 @@ extension MLXModelManager {
             "Starting download for model: \(repo) with Python: \(pythonPath.redactingHomeDirectory)"
         )
 
-        let process = makeDownloadProcess(pythonPath: pythonPath, script: Self.downloadScript, repo: repo)
+        guard let process = makeDownloadProcess(pythonPath: pythonPath, repo: repo) else {
+            await reportMissingDownloadScript(for: repo)
+            return
+        }
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
@@ -136,24 +139,37 @@ extension MLXModelManager {
         logger.info("Python stderr for \(repo): \(trimmed)")
     }
 
-    /// Builds a configured Python process for a download script.
+    /// Builds the Python process that downloads `repo` with the bundled
+    /// `download_model.py`, or nil if the script is missing from the bundle.
     ///
-    /// `repo` is passed as a command-line argument (`sys.argv[1]`) rather than
-    /// interpolated into the Python source, so a hostile repo name cannot break
-    /// out of a string literal and execute arbitrary code (audit item: command
-    /// injection via model repo names).
+    /// `repo` — and its pinned revision, for a model the app ships (see
+    /// `ModelPins`) — are passed as command-line arguments, never interpolated
+    /// into Python source, so a hostile repo name cannot run code. The script
+    /// used to be a Python string literal in this file, which also put it out
+    /// of reach of `make typecheck`.
     ///
     /// The environment is a minimal allowlist (see `daemonEnvironment()`) rather
     /// than the full inherited process environment, so HuggingFace tokens, proxy
     /// credentials, etc. are not leaked into the download subprocess.
     /// Not `private`: the Parakeet download in `MLXModelManager+Cache.swift`
-    /// builds its process the same way, and `private` is file-scoped.
-    func makeDownloadProcess(pythonPath: String, script: String, repo: String) -> Process {
+    /// uses it too, and `private` is file-scoped.
+    func makeDownloadProcess(pythonPath: String, repo: String) -> Process? {
+        guard let script = ResourceLocator.pythonScriptURL(named: "download_model") else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
-        process.arguments = ["-c", script, repo]
+        process.arguments = [script.path, repo] + ModelPins.scriptArguments(for: repo)
         process.environment = MLDaemonManager.daemonEnvironment()
         return process
+    }
+
+    /// Clears the busy state when `download_model.py` cannot be found — a
+    /// broken bundle, not something a retry will fix.
+    func reportMissingDownloadScript(for repo: String) async {
+        logger.error("download_model.py is missing from the app bundle; cannot download \(repo)")
+        await MainActor.run {
+            downloadProgress[repo] = "Error: Download script missing from the app bundle"
+            isDownloading[repo] = false
+        }
     }
 
     /// Launches a download process and handles completion/cleanup off the main thread.
@@ -215,37 +231,4 @@ extension MLXModelManager {
             }
         }
     }
-
-    /// Static Python source for the HuggingFace model download. The repo name is
-    /// read from `sys.argv[1]` — never interpolated into the source — so a
-    /// malicious repo string cannot escape a string literal and run code.
-    private static let downloadScript = """
-        import sys
-        import json
-        import os
-
-        # Show progress
-        os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', '0')
-        os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
-
-        if len(sys.argv) < 2:
-            print(json.dumps({"status": "error", "message": "Missing repo argument"}), flush=True)
-            sys.exit(2)
-        repo = sys.argv[1]
-
-        try:
-            print(json.dumps({"status": "downloading", "message": "Downloading model files..."}), flush=True)
-            from huggingface_hub import snapshot_download
-
-            # Download files only - don't load into memory
-            path = snapshot_download(repo)
-            print(json.dumps({"status": "complete", "message": "Download complete"}), flush=True)
-
-        except ImportError as e:
-            print(json.dumps({"status": "error", "message": f"huggingface_hub not installed: {e}"}), flush=True)
-            sys.exit(1)
-        except Exception as e:
-            print(json.dumps({"status": "error", "message": str(e)}), flush=True)
-            sys.exit(1)
-        """
 }

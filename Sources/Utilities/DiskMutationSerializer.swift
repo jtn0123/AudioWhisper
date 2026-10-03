@@ -45,73 +45,35 @@ internal actor DiskMutationSerializer<Key: Hashable & Sendable> {
 /// Best-effort SHA-256 integrity check for cached model files.
 ///
 /// After a successful download, callers record a hash of a representative
-/// file (typically a manifest or small config). Before loading a cached
-/// model, callers verify against that recorded hash.
+/// file (`config.json` for WhisperKit, `refs/main` for MLX/Parakeet). Before
+/// loading a cached model, callers verify against that record. If nothing is
+/// recorded yet — a cache from before this check existed — `verify` records
+/// one and passes (trust-on-first-use), so old caches keep working without a
+/// forced redownload.
 ///
-/// Two verification modes (audit item E1):
+/// What anchors the *first* record (ADR 0006):
+///   * **MLX / Parakeet models the app ships** — the download fetches the
+///     commit pinned in `ModelPins` and points `refs/main` at it, so the record
+///     taken right after it vouches for exactly that commit. This replaced a
+///     table of known-good hashes (`knownHashes`) that was never populated and
+///     could not safely be: with downloads following `main`, a pinned hash
+///     would have rejected every install the moment a repo changed upstream.
+///   * **WhisperKit models** — WhisperKit's download has no revision parameter,
+///     so the first download is trusted as fetched over TLS.
+///   * **User-added repos** — likewise trusted at first fetch, by definition.
 ///
-///   1. **Known-good hash** — for models the app itself ships/recommends
-///      (`knownHashes` table below). The representative file's hash is
-///      compared against a hash baked into this build, exactly like
-///      `UvBootstrap.verifyBundledUvIfNeeded` does for the bundled `uv`
-///      binary. A mismatch is a HARD FAIL — this is what prevents a
-///      poisoned *first* download from being trusted.
-///
-///   2. **Trust-on-first-use** — for user-added models we have no shipped
-///      hash for. If no sidecar exists yet, `verify` records one and
-///      returns successfully; later launches verify against it. This keeps
-///      pre-integrity caches and arbitrary user models working without a
-///      forced redownload.
-///
-/// This is defense in depth, not cryptographic assurance over every byte:
-/// TLS already protects downloads in transit.
-///
-/// What it actually delivers, stated honestly (audit item E3):
-///   * **Cache corruption and truncated/interrupted writes** — reliably caught.
-///   * **Tampering, for models with a pinned hash** — caught, because the
-///     expected value is baked into the binary and not writable at runtime.
-///     NOTE: `knownHashes` is currently empty, so today this applies to nothing;
-///     see ADR 0006.
-///   * **Tampering, for trust-on-first-use models** — only partly. The recorded
-///     hash now lives in app-owned storage rather than beside the model, which
-///     removes the trivial rewrite-both-files case, but a local process running
-///     as the user can still reach both. The app is unsandboxed (ADR 0001), so
-///     there is no boundary here that a determined local attacker cannot cross.
+/// What it catches, stated honestly (audit item E3):
+///   * **Cache corruption and truncated/interrupted writes** — reliably.
+///   * **The cache being repointed** at a different revision afterwards (for
+///     MLX/Parakeet, `refs/main` changing) — reliably.
+///   * **Local tampering** — only partly. The record lives in app-owned storage
+///     rather than beside the model, which removes the trivial rewrite-both-files
+///     case, but a local process running as the user can still reach both. The
+///     app is unsandboxed (ADR 0001), so there is no boundary here that a
+///     determined local attacker cannot cross. Nor is every byte hashed: only
+///     the representative file, since hashing gigabytes of weights on every
+///     cache check would block for seconds.
 internal enum ModelIntegrity {
-    /// Known-good SHA-256 hashes of the *representative integrity file* for
-    /// models the app ships or recommends. Keyed by the caller's model
-    /// identifier: `WhisperModel.rawValue` for WhisperKit models, or the
-    /// HuggingFace `repo` string for MLX/Parakeet models.
-    ///
-    /// When an identifier is present here, `verify` uses known-good-hash mode
-    /// (hard fail on mismatch) instead of trust-on-first-use, so a poisoned
-    /// first download cannot be silently accepted.
-    ///
-    /// IMPORTANT: This table is intentionally EMPTY. The real hashes are not
-    /// known at the time this mechanism was built and fabricating values
-    /// would be worse than an empty table (it would reject every legitimate
-    /// download). Populating it later is a one-liner per model, e.g.:
-    ///
-    ///     "openai_whisper-base": "a1b2c3…",                       // WhisperKit
-    ///     "mlx-community/parakeet-tdt-0.6b-v2": "d4e5f6…",        // MLX/Parakeet
-    ///
-    /// The hash must be the SHA-256 of the representative file that the
-    /// matching caller passes to `record`/`verify` (`config.json` for
-    /// WhisperKit via `ModelManager.representativeFileURL`, `refs/main` for
-    /// MLX via `MLXModelManager.integrityFileURL`). Compute it from a release
-    /// build's cached download and paste it in here.
-    ///
-    /// >>> ACTION REQUIRED <<< Populate this table with real release hashes
-    /// before shipping; until then app-shipped models silently fall through
-    /// to trust-on-first-use (the documented gap for audit item E1).
-    static let knownHashes: [String: String] = [:]
-
-    /// Returns the known-good hash for `modelIdentifier`, or nil if the model
-    /// is not one the app ships (user-added model → trust-on-first-use).
-    static func knownHash(for modelIdentifier: String?) -> String? {
-        guard let modelIdentifier else { return nil }
-        return knownHashes[modelIdentifier]
-    }
     /// Compute SHA-256 of file at `url`. Streams the file in 64KB chunks so
     /// gigabyte-sized model files don't blow up memory.
     static func sha256(of url: URL) throws -> String {
@@ -135,35 +97,13 @@ internal enum ModelIntegrity {
         try hash.write(to: sidecarURL(for: modelURL), atomically: true, encoding: .utf8)
     }
 
-    /// Verify the integrity of a cached model's representative file.
+    /// Verify the integrity of a cached model's representative file against
+    /// its recorded hash, recording one if none exists yet (see the type doc).
     ///
-    /// If `modelIdentifier` is in `knownHashes` (an app-shipped model), the
-    /// file's hash is compared against that known-good value and any mismatch
-    /// is a HARD FAIL — even on the very first download — defeating a poisoned
-    /// first download. Otherwise falls back to trust-on-first-use against a
-    /// sidecar hash.
-    ///
-    /// Throws `ModelIntegrityError.pinnedMismatch` when an app-shipped model
-    /// fails its known-good hash, or `.mismatch` when a TOFU sidecar differs.
-    static func verify(at modelURL: URL, modelIdentifier: String? = nil) throws {
+    /// Throws `ModelIntegrityError.mismatch` when the file no longer matches.
+    static func verify(at modelURL: URL) throws {
         let actual = try sha256(of: modelURL)
 
-        if let pinned = knownHash(for: modelIdentifier) {
-            // App-shipped model: verify against the hash baked into this build.
-            // Hard fail on mismatch — no trust-on-first-use escape hatch.
-            guard pinned.lowercased() == actual.lowercased() else {
-                throw ModelIntegrityError.pinnedMismatch(
-                    model: modelIdentifier ?? "<unknown>",
-                    expected: pinned,
-                    actual: actual
-                )
-            }
-            // Keep the sidecar in sync so quick TOFU checks elsewhere agree.
-            try? actual.write(to: sidecarURL(for: modelURL), atomically: true, encoding: .utf8)
-            return
-        }
-
-        // User-added model: trust-on-first-use against a recorded hash.
         // E3: reads the app-owned record first, then any pre-E3 in-place
         // sidecar, so existing caches keep working across the move.
         if let stored = storedHash(for: modelURL) {
@@ -244,14 +184,11 @@ internal enum ModelIntegrity {
 
 internal enum ModelIntegrityError: LocalizedError {
     case mismatch(expected: String, actual: String)
-    case pinnedMismatch(model: String, expected: String, actual: String)
 
     var errorDescription: String? {
         switch self {
         case let .mismatch(expected, actual):
             return "Model integrity check failed (expected \(expected.prefix(8))…, got \(actual.prefix(8))…). The cached model may be corrupted; re-download it from Settings."
-        case let .pinnedMismatch(model, expected, actual):
-            return "Integrity check failed for app-provided model \"\(model)\" (expected \(expected.prefix(8))…, got \(actual.prefix(8))…). The download does not match the version shipped with AudioWhisper and was rejected. Re-download it from Settings or reinstall AudioWhisper from a trusted source."
         }
     }
 }

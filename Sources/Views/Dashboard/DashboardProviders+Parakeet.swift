@@ -252,7 +252,8 @@ internal extension DashboardProvidersView {
 
                 let result = try await ModelVerificationService.verify(
                     scriptName: "verify_parakeet",
-                    arguments: [repoToVerify],
+                    // The pin, so a cache miss downloads the commit this build ships.
+                    arguments: [repoToVerify] + ModelPins.scriptArguments(for: repoToVerify),
                     pythonPath: py.path,
                     successFallback: "Model verified"
                 )

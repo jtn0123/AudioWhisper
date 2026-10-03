@@ -19,8 +19,8 @@ def _require_str(value: Any, source: str) -> str:
 
     Both `apply_chat_template` and `generate` are untyped, so their results
     arrive as `Any` and mypy cannot tell a string from anything else. `cast()`
-    would silence that without checking — the same lie `_set_offline_env` used
-    to tell about its return type.
+    would silence that without checking — the same kind of lie the old
+    `_set_offline_env` (since deleted) told about its return type.
 
     The check earns its keep: mlx-lm's surface moves across minor versions (see
     the upgrade checklist in Sources/Resources/pyproject.toml). If `generate`

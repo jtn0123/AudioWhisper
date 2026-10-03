@@ -133,7 +133,8 @@ extension DashboardCorrectionView {
 
                 let result = try await ModelVerificationService.verify(
                     scriptName: "verify_mlx",
-                    arguments: [repo],
+                    // The pin, so a cache miss downloads the commit this build ships.
+                    arguments: [repo] + ModelPins.scriptArguments(for: repo),
                     pythonPath: py.path,
                     successFallback: "Model verified"
                 )
