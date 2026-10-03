@@ -64,9 +64,19 @@ internal actor DiskMutationSerializer<Key: Hashable & Sendable> {
 ///      forced redownload.
 ///
 /// This is defense in depth, not cryptographic assurance over every byte:
-/// TLS already protects downloads in transit. The check guards against
-/// cache corruption, partial/interrupted writes that left a truncated
-/// file, and tampering by another local process.
+/// TLS already protects downloads in transit.
+///
+/// What it actually delivers, stated honestly (audit item E3):
+///   * **Cache corruption and truncated/interrupted writes** — reliably caught.
+///   * **Tampering, for models with a pinned hash** — caught, because the
+///     expected value is baked into the binary and not writable at runtime.
+///     NOTE: `knownHashes` is currently empty, so today this applies to nothing;
+///     see ADR 0006.
+///   * **Tampering, for trust-on-first-use models** — only partly. The recorded
+///     hash now lives in app-owned storage rather than beside the model, which
+///     removes the trivial rewrite-both-files case, but a local process running
+///     as the user can still reach both. The app is unsandboxed (ADR 0001), so
+///     there is no boundary here that a determined local attacker cannot cross.
 internal enum ModelIntegrity {
     /// Known-good SHA-256 hashes of the *representative integrity file* for
     /// models the app ships or recommends. Keyed by the caller's model
@@ -153,33 +163,82 @@ internal enum ModelIntegrity {
             return
         }
 
-        // User-added model: trust-on-first-use against a sidecar hash.
-        let sidecar = sidecarURL(for: modelURL)
-        if let stored = try? String(contentsOf: sidecar, encoding: .utf8)
-            .trimmingCharacters(in: .whitespacesAndNewlines), !stored.isEmpty {
+        // User-added model: trust-on-first-use against a recorded hash.
+        // E3: reads the app-owned record first, then any pre-E3 in-place
+        // sidecar, so existing caches keep working across the move.
+        if let stored = storedHash(for: modelURL) {
             guard stored.lowercased() == actual.lowercased() else {
                 throw ModelIntegrityError.mismatch(expected: stored, actual: actual)
             }
         } else {
-            // No sidecar yet — trust-on-first-use; persist for next time.
-            try actual.write(to: sidecar, atomically: true, encoding: .utf8)
+            // Nothing recorded yet — trust-on-first-use; persist for next time.
+            try actual.write(to: sidecarURL(for: modelURL), atomically: true, encoding: .utf8)
         }
     }
 
-    /// Returns true if integrity verification passes; false on any mismatch,
-    /// missing-file error, or unreadable file. Never throws — useful for
-    /// background verification where we don't want to surface noise.
-    static func quietVerify(at modelURL: URL, modelIdentifier: String? = nil) -> Bool {
-        do {
-            try verify(at: modelURL, modelIdentifier: modelIdentifier)
-            return true
-        } catch {
-            return false
-        }
-    }
-
+    /// Where the trust-on-first-use hash for `modelURL` is stored.
+    ///
+    /// Audit item E3: this used to be `modelURL.appendingPathExtension(...)` —
+    /// a plain text file sitting in the model's own directory under
+    /// `~/.cache/huggingface`. That does not survive the threat the doc comment
+    /// above names ("tampering by another local process"): anything able to
+    /// rewrite the model could rewrite the hash vouching for it, in the same
+    /// directory, and the check would pass. The app ships unsandboxed
+    /// (ADR 0001), so there is no OS-level protection either.
+    ///
+    /// The record now lives in app-controlled storage under Application
+    /// Support, keyed by a hash of the model's path. That does not stop a
+    /// determined local attacker — nothing at this layer can — but it removes
+    /// the trivial rewrite-both-files case and puts the record somewhere the
+    /// app owns rather than somewhere any tool that manages the HF cache may
+    /// clobber.
+    ///
+    /// Falls back to the old in-place location if Application Support is
+    /// unavailable, so verification degrades rather than failing closed.
     private static func sidecarURL(for modelURL: URL) -> URL {
-        modelURL.appendingPathExtension("audiowhisper-integrity")
+        guard let base = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else {
+            return modelURL.appendingPathExtension(legacySidecarExtension)
+        }
+
+        let dir = base
+            .appendingPathComponent("AudioWhisper", isDirectory: true)
+            .appendingPathComponent("model-integrity", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        // Key on the standardised path so the same model always maps to the
+        // same record. Hashed rather than escaped: model paths are long and
+        // contain separators, and this keeps the filename flat and bounded.
+        let key = sha256(ofString: modelURL.standardizedFileURL.path)
+        return dir.appendingPathComponent("\(key).integrity")
+    }
+
+    /// Pre-E3 sidecar location, still read as a fallback so an existing cache
+    /// is not forced into a redownload by the move.
+    private static let legacySidecarExtension = "audiowhisper-integrity"
+
+    private static func legacySidecarURL(for modelURL: URL) -> URL {
+        modelURL.appendingPathExtension(legacySidecarExtension)
+    }
+
+    private static func sha256(ofString value: String) -> String {
+        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Reads the recorded hash, preferring the app-owned location and falling
+    /// back to a pre-E3 in-place sidecar.
+    private static func storedHash(for modelURL: URL) -> String? {
+        for url in [sidecarURL(for: modelURL), legacySidecarURL(for: modelURL)] {
+            if let raw = try? String(contentsOf: url, encoding: .utf8) {
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return nil
     }
 }
 

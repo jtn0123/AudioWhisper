@@ -33,6 +33,9 @@ final class MockDataManager: DataManagerProtocol {
     var cleanupExpiredRecordsCallCount = 0
     var saveTranscriptionQuietlyCallCount = 0
     var fetchAllRecordsQuietlyCallCount = 0
+    var forEachRecordPageCallCount = 0
+    /// Sizes of the pages handed to the last `forEachRecordPage` caller.
+    var lastPageSizes: [Int] = []
     var cleanupExpiredRecordsQuietlyCallCount = 0
 
     // MARK: - Protocol Methods
@@ -64,6 +67,37 @@ final class MockDataManager: DataManagerProtocol {
 
         // Sort by date descending (newest first) to match real DataManager behavior
         return recordsToReturn.sorted { $0.date > $1.date }
+    }
+
+    /// Audit item B1/G2. Pages `recordsToReturn` in the same date-descending
+    /// order the real `DataManager` uses, so a caller that switched from
+    /// `fetchAllRecords()` to paging produces identical totals here.
+    /// `forEachRecordPageCallCount` and `lastPageSizes` let tests assert that
+    /// the caller actually paged rather than loading everything at once.
+    func fetchRecordsQuietly(limit: Int, offset: Int, search: String?) async -> [TranscriptionRecord] {
+        (try? await fetchRecords(limit: limit, offset: offset, search: search)) ?? []
+    }
+
+    func forEachRecordPage(
+        pageSize: Int,
+        _ body: ([TranscriptionRecord]) -> Void
+    ) async throws {
+        forEachRecordPageCallCount += 1
+        lastPageSizes = []
+
+        if shouldThrowOnFetch {
+            throw errorToThrow
+        }
+        guard pageSize > 0 else { return }
+
+        let sorted = recordsToReturn.sorted { $0.date > $1.date }
+        var offset = 0
+        while offset < sorted.count {
+            let page = Array(sorted[offset..<min(offset + pageSize, sorted.count)])
+            lastPageSizes.append(page.count)
+            body(page)
+            offset += pageSize
+        }
     }
 
     func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord] {

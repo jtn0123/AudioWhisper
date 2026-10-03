@@ -38,9 +38,7 @@ final class ProviderSettingsState {
 
     // MARK: - Initialization
 
-    init(keychainService: KeychainServiceProtocol = KeychainService.shared) {
-        // keychainService parameter kept for API compatibility but no longer used
-    }
+    init() {}
 
     // MARK: - Status Helpers
 
@@ -72,14 +70,6 @@ final class ProviderSettingsState {
         downloadedModels = Array(modelManager.downloadedModels)
         for model in WhisperModel.allCases {
             modelDownloadStates[model] = downloadedModels.contains(model)
-        }
-    }
-
-    func updateModelDownloadState(_ model: WhisperModel, isDownloading: Bool) {
-        if isDownloading {
-            downloadStartTime[model] = Date()
-        } else {
-            downloadStartTime.removeValue(forKey: model)
         }
     }
 

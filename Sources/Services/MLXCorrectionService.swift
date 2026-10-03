@@ -87,11 +87,6 @@ internal final class MLXCorrectionService {
         }
     }
 
-    // Cache invalidation is a no-op since daemon handles model loading
-    func invalidateCache(for pythonPath: String? = nil) {
-        // No-op: daemon manages model caching internally
-    }
-
     func validateSetup(pythonPath: String) async throws {
         // Validate Python path exists (for settings UI feedback)
         guard FileManager.default.fileExists(atPath: pythonPath) else {

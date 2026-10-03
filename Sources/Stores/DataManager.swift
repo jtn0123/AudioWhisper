@@ -73,6 +73,18 @@ internal protocol DataManagerProtocol {
     /// views should use `fetchRecords(limit:offset:search:)` to avoid loading
     /// the whole history into memory.
     func fetchAllRecords() async throws -> [TranscriptionRecord]
+    /// Streams every record to `body` in pages of `pageSize`, newest first.
+    ///
+    /// Audit item B1/G2: aggregate callers (usage-metric rebuilds, dashboard
+    /// provider stats) previously went through `fetchAllRecords()`, which
+    /// materialises the entire table. Retention is user-configurable and one
+    /// option is *forever*, so that grows without bound. Paging keeps peak
+    /// memory at one page regardless of history size while producing the same
+    /// totals.
+    func forEachRecordPage(
+        pageSize: Int,
+        _ body: ([TranscriptionRecord]) -> Void
+    ) async throws
     func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord]
     func fetchRecords(matching searchQuery: String, limit: Int?, offset: Int?) async throws -> [TranscriptionRecord]
     /// Fetches a paginated, optionally search-filtered slice of records, sorted
@@ -92,6 +104,9 @@ internal protocol DataManagerProtocol {
     // Backward compatibility methods that don't throw
     func saveTranscriptionQuietly(_ record: TranscriptionRecord) async
     func fetchAllRecordsQuietly() async -> [TranscriptionRecord]
+    /// Non-throwing bounded fetch. Audit item B1/G2: list surfaces that show a
+    /// fixed number of rows should use this rather than `fetchAllRecordsQuietly()`.
+    func fetchRecordsQuietly(limit: Int, offset: Int, search: String?) async -> [TranscriptionRecord]
     func cleanupExpiredRecordsQuietly() async
 }
 
@@ -101,7 +116,9 @@ internal final class DataManager: DataManagerProtocol {
         DataManager()
     }
 
-    private var modelContainer: ModelContainer?
+    /// Not `private` because the read/paging operations live in the
+    /// `DataManager+Fetching.swift` extension, and `private` is file-scoped.
+    var modelContainer: ModelContainer?
 
     /// Tracks the single in-flight retention-cleanup task. Back-to-back saves
     /// reuse / skip rather than each spawning an unbounded task (bug #17).
@@ -122,6 +139,20 @@ internal final class DataManager: DataManagerProtocol {
     }
 
     private init() {}
+
+    /// Builds an instance backed by an explicit container, for tests.
+    ///
+    /// Audit item B1/G2: `forEachRecordPage` is real SwiftData paging
+    /// (`fetchLimit` + `fetchOffset` against a live store), and the only honest
+    /// way to test it is against a real `ModelContainer`. Every existing
+    /// DataManager test uses `MockDataManager`, which would just be testing the
+    /// mock's own array slicing. `init()` stays private so production code
+    /// still goes through `.shared`.
+    ///
+    /// Pass an in-memory configuration — this must never touch the user's store.
+    init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
+    }
 
     func initialize() throws {
         do {
@@ -190,109 +221,6 @@ internal final class DataManager: DataManagerProtocol {
         cleanupTask = Task { [weak self] in
             await self?.cleanupExpiredRecordsQuietly()
             self?.cleanupTask = nil
-        }
-    }
-
-    func fetchAllRecords() async throws -> [TranscriptionRecord] {
-        guard let container = modelContainer else {
-            throw DataManagerError.modelContainerUnavailable
-        }
-
-        do {
-            let context = ModelContext(container)
-            let descriptor = FetchDescriptor<TranscriptionRecord>(
-                sortBy: [SortDescriptor(\.date, order: .reverse)]
-            )
-            let records = try context.fetch(descriptor)
-
-            Logger.dataManager.debug("Fetched \(records.count) transcription records")
-            return records
-
-        } catch {
-            Logger.dataManager.error("Failed to fetch transcription records: \(error.localizedDescription)")
-            throw DataManagerError.fetchFailed(error)
-        }
-    }
-
-    func fetchRecords(matching searchQuery: String) async throws -> [TranscriptionRecord] {
-        // Backward compatibility - calls the new method with no pagination
-        return try await fetchRecords(matching: searchQuery, limit: nil, offset: nil)
-    }
-
-    func fetchRecords(matching searchQuery: String, limit: Int? = nil, offset: Int? = nil) async throws -> [TranscriptionRecord] {
-        guard let container = modelContainer else {
-            throw DataManagerError.modelContainerUnavailable
-        }
-
-        do {
-            let context = ModelContext(container)
-            var descriptor: FetchDescriptor<TranscriptionRecord>
-
-            if searchQuery.isEmpty {
-                // If no search query, return all records
-                descriptor = FetchDescriptor<TranscriptionRecord>(
-                    sortBy: [SortDescriptor(\.date, order: .reverse)]
-                )
-            } else {
-                // `localizedStandardContains` is already case-insensitive, so
-                // no manual `.lowercased()` is needed (bug #49).
-                let predicate = #Predicate<TranscriptionRecord> { record in
-                    record.text.localizedStandardContains(searchQuery) ||
-                    record.provider.localizedStandardContains(searchQuery) ||
-                    (record.modelUsed?.localizedStandardContains(searchQuery) ?? false)
-                }
-
-                descriptor = FetchDescriptor<TranscriptionRecord>(
-                    predicate: predicate,
-                    sortBy: [SortDescriptor(\.date, order: .reverse)]
-                )
-            }
-
-            // Apply pagination if specified
-            if let limit = limit {
-                descriptor.fetchLimit = limit
-            }
-            if let offset = offset {
-                descriptor.fetchOffset = offset
-            }
-
-            let records = try context.fetch(descriptor)
-
-            Logger.dataManager.debug("Fetched \(records.count) records matching query: '\(searchQuery)' (limit: \(limit ?? -1), offset: \(offset ?? 0))")
-            return records
-
-        } catch {
-            Logger.dataManager.error("Failed to fetch transcription records: \(error.localizedDescription)")
-            throw DataManagerError.fetchFailed(error)
-        }
-    }
-
-    func fetchRecords(limit: Int, offset: Int, search: String?) async throws -> [TranscriptionRecord] {
-        guard let container = modelContainer else {
-            throw DataManagerError.modelContainerUnavailable
-        }
-
-        do {
-            let context = ModelContext(container)
-            var descriptor = FetchDescriptor<TranscriptionRecord>(
-                sortBy: [SortDescriptor(\.date, order: .reverse)]
-            )
-            descriptor.fetchLimit = limit
-            descriptor.fetchOffset = offset
-
-            if let term = search, !term.isEmpty {
-                // `localizedStandardContains` is already case-insensitive (bug #49).
-                descriptor.predicate = #Predicate<TranscriptionRecord> { record in
-                    record.text.localizedStandardContains(term)
-                }
-            }
-
-            let records = try context.fetch(descriptor)
-            Logger.dataManager.debug("Paginated fetch: \(records.count) records (limit: \(limit), offset: \(offset), search: '\(search ?? "")')")
-            return records
-        } catch {
-            Logger.dataManager.error("Failed to paginate transcription records: \(error.localizedDescription)")
-            throw DataManagerError.fetchFailed(error)
         }
     }
 
@@ -415,6 +343,15 @@ internal final class DataManager: DataManagerProtocol {
     func fetchAllRecordsQuietly() async -> [TranscriptionRecord] {
         do {
             return try await fetchAllRecords()
+        } catch {
+            Logger.dataManager.error("DataManager operation failed: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    func fetchRecordsQuietly(limit: Int, offset: Int, search: String?) async -> [TranscriptionRecord] {
+        do {
+            return try await fetchRecords(limit: limit, offset: offset, search: search)
         } catch {
             Logger.dataManager.error("DataManager operation failed: \(error.localizedDescription)")
             return []

@@ -5,11 +5,11 @@ import traceback
 import sys
 
 
-def emit(status, message):
+def emit(status: str, message: str) -> None:
     print(json.dumps({"status": status, "message": message}), flush=True)
 
 
-def main():
+def main() -> int:
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
     # Default to v3 multilingual model if not specified
     repo = sys.argv[1] if len(sys.argv) > 1 else "mlx-community/parakeet-tdt-0.6b-v3"

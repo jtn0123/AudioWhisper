@@ -1,4 +1,4 @@
-.PHONY: help build build-notarize test clean update-brew-cask publish-brew-cask release run
+.PHONY: help build build-notarize test typecheck clean update-brew-cask publish-brew-cask release run
 
 SCRIPTS := scripts
 
@@ -11,6 +11,7 @@ help:
 	@echo "  build              - Build the release app bundle"
 	@echo "  build-notarize     - Build and notarize the app"
 	@echo "  test               - Run tests"
+	@echo "  typecheck          - Type-check the bundled Python (mypy --strict)"
 	@echo "  clean              - Clean build artifacts"
 	@echo "  release            - Create a new GitHub release (jtn0123/AudioWhisper)"
 	@echo ""
@@ -37,6 +38,10 @@ build-notarize:
 # Run tests
 test:
 	$(SCRIPTS)/run-tests.sh
+
+# Type-check the bundled Python. Config in mypy.ini; needs no venv or models.
+typecheck:
+	$(SCRIPTS)/typecheck.sh
 
 # Clean build artifacts
 clean:

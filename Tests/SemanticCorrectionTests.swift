@@ -177,19 +177,6 @@ final class SemanticCorrectionTests: IsolatedXCTestCase {
     
     // MARK: - Cache Tests
     
-    func testMLXCorrectionServiceCacheInvalidation() {
-        let service = MLXCorrectionService()
-        
-        // Test invalidating all cache
-        service.invalidateCache()
-        
-        // Test invalidating specific path
-        service.invalidateCache(for: "/usr/bin/python3")
-        
-        // No crash = success for this test
-        XCTAssertNotNil(service)
-    }
-    
     // MARK: - Default Settings Tests
     
     func testDefaultModelSettings() {

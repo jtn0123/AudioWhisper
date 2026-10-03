@@ -34,8 +34,9 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - Processing
 
     private let fftProcessor: FFTProcessor?
-    private nonisolated(unsafe) var sampleBuffer: [Float] = []  // Access under sampleBufferLock (audio thread + main)
-    private let sampleBufferSize = 2048
+    // Audit item G1: a fixed-capacity ring, not a growing array that was
+    // re-sliced on every callback. See SampleRingBuffer for the measurement.
+    private nonisolated(unsafe) var sampleBuffer = SampleRingBuffer(capacity: 2048)  // Under sampleBufferLock
     private let dateProvider: () -> Date
     // Guards sampleBuffer, _writeErrorCount, _writeSuccessCount, _framesWritten, _lastLevelPublishTime.
     private let sampleBufferLock = NSLock()
@@ -375,25 +376,23 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             }
         }
 
-        // Use lock for thread-safe sampleBuffer access (called from audio thread)
-        // This implements a bounded circular buffer pattern:
-        // - Append new samples
-        // - If buffer exceeds max size, remove oldest samples to maintain fixed size
-        // - Maximum size is sampleBufferSize (2048 samples = ~128ms at 16kHz)
+        // Use lock for thread-safe sampleBuffer access (called from audio thread).
+        // `SampleRingBuffer` keeps the most recent 2048 samples (~128ms at 16kHz)
+        // in preallocated storage, so this append does not allocate.
         // Also gates the level-meter publish to ~60 Hz under the same lock.
+        //
+        // Audit item G1: the snapshot is taken ONLY when we are about to
+        // publish. It used to be copied unconditionally on every callback,
+        // ~94 times a second, and then thrown away on the ~34 of those that the
+        // throttle rejected.
         let now = CACurrentMediaTime()
         sampleBufferLock.lock()
         sampleBuffer.append(contentsOf: monoSamples)
-        let overflow = sampleBuffer.count - sampleBufferSize
-        if overflow > 0 {
-            // Use suffix to efficiently keep only the most recent samples
-            sampleBuffer = Array(sampleBuffer.suffix(sampleBufferSize))
-        }
-        let currentBuffer = sampleBuffer
         let shouldPublish = (now - _lastLevelPublishTime) >= Self.levelPublishInterval
         if shouldPublish {
             _lastLevelPublishTime = now
         }
+        let currentBuffer = shouldPublish ? sampleBuffer.snapshot() : []
         sampleBufferLock.unlock()
 
         // Throttle the *publish* to 60 Hz. Buffer accumulation + file write above

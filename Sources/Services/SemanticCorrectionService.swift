@@ -39,9 +39,7 @@ internal final class SemanticCorrectionService {
         return AppCategoryManager.shared.category(for: id)
     }
 
-    init(keychainService: KeychainServiceProtocol = KeychainService.shared) {
-        // keychainService parameter kept for API compatibility but no longer used
-    }
+    init() {}
 
     /// Applies semantic correction to `text`. Reads `semanticCorrectionMode` from
     /// `UserDefaults` and picks: off (returns input unchanged) or local MLX. The

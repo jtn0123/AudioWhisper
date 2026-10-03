@@ -46,7 +46,7 @@ final class SpeechToTextServiceCoverageTests: IsolatedXCTestCase {
         let service = SpeechToTextService()
         let badURL = URL(fileURLWithPath: "/nonexistent/whatever.m4a")
         do {
-            _ = try await service.transcribe(audioURL: badURL, provider: .parakeet, model: nil)
+            _ = try await service.transcribeRaw(audioURL: badURL, provider: .parakeet, model: nil)
             XCTFail("Expected failure for non-existent file")
         } catch {
             XCTAssertTrue(error is SpeechToTextError)
@@ -57,7 +57,7 @@ final class SpeechToTextServiceCoverageTests: IsolatedXCTestCase {
         let service = SpeechToTextService()
         let badURL = URL(fileURLWithPath: "/nonexistent/whatever.m4a")
         do {
-            _ = try await service.transcribe(audioURL: badURL)
+            _ = try await service.transcribeRaw(audioURL: badURL, provider: .parakeet)
             XCTFail("Expected failure for non-existent file")
         } catch {
             XCTAssertTrue(error is SpeechToTextError || error is ParakeetError)

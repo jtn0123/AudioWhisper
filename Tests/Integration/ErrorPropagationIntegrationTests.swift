@@ -5,7 +5,6 @@ import XCTest
 /// Verifies that errors flow correctly through the service chain
 @MainActor
 final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
-    var mockKeychain: MockKeychainService!
     var speechService: SpeechToTextService!
     var testDefaults: UserDefaults!
 
@@ -16,21 +15,16 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
         let suiteName = "ErrorPropagationIntegrationTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
-        // Set up mock keychain
-        mockKeychain = MockKeychainService()
-
-        // Create speech service with mock keychain
-        speechService = SpeechToTextService(keychainService: mockKeychain)
+        // Create speech service
+        speechService = SpeechToTextService()
 
         // Clear settings
         testDefaults.removeObject(forKey: "semanticCorrectionMode")
     }
 
     override func tearDown() async throws {
-        mockKeychain.clear()
         testDefaults.removePersistentDomain(forName: testDefaults.description)
 
-        mockKeychain = nil
         speechService = nil
         testDefaults = nil
 
@@ -67,7 +61,7 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
 
         // When/Then
         do {
-            _ = try await speechService.transcribe(audioURL: audioURL, provider: .local)
+            _ = try await speechService.transcribeRaw(audioURL: audioURL, provider: .local)
             XCTFail("Should throw error")
         } catch {
             // Audio validation fails - we're testing error handling works
@@ -110,58 +104,6 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
         let error = SpeechToTextError.localTranscriptionFailed(underlyingError)
 
         XCTAssertNotNil(error.errorDescription)
-    }
-
-    // MARK: - Keychain Error Tests
-
-    func testKeychainErrorHandling() {
-        // Given - Configure mock to throw
-        mockKeychain.shouldThrow = true
-        mockKeychain.throwError = .itemNotFound
-
-        // When
-        let result = mockKeychain.getQuietly(service: "AudioWhisper", account: "Test")
-
-        // Then - Quiet methods return nil on error
-        XCTAssertNil(result)
-    }
-
-    func testKeychainSaveErrorThrows() {
-        // Given
-        mockKeychain.shouldThrow = true
-        mockKeychain.throwError = .addFailed(-1)
-
-        // When/Then
-        XCTAssertThrowsError(try mockKeychain.save("key", service: "test", account: "test")) { error in
-            XCTAssertTrue(error is KeychainError)
-        }
-    }
-
-    func testKeychainDeleteErrorThrows() {
-        // Given
-        mockKeychain.shouldThrow = true
-        mockKeychain.throwError = .deleteFailed(-1)
-
-        // When/Then
-        XCTAssertThrowsError(try mockKeychain.delete(service: "test", account: "test")) { error in
-            XCTAssertTrue(error is KeychainError)
-        }
-    }
-
-    // MARK: - Error Recovery Tests
-
-    func testErrorDoesNotCorruptKeychain() throws {
-        // Given - Save a valid key
-        try mockKeychain.save("valid-key", service: "AudioWhisper", account: "OpenAI")
-
-        // When - Attempt an operation that fails
-        mockKeychain.shouldThrow = true
-        _ = mockKeychain.getQuietly(service: "AudioWhisper", account: "NonExistent")
-
-        // Then - Valid key is still accessible
-        mockKeychain.shouldThrow = false
-        let key = mockKeychain.getQuietly(service: "AudioWhisper", account: "OpenAI")
-        XCTAssertEqual(key, "valid-key")
     }
 
     // MARK: - Semantic Correction Error Tests
@@ -238,32 +180,6 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
         XCTAssertEqual(distance, 1.0)
     }
 
-    // MARK: - Concurrent Error Handling Tests
-
-    func testConcurrentErrorsAreIsolated() async throws {
-        // Given - Multiple concurrent operations
-        let mockKeychains = (0..<5).map { _ in MockKeychainService() }
-
-        // Configure some to fail
-        mockKeychains[1].shouldThrow = true
-        mockKeychains[3].shouldThrow = true
-
-        // When - Run concurrent operations
-        await withTaskGroup(of: String?.self) { group in
-            for (index, keychain) in mockKeychains.enumerated() {
-                group.addTask {
-                    return keychain.getQuietly(service: "test", account: "account\(index)")
-                }
-            }
-        }
-
-        // Then - Errors in some don't affect others
-        let successKeychain = mockKeychains[0]
-        try successKeychain.save("key", service: "test", account: "test")
-        let retrieved = successKeychain.getQuietly(service: "test", account: "test")
-        XCTAssertEqual(retrieved, "key")
-    }
-
     // MARK: - Text Cleaning Error Cases
 
     func testCleanTranscriptionTextWithMalformedBrackets() {
@@ -307,7 +223,7 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
 
         // When/Then - Should throw an error gracefully
         do {
-            _ = try await speechService.transcribe(audioURL: nonExistentURL, provider: .local)
+            _ = try await speechService.transcribeRaw(audioURL: nonExistentURL, provider: .local)
             XCTFail("Should throw error for non-existent file")
         } catch {
             // Expected - file doesn't exist

@@ -7,7 +7,8 @@ import Foundation
 // WhisperKit's external API (e.g. `WhisperKitConfig(model:)`).
 private actor WhisperKitCache {
     private var instances: [WhisperModel: WhisperKit] = [:]
-    private var accessTimes: [WhisperModel: Date] = [:]
+    /// Access-time bookkeeping and eviction policy (audit item D2).
+    private var lru = LRUAccessTracker<WhisperModel>()
 
     func getOrCreate(
         model: WhisperModel,
@@ -17,7 +18,7 @@ private actor WhisperKitCache {
         // Check if we have a cached instance
         if let existingInstance = instances[model] {
             // Update access time for LRU tracking
-            accessTimes[model] = Date()
+            lru.touch(model)
             return existingInstance
         }
 
@@ -67,36 +68,29 @@ private actor WhisperKitCache {
 
         // Cache the new instance
         instances[model] = newInstance
-        accessTimes[model] = Date()
+        lru.touch(model)
 
         return newInstance
     }
 
     func clear() {
         instances.removeAll()
-        accessTimes.removeAll()
+        lru.removeAll()
     }
 
     func clearExceptMostRecent() {
-        let sortedByAccess = accessTimes.sorted { $0.value > $1.value }
-
-        // Keep only the most recent model
-        for (index, entry) in sortedByAccess.enumerated() where index > 0 {
-            instances.removeValue(forKey: entry.key)
-            accessTimes.removeValue(forKey: entry.key)
+        for key in lru.keysToEvictKeepingMostRecent() {
+            instances.removeValue(forKey: key)
+            lru.forget(key)
         }
     }
 
     private func evictLeastRecentlyUsedIfNeeded(maxCached: Int) {
         guard instances.count >= maxCached else { return }
 
-        // Find the least recently used model
-        let sortedByAccess = accessTimes.sorted { $0.value < $1.value }
-
-        // Remove the oldest accessed model
-        if let oldest = sortedByAccess.first {
-            instances.removeValue(forKey: oldest.key)
-            accessTimes.removeValue(forKey: oldest.key)
+        if let oldest = lru.leastRecentlyUsed() {
+            instances.removeValue(forKey: oldest)
+            lru.forget(oldest)
         }
     }
 

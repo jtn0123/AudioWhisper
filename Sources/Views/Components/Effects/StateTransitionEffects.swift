@@ -2,24 +2,6 @@ import SwiftUI
 
 // MARK: - Entry Animation Modifier
 
-/// Animates content appearing with scale and opacity based on intensity.
-struct EntryAnimationModifier: ViewModifier {
-    let intensity: VisualIntensity
-    @State private var isVisible = false
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isVisible ? 1.0 : intensity.entryScale)
-            .opacity(isVisible ? 1.0 : 0)
-            .rotationEffect(.degrees(isVisible ? 0 : intensity.entryRotation))
-            .onAppear {
-                withAnimation(intensity.spring) {
-                    isVisible = true
-                }
-            }
-    }
-}
-
 extension View {
 }
 

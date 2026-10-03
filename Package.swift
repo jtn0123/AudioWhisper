@@ -32,8 +32,6 @@ let package = Package(
             exclude: ["VersionInfo.swift.template"],
             resources: [
                 .process("Assets.xcassets"),
-                .copy("parakeet_transcribe_pcm.py"),
-                .copy("mlx_semantic_correct.py"),
                 .copy("verify_parakeet.py"),
                 .copy("verify_mlx.py"),
                 .copy("ml_daemon.py"),
@@ -46,7 +44,7 @@ let package = Package(
             name: "AudioWhisperTests",
             dependencies: ["AudioWhisper"],
             path: "Tests",
-            exclude: ["README.md", "test_parakeet_transcribe.py", "test_correction_sanitize.py", "__Snapshots__"],
+            exclude: ["README.md", "test_correction_sanitize.py", "test_rpc.py", "__Snapshots__"],
             resources: [
                 .copy("Resources")
             ]

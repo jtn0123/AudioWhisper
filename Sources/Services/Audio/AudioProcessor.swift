@@ -10,6 +10,16 @@ internal enum AudioLoadError: Error {
     case unknown(OSStatus)
 }
 
+/// Loads audio as mono float32 at `samplingRate`.
+///
+/// Short-circuits under test to avoid CoreMedia framework warnings across the
+/// whole suite. That is why this file measured 7.4% coverage: the real decoding
+/// path below was unreachable from any test by construction, and the tests named
+/// after it could only ever assert on the five-element stub.
+///
+/// Audit item D3: the decode itself now lives in `decodeAudio(url:samplingRate:)`,
+/// which a targeted test can call directly against a fixture. The short-circuit
+/// here is unchanged, so the rest of the suite stays quiet.
 internal func loadAudio(url: URL, samplingRate: Int) throws -> [Float] {
     // Skip actual audio loading in tests to avoid CoreMedia framework warnings
     if AppEnvironment.isRunningTests {
@@ -17,6 +27,15 @@ internal func loadAudio(url: URL, samplingRate: Int) throws -> [Float] {
         return [0.0, 0.1, -0.1, 0.2, -0.2]
     }
 
+    return try decodeAudio(url: url, samplingRate: samplingRate)
+}
+
+/// The real ExtAudioFile decode: opens `url`, converts to mono float32 at
+/// `samplingRate`, and reads to EOF in chunks.
+///
+/// Separated from `loadAudio` purely so it is reachable from a test (audit item
+/// D3). Production behaviour is identical — `loadAudio` calls straight through.
+internal func decodeAudio(url: URL, samplingRate: Int) throws -> [Float] {
     var extAudioFile: ExtAudioFileRef?
 
     // Open the audio file

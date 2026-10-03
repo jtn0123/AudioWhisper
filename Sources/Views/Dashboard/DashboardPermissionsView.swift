@@ -35,6 +35,7 @@ internal struct DashboardPermissionsView: View {
             Text("Permissions")
                 .font(DashboardTheme.Fonts.serif(28, weight: .semibold))
                 .foregroundStyle(DashboardTheme.ink)
+                .accessibilityAddTraits(.isHeader)
 
             Text("System permissions required for recording and smart paste")
                 .font(DashboardTheme.Fonts.sans(13, weight: .regular))
@@ -63,11 +64,14 @@ internal struct DashboardPermissionsView: View {
                     }
                     .buttonStyle(PaperAccentButtonStyle())
                     .disabled(permissionManager.microphonePermissionState == .granted)
+                    .accessibilityHint("Ask macOS for microphone access")
 
                     Button("Open Settings") {
                         openSystemSettings(path: "Privacy_Microphone")
                     }
                     .buttonStyle(PaperButtonStyle())
+                    .accessibilityLabel("Open Microphone settings")
+                    .accessibilityHint("Opens System Settings to Privacy and Security, Microphone")
                 }
                 .padding(DashboardTheme.Spacing.md)
             }
@@ -95,11 +99,14 @@ internal struct DashboardPermissionsView: View {
                         openSystemSettings(path: "Privacy_Accessibility")
                     }
                     .buttonStyle(PaperAccentButtonStyle())
+                    .accessibilityLabel("Open Accessibility settings")
+                    .accessibilityHint("Opens System Settings to Privacy and Security, Accessibility")
 
                     Button("Refresh") {
                         refreshStatuses()
                     }
                     .buttonStyle(PaperButtonStyle())
+                    .accessibilityHint("Re-check permission status after changing it in System Settings")
                 }
                 .padding(DashboardTheme.Spacing.md)
             }
@@ -132,6 +139,9 @@ internal struct DashboardPermissionsView: View {
             .foregroundStyle(DashboardTheme.inkMuted)
             .tracking(0.8)
             .textCase(.uppercase)
+            // Audit item C2: heading trait so rotor navigation can reach the
+            // Microphone / Accessibility sections.
+            .accessibilityAddTraits(.isHeader)
     }
 
     private func permissionStatusRow(
@@ -158,6 +168,16 @@ internal struct DashboardPermissionsView: View {
             Spacer()
         }
         .padding(DashboardTheme.Spacing.md)
+        // Audit item C2. The status is conveyed by an SF Symbol and its COLOUR
+        // (green check vs orange exclamation) with no text saying which state
+        // it is — so a VoiceOver user, or anyone who cannot distinguish the
+        // colours, got the title and description but not whether the permission
+        // was actually granted. This is the mandatory onboarding path, so
+        // failing to convey it blocks setting the app up at all.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(status == .granted ? "Granted" : "Permission required")
+        .accessibilityHint(description)
     }
 
     private var microphoneStatusTitle: String {

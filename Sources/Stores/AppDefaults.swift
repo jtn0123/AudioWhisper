@@ -120,13 +120,6 @@ enum AppDefaults {
         defaults.removeObject(forKey: key.rawValue)
     }
 
-    /// Reset all app defaults to their default values
-    static func resetAll() {
-        for key in Key.allCases {
-            defaults.removeObject(forKey: key.rawValue)
-        }
-    }
-
     /// Registers built-in default values for keys that should default to a non-nil value
     /// when the user has never set them. Called once at app launch.
     static func registerDefaults() {

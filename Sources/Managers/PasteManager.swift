@@ -86,60 +86,6 @@ internal class PasteManager {
 
     // MARK: - Paste Operations
 
-    /// SmartPaste function that attempts to paste text into a specific application
-    /// This is the function mentioned in the test requirements
-    func smartPaste(into targetApp: NSRunningApplication?, text: String) {
-        // First copy text to clipboard as fallback - this ensures users always have access to the text
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-
-        let enableSmartPaste = AppDefaults.enableSmartPaste
-
-        guard enableSmartPaste else {
-            // SmartPaste is disabled in settings - fail with appropriate error
-            handlePasteResult(.failure(PasteError.targetAppNotAvailable))
-            return
-        }
-
-        // CRITICAL: Check accessibility permission without prompting - never bypass this check
-        // If this fails, we must NOT attempt to proceed with CGEvent operations
-        guard accessibilityManager.checkPermission() else {
-            // Permission is definitively denied - show proper error and stop processing
-            // Do NOT attempt any paste operations without permission
-            handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
-            return
-        }
-
-        // Validate target application
-        guard let targetApp = targetApp, !targetApp.isTerminated else {
-            handlePasteResult(.failure(PasteError.targetAppNotAvailable))
-            return
-        }
-
-        // Attempt to activate target application
-        let activationSuccess = targetApp.activate(options: [])
-        if !activationSuccess {
-            // App activation failed - this could indicate the app is not responsive
-            handlePasteResult(.failure(PasteError.targetAppNotAvailable))
-            return
-        }
-
-        // Wait for app to become active before pasting
-        waitForApplicationActivation(targetApp) { [weak self] in
-            guard let self = self else { return }
-
-            // Double-check permission before performing paste (belt and suspenders approach)
-            guard self.accessibilityManager.checkPermission() else {
-                // Permission was revoked between initial check and paste attempt
-                self.handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
-                return
-            }
-
-            self.performCGEventPaste()
-        }
-    }
-
     /// Performs paste with completion handler for proper coordination.
     /// Includes a timeout to prevent indefinite hangs if the completion is never called.
     @MainActor

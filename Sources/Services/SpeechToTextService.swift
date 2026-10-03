@@ -34,12 +34,24 @@ internal enum SpeechToTextError: Error, LocalizedError {
 /// the raw output may still invoke this service directly.
 @Observable
 internal class SpeechToTextService {
-    // Use shared singleton to avoid multiple WhisperKit caches
-    private let localWhisperService = LocalWhisperService.shared
-    private let parakeetService = ParakeetService.shared
+    // Shared singletons by default — one WhisperKit cache per process is the
+    // point of `LocalWhisperService.shared`, and the Parakeet daemon is
+    // likewise process-wide.
+    private let localWhisperService: LocalWhisperTranscribing
+    private let parakeetService: ParakeetTranscribing
 
-    init(keychainService: KeychainServiceProtocol = KeychainService.shared) {
-        // keychainService parameter kept for API compatibility but no longer used
+    /// Audit item A5. These were `private let ... = .shared` with no way to
+    /// substitute them, so nothing in `transcribeValidated` — provider routing,
+    /// the missing-model guard, `ParakeetError.modelNotReady` pass-through,
+    /// marker cleaning — was reachable without a downloaded model. The defaults
+    /// keep production behaviour byte-identical; the parameters exist so tests
+    /// can reach the routing logic.
+    init(
+        localWhisperService: LocalWhisperTranscribing = LocalWhisperService.shared,
+        parakeetService: ParakeetTranscribing = ParakeetService.shared
+    ) {
+        self.localWhisperService = localWhisperService
+        self.parakeetService = parakeetService
     }
 
     /// Runs `AudioValidator` on `url` and surfaces any failure as
@@ -66,45 +78,64 @@ internal class SpeechToTextService {
     /// expectation obvious at the call site.
     func transcribeRaw(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel? = nil) async throws -> String {
         let validated = try await validatedAudioURL(audioURL)
+        return try await transcribeValidated(audioURL: validated, provider: provider, model: model)
+    }
+
+    /// Transcribe an audio file whose validity the caller has ALREADY established.
+    ///
+    /// Audit item A4: `TranscriptionPipeline` runs `AudioValidator` as its own
+    /// step 1 and then called `transcribeRaw`, which validated the same URL a
+    /// second time — `AudioValidator` opens and inspects the file, so every
+    /// transcription paid for two full passes over it. The pipeline is the
+    /// documented sole orchestrator, so it owns validation and calls this;
+    /// direct callers keep using `transcribeRaw`, which still validates.
+    ///
+    /// Only call this when validation has genuinely happened. It is not a
+    /// "skip the checks" shortcut.
+    func transcribeValidated(
+        audioURL: URL,
+        provider: TranscriptionProvider,
+        model: WhisperModel? = nil
+    ) async throws -> String {
         switch provider {
         case .local:
             guard let model = model else {
                 throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
             }
-            return try await transcribeWithLocal(audioURL: validated, model: model)
+            return try await transcribeWithLocal(audioURL: audioURL, model: model)
         case .parakeet:
-            return try await transcribeWithParakeet(audioURL: validated)
+            return try await transcribeWithParakeet(audioURL: audioURL)
         }
     }
 
-    /// Convenience method that auto-selects provider based on UserDefaults.
-    /// Defaults to Parakeet on Apple Silicon, otherwise Local Whisper.
-    func transcribe(audioURL: URL) async throws -> String {
-        let provider: TranscriptionProvider = Arch.isAppleSilicon ? .parakeet : .local
-        return try await transcribe(audioURL: audioURL, provider: provider, model: nil)
-    }
-
-    /// Transcribes an audio file and returns the raw provider output.
-    ///
-    /// As of audit item B1, this method NO LONGER applies semantic correction.
-    /// Callers that want correction must route through `TranscriptionPipeline`,
-    /// which is the sole orchestrator of `SemanticCorrectionService`. This
-    /// method's signature is retained for compatibility with existing tests
-    /// and the `SpeechToTextServiceProtocol` mock surface; functionally it now
-    /// behaves identically to `transcribeRaw(audioURL:provider:model:)`.
-    /// Throws `SpeechToTextError` on validation or transcription failure.
-    func transcribe(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel? = nil) async throws -> String {
-        return try await transcribeRaw(audioURL: audioURL, provider: provider, model: model)
-    }
+    // Audit item B4: `transcribe(audioURL:)` and
+    // `transcribe(audioURL:provider:model:)` were removed here.
+    //
+    // Once audit item B1 moved semantic correction into `TranscriptionPipeline`,
+    // `transcribe(audioURL:provider:model:)` became a one-line forward to
+    // `transcribeRaw(...)` — two public names for one behaviour, where the
+    // shorter one reads as though it still applies correction. That is exactly
+    // the misreading the B1 split existed to prevent.
+    //
+    // Neither had a production caller: the app reaches the providers through
+    // `TranscriptionPipeline` → `transcribeValidated(...)`, and direct callers
+    // use `transcribeRaw(...)`. The no-argument convenience additionally
+    // auto-selected a provider by CPU architecture, duplicating a decision the
+    // pipeline config already owns. Both were dead, so they were deleted rather
+    // than deprecated.
 
     /// Delegates to `LocalWhisperService` (WhisperKit / CoreML). Returns the
     /// provider's raw output; semantic correction is applied by
     /// `TranscriptionPipeline` (see audit item B1).
     private func transcribeWithLocal(audioURL: URL, model: WhisperModel) async throws -> String {
         do {
-            let text = try await localWhisperService.transcribe(audioFileURL: audioURL, model: model) { progress in
-                NotificationCenter.default.post(name: .transcriptionProgress, object: progress)
-            }
+            let text = try await localWhisperService.transcribe(
+                audioFileURL: audioURL,
+                model: model,
+                progressCallback: { progress in
+                    NotificationCenter.default.post(name: .transcriptionProgress, object: progress)
+                }
+            )
             return try Self.cleanedNonEmptyTranscription(text)
         } catch let error as SpeechToTextError {
             // Already a domain error (e.g. .noSpeechDetected) — preserve it
@@ -141,7 +172,7 @@ internal class SpeechToTextService {
                 // Warm up the MLX daemon in parallel, but treat its outcome as
                 // non-fatal: a warmup failure must NOT abort an otherwise-good
                 // transcription. Its error is swallowed (logged by the daemon).
-                async let warmupTask: Void = MLDaemonManager.shared.warmup(type: "mlx", repo: modelRepo)
+                async let warmupTask: Void = MLDaemonManager.shared.warmup(type: .mlx, repo: modelRepo)
                 let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
                 try? await warmupTask
                 return try Self.cleanedNonEmptyTranscription(text)

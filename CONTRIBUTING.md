@@ -17,22 +17,33 @@ Thank you for your interest in contributing to AudioWhisper! This guide will hel
 ### Prerequisites
 
 - **macOS 14.0 (Sonoma) or later** - Required for latest SwiftUI APIs
-- **Xcode 15.0+** - For Swift development (optional, can use CLI tools)
-- **Swift 5.9+** - Included with Xcode or via [swift.org](https://swift.org)
+- **Xcode 26.0+ — required, not optional.** Two independent reasons: the
+  `KeyboardShortcuts` 3.x dependency declares `swift-tools-version: 6.2`, which
+  older Xcode cannot resolve ("incompatible tools version"); and the package
+  compiles an asset catalog, which needs `actool` — an Xcode tool that Command
+  Line Tools does not ship. A CLT-only machine cannot build this project.
 - **Git** - For version control
 
 ### Initial Setup
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/AudioWhisper.git
+git clone https://github.com/jtn0123/AudioWhisper.git
 cd AudioWhisper
 ```
 
 2. Build the project to verify setup:
 ```bash
-swift build
+make build
 ```
+
+> Prefer `make build` / `make test` over bare `swift build` / `swift test`. The
+> `make` targets source `scripts/lib/xcode-env.sh`, which sets `DEVELOPER_DIR`
+> for the process when `xcode-select -p` points at Command Line Tools — a state
+> CLT updates cause silently. Without that recovery the build fails with
+> `Failed to decode version info for '/usr/bin/actool'`, which names neither the
+> cause nor the fix. To use bare `swift` commands on such a machine, prefix
+> them with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
 
 ## Requirements
 
@@ -40,7 +51,10 @@ swift build
 - macOS 14.0+ (Sonoma and later)
 - Apple Silicon (M1/M2/M3) or Intel Mac
 - Microphone access permission
-- Internet connection (for API-based transcription)
+- Internet connection **only** for the first model download. Transcription
+  itself is fully on-device: this fork removed the cloud providers (see
+  [ADR 0005](docs/adr/0005-local-only-transcription.md)) and makes no network
+  calls to transcribe.
 
 ### Development Requirements
 - Swift 5.9+
@@ -48,6 +62,22 @@ swift build
 - No warnings policy - code must compile cleanly
 
 ## Development Workflow
+
+### Pre-commit hook (optional, recommended)
+
+Audit item I3. SwiftLint strict, the production-`print()` check, and
+`uv lock --check` are all fast, deterministic, and already enforced by CI — but
+nothing ran them before a push, so a trailing `print()` cost a full round trip to
+a macOS runner to discover. An opt-in hook moves that feedback local:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+It adds no new gates — everything it checks already fails CI. It runs on staged
+files only, skips cleanly when `swiftlint` or `uv` are not installed, and can be
+bypassed for one commit with `git commit --no-verify`.
+
 
 ### Day-to-Day Development
 
@@ -81,7 +111,7 @@ swift test --parallel
 # Run specific test suite
 swift test --filter AudioRecorderTests
 swift test --filter SpeechToTextServiceTests
-swift test --filter SettingsViewTests
+swift test --filter DataManagerTests
 
 # Run tests with verbose output
 swift test --parallel --verbose

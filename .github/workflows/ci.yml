@@ -4,6 +4,10 @@ name: CI
 # analyze job pin to it; see "Install SwiftLint (pinned)".
 env:
   SWIFTLINT_VERSION: "0.65.0"
+  # Read back by scripts/typecheck.sh so a local run warns when it drifts.
+  # mypy adds checks in minor releases, so an unpinned upgrade would fail the
+  # build for nobody's mistake.
+  MYPY_VERSION: "1.20.0"
 
 on:
   push:
@@ -235,6 +239,29 @@ jobs:
           }
           echo "uv.lock is in sync with pyproject.toml"
 
+      - name: Python type check (mypy --strict)
+        run: |
+          # Sources/ml is the only code here that ships without a compiler in
+          # front of it — 574 lines in a subprocess behind a JSON-RPC boundary,
+          # previously checked by nothing. The first --strict run found 28
+          # errors, including _set_offline_env returning dict[str, str | None]
+          # through an annotation that claimed dict[str, str] while its own
+          # caller tested `is None`.
+          #
+          # Pinned (see MYPY_VERSION): mypy adds checks in minor releases, so an
+          # unpinned upgrade turns CI red on code nobody touched.
+          #
+          # No app venv and no models needed — mypy.ini exempts the ML imports
+          # per-module so this runs against a bare checkout in seconds. mypy
+          # itself goes in a throwaway venv: PEP 668 marks the runner's Homebrew
+          # python as externally managed, so a bare `pip install` is refused
+          # (same reason as the coverage venv in sonarcloud.yml).
+          set -euo pipefail
+          python3 -m venv .mypy-venv
+          .mypy-venv/bin/pip install --quiet --disable-pip-version-check "mypy==${MYPY_VERSION}"
+          .mypy-venv/bin/mypy --version
+          .mypy-venv/bin/mypy
+
       - name: Python unit tests
         run: |
           # Tests/test_correction_sanitize.py guards sanitize_model_output, the
@@ -246,8 +273,12 @@ jobs:
           # These were unreferenced by any workflow until now. They import
           # ml.correction, whose mlx imports are lazy, so plain system python is
           # enough — no uv, no venv, no model download.
+          #
+          # Tests/test_rpc.py covers the daemon's request handling and wire
+          # validation (ml.rpc, ml.protocol) with the model calls faked.
           set -e
           python3 Tests/test_correction_sanitize.py
+          python3 Tests/test_rpc.py
 
       - name: TODO/FIXME audit (warn only)
         run: |
@@ -449,8 +480,8 @@ jobs:
           # here claimed 215 with 87 in Tests/Mocks — stale on both counts.)
           #
           # Raising BASELINE should be a deliberate, explained act. Lowering it
-          # is always fine.
-          BASELINE=46
+          # is always fine. (46 → 30 after the two dead-code passes.)
+          BASELINE=30
           count=$(grep -c '(unused_declaration)' analyze.txt || true)
           echo "unused_declaration: $count (baseline $BASELINE)"
           if [ "${count:-0}" -gt "$BASELINE" ]; then

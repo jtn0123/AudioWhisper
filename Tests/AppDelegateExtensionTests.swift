@@ -18,24 +18,6 @@ final class AppDelegateExtensionTests: IsolatedXCTestCase {
         XCTAssertFalse(result, "Menu bar app should not terminate after last window closed")
     }
 
-    func testHasAPIKeyReturnsTrueWhenKeyExists() {
-        // Set up a test key
-        let mockKeychain = MockKeychainService()
-        mockKeychain.saveQuietly("test-key", service: "AudioWhisper", account: "TestProvider")
-
-        // The appDelegate.hasAPIKey uses KeychainService.shared directly
-        // so we need to test the logic pattern
-        let key = mockKeychain.getQuietly(service: "AudioWhisper", account: "TestProvider")
-        XCTAssertNotNil(key)
-    }
-
-    func testHasAPIKeyReturnsFalseWhenKeyMissing() {
-        let mockKeychain = MockKeychainService()
-
-        let key = mockKeychain.getQuietly(service: "AudioWhisper", account: "NonExistentProvider")
-        XCTAssertNil(key)
-    }
-
     // MARK: - Hotkey Configuration Tests
 
     func testPressAndHoldConfigurationDefaultsAreCorrect() {

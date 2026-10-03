@@ -34,12 +34,6 @@ internal enum ParakeetError: Error, LocalizedError, Equatable {
     }
 }
 
-internal struct ParakeetResponse: Codable {
-    let text: String
-    let success: Bool
-    let error: String?
-}
-
 internal class ParakeetService {
     static let shared = ParakeetService()
 
@@ -282,7 +276,7 @@ internal class ParakeetService {
         }
 
         do {
-            try await daemon.warmup(type: "parakeet", repo: selectedRepo)
+            try await daemon.warmup(type: .parakeet, repo: selectedRepo)
         } catch {
             logger.error("Parakeet warmup failed: \(error.localizedDescription)")
             throw ParakeetError.transcriptionFailed("Parakeet daemon unavailable: \(error.localizedDescription)")

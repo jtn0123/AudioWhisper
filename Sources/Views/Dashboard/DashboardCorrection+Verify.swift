@@ -1,15 +1,5 @@
 import SwiftUI
 
-private actor VerificationMessageStore {
-    private var stdout: String = ""
-    private var stderr: String = ""
-
-    func updateStdout(_ value: String) { stdout = value }
-    func updateStderr(_ value: String) { stderr = value }
-    func stdoutMessage() -> String { stdout }
-    func stderrMessage() -> String { stderr }
-}
-
 extension DashboardCorrectionView {
     // MARK: - Verify Row
     var verifyRow: some View {
@@ -129,73 +119,30 @@ extension DashboardCorrectionView {
         return base ?? ""
     }
 
+    /// Audit item C4: shares `ModelVerificationService` with the Parakeet verify
+    /// path. The two used to be verbatim copies of the same Process/Pipe/timeout
+    /// plumbing, differing only in the script name and success wording.
     func verifyMLXModel() {
         isVerifyingMLX = true
         mlxVerifyMessage = "Checking model (offline)…"
         let repo = semanticCorrectionModelRepo
+
         Task {
             do {
                 let py = try await UvBootstrap.ensureVenv(userPython: nil) { _ in }
-                let pythonPath = py.path
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: pythonPath)
 
-                guard let scriptURL = ResourceLocator.pythonScriptURL(named: "verify_mlx") else {
-                    await MainActor.run { mlxVerifyMessage = "Script not found"; isVerifyingMLX = false }
-                    return
-                }
+                let result = try await ModelVerificationService.verify(
+                    scriptName: "verify_mlx",
+                    arguments: [repo],
+                    pythonPath: py.path,
+                    successFallback: "Model verified"
+                )
 
-                process.arguments = [scriptURL.path, repo]
-                let out = Pipe(); let err = Pipe()
-                process.standardOutput = out; process.standardError = err
-
-                let messageStore = VerificationMessageStore()
-                // Note: These handlers intentionally don't capture self or update @State directly
-                // to avoid retain cycles. State is updated after process completion using messageStore.
-                out.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
-                    for line in output.split(separator: "\n").map(String.init) {
-                        if let lineData = line.data(using: .utf8),
-                           let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
-                           let msg = json["message"] as? String {
-                            Task {
-                                await messageStore.updateStdout(msg)
-                            }
-                        }
-                    }
-                }
-                err.fileHandleForReading.readabilityHandler = { handle in
-                    let data = handle.availableData
-                    guard !data.isEmpty, let output = String(data: data, encoding: .utf8) else { return }
-                    let msg = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                    Task {
-                        await messageStore.updateStderr(msg)
-                    }
-                }
-
-                try process.run()
-                let timeout = Task { try await Task.sleep(for: .seconds(180)); if process.isRunning { process.terminate() } }
-                await Task.detached { process.waitUntilExit() }.value
-                timeout.cancel()
-
-                // Clean up file handle handlers to prevent leaks
-                out.fileHandleForReading.readabilityHandler = nil
-                err.fileHandleForReading.readabilityHandler = nil
-
-                let lastMsg = await messageStore.stdoutMessage()
-                let lastErr = await messageStore.stderrMessage()
                 await MainActor.run {
                     isVerifyingMLX = false
-                    if process.terminationStatus == 0 {
-                        mlxVerifyMessage = lastMsg.isEmpty ? "Model verified" : lastMsg
+                    mlxVerifyMessage = result.message
+                    if result.succeeded {
                         Task { await modelManager.refreshModelList() }
-                    } else {
-                        // Always overwrite the in-progress "Checking model…" with a
-                        // concrete failure message. Prefer last stdout/stderr if
-                        // available, otherwise a generic failure label.
-                        let detail = !lastMsg.isEmpty ? lastMsg : lastErr
-                        mlxVerifyMessage = detail.isEmpty ? "Verification failed" : "Verification failed: \(detail)"
                     }
                 }
             } catch {

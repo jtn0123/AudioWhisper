@@ -142,3 +142,4 @@ sonar-coverage.xml
 coverage-python.xml
 .coverage
 .pycov/
+.mypy-venv/

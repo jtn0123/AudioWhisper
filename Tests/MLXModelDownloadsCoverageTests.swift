@@ -124,7 +124,12 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         XCTAssertNoThrow(manager.recordIntegrity(for: uniqueRepo()))
     }
 
-    func testRecordIntegrityWritesSidecarForExistingRefsFile() throws {
+    /// Audit item E3: the integrity record moved OUT of the model's own
+    /// directory into app-owned storage, precisely so a process that can rewrite
+    /// the model cannot rewrite the hash vouching for it. This test therefore
+    /// asserts the record is usable, not where it sits — and asserts it is *not*
+    /// beside `refs/main`, which is the behaviour E3 removed.
+    func testRecordIntegrityMakesTheModelVerifiableWithoutWritingBesideIt() throws {
         let repo = uniqueRepo()
         let revision = String(repeating: "deadbeef", count: 5)
         _ = try makeFakeHFCache(repo: repo, revision: revision)
@@ -132,11 +137,21 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         manager.recordIntegrity(for: repo)
 
         let refsMain = manager.integrityFileURL(for: repo)!
-        let sidecar = refsMain.appendingPathExtension("audiowhisper-integrity")
-        XCTAssertTrue(
-            FileManager.default.fileExists(atPath: sidecar.path),
-            "recordIntegrity should write a sidecar next to refs/main"
+
+        // The record must exist somewhere the app owns — proved by verify()
+        // succeeding, and by tampering then failing.
+        XCTAssertNoThrow(try ModelIntegrity.verify(at: refsMain),
+                         "recordIntegrity should leave the model verifiable")
+
+        let legacySidecar = refsMain.appendingPathExtension("audiowhisper-integrity")
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: legacySidecar.path),
+            "E3: the hash must not be written next to the model it vouches for"
         )
+
+        try "tampered".write(to: refsMain, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try ModelIntegrity.verify(at: refsMain),
+                             "a recorded hash must still catch tampering")
     }
 
     // MARK: - unusedModelCount / recommended models

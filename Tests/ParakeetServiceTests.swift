@@ -106,38 +106,6 @@ class ParakeetServiceTests: IsolatedXCTestCase {
     
     // MARK: - Response Parsing Tests
     
-    func testParakeetResponseParsing() throws {
-        let successResponseJSON = """
-        {
-            "text": "Hello world",
-            "success": true
-        }
-        """
-        
-        let failureResponseJSON = """
-        {
-            "text": "",
-            "success": false,
-            "error": "Model not found"
-        }
-        """
-        
-        let successData = successResponseJSON.data(using: .utf8)!
-        let failureData = failureResponseJSON.data(using: .utf8)!
-        
-        let decoder = JSONDecoder()
-        
-        let successResponse = try decoder.decode(ParakeetResponse.self, from: successData)
-        XCTAssertEqual(successResponse.text, "Hello world")
-        XCTAssertTrue(successResponse.success)
-        XCTAssertNil(successResponse.error)
-        
-        let failureResponse = try decoder.decode(ParakeetResponse.self, from: failureData)
-        XCTAssertEqual(failureResponse.text, "")
-        XCTAssertFalse(failureResponse.success)
-        XCTAssertEqual(failureResponse.error, "Model not found")
-    }
-    
     // MARK: - File Path Tests
     
     func testTranscribeRequiresCachedModel() async throws {

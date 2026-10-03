@@ -236,15 +236,95 @@ internal final class UsageMetricsStore {
             return
         }
 
-        let records = await dataManager.fetchAllRecordsQuietly()
-        guard !records.isEmpty else { return }
+        // Audit item B1/G2: page instead of `fetchAllRecordsQuietly()`. Both
+        // rebuilds are running-total accumulations, so they never need the
+        // whole history resident — which matters because retention can be set
+        // to *forever*, making that fetch grow without bound.
+        var accumulator = needsFullBootstrap
+            ? RebuildAccumulator(mode: .full)
+            : RebuildAccumulator(mode: .dailyActivityOnly(base: snapshot))
+        var sawAnyRecord = false
 
-        if needsFullBootstrap {
-            rebuild(using: records)
-        } else {
-            // Just rebuild daily activity
-            rebuildDailyActivity(using: records)
+        do {
+            try await dataManager.forEachRecordPage(pageSize: Self.rebuildPageSize) { page in
+                if !page.isEmpty { sawAnyRecord = true }
+                accumulator.add(page)
+            }
+        } catch {
+            // Matches the prior behaviour: `fetchAllRecordsQuietly()` swallowed
+            // fetch failures and returned [], leaving the snapshot untouched.
+            return
         }
+
+        guard sawAnyRecord else { return }
+        persist(cleanupOldDailyActivityIn(accumulator.finish()))
+    }
+
+    /// Page size for the rebuild scan. Large enough that the per-page fetch
+    /// overhead is negligible, small enough that peak memory stays flat.
+    private static let rebuildPageSize = 500
+
+    /// Accumulates a `UsageSnapshot` across paged batches.
+    ///
+    /// Extracted so `rebuild(using:)` and `rebuildDailyActivity(using:)` (which
+    /// still take a full array, and are used by the delete-triggered rebuild)
+    /// share one definition of the arithmetic with the paged bootstrap. A second
+    /// copy of these sums is exactly how live totals and rebuilt totals drift.
+    /// `@MainActor` because it reads `UsageMetricsStore.dateFormatter`, which is
+    /// main-actor isolated. Every caller is already on the main actor.
+    @MainActor
+    private struct RebuildAccumulator {
+        enum Mode {
+            case full
+            case dailyActivityOnly(base: UsageSnapshot)
+        }
+
+        private let mode: Mode
+        private var snapshot: UsageSnapshot
+
+        init(mode: Mode) {
+            self.mode = mode
+            switch mode {
+            case .full:
+                self.snapshot = .empty
+            case .dailyActivityOnly(let base):
+                var carried = base
+                carried.dailyActivity = [:]
+                self.snapshot = carried
+            }
+        }
+
+        mutating func add(_ records: [TranscriptionRecord]) {
+            for record in records {
+                if case .full = mode {
+                    snapshot.totalSessions += 1
+                    if let duration = record.duration {
+                        snapshot.totalDuration += duration
+                    }
+                    snapshot.totalWords += record.wordCount
+                    // Use the stored `characterCount` so a rebuild matches what
+                    // `recordSession` accumulated live (bug #45). `text.count`
+                    // would diverge if the stored count and text ever differ.
+                    snapshot.totalCharacters += record.characterCount
+                }
+                let dateString = UsageMetricsStore.dateFormatter.string(from: record.date)
+                snapshot.dailyActivity[dateString, default: 0] += record.wordCount
+            }
+        }
+
+        func finish() -> UsageSnapshot {
+            var out = snapshot
+            if case .full = mode {
+                out.lastUpdated = Date()
+            }
+            return out
+        }
+    }
+
+    private func cleanupOldDailyActivityIn(_ snapshot: UsageSnapshot) -> UsageSnapshot {
+        var out = snapshot
+        out.dailyActivity = cleanupOldDailyActivity(out.dailyActivity)
+        return out
     }
 
     /// Rebuild only daily activity from records without resetting other stats

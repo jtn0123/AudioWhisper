@@ -8,7 +8,6 @@ import SwiftData
 final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
-    var mockKeychain: MockKeychainService!
     var metricsStore: UsageMetricsStore!
     var testDefaults: UserDefaults!
 
@@ -28,9 +27,6 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
 
         // Set up metrics store with test defaults
         metricsStore = UsageMetricsStore(defaults: testDefaults)
-
-        // Set up mock keychain
-        mockKeychain = MockKeychainService()
 
         // Enable history for tests
         testDefaults.set(true, forKey: "transcriptionHistoryEnabled")
@@ -52,7 +48,6 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
 
         modelContainer = nil
         modelContext = nil
-        mockKeychain = nil
         metricsStore = nil
         testDefaults = nil
 

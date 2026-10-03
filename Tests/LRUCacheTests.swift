@@ -1,251 +1,132 @@
 import XCTest
-// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 @testable import AudioWhisper
 
-/// Tests for LRU cache behavior in LocalWhisperService.
-/// Note: The WhisperKitCache is a private actor, so we test through the public interface
-/// and observable behavior of LocalWhisperService.
+/// Tests for the LRU eviction policy that `WhisperKitCache` uses to bound the
+/// number of live WhisperKit instances.
+///
+/// Audit item D2: the previous version of this file did not test the cache. Every
+/// case built a `[String: Date]` dictionary inside the test body and re-sorted it
+/// with a copy of the production expression, then asserted on that — so it
+/// exercised `Dictionary.sorted` and would have passed unchanged if
+/// `WhisperKitCache` had been deleted. Its own comment conceded the point ("We
+/// simulate the sorting logic used in the WhisperKitCache").
+///
+/// `LRUAccessTracker` was extracted from the cache actor so the policy could be
+/// driven directly. Testing it through `LocalWhisperService` is not possible:
+/// `WhisperKitCache` is a private actor whose entries are real `WhisperKit`
+/// instances, which require a downloaded multi-hundred-megabyte model and are
+/// therefore reachable only from the nightly end-to-end job.
 final class LRUCacheTests: XCTestCase {
 
-    // MARK: - Cache Eviction Logic Tests
+    /// Fixed base date so ordering is pinned rather than depending on wall-clock
+    /// gaps between calls, which `Date()` does not guarantee to be distinct.
+    private let base = Date(timeIntervalSince1970: 1_700_000_000)
 
-    /// Test that the LRU eviction algorithm correctly identifies the oldest item.
-    /// We simulate the sorting logic used in the WhisperKitCache.
-    func testLRUSortingByAccessTime() {
-        // Simulate access times dictionary
-        var accessTimes: [String: Date] = [:]
-        let now = Date()
-
-        accessTimes["model-a"] = now.addingTimeInterval(-100) // Oldest
-        accessTimes["model-b"] = now.addingTimeInterval(-50)  // Middle
-        accessTimes["model-c"] = now                           // Newest
-
-        // Sort by ascending date (oldest first)
-        let sortedByLRU = accessTimes.sorted { $0.value < $1.value }
-
-        XCTAssertEqual(sortedByLRU.first?.key, "model-a", "Oldest model should be first")
-        XCTAssertEqual(sortedByLRU.last?.key, "model-c", "Newest model should be last")
+    private func tracker(_ entries: [(WhisperModel, TimeInterval)]) -> LRUAccessTracker<WhisperModel> {
+        var lru = LRUAccessTracker<WhisperModel>()
+        for (model, offset) in entries {
+            lru.touch(model, at: base.addingTimeInterval(offset))
+        }
+        return lru
     }
 
-    func testLRUSortingHandlesSameTimestamp() {
-        var accessTimes: [String: Date] = [:]
-        let now = Date()
+    // MARK: - Least-recently-used selection
 
-        // All same timestamp
-        accessTimes["model-a"] = now
-        accessTimes["model-b"] = now
-        accessTimes["model-c"] = now
-
-        let sortedByLRU = accessTimes.sorted { $0.value < $1.value }
-
-        // All should be present (order may vary for same timestamp)
-        XCTAssertEqual(sortedByLRU.count, 3)
+    func testLeastRecentlyUsedReturnsOldestAccess() {
+        let lru = tracker([(.tiny, -100), (.base, -50), (.small, 0)])
+        XCTAssertEqual(lru.leastRecentlyUsed(), .tiny)
     }
 
-    func testLRUSortingWithSingleItem() {
-        var accessTimes: [String: Date] = [:]
-        accessTimes["model-a"] = Date()
-
-        let sortedByLRU = accessTimes.sorted { $0.value < $1.value }
-
-        XCTAssertEqual(sortedByLRU.count, 1)
-        XCTAssertEqual(sortedByLRU.first?.key, "model-a")
+    func testLeastRecentlyUsedIsNilWhenEmpty() {
+        let lru = LRUAccessTracker<WhisperModel>()
+        XCTAssertNil(lru.leastRecentlyUsed())
+        XCTAssertEqual(lru.count, 0)
     }
 
-    func testLRUSortingEmptyCache() {
-        let accessTimes: [String: Date] = [:]
-        let sortedByLRU = accessTimes.sorted { $0.value < $1.value }
-
-        XCTAssertTrue(sortedByLRU.isEmpty)
+    func testLeastRecentlyUsedWithSingleEntryReturnsThatEntry() {
+        let lru = tracker([(.base, 0)])
+        XCTAssertEqual(lru.leastRecentlyUsed(), .base)
     }
 
-    // MARK: - Eviction Threshold Tests
+    /// A cache hit must refresh the timestamp, otherwise a model in constant use
+    /// would still age out and be reloaded from disk.
+    func testTouchingAnEntryMakesItNoLongerLeastRecentlyUsed() {
+        var lru = tracker([(.tiny, -100), (.base, -50), (.small, 0)])
+        XCTAssertEqual(lru.leastRecentlyUsed(), .tiny, "precondition")
 
-    /// Test eviction logic: should only evict when at or above maxCached
-    func testEvictionThreshold() {
-        let maxCached = 3
+        lru.touch(.tiny, at: base.addingTimeInterval(10))
 
-        // Below threshold - no eviction needed
-        XCTAssertFalse(shouldEvict(currentCount: 0, maxCached: maxCached))
-        XCTAssertFalse(shouldEvict(currentCount: 1, maxCached: maxCached))
-        XCTAssertFalse(shouldEvict(currentCount: 2, maxCached: maxCached))
-
-        // At threshold - eviction needed before adding new item
-        XCTAssertTrue(shouldEvict(currentCount: 3, maxCached: maxCached))
-
-        // Above threshold - definitely needs eviction
-        XCTAssertTrue(shouldEvict(currentCount: 4, maxCached: maxCached))
+        XCTAssertEqual(lru.leastRecentlyUsed(), .base,
+                       "after re-access, .tiny must no longer be the eviction candidate")
+        XCTAssertEqual(lru.count, 3, "re-access must refresh, not insert a duplicate")
     }
 
-    private func shouldEvict(currentCount: Int, maxCached: Int) -> Bool {
-        // Mirrors the condition in WhisperKitCache.evictLeastRecentlyUsedIfNeeded
-        return currentCount >= maxCached
+    // MARK: - Ordering
+
+    func testMostRecentlyUsedFirstOrdersDescendingByAccessTime() {
+        let lru = tracker([(.tiny, -100), (.base, -50), (.small, 0)])
+        XCTAssertEqual(lru.mostRecentlyUsedFirst(), [.small, .base, .tiny])
     }
 
-    // MARK: - Access Time Update Tests
+    // MARK: - Eviction bookkeeping
 
-    func testAccessTimeUpdatesOnHit() {
-        var accessTimes: [String: Date] = [:]
-        let initialTime = Date().addingTimeInterval(-100)
+    func testForgetRemovesOnlyTheNamedKey() {
+        var lru = tracker([(.tiny, -100), (.base, -50), (.small, 0)])
+        lru.forget(.tiny)
 
-        // Initial access
-        accessTimes["model-a"] = initialTime
-
-        // Simulate cache hit - update access time
-        let hitTime = Date()
-        accessTimes["model-a"] = hitTime
-
-        XCTAssertEqual(accessTimes["model-a"], hitTime)
-        XCTAssertNotEqual(accessTimes["model-a"], initialTime)
+        XCTAssertEqual(lru.count, 2)
+        XCTAssertEqual(lru.trackedKeys, [.base, .small])
+        XCTAssertEqual(lru.leastRecentlyUsed(), .base, "eviction candidate advances after a forget")
     }
 
-    func testMostRecentlyUsedPreservedOnClear() {
-        var instances: [String: String] = [:]
-        var accessTimes: [String: Date] = [:]
-        let now = Date()
+    func testForgetIsANoOpForAnUntrackedKey() {
+        var lru = tracker([(.base, 0)])
+        lru.forget(.largeTurbo)
+        XCTAssertEqual(lru.trackedKeys, [.base])
+    }
 
-        instances["model-a"] = "instance-a"
-        instances["model-b"] = "instance-b"
-        instances["model-c"] = "instance-c"
+    func testRemoveAllClearsEverything() {
+        var lru = tracker([(.tiny, -100), (.base, -50), (.small, 0)])
+        lru.removeAll()
 
-        accessTimes["model-a"] = now.addingTimeInterval(-100)
-        accessTimes["model-b"] = now                           // Most recent
-        accessTimes["model-c"] = now.addingTimeInterval(-50)
+        XCTAssertEqual(lru.count, 0)
+        XCTAssertNil(lru.leastRecentlyUsed())
+    }
 
-        // Simulate clearExceptMostRecent
-        let sortedByAccess = accessTimes.sorted { $0.value > $1.value }
+    // MARK: - clearExceptMostRecent policy
 
-        for (index, model) in sortedByAccess.enumerated() where index > 0 {
-            instances.removeValue(forKey: model.key)
-            accessTimes.removeValue(forKey: model.key)
+    func testKeysToEvictKeepingMostRecentDropsAllButNewest() {
+        let lru = tracker([(.tiny, -100), (.base, -50), (.small, 0)])
+        XCTAssertEqual(Set(lru.keysToEvictKeepingMostRecent()), [.tiny, .base],
+                       "only the most recently used model survives")
+    }
+
+    func testKeysToEvictKeepingMostRecentIsEmptyForSingleEntry() {
+        let lru = tracker([(.base, 0)])
+        XCTAssertTrue(lru.keysToEvictKeepingMostRecent().isEmpty)
+    }
+
+    func testKeysToEvictKeepingMostRecentIsEmptyWhenEmpty() {
+        let lru = LRUAccessTracker<WhisperModel>()
+        XCTAssertTrue(lru.keysToEvictKeepingMostRecent().isEmpty)
+    }
+
+    // MARK: - Repeated eviction converges
+
+    /// Drives the same sequence the cache does when it exceeds `maxCached`:
+    /// evict the LRU entry, forget it, repeat. Guards against an eviction loop
+    /// that fails to shrink the tracker.
+    func testRepeatedEvictionRemovesEntriesOldestFirst() {
+        var lru = tracker([(.tiny, -300), (.base, -200), (.small, -100), (.largeTurbo, 0)])
+        var evicted: [WhisperModel] = []
+
+        while lru.count > 1 {
+            guard let oldest = lru.leastRecentlyUsed() else { break }
+            evicted.append(oldest)
+            lru.forget(oldest)
         }
 
-        XCTAssertEqual(instances.count, 1)
-        XCTAssertNotNil(instances["model-b"], "Most recently used should be preserved")
-        XCTAssertNil(instances["model-a"])
-        XCTAssertNil(instances["model-c"])
-    }
-
-    // MARK: - Cache State Tests
-
-    func testCacheClearRemovesAllEntries() {
-        var instances: [String: String] = [
-            "model-a": "instance-a",
-            "model-b": "instance-b",
-            "model-c": "instance-c"
-        ]
-        var accessTimes: [String: Date] = [
-            "model-a": Date(),
-            "model-b": Date(),
-            "model-c": Date()
-        ]
-
-        // Simulate clear
-        instances.removeAll()
-        accessTimes.removeAll()
-
-        XCTAssertTrue(instances.isEmpty)
-        XCTAssertTrue(accessTimes.isEmpty)
-    }
-
-    func testEvictionRemovesCorrectModel() {
-        var instances: [String: String] = [:]
-        var accessTimes: [String: Date] = [:]
-        let now = Date()
-
-        // Fill cache
-        instances["model-a"] = "instance-a"
-        instances["model-b"] = "instance-b"
-        instances["model-c"] = "instance-c"
-
-        accessTimes["model-a"] = now.addingTimeInterval(-100) // Oldest - should be evicted
-        accessTimes["model-b"] = now.addingTimeInterval(-50)
-        accessTimes["model-c"] = now
-
-        // Simulate eviction of LRU
-        let sortedByAccess = accessTimes.sorted { $0.value < $1.value }
-        if let oldestModel = sortedByAccess.first {
-            instances.removeValue(forKey: oldestModel.key)
-            accessTimes.removeValue(forKey: oldestModel.key)
-        }
-
-        XCTAssertNil(instances["model-a"], "Oldest model should be evicted")
-        XCTAssertNotNil(instances["model-b"])
-        XCTAssertNotNil(instances["model-c"])
-        XCTAssertEqual(instances.count, 2)
-    }
-
-    // MARK: - Concurrent Access Simulation Tests
-
-    func testConcurrentAccessToCache() async {
-        let cache = TestCache()
-
-        // Simulate concurrent access from multiple tasks
-        await withTaskGroup(of: Void.self) { group in
-            for index in 0..<10 {
-                group.addTask {
-                    await cache.access("model-\(index % 3)")
-                }
-            }
-        }
-
-        // All models should have been accessed
-        let accessedModels = await cache.getAccessedModels()
-        XCTAssertTrue(accessedModels.contains("model-0"))
-        XCTAssertTrue(accessedModels.contains("model-1"))
-        XCTAssertTrue(accessedModels.contains("model-2"))
-    }
-
-    func testConcurrentEvictionSafety() async {
-        let cache = TestCache()
-
-        // Fill cache with more items than max
-        await withTaskGroup(of: Void.self) { group in
-            for index in 0..<20 {
-                group.addTask {
-                    await cache.addAndEvictIfNeeded("model-\(index)", maxCached: 5)
-                }
-            }
-        }
-
-        // Cache should not exceed max size
-        let currentCount = await cache.count()
-        XCTAssertLessThanOrEqual(currentCount, 5)
-    }
-}
-
-// MARK: - Test Helper Actor
-
-/// Actor for testing concurrent cache behavior safely
-private actor TestCache {
-    private var items: Set<String> = []
-    private var accessTimes: [String: Date] = [:]
-
-    func access(_ key: String) {
-        items.insert(key)
-        accessTimes[key] = Date()
-    }
-
-    func addAndEvictIfNeeded(_ key: String, maxCached: Int) {
-        // Evict if at capacity
-        while items.count >= maxCached, let oldest = oldestKey() {
-            items.remove(oldest)
-            accessTimes.removeValue(forKey: oldest)
-        }
-
-        items.insert(key)
-        accessTimes[key] = Date()
-    }
-
-    private func oldestKey() -> String? {
-        accessTimes.min(by: { $0.value < $1.value })?.key
-    }
-
-    func getAccessedModels() -> Set<String> {
-        items
-    }
-
-    func count() -> Int {
-        items.count
+        XCTAssertEqual(evicted, [.tiny, .base, .small])
+        XCTAssertEqual(lru.trackedKeys, [.largeTurbo])
     }
 }

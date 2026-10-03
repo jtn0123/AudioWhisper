@@ -114,20 +114,6 @@ extension RecordingWorkflowEdgeCaseTests {
         XCTAssertEqual(errorMessage, "Parakeet model not downloaded")
     }
 
-    func testAsyncTimeoutErrorShowsUserFriendlyMessage() async throws {
-        let timeoutError = AsyncTimeoutError.timedOut(30.0)
-
-        var errorMessage: String?
-        var showError = false
-
-        // Simulate error handling
-        errorMessage = timeoutError.localizedDescription
-        showError = true
-
-        XCTAssertTrue(showError)
-        XCTAssertEqual(errorMessage, "Operation timed out after 30 seconds")
-    }
-
     // MARK: - State Cleanup Tests
 
     func testProcessingFlagResetOnSuccess() async throws {

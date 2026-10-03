@@ -229,19 +229,72 @@ extension DashboardHomeView {
 
 // MARK: - Data loading
 extension DashboardHomeView {
+    /// Number of transcripts the "Recent" section renders. The view only ever
+    /// shows `recentRecords.prefix(5)`, so fetching more is pure waste.
+    static let recentRecordsDisplayLimit = 5
+
+    /// Page size for the provider-stats / daily-activity scan.
+    private static let aggregatePageSize = 500
+
+    /// What the Overview page shows. Gathered by `loadData`, which is static so
+    /// it can be tested without a rendered view: a `View`'s `@State` writes go
+    /// nowhere outside a rendering context.
+    struct DashboardData {
+        let recentRecords: [TranscriptionRecord]
+        let providerStats: [ProviderStat]
+        let dailyActivity: [Date: Int]
+    }
+
     func loadDashboardData() {
         Task {
-            await metricsStore.bootstrapIfNeeded(dataManager: dataManager)
-            let records = await dataManager.fetchAllRecordsQuietly()
+            let data = await Self.loadData(dataManager: dataManager, metricsStore: metricsStore)
             await MainActor.run {
-                recentRecords = records
-                providerStats = Self.computeProviderStats(from: records)
-                dailyActivity = Self.mergeDailyActivity(
-                    base: metricsStore.getDailyActivity(days: 28),
-                    records: records
-                )
+                recentRecords = data.recentRecords
+                providerStats = data.providerStats
+                dailyActivity = data.dailyActivity
             }
         }
+    }
+
+    static func loadData(
+        dataManager: DataManagerProtocol,
+        metricsStore: UsageMetricsStore
+    ) async -> DashboardData {
+        await metricsStore.bootstrapIfNeeded(dataManager: dataManager)
+
+        // Audit item B1/G2: this used to call `fetchAllRecordsQuietly()` and
+        // hold the ENTIRE transcript history in memory — to render five rows
+        // and two aggregates. With retention set to *forever* that grows
+        // without bound, and both the dashboard open and the metrics
+        // bootstrap paid for it.
+        //
+        // Now: a bounded fetch for the rows, and a paged scan for the
+        // aggregates so peak memory is one page regardless of history size.
+        let recent = await dataManager.fetchRecordsQuietly(
+            limit: recentRecordsDisplayLimit,
+            offset: 0,
+            search: nil
+        )
+
+        var providerWords: [String: Int] = [:]
+        var activityFromRecords: [Date: Int] = [:]
+        let calendar = Calendar.current
+        try? await dataManager.forEachRecordPage(pageSize: aggregatePageSize) { page in
+            for record in page {
+                providerWords[record.provider, default: 0] += record.wordCount
+                let day = calendar.startOfDay(for: record.date)
+                activityFromRecords[day, default: 0] += record.wordCount
+            }
+        }
+
+        return DashboardData(
+            recentRecords: recent,
+            providerStats: providerStats(from: providerWords),
+            dailyActivity: mergeDailyActivity(
+                base: metricsStore.getDailyActivity(days: 28),
+                dailyWords: activityFromRecords
+            )
+        )
     }
 
     /// Returns the last 28 daily word counts, oldest → newest. Missing days = 0.
@@ -364,102 +417,4 @@ extension DashboardHomeView {
     static let bestDayFormatter: DateFormatter = {
         let formatter = DateFormatter(); formatter.dateFormat = "MMM d"; return formatter
     }()
-}
-
-// MARK: - Pure computations (shared by the view and its tests)
-extension DashboardHomeView {
-    static func providerIcon(for provider: String) -> String {
-        switch provider.lowercased() {
-        case "openai":   return "cloud"
-        case "gemini":   return "sparkles"
-        case "local":    return "laptopcomputer"
-        case "parakeet": return "bird"
-        default:         return "waveform"
-        }
-    }
-
-    static func computeProviderStats(
-        from records: [TranscriptionRecord]
-    ) -> [ProviderStat] {
-        var stats: [String: Int] = [:]
-        for record in records { stats[record.provider, default: 0] += record.wordCount }
-        return stats
-            .map { ProviderStat(provider: $0.key, words: $0.value, icon: providerIcon(for: $0.key)) }
-            .sorted { $0.words > $1.words }
-    }
-
-    static func mergeDailyActivity(
-        base: [Date: Int],
-        records: [TranscriptionRecord]
-    ) -> [Date: Int] {
-        var activity = base
-        let calendar = Calendar.current
-        for record in records {
-            let day = calendar.startOfDay(for: record.date)
-            if activity[day] == nil || activity[day] == 0 {
-                activity[day, default: 0] += record.wordCount
-            }
-        }
-        return activity
-    }
-
-    /// Consecutive days (ending today) with non-zero word counts.
-    static func computeStreak(from activity: [Date: Int]) -> Int {
-        let calendar = Calendar.current
-        var streak = 0
-        var currentDate = Date()
-        while true {
-            let day = calendar.startOfDay(for: currentDate)
-            if let words = activity[day], words > 0 {
-                streak += 1
-                guard let prev = calendar.date(byAdding: .day, value: -1, to: currentDate) else { break }
-                currentDate = prev
-            } else { break }
-        }
-        return streak
-    }
-
-    static func computeActiveDays(from activity: [Date: Int]) -> Int {
-        activity.filter { $0.value > 0 }.count
-    }
-
-    static func numberString(_ value: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    static func durationString(_ interval: TimeInterval) -> String {
-        guard interval > 0 else { return "0m" }
-        let totalSeconds = Int(interval)
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        if hours > 0 { return "\(hours)h \(minutes)m" } else { return "\(minutes)m" }
-    }
-}
-
-// MARK: - Testable Helpers
-extension DashboardHomeView {
-    static func testableCalculateStreak(from activity: [Date: Int]) -> Int {
-        computeStreak(from: activity)
-    }
-
-    static func testableCalculateActiveDays(from activity: [Date: Int]) -> Int {
-        computeActiveDays(from: activity)
-    }
-
-    static func testableCalculateProviderStats(
-        from records: [TranscriptionRecord]
-    ) -> [ProviderStat] {
-        computeProviderStats(from: records)
-    }
-
-    static func testableFormatDuration(_ interval: TimeInterval) -> String {
-        durationString(interval)
-    }
-}
-
-#Preview("Dashboard Home") {
-    DashboardHomeView(selectedNav: .constant(.dashboard))
-        .frame(width: 900, height: 700)
 }

@@ -5,7 +5,6 @@ import XCTest
 @MainActor
 final class ErrorPropagationLayerTests: XCTestCase {
 
-    var mockKeychain: MockKeychainService!
     var testDefaults: UserDefaults!
     var suiteName: String!
 
@@ -16,9 +15,6 @@ final class ErrorPropagationLayerTests: XCTestCase {
         suiteName = "ErrorPropagationLayerTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: suiteName)!
 
-        // Set up mock keychain
-        mockKeychain = MockKeychainService()
-
         // Enable test environment
         ErrorPresenter.shared.isTestEnvironment = true
     }
@@ -27,7 +23,6 @@ final class ErrorPropagationLayerTests: XCTestCase {
         if let suiteName = suiteName {
             testDefaults?.removePersistentDomain(forName: suiteName)
         }
-        mockKeychain = nil
         testDefaults = nil
         suiteName = nil
         super.tearDown()
@@ -37,37 +32,6 @@ final class ErrorPropagationLayerTests: XCTestCase {
 
     private func waitForAsyncOperation() async {
         try? await Task.sleep(for: .milliseconds(100))
-    }
-
-    // MARK: - Keychain Error Propagation Tests
-
-    func testKeychainErrorPropagesToSpeechService() async throws {
-        // Given - Keychain will throw error
-        mockKeychain.shouldThrow = true
-        mockKeychain.throwError = .itemNotFound
-
-        // When - Attempt to get API key
-        do {
-            _ = try mockKeychain.get(service: "test", account: "test")
-            XCTFail("Should have thrown error")
-        } catch {
-            // Then - Error is properly thrown
-            XCTAssertTrue(error is KeychainError)
-        }
-    }
-
-    func testKeychainSaveErrorPropagates() async throws {
-        // Given - Keychain will throw on save
-        mockKeychain.shouldThrow = true
-
-        // When - Attempt to save
-        do {
-            try mockKeychain.save("key", service: "test", account: "test")
-            XCTFail("Should have thrown error")
-        } catch {
-            // Then - Error propagates
-            XCTAssertTrue(error is KeychainError)
-        }
     }
 
     // MARK: - Semantic Correction Fallback Tests

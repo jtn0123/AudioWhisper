@@ -10,8 +10,10 @@ internal extension ContentView {
 
     func handleOnDisappear() {
         notificationCoordinator.removeAll()
-        processingTask?.cancel()
-        processingTask = nil
+        // Audit item A1: the in-flight transcription Task is owned by the view
+        // model now. Cancelling the view's own `processingTask` would be a
+        // no-op — nothing assigns it any more.
+        viewModel.cancelProcessing()
         viewModel.lastAudioURL = nil
     }
 
@@ -53,7 +55,8 @@ internal extension ContentView {
                 audioRecorder.cancelRecording()
                 viewModel.showError = false
             } else if isProcessing {
-                processingTask?.cancel()
+                // Audit item A1: cancel through the view model, which owns the Task.
+                viewModel.cancelProcessing()
                 viewModel.showError = false
             } else {
                 // Only close the recording window, not any other window

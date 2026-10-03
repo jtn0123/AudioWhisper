@@ -284,21 +284,6 @@ final class AppDefaultsTests: IsolatedXCTestCase {
         XCTAssertFalse(AppDefaults.hasValue(for: .globalHotkey))
     }
 
-    func testResetAllClearsAllKeys() {
-        // Set some values
-        AppDefaults.globalHotkey = "test"
-        AppDefaults.immediateRecording = true
-        AppDefaults.selectedMicrophone = "test mic"
-
-        // Reset all
-        AppDefaults.resetAll()
-
-        // Verify all are cleared
-        XCTAssertFalse(AppDefaults.hasValue(for: .globalHotkey))
-        XCTAssertFalse(AppDefaults.hasValue(for: .immediateRecording))
-        XCTAssertFalse(AppDefaults.hasValue(for: .selectedMicrophone))
-    }
-
     // MARK: - Invalid Value Handling Tests
 
     func testInvalidEnumValueFallsBackToDefault() {

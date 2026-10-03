@@ -71,38 +71,41 @@ internal actor MLDaemonManager {
     var stdoutReaderTask: Task<Void, Never>?
     private var pythonExecutable: URL?
     private var scriptLocation: URL?
-    private var testResponder: ((String, [String: Any]) throws -> Any)?
+    private var testResponder: ((MLRPCMethod, JSONValue) throws -> JSONValue)?
 
     // MARK: - Public API
 
     func transcribe(repo: String, pcmPath: String) async throws -> String {
-        struct TranscribeResult: Decodable { let success: Bool; let text: String; let error: String? }
-        let result: TranscribeResult = try await sendRequest(
-            method: "transcribe",
-            params: ["repo": repo, "pcm_path": pcmPath]
+        let result: MLRPCResult.Transcribe = try await sendRequest(
+            method: .transcribe,
+            params: MLRPCParams.Transcribe(repo: repo, pcmPath: pcmPath)
         )
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Transcription failed") }
         return result.text
     }
 
     func correct(repo: String, text: String, prompt: String?) async throws -> String {
-        struct CorrectionResult: Decodable { let success: Bool; let text: String; let error: String? }
-        var params: [String: Any] = ["repo": repo, "text": text]
-        if let prompt = prompt { params["prompt"] = prompt }
-        let result: CorrectionResult = try await sendRequest(method: "correct", params: params)
+        let result: MLRPCResult.Correct = try await sendRequest(
+            method: .correct,
+            params: MLRPCParams.Correct(repo: repo, text: text, prompt: prompt)
+        )
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Correction failed") }
         return result.text
     }
 
-    func warmup(type: String, repo: String) async throws {
-        struct WarmupResult: Decodable { let success: Bool? }
-        _ = try await sendRequest(method: "warmup", params: ["type": type, "repo": repo]) as WarmupResult
+    func warmup(type: MLWarmupKind, repo: String) async throws {
+        let _: MLRPCResult.Warmup = try await sendRequest(
+            method: .warmup,
+            params: MLRPCParams.Warmup(type: type, repo: repo)
+        )
     }
 
     func ping() async -> Bool {
-        struct PingResult: Decodable { let pong: Bool }
         do {
-            let result: PingResult = try await sendRequest(method: "ping", params: [:])
+            let result: MLRPCResult.Ping = try await sendRequest(
+                method: .ping,
+                params: MLRPCParams.Empty?.none
+            )
             return result.pong
         } catch {
             logger.error("Ping failed: \(error.localizedDescription)")
@@ -112,15 +115,12 @@ internal actor MLDaemonManager {
 
     // MARK: - Core JSON-RPC plumbing
 
-    private func sendRequest<Response: Decodable>(method: String, params: [String: Any]) async throws -> Response {
-        if let testResponder {
-            let resultObject = try testResponder(method, params)
-            let data = try JSONSerialization.data(withJSONObject: resultObject, options: [])
-            do {
-                return try JSONDecoder().decode(Response.self, from: data)
-            } catch {
-                throw MLDaemonError.invalidResponse(error.localizedDescription)
-            }
+    private func sendRequest<Params: Encodable, Response: Decodable>(
+        method: MLRPCMethod,
+        params: Params?
+    ) async throws -> Response {
+        if testResponder != nil {
+            return try respondFromTestStub(method: method, params: params)
         }
         // Drop any pending entries whose deadline has passed. This is cheap
         // (no separate timer) and guarantees the `pending` map can't grow
@@ -131,16 +131,8 @@ internal actor MLDaemonManager {
         let requestID = nextRequestID
         nextRequestID += 1
 
-        var payload: [String: Any] = [
-            "jsonrpc": "2.0",
-            "id": requestID,
-            "method": method
-        ]
-        if !params.isEmpty {
-            payload["params"] = params
-        }
-
-        let data = try JSONSerialization.data(withJSONObject: payload, options: [])
+        let request = MLRPCRequest(id: requestID, method: method, params: params)
+        let data = try JSONEncoder().encode(request)
         // M6: cap payload size so a multi-MB string can't DoS the Python side.
         if data.count > Self.maxRequestBytes {
             throw MLDaemonError.daemonUnavailable("input too large (max \(Self.maxRequestBytes) bytes)")
@@ -203,6 +195,30 @@ internal actor MLDaemonManager {
         }
     }
 
+    /// Routes a request to the injected test stub instead of the subprocess.
+    ///
+    /// Params are handed over as a decoded `JSONValue` rather than the typed
+    /// struct deliberately: a test asserting `params["pcm_path"] == "/tmp/a"`
+    /// is checking the WIRE key, which is what the daemon reads. Asserting on
+    /// the Swift property name would pass happily through a CodingKey rename
+    /// that breaks Python.
+    private func respondFromTestStub<Params: Encodable, Response: Decodable>(
+        method: MLRPCMethod,
+        params: Params?
+    ) throws -> Response {
+        guard let testResponder else {
+            throw MLDaemonError.daemonUnavailable("no test responder")
+        }
+        let encodedParams = try JSONEncoder().encode(params ?? nil as Params?)
+        let decodedParams = (try? JSONDecoder().decode(JSONValue.self, from: encodedParams)) ?? .null
+        let resultValue = try testResponder(method, decodedParams)
+        do {
+            return try JSONDecoder().decode(Response.self, from: JSONEncoder().encode(resultValue))
+        } catch {
+            throw MLDaemonError.invalidResponse(error.localizedDescription)
+        }
+    }
+
     /// Tears down the dead daemon and fails the in-flight request whose
     /// detached stdin write threw. Invoked from the H9 off-actor write path.
     func handleWriteFailure(requestID: Int, error: Error) async {
@@ -232,9 +248,11 @@ internal actor MLDaemonManager {
             return
         }
         guard
-            let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-            let id = json["id"] as? Int
+            let envelope = try? JSONDecoder().decode(MLRPCEnvelope.self, from: data),
+            let id = envelope.id
         else {
+            // Also the path for rpc.py's parse-failure reply, which carries
+            // "id": null because it never got far enough to read one.
             logger.error("Malformed JSON-RPC response")
             return
         }
@@ -244,19 +262,18 @@ internal actor MLDaemonManager {
             return
         }
 
-        if let error = json["error"] as? [String: Any],
-           let message = error["message"] as? String {
+        if let message = envelope.error?.message {
             pendingRequest.completion(.failure(MLDaemonError.remoteError(message)))
             return
         }
 
-        guard let result = json["result"] else {
+        guard let result = envelope.result, !result.isNull else {
             pendingRequest.completion(.failure(MLDaemonError.invalidResponse("Missing result")))
             return
         }
 
         do {
-            let resultData = try JSONSerialization.data(withJSONObject: result, options: [])
+            let resultData = try JSONEncoder().encode(result)
             // A successful reply proves the daemon is healthy: clear the
             // crash-loop counter so transient restarts don't accumulate
             // toward the limit (audit #8).
@@ -291,7 +308,7 @@ internal actor MLDaemonManager {
 }
 
 internal extension MLDaemonManager {
-    func setTestResponder(_ responder: ((String, [String: Any]) throws -> Any)?) {
+    func setTestResponder(_ responder: ((MLRPCMethod, JSONValue) throws -> JSONValue)?) {
         testResponder = responder
     }
 

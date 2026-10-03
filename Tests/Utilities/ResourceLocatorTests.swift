@@ -34,14 +34,15 @@ final class ResourceLocatorTests: XCTestCase {
 
     func testURLForResourceWithDevRelativePathResolvesExistingFile() {
         // The dev fallback resolves a file that exists relative to the cwd.
-        // Sources/parakeet_transcribe_pcm.py ships with the package.
+        // Retargeted at ml_daemon.py: parakeet_transcribe_pcm.py was bundled but
+        // never looked up, and has been removed.
         let url = ResourceLocator.url(
-            forResource: "parakeet_transcribe_pcm",
+            forResource: "ml_daemon",
             withExtension: "py",
-            devRelativePath: "Sources/parakeet_transcribe_pcm.py"
+            devRelativePath: "Sources/ml_daemon.py"
         )
         if let url = url {
-            XCTAssertEqual(url.lastPathComponent, "parakeet_transcribe_pcm.py")
+            XCTAssertEqual(url.lastPathComponent, "ml_daemon.py")
             XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
         }
         // When run outside the package root the dev path is absent and the
@@ -108,9 +109,13 @@ final class ResourceLocatorPathResolutionTests: XCTestCase {
 final class ResourceLocatorPythonScriptTests: XCTestCase {
 
     func testKnownPythonScripts() {
+        // The scripts ResourceLocator is actually asked for at runtime. Two
+        // others (parakeet_transcribe_pcm, mlx_semantic_correct) used to be
+        // listed here; they were bundled but never looked up, and have been
+        // removed. Keeping them in this list is what made the dead bundling
+        // look intentional.
         let knownScripts = [
-            "parakeet_transcribe_pcm",
-            "mlx_semantic_correct",
+            "ml_daemon",
             "verify_parakeet",
             "verify_mlx"
         ]

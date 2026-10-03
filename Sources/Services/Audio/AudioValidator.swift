@@ -37,27 +37,6 @@ internal class AudioValidator {
         return await validateWithAVFoundation(url: url)
     }
 
-    /// Quick format check without deep validation
-    /// - Parameter url: URL to check
-    /// - Returns: True if format appears supported
-    static func isFormatSupported(url: URL) -> Bool {
-        let fileExtension = url.pathExtension.lowercased()
-        return supportedFileExtensions.contains(fileExtension)
-    }
-
-    /// Check maximum file size for processing
-    /// - Parameters:
-    ///   - url: URL to check
-    ///   - maxSizeInMB: Maximum allowed size in megabytes
-    /// - Returns: True if file is within size limits
-    static func isFileSizeValid(url: URL, maxSizeInMB: Int = 100) -> Bool {
-        guard let fileSize = try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64 else {
-            return false
-        }
-        let maxSizeInBytes = Int64(maxSizeInMB * 1024 * 1024)
-        return fileSize <= maxSizeInBytes
-    }
-
     // MARK: - Private Methods
 
     private static func validateWithAVFoundation(url: URL) async -> AudioValidationResult {

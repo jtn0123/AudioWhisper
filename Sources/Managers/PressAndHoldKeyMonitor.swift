@@ -235,6 +235,18 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
         }
     }
 
+    /// Sets `isPressed` to `pressed` and reports whether that changed it, as one
+    /// atomic step. Reading and then writing through the property takes the lock
+    /// twice, so two concurrent key-downs could both read `false` and both fire
+    /// the handler — the `downCount` 2 that the concurrency test caught.
+    private func transitionPressed(to pressed: Bool) -> Bool {
+        os_unfair_lock_lock(&isPressedLock)
+        defer { os_unfair_lock_unlock(&isPressedLock) }
+        guard _isPressed != pressed else { return false }
+        _isPressed = pressed
+        return true
+    }
+
     init(
         configuration: PressAndHoldConfiguration,
         keyDownHandler: @escaping () -> Void,
@@ -321,16 +333,13 @@ internal final class PressAndHoldKeyMonitor: @unchecked Sendable {
     }
 
     func processTransition(isKeyDownEvent: Bool) {
+        guard transitionPressed(to: isKeyDownEvent) else { return }
         if isKeyDownEvent {
-            guard !isPressed else { return }
-            isPressed = true
             startWatchdog()
             Task { @MainActor [keyDownHandler] in
                 keyDownHandler()
             }
         } else {
-            guard isPressed else { return }
-            isPressed = false
             stopWatchdog()
             guard let keyUpHandler else { return }
             Task { @MainActor in

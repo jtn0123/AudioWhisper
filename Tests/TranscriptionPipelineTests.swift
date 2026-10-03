@@ -4,25 +4,49 @@ import XCTest
 /// Test-only stub that lets `TranscriptionPipeline` exercise a real success
 /// path without hitting WhisperKit / Parakeet. `SpeechToTextService` is a
 /// non-final class and `TranscriptionPipeline` injects it via its initializer,
-/// so overriding `transcribeRaw(...)` is a legitimate seam.
+/// so overriding the transcription entry points is a legitimate seam.
+///
+/// Audit item A4: the override must be on `transcribeValidated(...)`, because
+/// that is what the pipeline calls now — it runs `AudioValidator` itself as
+/// step 1 and no longer pays for the second validation inside `transcribeRaw`.
+/// Overriding only `transcribeRaw` would leave the pipeline falling through to
+/// the real provider and attempting a genuine Parakeet transcription.
+/// `transcribeRaw` is overridden too, delegating here exactly as production
+/// does, so direct callers of either entry point are counted.
 private final class StubSpeechToTextService: SpeechToTextService, @unchecked Sendable {
-    /// Result returned by `transcribeRaw`. Defaults to a fixed transcript.
+    /// Result returned by the transcription entry points. Defaults to a fixed transcript.
     var rawResult: Result<String, Error> = .success("hello world")
+    /// Total transcription calls through either entry point.
     private(set) var transcribeRawCallCount = 0
+    /// Which entry point the caller used. `TranscriptionPipeline` must use the
+    /// validated one (audit item A4); `usedRawEntryPoint` turning true for a
+    /// pipeline run means double validation has been reintroduced.
+    private(set) var usedValidatedEntryPoint = false
+    private(set) var usedRawEntryPoint = false
     private(set) var lastAudioURL: URL?
     private(set) var lastProvider: TranscriptionProvider?
     private(set) var lastModel: WhisperModel?
+
+    override func transcribeValidated(
+        audioURL: URL,
+        provider: TranscriptionProvider,
+        model: WhisperModel? = nil
+    ) async throws -> String {
+        transcribeRawCallCount += 1
+        usedValidatedEntryPoint = true
+        lastAudioURL = audioURL
+        lastProvider = provider
+        lastModel = model
+        return try rawResult.get()
+    }
 
     override func transcribeRaw(
         audioURL: URL,
         provider: TranscriptionProvider,
         model: WhisperModel? = nil
     ) async throws -> String {
-        transcribeRawCallCount += 1
-        lastAudioURL = audioURL
-        lastProvider = provider
-        lastModel = model
-        return try rawResult.get()
+        usedRawEntryPoint = true
+        return try await transcribeValidated(audioURL: audioURL, provider: provider, model: model)
     }
 }
 
@@ -134,6 +158,34 @@ final class TranscriptionPipelineTests: XCTestCase {
         XCTAssertEqual(stub.transcribeRawCallCount, 1)
         XCTAssertEqual(stub.lastProvider, .parakeet)
         XCTAssertEqual(stub.lastAudioURL, tempURL)
+    }
+
+    /// Audit item A4 regression guard. `TranscriptionPipeline` runs
+    /// `AudioValidator` as its own step 1, so it must call
+    /// `transcribeValidated(...)` and not `transcribeRaw(...)` — the latter
+    /// validates again, opening and inspecting the same file a second time on
+    /// every single transcription. The duplication is invisible at runtime (it
+    /// only costs I/O), so nothing but this assertion would catch a revert.
+    @MainActor
+    func testPipelineUsesValidatedEntryPointSoAudioIsNotValidatedTwice() async throws {
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .success("no double validation")
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let tempURL = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        let config = TranscriptionPipelineConfig(
+            provider: .parakeet,
+            applySemanticCorrection: false
+        )
+
+        _ = try await pipeline.transcribe(audioURL: tempURL, config: config)
+
+        XCTAssertTrue(stub.usedValidatedEntryPoint,
+                      "Pipeline must reach the provider via transcribeValidated(...)")
+        XCTAssertFalse(stub.usedRawEntryPoint,
+                       "Pipeline called transcribeRaw(...), which re-runs AudioValidator "
+                       + "on a URL the pipeline already validated in step 1")
+        XCTAssertEqual(stub.transcribeRawCallCount, 1, "Provider must be invoked exactly once")
     }
 
     /// Drives a full successful `transcribe(...)` with semantic correction

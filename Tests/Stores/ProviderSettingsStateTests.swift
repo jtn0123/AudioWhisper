@@ -87,25 +87,6 @@ final class ProviderSettingsStateTests: XCTestCase {
         XCTAssertTrue(info.isReady)
     }
 
-    // MARK: - Model Download State Tests
-
-    func testUpdateModelDownloadStateStartsDownload() {
-        XCTAssertNil(state.downloadStartTime[.base])
-
-        state.updateModelDownloadState(.base, isDownloading: true)
-
-        XCTAssertNotNil(state.downloadStartTime[.base])
-    }
-
-    func testUpdateModelDownloadStateStopsDownload() {
-        state.downloadStartTime[.base] = Date()
-        XCTAssertNotNil(state.downloadStartTime[.base])
-
-        state.updateModelDownloadState(.base, isDownloading: false)
-
-        XCTAssertNil(state.downloadStartTime[.base])
-    }
-
     func testModelDownloadStatesCanBeSetDirectly() {
         state.modelDownloadStates[.base] = true
         state.modelDownloadStates[.small] = true
@@ -267,24 +248,6 @@ final class ProviderSettingsStateTests: XCTestCase {
         // Dismiss sheet
         state.dismissSetupSheet()
         XCTAssertFalse(state.showSetupSheet)
-    }
-
-    // MARK: - Multiple Model States Tests
-
-    func testMultipleModelDownloadStates() {
-        // Start multiple downloads
-        state.updateModelDownloadState(.base, isDownloading: true)
-        state.updateModelDownloadState(.small, isDownloading: true)
-
-        XCTAssertNotNil(state.downloadStartTime[.base])
-        XCTAssertNotNil(state.downloadStartTime[.small])
-        XCTAssertNil(state.downloadStartTime[.tiny])
-
-        // Stop one download
-        state.updateModelDownloadState(.base, isDownloading: false)
-
-        XCTAssertNil(state.downloadStartTime[.base])
-        XCTAssertNotNil(state.downloadStartTime[.small])
     }
 
     func testStatusInfoForAllProviders() {

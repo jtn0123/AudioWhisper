@@ -148,13 +148,65 @@ final class DiskMutationSerializerTests: XCTestCase {
         let modelURL = tmpDir.appendingPathComponent("model.bin")
         try Data([0x01, 0x02, 0x03, 0x04]).write(to: modelURL)
 
-        // Record creates the sidecar.
         try ModelIntegrity.record(at: modelURL)
-        let sidecar = modelURL.appendingPathExtension("audiowhisper-integrity")
-        XCTAssertTrue(FileManager.default.fileExists(atPath: sidecar.path))
 
         // Verify succeeds against a matching file.
         XCTAssertNoThrow(try ModelIntegrity.verify(at: modelURL))
+    }
+
+    /// Audit item E3. The recorded hash must NOT live beside the model it
+    /// vouches for: anything able to rewrite the model in that directory could
+    /// rewrite the hash too, and the check would pass. This test is the point
+    /// of E3 — it fails if the record moves back in-place.
+    func test_modelIntegrity_recordIsNotStoredBesideTheModel() throws {
+        let tmpDir = makeTempDir()
+        let modelURL = tmpDir.appendingPathComponent("model.bin")
+        try Data([0x01, 0x02, 0x03, 0x04]).write(to: modelURL)
+
+        try ModelIntegrity.record(at: modelURL)
+
+        let inPlace = modelURL.appendingPathExtension("audiowhisper-integrity")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: inPlace.path),
+                       "integrity record must not be written into the model's own directory")
+
+        let siblings = try FileManager.default.contentsOfDirectory(atPath: tmpDir.path)
+        XCTAssertEqual(siblings, ["model.bin"],
+                       "the model directory must contain only the model, got \(siblings)")
+    }
+
+    /// A pre-E3 cache still has its hash beside the model. That must keep
+    /// verifying rather than forcing a multi-gigabyte redownload.
+    func test_modelIntegrity_readsLegacyInPlaceSidecar() throws {
+        let tmpDir = makeTempDir()
+        let modelURL = tmpDir.appendingPathComponent("model.bin")
+        let bytes = Data([0x07, 0x08])
+        try bytes.write(to: modelURL)
+
+        // Hand-write a legacy sidecar holding the correct hash, as an old
+        // install would have left behind.
+        let legacy = modelURL.appendingPathExtension("audiowhisper-integrity")
+        try ModelIntegrity.sha256(of: modelURL).write(to: legacy, atomically: true, encoding: .utf8)
+
+        XCTAssertNoThrow(try ModelIntegrity.verify(at: modelURL),
+                         "a legacy in-place sidecar must still be honoured")
+    }
+
+    /// And a legacy sidecar must still catch tampering, not just pass.
+    func test_modelIntegrity_legacySidecarStillDetectsTamper() throws {
+        let tmpDir = makeTempDir()
+        let modelURL = tmpDir.appendingPathComponent("model.bin")
+        try Data([0x07, 0x08]).write(to: modelURL)
+
+        let legacy = modelURL.appendingPathExtension("audiowhisper-integrity")
+        try ModelIntegrity.sha256(of: modelURL).write(to: legacy, atomically: true, encoding: .utf8)
+
+        try Data([0xDE, 0xAD]).write(to: modelURL)
+
+        XCTAssertThrowsError(try ModelIntegrity.verify(at: modelURL)) { error in
+            guard case ModelIntegrityError.mismatch = error else {
+                return XCTFail("Expected .mismatch, got \(error)")
+            }
+        }
     }
 
     func test_modelIntegrity_detectsTamper() throws {
@@ -175,21 +227,21 @@ final class DiskMutationSerializerTests: XCTestCase {
         }
     }
 
-    func test_modelIntegrity_trustOnFirstUseWritesSidecar() throws {
-        // No sidecar yet → verify() should record one and succeed.
+    func test_modelIntegrity_trustOnFirstUseRecordsAndThenCompares() throws {
+        // Nothing recorded yet → verify() should record and succeed.
         let tmpDir = makeTempDir()
         let modelURL = tmpDir.appendingPathComponent("model.bin")
         try Data([0xAA, 0xBB]).write(to: modelURL)
 
-        let sidecar = modelURL.appendingPathExtension("audiowhisper-integrity")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: sidecar.path))
-
         XCTAssertNoThrow(try ModelIntegrity.verify(at: modelURL))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: sidecar.path),
-                      "Trust-on-first-use should persist a sidecar")
 
-        // Second verify should now compare against the persisted hash.
+        // Second verify compares against the persisted hash rather than
+        // recording again — proved by tampering and expecting a mismatch.
         XCTAssertNoThrow(try ModelIntegrity.verify(at: modelURL))
+
+        try Data([0xCC, 0xDD]).write(to: modelURL)
+        XCTAssertThrowsError(try ModelIntegrity.verify(at: modelURL),
+                             "the first-use hash must have been persisted")
     }
 
     func test_modelIntegrity_sha256IsStable() throws {
@@ -203,16 +255,6 @@ final class DiskMutationSerializerTests: XCTestCase {
         let secondHash = try ModelIntegrity.sha256(of: modelURL)
         XCTAssertEqual(firstHash, secondHash)
         XCTAssertEqual(firstHash.count, 64, "SHA-256 hex digest should be 64 chars")
-    }
-
-    func test_modelIntegrity_quietVerifyReturnsFalseOnMismatch() throws {
-        let tmpDir = makeTempDir()
-        let modelURL = tmpDir.appendingPathComponent("model.bin")
-        try Data([0x01]).write(to: modelURL)
-        try ModelIntegrity.record(at: modelURL)
-        try Data([0x02]).write(to: modelURL)
-
-        XCTAssertFalse(ModelIntegrity.quietVerify(at: modelURL))
     }
 
     // MARK: - Helpers

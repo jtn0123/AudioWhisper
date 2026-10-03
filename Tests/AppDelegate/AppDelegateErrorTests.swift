@@ -38,10 +38,8 @@ final class AppDelegateErrorTests: IsolatedXCTestCase {
 
     // A4: the three testHasAPIKey* cases were removed alongside
     // `AppDelegate.hasAPIKey`, which had no production callers after the cloud
-    // providers were dropped. They asserted only that a keychain lookup for a
-    // random nonexistent service returns false — i.e. they exercised
-    // KeychainService (already covered by KeychainServiceTests) through a
-    // wrapper nothing called.
+    // providers were dropped. A2 then removed KeychainService itself — this
+    // fork stores no API keys — so there is nothing left here to cover.
 
     // MARK: - Termination
 

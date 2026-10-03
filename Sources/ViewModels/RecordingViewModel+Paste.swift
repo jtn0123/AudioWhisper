@@ -67,19 +67,44 @@ extension RecordingViewModel {
         }
     }
 
+    /// Resolves the app a paste should land in.
+    ///
+    /// The step-by-step logging is deliberate and was carried over from the
+    /// duplicate that used to live in `ContentView+Paste` (audit item J1).
+    /// Smart Paste breaks whenever macOS invalidates Accessibility permission
+    /// after a re-sign, and "which app did it think it was pasting into" is the
+    /// first question every such report needs answered. Losing it in the
+    /// de-duplication would have made the survivor worse than what it replaced.
     func findValidTargetApp() -> NSRunningApplication? {
+        Logger.paste.debug("findValidTargetApp: checking WindowController.storedTargetApp")
         var targetApp = WindowController.storedTargetApp
+        if let app = targetApp {
+            Logger.paste.debug("findValidTargetApp: storedTargetApp = \(app.localizedName ?? "unknown", privacy: .public)")
+        } else {
+            Logger.paste.debug("findValidTargetApp: storedTargetApp is nil")
+        }
 
         if targetApp == nil {
+            Logger.paste.debug("findValidTargetApp: checking targetAppForPaste")
             targetApp = targetAppForPaste
+            if let app = targetApp {
+                Logger.paste.debug("findValidTargetApp: targetAppForPaste = \(app.localizedName ?? "unknown", privacy: .public)")
+            }
         }
 
         if let stored = targetApp, stored.isTerminated {
+            Logger.paste.debug("findValidTargetApp: target app is terminated, clearing")
             targetApp = nil
         }
 
         if targetApp == nil {
+            Logger.paste.debug("findValidTargetApp: falling back to findFallbackTargetApp")
             targetApp = findFallbackTargetApp()
+            if let app = targetApp {
+                Logger.paste.debug("findValidTargetApp: fallback found \(app.localizedName ?? "unknown", privacy: .public)")
+            } else {
+                Logger.paste.warning("findValidTargetApp: no fallback app found")
+            }
         }
 
         return targetApp
