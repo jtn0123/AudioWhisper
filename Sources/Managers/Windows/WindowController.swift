@@ -96,21 +96,10 @@ internal class WindowController {
         // Remember the currently active app before showing our window
         storePreviousApp()
 
-        // Configure window for overlay display without stealing focus or switching spaces
-        window.canHide = false
-        window.acceptsMouseMovedEvents = true
-        window.isOpaque = false
-        window.hasShadow = true
-
-        // Set collection behavior to appear on all spaces including fullscreen
-        // .canJoinAllSpaces - appear on any space
-        // .fullScreenPrimary - appear on fullscreen spaces (primary display)
-        // .fullScreenAuxiliary - appear on fullscreen spaces (secondary displays)
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenPrimary, .fullScreenAuxiliary]
-
-        // Use floating level - fullscreen visibility is handled by .fullScreenAuxiliary collectionBehavior,
-        // not window level. .screenSaver is unnecessarily high and may interfere with input/focus.
-        window.level = .floating
+        // An overlay on every Space, shown without stealing focus or
+        // switching Spaces, on the screen the user is working on.
+        RecordingWindowStyle.configure(window)
+        RecordingWindowStyle.moveToActiveScreen(window)
 
         // Show window without activating the app (prevents space switching)
         window.orderFrontRegardless()

@@ -10,8 +10,9 @@ import os.log
 internal final class HistoryWindowManager: NSObject {
     static let shared = HistoryWindowManager()
 
-    private weak var historyWindow: NSWindow?
-    private var windowDelegate: HistoryWindowDelegate?
+    /// Held strongly until it closes; see `DashboardWindowManager`.
+    private var historyWindow: NSWindow?
+    private var windowDelegate: StandardWindowDelegate?
     private let isTestEnvironment: Bool
 
     private override init() {
@@ -26,10 +27,8 @@ internal final class HistoryWindowManager: NSObject {
             return
         }
 
-        if let existingWindow = historyWindow, existingWindow.isVisible {
-            // Window already exists and is visible, just bring it to front
-            existingWindow.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+        if let existingWindow = historyWindow {
+            StandardWindow.present(existingWindow)
             return
         }
 
@@ -50,29 +49,19 @@ internal final class HistoryWindowManager: NSObject {
             defer: false
         )
 
-        // Configure window to not interfere with app lifecycle
-        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
-
         window.contentViewController = hostingController
         window.title = "Transcription History"
         window.setContentSize(NSSize(width: 800, height: 500))
         window.minSize = NSSize(width: 700, height: 400)
-        window.center()
+        StandardWindow.configure(window, frameAutosaveName: "AudioWhisperHistory")
 
-        // Ensure window doesn't cause app to quit when closed
-        window.isReleasedWhenClosed = false
-        window.isRestorable = false
-
-        // IMPORTANT: Set delegate before showing window
-        windowDelegate = HistoryWindowDelegate(manager: self)
+        windowDelegate = StandardWindowDelegate { [weak self] in
+            self?.windowWillClose()
+        }
         window.delegate = windowDelegate
 
-        // Store weak reference
         historyWindow = window
-
-        // Show window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        StandardWindow.present(window)
 
         Logger.app.info("History window created and shown")
     }
@@ -106,24 +95,5 @@ internal final class HistoryWindowManager: NSObject {
         }
 
         return nil
-    }
-}
-
-/// Window delegate that handles the history window lifecycle
-private class HistoryWindowDelegate: NSObject, NSWindowDelegate {
-    private weak var manager: HistoryWindowManager?
-
-    init(manager: HistoryWindowManager) {
-        self.manager = manager
-        super.init()
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        manager?.windowWillClose()
-    }
-
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        // Always allow the window to close, but don't quit the app
-        return true
     }
 }

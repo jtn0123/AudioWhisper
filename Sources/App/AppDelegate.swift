@@ -3,6 +3,8 @@ import AppKit
 @MainActor
 internal class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
+    /// Attached to `statusItem` only while open; see `openStatusMenu(_:)`.
+    var statusMenu: NSMenu?
     var hotKeyManager: HotKeyManager?
     var keyboardEventHandler: KeyboardEventHandler?
     var windowController = WindowController()

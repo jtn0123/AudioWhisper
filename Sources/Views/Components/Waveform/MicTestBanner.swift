@@ -222,10 +222,13 @@ internal struct MicTestBanner: View {
 }
 
 #Preview("Mic test banner") {
-    MicTestBanner(
+    // One sampler for both: the capture holds it weakly, so a sampler of its
+    // own would be gone before the preview drew.
+    let sampler = LivePreviewSampler()
+    return MicTestBanner(
         style: .classic,
-        sampler: LivePreviewSampler(),
-        capture: MicTestCapture(sampler: LivePreviewSampler())
+        sampler: sampler,
+        capture: MicTestCapture(sampler: sampler)
     )
     .padding(32)
     .frame(width: 760)

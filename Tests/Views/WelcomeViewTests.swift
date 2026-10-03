@@ -62,3 +62,70 @@ final class WelcomeViewUserDefaultsKeysTests: XCTestCase {
         XCTAssertFalse(key.isEmpty)
     }
 }
+
+// MARK: - WelcomeWindow Tests
+
+/// What "Get started" and closing the welcome window record. Uses the
+/// per-process scratch defaults domain, restoring the keys it touches.
+@MainActor
+final class WelcomeWindowTests: XCTestCase {
+    private let keys: [AppDefaults.Key] = [.transcriptionProvider, .hasCompletedWelcome, .lastWelcomeVersion]
+    private var saved: [AppDefaults.Key: Any] = [:]
+
+    override func setUp() {
+        super.setUp()
+        saved = [:]
+        for key in keys {
+            saved[key] = AppDefaults.defaults.object(forKey: key.rawValue)
+            AppDefaults.removeValue(for: key)
+        }
+    }
+
+    override func tearDown() {
+        for key in keys {
+            if let value = saved[key] {
+                AppDefaults.defaults.set(value, forKey: key.rawValue)
+            } else {
+                AppDefaults.removeValue(for: key)
+            }
+        }
+        super.tearDown()
+    }
+
+    /// Closing the window with its close button used to leave the version
+    /// unset, so the welcome came back at every launch.
+    func testOnceSeenTheWelcomeDoesNotComeBackAtNextLaunch() {
+        AppDefaults.transcriptionProvider = .parakeet
+        XCTAssertTrue(AppSetupHelper.checkFirstRun(), "precondition: this version has not been seen")
+
+        WelcomeWindow.markSeen()
+
+        XCTAssertFalse(AppSetupHelper.checkFirstRun())
+    }
+
+    /// "Help / Welcome" reopens the welcome for existing users; finishing it
+    /// used to switch them back to Whisper.
+    func testGetStartedKeepsTheProviderAnExistingUserChose() {
+        AppDefaults.transcriptionProvider = .parakeet
+
+        WelcomeWindow.finish()
+
+        XCTAssertEqual(AppDefaults.transcriptionProvider, .parakeet)
+        XCTAssertTrue(AppDefaults.hasCompletedWelcome)
+        XCTAssertEqual(AppDefaults.lastWelcomeVersion, AppSetupHelper.currentWelcomeVersion)
+    }
+
+    func testGetStartedOnAFirstRunChoosesLocalWhisper() {
+        WelcomeWindow.finish()
+
+        XCTAssertEqual(AppDefaults.transcriptionProvider, .local)
+    }
+
+    func testGetStartedOpensTheDashboard() {
+        let completed = expectation(forNotification: .welcomeCompleted, object: nil)
+
+        WelcomeWindow.finish()
+
+        wait(for: [completed], timeout: 1.0)
+    }
+}

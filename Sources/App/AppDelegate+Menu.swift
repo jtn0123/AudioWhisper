@@ -129,7 +129,7 @@ internal extension AppDelegate {
             text: record.text,
             onTap: { [weak self] in
                 self?.copyRecentTranscript(text: record.text)
-                self?.statusItem?.menu?.cancelTracking()
+                self?.statusMenu?.cancelTracking()
             }
         ))
         host.frame = NSRect(x: 0, y: 0, width: menuWidth, height: 26)
@@ -176,11 +176,8 @@ internal extension AppDelegate {
         DashboardWindowManager.shared.showDashboardWindow()
     }
 
-    @objc func showHelp() {
-        let shouldOpenSettings = WelcomeWindow.showWelcomeDialog()
-        if shouldOpenSettings {
-            DashboardWindowManager.shared.showDashboardWindow()
-        }
+    @MainActor @objc func showHelp() {
+        showWelcome()
     }
 
     @objc func transcribeAudioFile() {
@@ -220,6 +217,17 @@ internal extension AppDelegate {
         }
     }
 
+    /// Opens the status menu. AppKit puts a menu's windows on its app's Space,
+    /// and a regular app may not have windows on another app's full-screen
+    /// Space, so the activation policy is settled first
+    /// (`ActivationPolicyController.statusMenuWillOpen()`).
+    @objc func openStatusMenu(_ sender: Any?) {
+        guard let statusItem, let statusMenu else { return }
+        ActivationPolicyController.shared.statusMenuWillOpen()
+        statusItem.menu = statusMenu
+        statusItem.button?.performClick(nil)
+    }
+
     @objc func screenConfigurationChanged() {
         AppSetupHelper.resetIconSizeCache()
         // Re-render the icon at the new size, preserving the current state.
@@ -233,8 +241,14 @@ internal extension AppDelegate {
 
 extension AppDelegate: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu === statusItem?.menu else { return }
+        guard menu === statusMenu else { return }
         populateStatusMenu(menu)
         Task { await DashboardWindowManager.shared.refreshRecentRecordsCache() }
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        guard menu === statusMenu else { return }
+        // Detached again, so the next click comes back through `openStatusMenu`.
+        statusItem?.menu = nil
     }
 }

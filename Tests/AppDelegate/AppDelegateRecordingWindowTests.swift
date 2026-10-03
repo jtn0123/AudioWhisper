@@ -113,24 +113,8 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
         XCTAssertFalse(title.isEmpty)
     }
 
-    func testRecordingWindowLevelIsFloating() {
-        // Verify expected window level
-        let expectedLevel = NSWindow.Level.floating
-        XCTAssertNotNil(expectedLevel)
-    }
-
-    func testRecordingWindowCollectionBehavior() {
-        // Verify expected collection behavior components
-        let behaviors: [NSWindow.CollectionBehavior] = [
-            .canJoinAllSpaces,
-            .fullScreenPrimary,
-            .fullScreenAuxiliary
-        ]
-
-        for behavior in behaviors {
-            XCTAssertNotNil(behavior)
-        }
-    }
+    // The recording window's level and collection behaviour are asserted on a
+    // configured window in RecordingWindowStyleTests.
 
     // MARK: - Recording Window Delegate Tests
 

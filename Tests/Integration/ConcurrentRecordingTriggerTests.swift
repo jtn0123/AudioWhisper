@@ -26,6 +26,7 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
                 handlerCallCount.increment()
             },
             addGlobalMonitor: { _, _ in NSObject() },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in }
         )
         monitor.start()
@@ -65,6 +66,7 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
                 keyUpCount.increment()
             },
             addGlobalMonitor: { _, _ in NSObject() },
+            addLocalMonitor: { _, _ in nil },
             removeMonitor: { _ in }
         )
         monitor.start()
