@@ -65,7 +65,7 @@ Five explicit sidebar destinations make the main jobs discoverable (`Sources/Reb
 
 One shared session handles recording, cancellation, retry and captured delivery; inline failure and optional cleanup fallback improve recovery (`Sources/Rebuild/RebuildSession.swift:135-179,198-259`). Live normal recording and repeat-cancel checks support the happy path. Some connected controls still contradict session admission, and H's device-state gaps affect the central workflow.
 
-#### C1 — Match action labels and enabled states to actual behavior
+#### ~~C1~~ ✓ done 2026-10-03 — Match action labels and enabled states to actual behavior
 - **Where:** `Sources/Rebuild/RebuildModelsView.swift:92`; `Sources/Rebuild/RebuildWorkspace.swift:141-176`; `Sources/Rebuild/RebuildStatusController.swift:34-38`; `Sources/Rebuild/RebuildSession.swift:141-143,170-175`.
 - **Evidence:** Models always renders Start recording when readiness is true; that command stops an active recording and ignores a transcribing one. Import remains enabled during maintenance/install while the session rejects it silently.
 - **Layman's term:** A button can mean something different from its label, or accept a file and then do nothing.
@@ -75,6 +75,9 @@ One shared session handles recording, cancellation, retry and captured delivery;
 - **Difficulty:** S.
 - **Fix:** Expose shared recording/import titles, availability and blocked reasons. Apply them to Record, setup and menu; test idle, recording, transcribing, installing and maintenance.
 - **Grade lift:** C+ → B−; B with H's fixes, by making actions predictable.
+
+
+**Implementation evidence:** Record, Voice Models and the status menu share titles, enabled states and blocked reasons. Import is gated before opening a picker or accepting a drop; retry remains visible with an explanation while blocked. State-matrix regressions cover setup, capture, processing, installation and maintenance; 37 related tests and strict targeted lint pass.
 
 ---
 

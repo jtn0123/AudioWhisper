@@ -95,13 +95,16 @@ The rebuild materially improves session ownership, setup, window policy, packagi
 
 Small views share one observable session and theme (`Sources/Rebuild/RebuildWorkspace.swift:4-12,128-137`), with inline recovery and cancellation. Fresh native controls render correctly. Alongside A1/B1/B2, incomplete action and persistence linkages prevent a stronger grade.
 
-#### C1 — Match action labels and availability to session state
+#### ~~C1~~ ✓ done 2026-10-03 — Match action labels and availability to session state
 - **Where:** `Sources/Rebuild/RebuildModelsView.swift:92`; `Sources/Rebuild/RebuildWorkspace.swift:141-176`; `Sources/Rebuild/RebuildStatusController.swift:34-38`; `Sources/Rebuild/RebuildSession.swift:141-143,170-175`.
 - **What's wrong:** Models says Start recording while the action stops an active recording or does nothing during transcription. Import controls can accept a file during maintenance/install that the session silently rejects.
 - **Impact:** Moderate — available controls promise another action or discard a request.
 - **Fix:** Expose shared action titles, enabled states and blocked reasons. Use them in workspace, setup and menu; reject before opening the picker when appropriate. Test all busy/install/maintenance states.
 - **Effort:** S.
 - **Grade lift:** C+ → B−; B with C2 and A1/B1/B2, by matching views to session admission.
+
+
+**Implementation evidence:** Record, Voice Models and the status menu share titles, enabled states and blocked reasons. Import is gated before opening a picker or accepting a drop; retry remains visible with an explanation while blocked. State-matrix regressions cover setup, capture, processing, installation and maintenance; 37 related tests and strict targeted lint pass.
 
 #### C2 — Refresh a mounted Library after delivery
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:7,70-76,101-117`; `Sources/Rebuild/RebuildSession.swift:94,219-225`; `Sources/Stores/DataManager.swift:186-211`.

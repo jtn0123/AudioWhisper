@@ -38,18 +38,18 @@ struct RebuildModelsView: View {
                         Text("Parakeet · fast & multilingual").tag(TranscriptionProvider.parakeet)
                             .disabled(!Arch.isAppleSilicon)
                         Text("Whisper · Intel & Apple Silicon").tag(TranscriptionProvider.local)
-                    }.pickerStyle(.segmented).disabled(session.isInstalling || session.phase.isBusy || verifying)
+                    }.pickerStyle(.segmented).disabled(modelActionsBlocked)
                     if provider == .local {
                         Picker("Model", selection: $whisper) {
                             ForEach(WhisperModel.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                        }.disabled(session.isInstalling || session.phase.isBusy || verifying)
+                        }.disabled(modelActionsBlocked)
                         Text("Whisper runs through Core ML. Larger models use more memory and disk space.")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
                         Picker("Model", selection: $parakeet) {
                             Text("v3 · 25 languages").tag(ParakeetModel.v3Multilingual)
                             Text("v2 · English").tag(ParakeetModel.v2English)
-                        }.disabled(session.isInstalling || session.phase.isBusy || verifying)
+                        }.disabled(modelActionsBlocked)
                         Text("Parakeet runs locally on Apple Silicon. Installation includes its Python runtime.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -65,7 +65,7 @@ struct RebuildModelsView: View {
                         } else {
                             Button(installTitle) {
                                 Task { await session.installVoiceModel() }
-                            }.buttonStyle(.borderedProminent).disabled(session.phase.isBusy || verifying)
+                            }.buttonStyle(.borderedProminent).disabled(session.phase.isBusy || session.maintenanceInProgress)
                         }
                     }
                     if session.isInstalling { Text(downloadMessage).font(.caption).foregroundStyle(.secondary) }
@@ -77,9 +77,9 @@ struct RebuildModelsView: View {
                             Button(verifying ? "Verifying…" : "Verify model") {
                                 Task { await session.verifyVoiceModel() }
                             }.disabled(
-                                verifying || session.phase.isBusy)
+                                session.maintenanceInProgress || session.isInstalling || session.phase.isBusy)
                             Button("Remove selected model", role: .destructive) { deletionRequested = true }
-                                .disabled(session.phase.isBusy || session.isInstalling || verifying)
+                                .disabled(modelActionsBlocked)
                         }
                     }
                     if let verification { Text(verification).font(.caption).textSelection(.enabled) }
@@ -95,7 +95,9 @@ struct RebuildModelsView: View {
                     )
                     .font(.headline)
                     Spacer()
-                    if session.readiness.ready { Button("Start recording", action: session.toggleRecording) }
+                    Button(session.recordingActionTitle, action: session.toggleRecording)
+                        .disabled(!session.canToggleRecording)
+                        .help(session.recordingBlockedReason ?? session.recordingActionTitle)
                 }.padding(.vertical, 8)
                 RebuildSection(title: "APP-MANAGED STORAGE") {
                     Text(
@@ -142,6 +144,10 @@ struct RebuildModelsView: View {
     private var installTitle: String {
         if !session.readiness.runtimeReady { return "Install runtime & voice model" }
         return session.readiness.modelInstalled ? "Check installation" : "Install voice model"
+    }
+
+    private var modelActionsBlocked: Bool {
+        session.phase.isBusy || session.isInstalling || session.maintenanceInProgress
     }
 
     private var downloadMessage: String {

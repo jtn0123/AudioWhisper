@@ -142,8 +142,9 @@ struct RebuildRecordView: View {
                             Image(systemName: session.phase == .recording ? "stop.fill" : "mic.fill")
                                 .font(.system(size: 28)).frame(width: 74, height: 74)
                                 .background(RebuildTheme.accent, in: Circle()).foregroundStyle(.white)
-                        }.buttonStyle(.plain).disabled(session.phase == .transcribing)
-                            .accessibilityLabel(session.phase == .recording ? "Finish recording" : "Start recording")
+                        }.buttonStyle(.plain).disabled(!session.canToggleRecording)
+                            .accessibilityLabel(session.recordingActionTitle)
+                            .help(session.recordingBlockedReason ?? session.recordingActionTitle)
                         VStack(alignment: .leading, spacing: 9) {
                             Text(
                                 session.phase == .recording
@@ -173,16 +174,25 @@ struct RebuildRecordView: View {
                             AppDefaults.transcriptionProvider == .parakeet
                                 ? "Parakeet · on device" : "Whisper · on device", systemImage: "cpu")
                         Spacer()
-                        Button("Transcribe a file…", action: importAudio).disabled(session.phase.isBusy)
+                        Button("Transcribe a file…", action: importAudio).disabled(!session.canImportAudio)
+                            .help(session.fileBlockedReason ?? "Choose one audio file to transcribe")
                     }.font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Text("You can also drop one audio file here. File transcription does not need microphone access.")
                     .font(.caption).foregroundStyle(.secondary)
+                if let reason = session.fileBlockedReason {
+                    Text(reason).font(.caption).foregroundStyle(.secondary)
+                }
                 if let notice = session.notice {
                     Label(notice, systemImage: session.phase == .failed ? "exclamationmark.triangle" : "info.circle")
                         .font(.subheadline).foregroundStyle(session.phase == .failed ? Color.red : Color.secondary)
                         .textSelection(.enabled)
-                    if session.canRetry { Button("Retry transcription", action: session.retry) }
+                    if session.hasRetryAudio {
+                        Button("Retry transcription", action: session.retry).disabled(!session.canRetry)
+                        if let reason = session.retryBlockedReason {
+                            Text(reason).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                 }
                 RebuildSection(title: "YOUR TRANSCRIPT") {
                     if session.transcript.isEmpty {
@@ -211,7 +221,7 @@ struct RebuildRecordView: View {
             }.padding(36).frame(maxWidth: 950, alignment: .leading)
         }
         .dropDestination(for: URL.self) { urls, _ in
-            guard urls.count == 1, let url = urls.first, !session.phase.isBusy else { return false }
+            guard urls.count == 1, let url = urls.first, session.canImportAudio else { return false }
             session.importAudio(url)
             return true
         }

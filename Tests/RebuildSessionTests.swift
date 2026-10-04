@@ -255,6 +255,48 @@ final class RebuildSessionTests: IsolatedXCTestCase {
 }
 
 extension RebuildSessionTests {
+    func testActionStatesMatchSetupRecordingAndProcessing() async throws {
+        session.readiness = RebuildReadiness(checking: false)
+        XCTAssertEqual(session.recordingActionTitle, "Finish setup")
+        XCTAssertTrue(session.canToggleRecording)
+        XCTAssertFalse(session.canImportAudio)
+        session.readiness = ready
+        XCTAssertEqual(session.recordingActionTitle, "Start recording")
+        XCTAssertTrue(session.canImportAudio)
+        session.toggleRecording()
+        XCTAssertEqual(session.recordingActionTitle, "Finish recording")
+        XCTAssertTrue(session.canToggleRecording)
+        XCTAssertFalse(session.canImportAudio)
+        var pending: CheckedContinuation<TranscriptionResult, Error>?
+        transcribe = { _, _, _ in try await withCheckedThrowingContinuation { pending = $0 } }
+        session.finishRecording()
+        await settle()
+        XCTAssertEqual(session.recordingActionTitle, "Transcribing…")
+        XCTAssertFalse(session.canToggleRecording)
+        XCTAssertFalse(session.canImportAudio)
+        session.cancel()
+        try XCTUnwrap(pending).resume(returning: TranscriptionResult(text: "Cancelled", correctionOutcome: nil))
+        await settle()
+    }
+
+    func testMaintenanceAndSetupReasonsMatchUnavailableActions() {
+        session.readiness = ready
+        session.maintenanceInProgress = true
+        XCTAssertFalse(session.canToggleRecording)
+        XCTAssertFalse(session.canImportAudio)
+        XCTAssertEqual(session.recordingActionTitle, "Updating voice model…")
+        XCTAssertNotNil(session.fileBlockedReason)
+        session.maintenanceInProgress = false
+        session.readiness.modelVerificationFailed = true
+        XCTAssertEqual(session.recordingActionTitle, "Finish setup")
+        XCTAssertFalse(session.canImportAudio)
+        XCTAssertTrue(session.fileBlockedReason?.contains("Repair") == true)
+        session.readiness.modelVerificationFailed = false
+        session.readiness.microphoneGranted = false
+        XCTAssertTrue(session.canImportAudio)
+        XCTAssertTrue(session.recordingBlockedReason?.contains("microphone") == true)
+    }
+
     func testRetryWaitsForMaintenanceAndKeepsItsAudio() async {
         var attempts = 0
         transcribe = { _, _, _ in

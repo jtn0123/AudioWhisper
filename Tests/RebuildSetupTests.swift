@@ -125,6 +125,10 @@ final class RebuildSetupTests: IsolatedXCTestCase {
         let installation = Task { await session.installVoiceModel() }
         await settle()
         XCTAssertTrue(session.isInstalling)
+        XCTAssertEqual(session.recordingActionTitle, "Installing…")
+        XCTAssertFalse(session.canToggleRecording)
+        XCTAssertFalse(session.canImportAudio)
+        XCTAssertTrue(session.fileBlockedReason?.contains("installation") == true)
         await session.installVoiceModel()
         session.toggleRecording()
         XCTAssertEqual(installs, 1)

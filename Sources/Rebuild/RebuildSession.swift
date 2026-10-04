@@ -323,6 +323,25 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    var recordingActionTitle: String {
+        if phase == .recording { return "Finish recording" }
+        if phase == .transcribing { return "Transcribing…" }
+        if isInstalling { return "Installing…" }
+        if isVerifyingVoiceModel { return "Verifying…" }
+        if maintenanceInProgress { return "Updating voice model…" }
+        return readiness.ready ? "Start recording" : "Finish setup"
+    }
+
+    var canToggleRecording: Bool {
+        phase == .recording || (phase != .transcribing && !isInstalling && !maintenanceInProgress)
+    }
+
+    var recordingBlockedReason: String? {
+        if phase == .recording { return nil }
+        if let reason = fileBlockedReason { return reason }
+        return readiness.microphoneGranted ? nil : "Allow microphone access in Voice Models."
+    }
+
     var canImportAudio: Bool { fileBlockedReason == nil }
 
     var fileBlockedReason: String? {

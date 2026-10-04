@@ -33,9 +33,11 @@ final class RebuildStatusController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         ActivationPolicyController.shared.statusMenuWillOpen()
-        recordItem.title = session.phase == .recording ? "Finish recording" : "Record"
-        recordItem.isEnabled = session.phase != .transcribing
-        menu.items[2].isEnabled = !session.phase.isBusy
+        recordItem.title = session.recordingActionTitle
+        recordItem.isEnabled = session.canToggleRecording
+        recordItem.toolTip = session.recordingBlockedReason
+        menu.items[2].isEnabled = session.canImportAudio
+        menu.items[2].toolTip = session.fileBlockedReason
     }
 
     private func action(_ title: String, selector: Selector) -> NSMenuItem {

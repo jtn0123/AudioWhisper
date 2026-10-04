@@ -141,7 +141,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
     }
 
     func chooseAudio() {
-        guard !session.phase.isBusy else { return }
+        guard session.canImportAudio else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType.audio]
         panel.directoryURL = FileManager.default.homeDirectoryForCurrentUser
