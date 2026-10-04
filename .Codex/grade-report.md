@@ -6,6 +6,8 @@
 **Version:** `rebuild/native-v2`, code commit `c75a55d3b0b12c2bd5dc7f5c67422584de792246`; the packaged app reports this exact commit. Backend means local engines/services, not a hosted API.
 **Historical report:** [Original app baseline and implementation notes](baseline-f3adb17/grade-report.md). New IDs below apply to the rebuild.
 
+**Recommended-fix follow-up:** [Implementation and validation](recommended-fixes-validation.md). Addressed IDs are marked below; the original grades and audit evidence remain historical.
+
 ## Summary
 
 | ID | Category | Grade | Items |

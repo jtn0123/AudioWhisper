@@ -8,6 +8,8 @@
 **Artifacts:** `.Codex/ui-ux-audit/2026-10-03-native-v2/`
 **Historical report:** [Original app UI baseline](baseline-f3adb17/ui-ux-grade-report.md). These new IDs describe the rebuild.
 
+**Recommended-fix follow-up:** [Implementation and validation](recommended-fixes-validation.md). Addressed IDs are marked below; the original grades and audit evidence remain historical.
+
 ## Summary
 
 | ID | Category | Grade | Items |
