@@ -25,7 +25,10 @@ struct AudioInputRouting: @unchecked Sendable {
     func prepare(selectedUID: String, unit: AudioUnit) throws -> AudioDeviceID {
         let device = try resolveDevice(selectedUID)
         guard device != kAudioObjectUnknown else { throw AudioInputError.unavailable }
-        try applyDevice(device, unit)
+        // AVAudioEngine's I/O nodes already follow the Mac's default devices.
+        // Resolving that input is still needed for volume management, but
+        // forcing it onto the engine's HAL unit can disrupt its internal route.
+        if !selectedUID.isEmpty { try applyDevice(device, unit) }
         return device
     }
 

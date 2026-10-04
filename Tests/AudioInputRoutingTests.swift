@@ -30,7 +30,15 @@ final class AudioInputRoutingTests: XCTestCase {
         let unit = try XCTUnwrap(AudioUnit(bitPattern: 1))
         XCTAssertEqual(try routing.prepare(selectedUID: "", unit: unit), 42)
         XCTAssertEqual(try routing.prepare(selectedUID: "", unit: unit), 77)
-        XCTAssertEqual(applied, [42, 77])
+        XCTAssertTrue(applied.isEmpty, "System default is managed by the engine; do not rebind its HAL route.")
+    }
+
+    func testSystemDefaultRecordsWithoutReconfiguringTheEngineRoute() throws {
+        let unit = try XCTUnwrap(AudioUnit(bitPattern: 1))
+        let routing = AudioInputRouting(
+            resolveDevice: { _ in 42 },
+            applyDevice: { _, _ in throw AudioInputError.routingFailed(1_852_797_029) })
+        XCTAssertEqual(try routing.prepare(selectedUID: "", unit: unit), 42)
     }
 
     func testDisconnectedSelectionNeverFallsBackOrAppliesAnotherDevice() throws {
