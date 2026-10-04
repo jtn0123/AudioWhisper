@@ -228,6 +228,7 @@ struct RebuildRecordView: View {
                     } else {
                         TextEditor(text: $session.transcript).font(.system(size: 15)).scrollContentBackground(.hidden)
                             .frame(minHeight: 145)
+                            .accessibilityLabel("Your transcript")
                         HStack {
                             Text("\(UsageMetricsStore.estimatedWordCount(for: session.transcript)) words").font(
                                 .caption

@@ -95,11 +95,13 @@ struct RebuildWritingView: View {
                             }
                             Spacer()
                             Button("Edit") { selectedCategory = category }
+                                .accessibilityLabel("Edit \(category.displayName) profile")
                             if !category.isSystem {
                                 Button("Delete", role: .destructive) {
                                     deletingCategory = category
                                     confirmCategoryDelete = true
                                 }
+                                .accessibilityLabel("Delete \(category.displayName) profile")
                             }
                         }
                         Divider()
@@ -129,6 +131,7 @@ struct RebuildWritingView: View {
                                     withId: AppCategoryManager.shared.userMappings[id] ?? "general"
                                 ).displayName)
                             Button("Reset") { AppCategoryManager.shared.resetToDefault(for: id) }
+                                .accessibilityLabel("Reset writing profile for \(id)")
                         }
                     }
                 }
@@ -216,6 +219,7 @@ struct RebuildProfileEditor: View {
             TextField("Short description", text: $category.promptDescription).textFieldStyle(.roundedBorder)
             Text("Instructions for local cleanup").font(.headline)
             TextEditor(text: $category.promptTemplate).frame(height: 220).border(.secondary.opacity(0.2))
+                .accessibilityLabel("Cleanup instructions for \(category.displayName) profile")
             HStack {
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()

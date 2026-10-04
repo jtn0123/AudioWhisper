@@ -57,11 +57,15 @@ struct RebuildLibraryView: View {
                                     Text(record.text).font(.system(size: 14)).textSelection(.enabled)
                                     HStack {
                                         Button("Copy") { PasteManager.copyToClipboard(record.text) }
+                                            .accessibilityLabel(
+                                                "Copy transcript from \(record.date.formatted(date: .abbreviated, time: .shortened))")
                                         Spacer()
                                         Button("Delete", role: .destructive) {
                                             pendingDelete = record
                                             confirmDelete = true
                                         }
+                                        .accessibilityLabel(
+                                            "Delete transcript from \(record.date.formatted(date: .abbreviated, time: .shortened))")
                                     }.font(.caption)
                                 }.padding(20).background(.background, in: RoundedRectangle(cornerRadius: 10))
                             }
