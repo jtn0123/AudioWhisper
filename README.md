@@ -88,12 +88,11 @@ System Settings → Privacy & Security → Accessibility.
 
 ### First run
 
-1. Launch AudioWhisper — it lives in the menu bar, with no dock icon
-2. A welcome dialog offers to open the Dashboard
-3. Pick your engine:
-   - **Local WhisperKit** — choose a model; the download starts automatically
-   - **Parakeet-MLX** — Install Dependencies → Verify Parakeet Model
-4. Optionally enable semantic correction, history, Smart Paste, Express Mode, or Press & Hold
+1. Launch AudioWhisper and open Dashboard → **Setup**. The app lives in the menu bar and shows a Dock icon while a normal window is open.
+2. Click **Allow microphone** and respond to the macOS prompt. If access was previously denied, Setup opens the Microphone settings instead.
+3. Choose your transcription engine and voice model, then install it from the same Setup page. Parakeet requires Apple Silicon; its install includes the local Python environment.
+4. Wait for **Ready to record**. Both microphone access and the selected voice model must be available. Using the recording shortcut before then opens Setup without recording or requesting more permissions.
+5. Smart Paste, semantic correction, history, Express Mode, and Press & Hold are optional. Smart Paste's Accessibility access is configured separately; it is not required to record and copy a transcript.
 
 ## Usage 🎯
 
