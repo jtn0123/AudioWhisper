@@ -209,16 +209,15 @@ internal class ParakeetService {
         while true {
             var numFrames = UInt32(bufferFrameSize)
 
-            let audioBuffer = buffer.withUnsafeMutableBytes { bytes in
-                AudioBuffer(
+            status = buffer.withUnsafeMutableBytes { bytes in
+                let audioBuffer = AudioBuffer(
                     mNumberChannels: 1,
                     mDataByteSize: UInt32(bufferFrameSize * MemoryLayout<Float>.size),
                     mData: bytes.baseAddress
                 )
+                var audioBufferList = AudioBufferList(mNumberBuffers: 1, mBuffers: audioBuffer)
+                return ExtAudioFileRead(extFile, &numFrames, &audioBufferList)
             }
-            var audioBufferList = AudioBufferList(mNumberBuffers: 1, mBuffers: audioBuffer)
-
-            status = ExtAudioFileRead(extFile, &numFrames, &audioBufferList)
             guard status == noErr else {
                 throw ParakeetError.transcriptionFailed("Failed to read audio data: \(status)")
             }
