@@ -156,7 +156,7 @@ jobs:
           python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 27
 
   lint:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
