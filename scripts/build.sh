@@ -5,9 +5,8 @@
 . "$(dirname "${BASH_SOURCE[0]}")/lib/xcode-env.sh"
 ensure_xcode_toolchain || exit 1
 
-# AudioWhisper Release Build Script
-# For development, use: swift build && swift run
-# This script is for creating distributable releases
+# Resource-complete AudioWhisper packaging. --debug reuses the host build;
+# the default remains a universal release build.
 
 # Change to repo root (parent of scripts/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,19 +14,29 @@ cd "$SCRIPT_DIR/.." || exit 1
 
 # Parse command line arguments
 NOTARIZE=false
+DEBUG_BUILD=false
 while [[ $# -gt 0 ]]; do
   case $1 in
+  --debug)
+    DEBUG_BUILD=true
+    shift
+    ;;
   --notarize)
     NOTARIZE=true
     shift
     ;;
   *)
     echo "Unknown option: $1"
-    echo "Usage: $0 [--notarize]"
+    echo "Usage: $0 [--debug | --notarize]"
     exit 1
     ;;
   esac
 done
+
+if [ "$DEBUG_BUILD" = true ] && [ "$NOTARIZE" = true ]; then
+  echo "Debug packaging cannot be notarized; use the universal release build." >&2
+  exit 1
+fi
 
 # Create entitlements file for hardened runtime
 echo "Creating entitlements for hardened runtime..."
@@ -108,7 +117,7 @@ if [ -f "Info.plist" ]; then
 fi
 
 # Clean previous builds
-rm -rf .build/release
+if [ "$DEBUG_BUILD" = false ]; then rm -rf .build/release; fi
 rm -rf AudioWhisper.app
 rm -f Sources/AudioProcessorCLI
 
@@ -158,6 +167,13 @@ struct VersionInfo {
 EOF
 fi
 
+if [ "$DEBUG_BUILD" = true ]; then
+  echo "📦 Building incremental debug bundle for the host..."
+  swift build -c debug --product AudioWhisper || exit 1
+  slice_dir="$(swift build -c debug --show-bin-path)" || exit 1
+  RELEASE_BINARY="$slice_dir/AudioWhisper"
+  [ -f "$RELEASE_BINARY" ] || exit 1
+else
 # Build for release, one architecture at a time, then lipo them together.
 #
 # `swift build --arch arm64 --arch x86_64` (the obvious way) cannot be used.
@@ -172,7 +188,7 @@ fi
 #     .executable(name: "argmax-cli",     targets: ["ArgmaxCLI"]),
 #     .executable(name: "whisperkit-cli", targets: ["ArgmaxCLI"]),
 #
-# It is an upstream bug with no fixed release (v1.0.0 is the newest tag).
+# Using separate triples also avoids the duplicate executable-product graph.
 # `--product AudioWhisper` does NOT avoid it — the graph is rejected before
 # product selection. Xcode 26 hits this; a 6.4 toolchain tolerates it, which is
 # why `make build` worked here and failed everywhere else.
@@ -210,6 +226,8 @@ if ! lipo -archs "$RELEASE_BINARY" 2>/dev/null | grep -q x86_64 \
    || ! lipo -archs "$RELEASE_BINARY" 2>/dev/null | grep -q arm64; then
   echo "❌ Release binary is not universal: $(lipo -archs "$RELEASE_BINARY" 2>/dev/null)"
   exit 1
+fi
+
 fi
 
 # Create app bundle

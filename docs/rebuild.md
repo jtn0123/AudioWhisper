@@ -26,6 +26,20 @@ The existing CoreAudio and model engines are reusable infrastructure, not the ne
 
 Existing macOS runner Whisper inference failure remains visible. No microphone or Accessibility access is granted automatically. A new identity permits side-by-side review without replacing the installed app; global recording is opt-in to avoid competing shortcuts.
 
+## Development packaging
+
+`make build-dev` packages a host-only debug app with the same Python resources,
+dependency localizations and complete signing checks as the release app. It reuses
+SwiftPM's debug cache. `make run` (or `make run-dev`) installs that bundle beside
+the original app and launches it. `make build` still produces the universal
+arm64/x86_64 release bundle; debug packaging cannot be combined with notarization.
+
+CI exports Swift coverage from its primary test run and Python coverage from its
+primary Python tests. The Sonar job downloads both artifacts from the same workflow
+run and validates their commit, run attempt and content hashes before scanning.
+If a scan is rerun after a failed job, rerun all producer jobs too: earlier-attempt
+coverage is deliberately rejected.
+
 ## Verification log
 
 - 2026-10-03: blocked recording click opened the existing setup page without requesting permissions.

@@ -1,4 +1,4 @@
-.PHONY: help build build-notarize test typecheck clean update-brew-cask publish-brew-cask release run
+.PHONY: help build build-notarize test typecheck clean update-brew-cask publish-brew-cask release run build-dev run-dev
 
 SCRIPTS := scripts
 
@@ -7,8 +7,9 @@ help:
 	@echo "AudioWhisper Makefile"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  run                - Build and launch the separate AudioWhisper Rebuild app"
-	@echo "  build              - Build the release app bundle"
+	@echo "  run / run-dev      - Incrementally build and launch the separate AudioWhisper Rebuild app"
+	@echo "  build-dev          - Package a resource-complete host debug app"
+	@echo "  build              - Build the universal release app bundle"
 	@echo "  build-notarize     - Build and notarize the app"
 	@echo "  test               - Run tests"
 	@echo "  typecheck          - Type-check the bundled Python (mypy --strict)"
@@ -23,7 +24,12 @@ build:
 	$(SCRIPTS)/build.sh
 
 # Build and launch the separate AudioWhisper Rebuild app
-run: build
+build-dev:
+	$(SCRIPTS)/build.sh --debug
+
+run: run-dev
+
+run-dev: build-dev
 	@echo "Installing the rebuild beside the original app..."
 	@ditto AudioWhisper.app "/Applications/AudioWhisper Rebuild.app"
 	@open "/Applications/AudioWhisper Rebuild.app"
