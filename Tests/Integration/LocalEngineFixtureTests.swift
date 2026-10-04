@@ -31,6 +31,8 @@ final class LocalEngineFixtureTests: XCTestCase {
                 try await diagnoseCPUOnlyWhisper(audio: audio)
             }
         }
+        try await service.verifyModel(.base)
+        print("REAL_WHISPER verification=loaded")
     }
 
     private func diagnoseCPUOnlyWhisper(audio: URL) async throws {
