@@ -78,7 +78,8 @@ internal actor VenvSerializer {
 }
 
 internal struct UvBootstrap {
-    static let minUvVersion = "0.8.5"
+    // Includes the entry-point, uninstall and archive security fixes.
+    static let minUvVersion = "0.11.15"
     static let defaultPythonVersion = "3.11"
 
     // Where we keep the app-managed project (contains pyproject + .venv)

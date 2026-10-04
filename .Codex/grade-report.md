@@ -137,13 +137,15 @@ Session tests cover ownership, cancellation, captured settings, retry and empty 
 
 Verified uv archives/final signed bytes, frozen installation and allowlisted subprocess environments are strong foundations (`scripts/prepare-uv.sh:21-34`; `Sources/Services/UvBootstrap.swift`; `Sources/Managers/MLDaemonManager+Process.swift`). Bytecode suppression preserves signed resources; permissions are explicit and data isolated. An affected installer and permissive public-release signing path remain material gaps.
 
-#### E1 — Upgrade affected bundled uv
+#### ~~E1~~ ✓ done 2026-10-03 — Upgrade affected bundled uv
 - **Where:** `scripts/prepare-uv.sh:4-17`; `Sources/Services/UvBootstrap.swift:81`.
 - **What's wrong:** uv 0.8.5 is affected by the vendor's [entry-point advisory](https://github.com/astral-sh/uv/security/advisories/GHSA-4gg8-gxpx-9rph), patched in 0.11.15: malicious wheels can write executables outside their environment. Exploitation with this frozen trusted lock was not demonstrated.
 - **Impact:** Major — a known-affected installer runs under the user's account.
 - **Fix:** Pin a reviewed supported uv ≥0.11.15; update both architecture checksums and runtime minimum. Preserve signing/hashing and rerun bootstrap, frozen failure, bundle and engine checks. Review [uninstall](https://github.com/astral-sh/uv/security/advisories/GHSA-pjjw-68hj-v9mw) and [ZIP](https://github.com/astral-sh/uv/security/advisories/GHSA-pqhf-p39g-3x64) advisories too.
 - **Effort:** M.
 - **Grade lift:** C+ → B−; B with E2, by removing the confirmed affected component.
+
+**Implementation evidence:** uv 0.12.23, both vendor archive checksums, universal arm64/x86_64 binary and strict signature verification passed. Security-floor regression failed before and passed after; all 29 uv policy/bootstrap tests passed. Final packaged/real-engine checks follow after the remaining fixes.
 
 #### E2 — Require distribution trust checks for public releases
 - **Where:** `Makefile:77-84`; `scripts/build.sh:407-418`.

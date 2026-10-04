@@ -1,20 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-# Published checksums from https://github.com/astral-sh/uv/releases/tag/0.8.5.
+# Published checksums from https://github.com/astral-sh/uv/releases/tag/0.12.23.
 # Verify both downloads before extraction or execution, then build a universal tool.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-uv_tools_dir="$repo_root/.build/tools/uv-0.8.5"
+uv_version="0.12.23"
+uv_tools_dir="$repo_root/.build/tools/uv-$uv_version"
 mkdir -p "$uv_tools_dir"
 for uv_arch in aarch64 x86_64; do
   case "$uv_arch" in
-    aarch64) uv_expected="467e875ac84ac2155f048b56e33741d7dee6f02369048d5b6c05b74b745411e2" ;;
-    x86_64) uv_expected="9ee5b34975ab4659345fc96cc08098d7ec871cdfa969a5774894bcaebdaf3b58" ;;
+    aarch64) uv_expected="50487ae565ccd96e499056b4674d438f4c53170202617b4c759defe0c6a1b544" ;;
+    x86_64) uv_expected="960da44cb4b73685206ddd250b19e0a117fa41095710c1038f081f5cb613efb4" ;;
   esac
   uv_archive="$uv_tools_dir/uv-$uv_arch-apple-darwin.tar.gz"
   if [ ! -f "$uv_archive" ]; then
     curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
-      "https://github.com/astral-sh/uv/releases/download/0.8.5/uv-$uv_arch-apple-darwin.tar.gz" \
+      "https://github.com/astral-sh/uv/releases/download/$uv_version/uv-$uv_arch-apple-darwin.tar.gz" \
       --output "$uv_archive.download"
     mv "$uv_archive.download" "$uv_archive"
   fi
