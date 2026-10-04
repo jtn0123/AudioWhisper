@@ -44,8 +44,16 @@ struct RebuildSessionServices {
     var interruptionSource: NSObject?
     var startError: () -> String? = { nil }
 
-    static func live(recorder: AudioEngineRecorder) -> Self {
-        let pipeline = TranscriptionPipeline()
+    static func live(
+        recorder: AudioEngineRecorder,
+        pipeline: TranscriptionPipeline? = nil,
+        copy: ((String) -> Void)? = nil,
+        history: DataManagerProtocol? = nil,
+        usage: UsageMetricsStore? = nil
+    ) -> Self {
+        let pipeline = pipeline ?? TranscriptionPipeline()
+        let history = history ?? DataManager.shared
+        let usage = usage ?? UsageMetricsStore.shared
         return Self(
             start: { id in
                 PermissionManager.shared.checkPermissionState()
@@ -59,12 +67,12 @@ struct RebuildSessionServices {
                     }
                 }
             },
-            copy: PasteManager.copyToClipboard,
+            copy: copy ?? PasteManager.copyToClipboard,
             save: { text, config, duration in
                 let count = UsageMetricsStore.estimatedWordCount(for: text)
-                UsageMetricsStore.shared.recordSession(duration: duration, wordCount: count, characterCount: text.count)
+                usage.recordSession(duration: duration, wordCount: count, characterCount: text.count)
                 guard AppDefaults.transcriptionHistoryEnabled else { return }
-                try await DataManager.shared.saveTranscription(
+                try await history.saveTranscription(
                     TranscriptionRecord(
                         text: text, provider: config.provider, duration: duration,
                         modelUsed: config.provider == .local
