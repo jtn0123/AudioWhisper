@@ -1,4 +1,5 @@
 import XCTest
+import WhisperKit
 @testable import AudioWhisper
 
 @MainActor
@@ -13,6 +14,11 @@ final class LocalEngineFixtureTests: XCTestCase {
         let audio = try XCTUnwrap(Bundle.module.url(
             forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"
         ))
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audio.path)
+        let peak = samples.map { abs($0) }.max() ?? 0
+        print("REAL_WHISPER_AUDIO samples=\(samples.count) peak=\(peak)")
+        XCTAssertGreaterThan(samples.count, 16_000, "The real speech fixture must contain decoded audio")
+        XCTAssertGreaterThan(peak, 0.01, "The real speech fixture must not decode as silence")
         try await ModelManager.shared.downloadModel(.base)
         let service = LocalWhisperService.shared
         for run in 0..<2 {

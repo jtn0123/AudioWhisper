@@ -13,6 +13,11 @@ on:
     # 07:00 UTC daily.
     - cron: '0 7 * * *'
   workflow_dispatch:      # so it can be run on demand without waiting a day
+    inputs:
+      cold_whisper:
+        description: Download Whisper assets afresh to investigate cache-dependent inference failures
+        type: boolean
+        default: false
 
 jobs:
   parakeet-e2e:
@@ -50,6 +55,7 @@ jobs:
           restore-keys: hf-${{ runner.os }}-
 
       - name: Cache Whisper models
+        if: inputs.cold_whisper != true
         uses: actions/cache@v4
         with:
           path: ~/Documents/huggingface/models/argmaxinc/whisperkit-coreml
@@ -90,7 +96,14 @@ jobs:
           # Tests/Integration/ParakeetEndToEndTests.swift.
           set -o pipefail
           swift test --no-parallel -Xswiftc -DTESTING \
-            --filter "ParakeetEndToEndTests|LocalEngineFixtureTests" 2>&1 | tail -60
+            --filter "ParakeetEndToEndTests|LocalEngineFixtureTests" 2>&1 | tee real-engine-tests.log
+
+      - name: Preserve real-engine diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-engine-diagnostics
+          path: real-engine-tests.log
 
       - name: Report
         if: failure()
