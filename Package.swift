@@ -8,12 +8,10 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        // Was pinned below 2.0 on the belief that 2.x needed Swift 6 LANGUAGE
-        // MODE, which the universal release build compiles as Swift 5. Retested
-        // on 3.0.1: that is not the constraint. 3.x only isolates its own API to
-        // the main actor, which callers satisfy with @MainActor — no language
-        // mode change required. The universal arm64+x86_64 release build passes.
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.0.0"),
+        // 3.x requires the Swift 6.2 toolchain and main-actor callers, but does
+        // not require changing this package's Swift language mode. 3.1 fixes
+        // registered-shortcut recording and function keys while menus are open.
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
         // WhisperKit graduated to 1.0 and moved to the Argmax Open-Source SDK
         // repo. The package still vends a `WhisperKit` library product, so the
         // import sites are unchanged; only the URL and version move. The old
