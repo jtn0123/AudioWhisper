@@ -64,17 +64,17 @@ The final universal build completed in **82.85 s** and passes strict/deep signat
 |---|---|
 | Final universal bundle/signature/resources | Pass: x86_64 + arm64; strict/deep codesign; English shortcut resources |
 | Cold launch/readiness/consent | Final launch/readiness pass: correctly blocked for microphone; no automatic request. Predecessor explicit request awaited the OS grant; final build consent has not been granted. |
-| Start/cancel repeat and stop/transcription | Pending microphone consent for this signed build |
+| Start/cancel repeat and stop/transcription | Follow-up: microphone granted; four live start/cancel cycles succeed, fifth start fails with CoreAudio error 1852797029. Further repeat attempt hangs during input-node initialization. Stop/transcription remains unverified. |
 | Configure shortcut / custom / cleared / disabled display | Pass on predecessor `3f66210` (UI unchanged in final): ⌥⇧⌘R captured/displayed; cleared and off explained; original preferences restored |
 | Menu equivalent while open | Unperformed: status-bar native control unavailable; source binding implemented; no physical event proof |
 | Writing/transcript contextual AX labels | Pass on predecessor `3f66210` (UI unchanged in final) for transcript, profile action and instructions; full VoiceOver and populated Library labels unperformed |
 | Filtered-empty Library / Clear search | Pass on predecessor `3f66210` (UI unchanged in final), native empty Library: query shows No matching transcripts; Clear search restores Room for your next idea; history returned off |
 | Native mounted Library save | Unperformed; real isolated live-assembly SwiftData/observation tests pass |
-| Smart Paste captured destination | Pending Accessibility approval and microphone consent; left off |
+| Smart Paste captured destination | Follow-up: user approved and authenticated Accessibility; Settings shows exact rebuild entry enabled, but app's actual AX trust check remains false after relaunch. Smart Paste test remains unperformed; test toggle is on and could not be restored after native-control failure. |
 | Normal window / recorder over full-screen | Incomplete: entered Finder full screen and reopened the final app/Preferences; Mission Control/Dock inspection timed out, so actual Spaces placement is not certified. Finder was restored to normal mode. Recorder overlay remains unperformed without microphone consent. Prior evidence/tests are not substituted. |
 | Final native long-file cancel / late delivery / PCM cleanup | Pass: returns to idle; 5 sessions/48 words unchanged; no late transcript; owned PCM removed after daemon completion |
 | Final native long-file success | Pass: 5,778-word transcript/copied state observed by 33.57 s; usage increments once to 6 sessions/5,826 words; no Library save; PCM removed; signature remains valid/no bundled bytecode |
-| Cold relaunch retains consent | Pending initial microphone consent for this build |
+| Cold relaunch retains consent | Pass in follow-up on unchanged b47fe8e: microphone allowed and ready after cold relaunch, no repeated consent prompt during attempted cycles. |
 | Physical shortcut/hold and full VoiceOver navigation | Unperformed |
 | Two distinguishable physical microphones | Unperformed: one attached input |
 | Actual input disconnection / sleep-wake capture | Unperformed: no external input available; host sleep not induced |
