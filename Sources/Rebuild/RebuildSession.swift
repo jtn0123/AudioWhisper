@@ -2,12 +2,13 @@ import AppKit
 import Observation
 
 enum RebuildPhase: Equatable {
-    case idle, recording, transcribing, completed, failed
+    case idle, starting, recording, transcribing, completed, failed
 
-    var isBusy: Bool { self == .recording || self == .transcribing }
+    var isBusy: Bool { self == .starting || self == .recording || self == .transcribing }
     var title: String {
         switch self {
         case .idle: return "Your words, made useful."
+        case .starting: return "Connecting your microphone."
         case .recording: return "Listening."
         case .transcribing: return "Turning speech into text."
         case .completed: return "Copied to your clipboard."
@@ -43,6 +44,7 @@ struct RebuildSessionServices {
     var save: (String, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void
     var interruptionSource: NSObject?
     var startError: () -> String? = { nil }
+    var startAsync: ((UUID) async -> Bool)?
 
     static func live(
         recorder: AudioEngineRecorder,
@@ -81,7 +83,11 @@ struct RebuildSessionServices {
                     ))
             },
             interruptionSource: recorder,
-            startError: { recorder.lastStartError }
+            startError: { recorder.lastStartError },
+            startAsync: { id in
+                PermissionManager.shared.checkPermissionState()
+                return await recorder.startRecordingAsync(sessionID: id)
+            }
         )
     }
 }
@@ -206,13 +212,28 @@ final class RebuildSession {
             finishRecording()
             return
         }
-        guard phase != .transcribing else { return }
+        guard phase != .starting, phase != .transcribing else { return }
         guard readiness.ready, !isInstalling, !maintenanceInProgress else {
             openSetup()
             return
         }
         prepareSession()
-        guard let id = sessionID, services.start(id) else {
+        if let startAsync = services.startAsync, let id = sessionID {
+            phase = .starting
+            job = Task { [weak self] in
+                guard let self else { return }
+                let started = await startAsync(id)
+                guard !Task.isCancelled, sessionID == id else { return }
+                completeRecordingStart(started)
+            }
+            return
+        }
+        guard let id = sessionID else { return }
+        completeRecordingStart(services.start(id))
+    }
+
+    private func completeRecordingStart(_ started: Bool) {
+        guard started else {
             phase = .failed
             notice = services.startError() ?? "The microphone could not start. Check the selected input and try again."
             sessionID = nil
@@ -332,6 +353,7 @@ final class RebuildSession {
 
 extension RebuildSession {
     var recordingActionTitle: String {
+        if phase == .starting { return "Connecting microphone…" }
         if phase == .recording { return "Finish recording" }
         if phase == .transcribing { return "Transcribing…" }
         if isInstalling { return "Installing…" }
@@ -341,7 +363,7 @@ extension RebuildSession {
     }
 
     var canToggleRecording: Bool {
-        phase == .recording || (phase != .transcribing && !isInstalling && !maintenanceInProgress)
+        phase == .recording || (!phase.isBusy && !isInstalling && !maintenanceInProgress)
     }
 
     var recordingBlockedReason: String? {
@@ -353,6 +375,7 @@ extension RebuildSession {
     var canImportAudio: Bool { fileBlockedReason == nil }
 
     var fileBlockedReason: String? {
+        if phase == .starting { return "Wait for the microphone to connect or cancel." }
         if phase == .recording { return "Finish or cancel the recording first." }
         if phase == .transcribing { return "Wait for transcription or cancel it first." }
         if isInstalling { return "Wait for the voice model installation to finish." }

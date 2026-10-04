@@ -174,7 +174,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
                     if config.mode == .hold {
                         guard !self.session.phase.isBusy else { return }
                         self.session.toggleRecording()
-                        self.holdOwnsSession = self.session.phase == .recording
+                        self.holdOwnsSession = self.session.phase == .starting || self.session.phase == .recording
                     } else {
                         self.session.toggleRecording()
                     }
@@ -184,6 +184,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
                 Task { @MainActor in
                     guard let self, config.mode == .hold, self.holdOwnsSession else { return }
                     self.holdOwnsSession = false
+                    if self.session.phase == .starting { self.session.cancel() }
                     if self.session.phase == .recording { self.session.finishRecording() }
                 }
             }

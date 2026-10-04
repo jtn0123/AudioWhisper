@@ -57,7 +57,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - Volume Management
 
     private let volumeManager: MicrophoneVolumeManaging
-    private let inputRouting: AudioInputRouting
+    let inputRouting: AudioInputRouting
+    let hardwarePreparation = AudioHardwarePreparation<PreparedAudioEngine>()
     private var volumeTask: Task<Void, Never>?
     private var volumeBoostRequested = false
 
@@ -337,6 +338,17 @@ extension AudioEngineRecorder {
     }
 
     func startRecording(sessionID: UUID) -> Bool {
+        guard canStartRecording() else { return false }
+        do {
+            let prepared = try PreparedAudioEngine.make(routing: inputRouting, selectedUID: AppDefaults.selectedMicrophone)
+            return startPreparedEngine(prepared, sessionID: sessionID)
+        } catch {
+            lastStartError = error.localizedDescription
+            return false
+        }
+    }
+
+    func canStartRecording() -> Bool {
         lastStartError = nil
         // Check permission via PermissionManager (single source of truth)
         guard PermissionManager.shared.microphonePermissionState == .granted else {
@@ -344,7 +356,8 @@ extension AudioEngineRecorder {
         }
 
         // Prevent re-entrancy
-        guard audioEngine == nil else {
+        guard audioEngine == nil, !hardwarePreparation.isInFlight else {
+            lastStartError = AudioPreparationError.busy.localizedDescription
             return false
         }
 
@@ -352,7 +365,15 @@ extension AudioEngineRecorder {
         if AppEnvironment.isRunningTests {
             return false
         }
+        return true
+    }
 
+    func failRecordingStart(_ error: Error) -> Bool {
+        lastStartError = error.localizedDescription
+        return false
+    }
+
+    func startPreparedEngine(_ prepared: PreparedAudioEngine, sessionID: UUID) -> Bool {
         // Create recording URL
         let tempPath = FileManager.default.temporaryDirectory
         let timestamp = dateProvider().timeIntervalSince1970
@@ -360,13 +381,9 @@ extension AudioEngineRecorder {
         recordingURL = audioFilename
 
         do {
-            // Set up audio engine
-            let engine = AVAudioEngine()
-            let inputNode = engine.inputNode
-            guard let unit = inputNode.audioUnit else { throw AudioInputError.unavailable }
-            let device = try inputRouting.prepare(selectedUID: AppDefaults.selectedMicrophone, unit: unit)
-            let inputFormat = inputNode.outputFormat(forBus: 0)
-            guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else { throw AudioInputError.invalidFormat }
+            let engine = prepared.engine
+            let inputNode = prepared.inputNode
+            let inputFormat = prepared.format
 
             // Map the FFT processor to the device's actual sample rate. The tap runs
             // at the device rate (often 48 kHz), not the 44.1 kHz default — without
@@ -395,20 +412,20 @@ extension AudioEngineRecorder {
                 self?.processAudioBuffer(buffer)
             }
 
-            // Start the engine
-            audioEngine = engine
-            try engine.start()
-            currentSessionStart = dateProvider()
-            lastRecordingDuration = nil
+            // Reset diagnostics before the first callback can arrive.
             sampleBufferLock.lock()
             _writeErrorCount = 0  // Reset error count for new session
             _writeSuccessCount = 0  // Reset success count for new session
             _framesWritten = 0  // Reset frame counter for new session
             _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
             sampleBufferLock.unlock()
+            audioEngine = engine
+            try engine.start()
+            currentSessionStart = dateProvider()
+            lastRecordingDuration = nil
             isRecording = true
             recordingSessionID = sessionID
-            scheduleVolumeBoost(deviceID: device, sessionID: sessionID)
+            scheduleVolumeBoost(deviceID: prepared.device, sessionID: sessionID)
 
             installInterruptionObservers()
 

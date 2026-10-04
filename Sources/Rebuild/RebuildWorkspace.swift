@@ -168,11 +168,15 @@ struct RebuildRecordView: View {
                             Text(
                                 session.phase == .recording
                                     ? "Listening to your microphone"
+                                    : session.phase == .starting
+                                        ? "Connecting your microphone"
                                     : session.phase == .transcribing
                                         ? "Transcribing your audio" : session.readiness.nextStep
                             ).font(.headline)
                             Text(
-                                session.phase == .transcribing
+                                session.phase == .starting
+                                    ? "You can cancel while the microphone connects."
+                                    : session.phase == .transcribing
                                     ? "You can cancel while the local model works."
                                     : shortcutHint
                             )

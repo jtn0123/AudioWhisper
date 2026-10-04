@@ -53,7 +53,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
             return "hello world"
         }
         makeSession()
-        record()
+        try await record()
         try await waitFor { self.session.phase == .completed }
         XCTAssertEqual(clipboard.string(forType: .string), "hello world")
         let records = try await history.fetchAllRecords()
@@ -74,7 +74,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         try XCTSkipUnless(Arch.isAppleSilicon)
         AppDefaults.semanticCorrectionMode = .localMLX
         makeSession(correctionFails: false)
-        record()
+        try await record()
         try await waitFor { self.session.phase == .completed }
         XCTAssertEqual(clipboard.string(forType: .string), "Hello world.")
         let records = try await history.fetchAllRecords()
@@ -86,7 +86,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         try XCTSkipUnless(Arch.isAppleSilicon)
         AppDefaults.semanticCorrectionMode = .localMLX
         makeSession(correctionFails: true)
-        record()
+        try await record()
         try await waitFor { self.session.phase == .completed }
         XCTAssertEqual(clipboard.string(forType: .string), "hello world")
         let records = try await history.fetchAllRecords()
@@ -97,7 +97,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
     func testRealHistoryFailurePreservesClipboardAndDeliveredUsage() async throws {
         history.modelContainer = nil
         makeSession()
-        record()
+        try await record()
         try await waitFor { self.session.phase == .completed }
         XCTAssertEqual(clipboard.string(forType: .string), "hello world")
         XCTAssertEqual(usage.snapshot.totalSessions, 1)
@@ -116,7 +116,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
     func testFailedCaptureRetainsAudioUntilSuccessfulRetry() async throws {
         speech.result = .failure(SpeechToTextError.transcriptionFailed("Fixture failure"))
         makeSession()
-        record()
+        try await record()
         try await waitFor { self.session.phase == .failed }
         XCTAssertTrue(session.hasRetryAudio)
         XCTAssertTrue(FileManager.default.fileExists(atPath: audio.path))
@@ -134,7 +134,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
     func testCancelDiscardsOwnedRetryAudio() async throws {
         speech.result = .failure(SpeechToTextError.transcriptionFailed("Fixture failure"))
         makeSession()
-        record()
+        try await record()
         try await waitFor { self.session.phase == .failed }
         session.cancel()
         XCTAssertFalse(FileManager.default.fileExists(atPath: audio.path))
@@ -151,7 +151,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
             recorder: AudioEngineRecorder(), pipeline: pipeline,
             copy: { board.clearContents(); board.setString($0, forType: .string) }, history: history, usage: usage)
         // Replace hardware only. The launched factory's real pipeline/delivery stays intact.
-        services.start = { _ in true }
+        services.startAsync = { _ in true }
         services.stop = { self.audio }
         services.cancel = {}
         session = RebuildSession(services: services)
@@ -159,8 +159,9 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
             microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
     }
 
-    private func record() {
+    private func record() async throws {
         session.toggleRecording()
+        try await waitFor { self.session.phase == .recording }
         session.finishRecording()
     }
 
@@ -174,7 +175,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
             }
         }
         makeSession()
-        if imported { session.importAudio(audio) } else { record() }
+        if imported { session.importAudio(audio) } else { try await record() }
         await fulfillment(of: [entered], timeout: 2)
         session.cancel()
         try XCTUnwrap(continuation).resume(returning: "late speech")

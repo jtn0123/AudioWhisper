@@ -50,4 +50,30 @@ final class AudioInputRoutingTests: XCTestCase {
             XCTAssertTrue(error.localizedDescription.contains("-50"))
         }
     }
+
+    func testAlreadySelectedInputCanRecordWhenHardwareRejectsReconnect() throws {
+        let unit = try XCTUnwrap(AudioUnit(bitPattern: 1))
+        let routing = AudioUnitInputRouting(
+            currentDevice: { _ in 42 },
+            setDevice: { _, _ in throw AudioInputError.routingFailed(1_852_797_029) })
+        XCTAssertNoThrow(try routing.apply(42, unit: unit))
+    }
+
+    func testDifferentSelectionIsChangedAndVerified() throws {
+        let unit = try XCTUnwrap(AudioUnit(bitPattern: 1))
+        var selected: AudioDeviceID = 42
+        var writes = 0
+        let routing = AudioUnitInputRouting(
+            currentDevice: { _ in selected },
+            setDevice: { device, _ in selected = device; writes += 1 })
+        try routing.apply(77, unit: unit)
+        XCTAssertEqual(selected, 77)
+        XCTAssertEqual(writes, 1)
+    }
+
+    func testRejectedOrIgnoredInputChangeDoesNotRecordOnAnotherDevice() throws {
+        let unit = try XCTUnwrap(AudioUnit(bitPattern: 1))
+        let routing = AudioUnitInputRouting(currentDevice: { _ in 42 }, setDevice: { _, _ in })
+        XCTAssertThrowsError(try routing.apply(77, unit: unit))
+    }
 }
