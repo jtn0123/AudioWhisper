@@ -38,10 +38,6 @@ internal actor MLDaemonManager {
     // `private` is file-scoped, so a cross-file extension cannot see it.
     struct PendingRequest {
         let completion: (Result<Data, Error>) -> Void
-        /// Hard deadline after which the request is considered abandoned and is
-        /// reaped by `sweepExpiredRequests()`. Prevents `pending` from growing
-        /// unboundedly if responses get lost.
-        let deadline: Date
     }
 
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
@@ -152,7 +148,6 @@ internal actor MLDaemonManager {
         // Use withCheckedThrowingContinuation with timeout via Task
         let timeoutNanos = requestTimeoutSeconds * 1_000_000_000
 
-        let deadline = Date().addingTimeInterval(TimeInterval(requestTimeoutSeconds))
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response, Error>) in
             // Register the pending request BEFORE writing to stdin (audit #24).
@@ -172,8 +167,7 @@ internal actor MLDaemonManager {
                     case .failure(let error):
                         continuation.resume(throwing: error)
                     }
-                },
-                deadline: deadline
+                }
             )
 
             if Task.isCancelled {
@@ -333,8 +327,7 @@ internal extension MLDaemonManager {
     /// and `completeAllPending(with:)` without a live subprocess.
     func injectPending(id: Int, completion: @escaping (Result<Data, Error>) -> Void) {
         pending[id] = PendingRequest(
-            completion: completion,
-            deadline: Date().addingTimeInterval(60)
+            completion: completion
         )
     }
 
