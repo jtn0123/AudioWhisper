@@ -136,9 +136,11 @@ final class PermissionManagerTests: IsolatedXCTestCase {
         XCTAssertTrue(permissionManager.showEducationalModal)
 
         permissionManager.showRecoveryModal = true
-        XCTAssertTrue(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal, "Permission sheets cannot be presented concurrently")
 
         permissionManager.showEducationalModal = false
+        permissionManager.showRecoveryModal = true
+        XCTAssertTrue(permissionManager.showRecoveryModal)
         permissionManager.showRecoveryModal = false
         XCTAssertFalse(permissionManager.showEducationalModal)
         XCTAssertFalse(permissionManager.showRecoveryModal)
@@ -292,5 +294,233 @@ final class PermissionManagerTests: IsolatedXCTestCase {
 
         // Clean up
         AppDefaults.defaults.removeObject(forKey: "enableSmartPaste")
+    }
+
+}
+
+extension PermissionManagerTests {
+    // MARK: - Permission Request Coordination
+
+    func testRepeatedProceedRequestsEnterRequestingSynchronously() async throws {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .notRequested
+        permissionManager.accessibilityPermissionState = .notRequested
+
+        for _ in 0..<5 {
+            permissionManager.proceedWithPermissionRequest()
+            permissionManager.requestPermissionWithEducation()
+        }
+
+        XCTAssertEqual(permissionManager.microphonePermissionState, .requesting)
+        XCTAssertEqual(permissionManager.accessibilityPermissionState, .notRequested)
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+
+        try await waitForMicrophoneRequestToFinish()
+        XCTAssertEqual(permissionManager.microphonePermissionState, .denied)
+        XCTAssertEqual(permissionManager.accessibilityPermissionState, .notRequested,
+                       "A denied microphone must not start the optional Accessibility request")
+        XCTAssertFalse(permissionManager.showRecoveryModal,
+                       "The result stays inline until the user explicitly asks for recovery")
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+    }
+
+    func testPermissionEducationDoesNotInterruptMicrophoneRequestWithSmartPasteEnabled() {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .requesting
+        permissionManager.accessibilityPermissionState = .notRequested
+
+        permissionManager.requestPermissionWithEducation()
+
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+    }
+
+    func testPermissionEducationDoesNotInterruptAccessibilityRequest() {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .notRequested
+        permissionManager.accessibilityPermissionState = .requesting
+
+        permissionManager.requestPermissionWithEducation()
+        permissionManager.proceedWithPermissionRequest()
+
+        XCTAssertEqual(permissionManager.microphonePermissionState, .notRequested)
+        XCTAssertEqual(permissionManager.accessibilityPermissionState, .requesting)
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+    }
+
+    func testRefreshingPermissionsPreservesAccessibilityRequestInProgress() {
+        permissionManager.accessibilityPermissionState = .requesting
+
+        permissionManager.checkPermissionState()
+
+        XCTAssertEqual(permissionManager.accessibilityPermissionState, .requesting)
+    }
+
+    func testDirectSheetBindingsCannotStackPermissionModals() {
+        permissionManager.microphonePermissionState = .granted
+        permissionManager.accessibilityPermissionState = .notRequested
+        permissionManager.showAccessibilityModal = true
+
+        permissionManager.showEducationalModal = true
+        permissionManager.showRecoveryModal = true
+
+        XCTAssertTrue(permissionManager.showAccessibilityModal)
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+
+        permissionManager.showAccessibilityModal = false
+        permissionManager.showEducationalModal = true
+        permissionManager.showAccessibilityModal = false
+
+        XCTAssertTrue(permissionManager.showEducationalModal,
+                      "A stale dismissal from the earlier Accessibility sheet must not close the current sheet")
+    }
+
+    func testDirectSheetBindingsCannotPresentDuringSystemPermissionRequest() {
+        permissionManager.microphonePermissionState = .requesting
+
+        permissionManager.showEducationalModal = true
+        permissionManager.showRecoveryModal = true
+        permissionManager.showAccessibilityModal = true
+
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+    }
+
+    func testProceedWithGrantedMicrophoneShowsOnlyAccessibilityExplanation() {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .granted
+        permissionManager.accessibilityPermissionState = .notRequested
+        permissionManager.showEducationalModal = true
+
+        permissionManager.proceedWithPermissionRequest()
+        permissionManager.proceedWithPermissionRequest()
+        permissionManager.requestPermissionWithEducation()
+
+        XCTAssertEqual(permissionManager.microphonePermissionState, .granted)
+        XCTAssertTrue(permissionManager.showAccessibilityModal)
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+    }
+
+    func testActiveAccessibilityExplanationPreventsRecoveryOrAnotherMicrophoneRequest() async throws {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .notRequested
+        permissionManager.accessibilityPermissionState = .denied
+        permissionManager.showAccessibilityModal = true
+
+        permissionManager.requestPermissionWithEducation()
+        permissionManager.proceedWithPermissionRequest()
+        // The old implementation queued another request even while a sheet was open.
+        try await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(permissionManager.microphonePermissionState, .notRequested)
+        XCTAssertTrue(permissionManager.showAccessibilityModal)
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+    }
+
+    func testRepeatedProceedWithGrantedPermissionsDoesNotRequestAgain() async throws {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .granted
+        permissionManager.accessibilityPermissionState = .granted
+
+        for _ in 0..<5 {
+            permissionManager.proceedWithPermissionRequest()
+        }
+        try await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(permissionManager.microphonePermissionState, .granted)
+        XCTAssertEqual(permissionManager.accessibilityPermissionState, .granted)
+        XCTAssertFalse(permissionManager.showEducationalModal)
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+    }
+
+    func testDeniedMicrophoneStopsBeforeAccessibilityAndOffersExplicitRecovery() async throws {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        permissionManager.microphonePermissionState = .notRequested
+        permissionManager.accessibilityPermissionState = .notRequested
+
+        permissionManager.proceedWithPermissionRequest()
+        try await waitForMicrophoneRequestToFinish()
+
+        XCTAssertFalse(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+
+        permissionManager.requestPermissionWithEducation()
+
+        XCTAssertTrue(permissionManager.showRecoveryModal)
+        XCTAssertFalse(permissionManager.showEducationalModal,
+                       "A denied microphone must be recovered before optional Accessibility setup")
+        XCTAssertFalse(permissionManager.showAccessibilityModal)
+    }
+
+    func testFiveRequestsShareOneAuthorizationAndGrantShowsOneOptionalExplanation() async {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        var requestCount = 0
+        var response: (@Sendable (Bool) -> Void)?
+        let manager = PermissionManager(microphoneRequest: { completion in
+            requestCount += 1
+            response = completion
+        })
+        manager.microphonePermissionState = .notRequested
+        manager.accessibilityPermissionState = .notRequested
+        for _ in 0..<5 {
+            manager.proceedWithPermissionRequest()
+        }
+        XCTAssertEqual(requestCount, 1)
+        XCTAssertEqual(manager.microphonePermissionState, .requesting)
+        XCTAssertFalse(manager.showAccessibilityModal)
+        response?(true)
+        for _ in 0..<20 where manager.microphonePermissionState == .requesting { await Task.yield() }
+        XCTAssertEqual(manager.microphonePermissionState, .granted)
+        XCTAssertTrue(manager.showAccessibilityModal)
+        XCTAssertFalse(manager.showRecoveryModal)
+        XCTAssertFalse(manager.showEducationalModal)
+    }
+
+    func testSetupMicrophoneGrantDoesNotAskForOptionalAccessibility() async {
+        AppDefaults.enableSmartPaste = true
+        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
+        var requestCount = 0
+        var response: (@Sendable (Bool) -> Void)?
+        let manager = PermissionManager(microphoneRequest: { completion in
+            requestCount += 1
+            response = completion
+        })
+        manager.microphonePermissionState = .notRequested
+        manager.accessibilityPermissionState = .notRequested
+        for _ in 0..<5 { manager.requestMicrophonePermission() }
+        XCTAssertEqual(requestCount, 1)
+        response?(true)
+        for _ in 0..<20 where manager.microphonePermissionState == .requesting { await Task.yield() }
+        XCTAssertEqual(manager.microphonePermissionState, .granted)
+        XCTAssertFalse(manager.showAccessibilityModal)
+        XCTAssertFalse(manager.showRecoveryModal)
+        XCTAssertFalse(manager.showEducationalModal)
+    }
+
+    private func waitForMicrophoneRequestToFinish() async throws {
+        let deadline = ContinuousClock.now + .seconds(2)
+        while permissionManager.microphonePermissionState != .denied && ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(permissionManager.microphonePermissionState, .denied,
+                       "The simulated microphone request should complete within the test budget")
     }
 }
