@@ -41,13 +41,13 @@ private actor WhisperKitCache {
         let newInstance: WhisperKit
         do {
             if let localModelPath = getLocalModelPath(for: model) {
-                let config = WhisperKitConfig(modelFolder: localModelPath)
+                let config = WhisperKitConfig(modelFolder: localModelPath, computeOptions: Self.computeOptions)
                 newInstance = try await WhisperKit(config)
             } else {
                 // Fallback to model name (should work if environment variables are respected).
                 // `.whisperKitModelName` is the canonical name WhisperKit expects;
                 // see `WhisperModel.whisperKitModelName`.
-                let config = WhisperKitConfig(model: model.whisperKitModelName)
+                let config = WhisperKitConfig(model: model.whisperKitModelName, computeOptions: Self.computeOptions)
                 newInstance = try await WhisperKit(config)
             }
         } catch {
@@ -70,6 +70,16 @@ private actor WhisperKitCache {
         lru.touch(model)
 
         return newInstance
+    }
+
+    /// Use the upstream-recommended backend for output-correctness issues.
+    /// The default Neural Engine path returned ">>" for real speech on CI.
+    private static var computeOptions: ModelComputeOptions {
+        ModelComputeOptions(
+            melCompute: .cpuAndGPU,
+            audioEncoderCompute: .cpuAndGPU,
+            textDecoderCompute: .cpuAndGPU
+        )
     }
 
     func clear() {
