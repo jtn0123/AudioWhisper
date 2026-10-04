@@ -198,6 +198,19 @@ final class StandardWindowTests: XCTestCase {
         XCTAssertTrue(closed)
     }
 
+    func testNormalWindowConfigurationClearsOverlayBehavior() {
+        let window = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
+        window.level = .floating
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications]
+
+        StandardWindow.configure(window, frameAutosaveName: nil)
+
+        XCTAssertEqual(window.level, .normal, "Settings must never inherit the recording overlay's floating level")
+        XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllSpaces))
+        XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllApplications))
+        XCTAssertFalse(window.collectionBehavior.contains(.fullScreenAuxiliary))
+    }
+
     func testOpeningAWindowConfiguresShowsAndWatchesIt() {
         let spy = PresenterSpy()
         spy.install()

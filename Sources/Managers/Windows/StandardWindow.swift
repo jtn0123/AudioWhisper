@@ -16,6 +16,8 @@ internal enum StandardWindow {
     /// Applies the shared configuration. With a `frameAutosaveName`, the window
     /// reopens at the size and position it was closed at.
     static func configure(_ window: NSWindow, frameAutosaveName: String?) {
+        // Only RecordingWindowStyle may give a window an overlay level.
+        window.level = .normal
         window.collectionBehavior = collectionBehavior
         window.tabbingMode = .disallowed
         window.isReleasedWhenClosed = false
