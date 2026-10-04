@@ -34,12 +34,13 @@ internal extension AppDelegate {
         menu.addItem(.separator())
 
         // ── Primary actions
-        menu.addItem(makeActionItem(
+        let recordingItem = makeActionItem(
             title: audioRecorder?.isRecording == true ? "Stop Recording" : "Start Recording",
             selector: #selector(startRecordingFromMenu),
-            keyEquivalent: " ",
-            modifiers: [.command, .shift]
-        ))
+            keyEquivalent: ""
+        )
+        RecordingShortcut.apply(AppDefaults.globalHotkey, to: recordingItem)
+        menu.addItem(recordingItem)
         menu.addItem(makeActionItem(
             title: "Transcribe a File…",
             selector: #selector(transcribeAudioFile),

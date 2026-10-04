@@ -39,6 +39,12 @@ internal struct ProcessingShimmerView: View {
                 phase = 1
             }
         }
+        .onChange(of: animated) { _, enabled in
+            withAnimation(.linear(duration: 0)) { phase = 0 }
+            if enabled {
+                withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { phase = 1 }
+            }
+        }
         .onDisappear {
             // Halt the repeating shimmer animation when off-screen so it
             // doesn't keep driving re-renders for a hidden view.
@@ -98,8 +104,9 @@ internal struct TimerLabel: View {
 // Compact keycap shown on .ready so users know how to invoke the app.
 
 internal struct HotkeyHint: View {
+    @AppDefault(\.globalHotkey) private var shortcut
     var body: some View {
-        Text("⌘⇧Space")
+        Text(RecordingShortcut.display(shortcut))
             .font(.system(size: 9.5, weight: .medium, design: .monospaced))
             .padding(.horizontal, 6)
             .padding(.vertical, 1.5)
@@ -119,7 +126,7 @@ internal struct HotkeyHint: View {
 // view-model if you want to surface "N words · M.Ms".
 
 internal struct SuccessRecapLabel: View {
-    let start: Date?
+    let duration: TimeInterval?
     let wordCount: Int?
 
     var body: some View {
@@ -128,10 +135,11 @@ internal struct SuccessRecapLabel: View {
             .tracking(0.4)
     }
 
-    private var label: String {
-        let dur = start.map { Date().timeIntervalSince($0) } ?? 0
-        let secs = String(format: "%.1fs", dur)
-        if let count = wordCount, count > 0 { return "\(count) words · \(secs)" }
-        return secs
+    var label: String {
+        let seconds = duration.flatMap { $0.isFinite && $0 > 0 ? String(format: "%.1fs", $0) : nil }
+        if let count = wordCount, count > 0 {
+            return seconds.map { "\(count) words · \($0)" } ?? "\(count) words"
+        }
+        return seconds ?? "Copied"
     }
 }

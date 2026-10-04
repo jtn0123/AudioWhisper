@@ -21,6 +21,7 @@ struct WaveformContainer: View {
     /// suppressed so snapshot tests render a deterministic frame.
     /// Production callers should leave this at the default (`true`).
     let processingAnimated: Bool
+    let completedAudioDuration: TimeInterval?
     let onTap: () -> Void
 
     init(
@@ -29,6 +30,7 @@ struct WaveformContainer: View {
         waveformSamples: [Float],
         frequencyBands: [Float],
         processingAnimated: Bool = true,
+        completedAudioDuration: TimeInterval? = nil,
         onTap: @escaping () -> Void
     ) {
         self.status = status
@@ -36,6 +38,7 @@ struct WaveformContainer: View {
         self.waveformSamples = waveformSamples
         self.frequencyBands = frequencyBands
         self.processingAnimated = processingAnimated
+        self.completedAudioDuration = completedAudioDuration
         self.onTap = onTap
     }
 
@@ -165,7 +168,7 @@ struct WaveformContainer: View {
     private var stateVisual: some View {
         switch status {
         case .processing:
-            ProcessingShimmerView(color: creamColor.opacity(0.85), animated: processingAnimated)
+            ProcessingShimmerView(color: creamColor.opacity(0.85), animated: processingAnimated && !reduceMotion)
                 .padding(.horizontal, 24)
 
         case .success:
@@ -299,7 +302,7 @@ struct WaveformContainer: View {
                     case .ready:
                         HotkeyHint()
                     case .success:
-                        SuccessRecapLabel(start: recordingStartedAt, wordCount: nil)
+                        SuccessRecapLabel(duration: completedAudioDuration, wordCount: nil)
                     default:
                         EmptyView()
                     }
@@ -344,6 +347,7 @@ extension WaveformContainer {
     /// Whether the status dot should pulse. Tests can disable processing
     /// animations via `processingAnimated` to keep snapshots deterministic.
     private var shouldPulseStatusDot: Bool {
+        guard !reduceMotion else { return false }
         if isRecording { return true }
         if isProcessing { return processingAnimated }
         return false
