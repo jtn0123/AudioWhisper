@@ -27,7 +27,7 @@ final class UvBootstrapTests: XCTestCase {
         setenv("HOME", tempHome.path, 1)
         setenv("AUDIOWHISPER_APP_SUPPORT_DIR", tempAppSupport.path, 1)
         // Keep /usr/bin last so tools like /usr/bin/env remain reachable while excluding any real uv in default paths.
-        setenv("PATH", "\(tempBin.path):/usr/bin", 1)
+        setenv("PATH", "\(tempBin.path):/usr/bin:/bin", 1)
     }
 
     override func tearDownWithError() throws {
@@ -123,7 +123,7 @@ final class UvBootstrapTests: XCTestCase {
         let invocations = try String(contentsOf: logURL).split(separator: "\n")
         XCTAssertTrue(invocations.contains(where: { $0.contains("--version") }))
         XCTAssertTrue(
-            invocations.contains(where: { $0.contains("venv --python \(UvBootstrap.defaultPythonVersion)") }) ||
+            invocations.contains(where: { $0.contains("venv --clear --python \(UvBootstrap.defaultPythonVersion)") }) ||
             FileManager.default.fileExists(atPath: project.appendingPathComponent(".venv").path)
         )
         XCTAssertTrue(invocations.contains(where: { $0.contains("sync") }))
@@ -190,6 +190,34 @@ final class UvBootstrapTests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    func testWarmAndConcurrentPreparationsSyncOnceAndRecoverDeletedInterpreter() async throws {
+        let log = tempHome.appendingPathComponent("warm.log")
+        try writeUvStub(version: "0.9.0", logFile: log)
+        let initial = try await UvBootstrap.ensureVenv()
+        try await withThrowingTaskGroup(of: URL.self) { group in
+            for _ in 0..<8 { group.addTask { try await UvBootstrap.ensureVenv() } }
+            for try await python in group { XCTAssertEqual(python, initial) }
+        }
+        var invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 1)
+        try FileManager.default.removeItem(at: initial)
+        _ = try await UvBootstrap.ensureVenv()
+        invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 2)
+    }
+
+    func testChangedLockAndExplicitRefreshInvalidateWarmPreparation() async throws {
+        let log = tempHome.appendingPathComponent("invalidate.log")
+        try writeUvStub(version: "0.9.0", logFile: log)
+        _ = try await UvBootstrap.ensureVenv()
+        let project = try UvBootstrap.projectDir()
+        try "changed lock".write(to: project.appendingPathComponent("uv.lock"), atomically: true, encoding: .utf8)
+        _ = try await UvBootstrap.ensureVenv()
+        _ = try await UvBootstrap.ensureVenv(forceRefresh: true)
+        let invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 3)
+    }
 
     private func whichUVPath() -> String? {
         let process = Process()

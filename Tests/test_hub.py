@@ -196,6 +196,41 @@ class TestLoaders(HubTestCase):
         self.loader._CORRECTION_CACHE.clear()
         super().tearDown()
 
+    def test_switching_releases_old_model_before_loading_replacement(self) -> None:
+        import weakref
+        from ml.hub import download_snapshot
+
+        class Model:
+            pass
+
+        for repo in ("org/first", "org/second"):
+            download_snapshot(repo, PINNED)
+        old = None
+
+        def load(path: str) -> Model:
+            if old is not None:
+                self.assertIsNone(old(), "old weights must be released before replacement loading")
+            return Model()
+
+        sys.modules["parakeet_mlx"].from_pretrained = load
+        first = self.loader.load_parakeet_model("org/first")
+        old = weakref.ref(first)
+        del first
+        self.loader.load_parakeet_model("org/second")
+        self.assertEqual(list(self.loader._PARAKEET_CACHE), ["org/second"])
+
+    def test_cache_switching_keeps_engines_independent_and_bounded(self) -> None:
+        from ml.hub import download_snapshot
+
+        download_snapshot("org/parakeet", PINNED)
+        self.loader.load_parakeet_model("org/parakeet")
+        for index in range(5):
+            repo = f"org/correction-{index}"
+            download_snapshot(repo, PINNED)
+            self.loader.load_correction_model(repo)
+            self.assertEqual(len(self.loader._CORRECTION_CACHE), 1)
+            self.assertEqual(list(self.loader._PARAKEET_CACHE), ["org/parakeet"])
+
     def test_parakeet_loads_the_pinned_snapshot_from_a_local_path(self) -> None:
         from ml.hub import download_snapshot
 

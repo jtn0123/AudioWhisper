@@ -33,6 +33,12 @@ class LocalWhisperServiceTests: IsolatedXCTestCase {
         super.tearDown()
     }
     
+    func testWarningKeepsMostRecentWhileCriticalClearsAll() {
+        XCTAssertEqual(LocalWhisperService.cacheAction(for: .warning), .keepMostRecent)
+        XCTAssertEqual(LocalWhisperService.cacheAction(for: .critical), .clearAll)
+        XCTAssertEqual(LocalWhisperService.cacheAction(for: []), .none)
+    }
+
     func testWhisperModelMapping() {
         // Test that model names map correctly
         XCTAssertEqual(WhisperModel.tiny.whisperKitModelName, "openai_whisper-tiny")

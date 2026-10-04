@@ -201,7 +201,7 @@ internal extension DashboardProvidersView {
         showSetupSheet = true
         Task {
             do {
-                _ = try await UvBootstrap.ensureVenv(userPython: nil) { msg in
+                _ = try await UvBootstrap.ensureVenv(userPython: nil, forceRefresh: true) { msg in
                     Task { @MainActor in
                         setupLogs += (setupLogs.isEmpty ? "" : "\n") + msg
                     }

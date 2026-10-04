@@ -111,7 +111,7 @@ final class UvBootstrapCoverageTests: XCTestCase {
         XCTAssertFalse(ready)
     }
 
-    func testIsEnvReadyTrueWhenVenvPythonExists() async throws {
+    func testBareInterpreterWithoutPinnedDependenciesIsNotReady() async throws {
         let proj = try UvBootstrap.projectDir()
         let binDir = proj.appendingPathComponent(".venv/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: binDir, withIntermediateDirectories: true)
@@ -120,7 +120,7 @@ final class UvBootstrapCoverageTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: python3.path)
 
         let ready = await UvBootstrap.isEnvReady()
-        XCTAssertTrue(ready)
+        XCTAssertFalse(ready)
     }
 
     // MARK: - findUv error path

@@ -151,7 +151,7 @@ internal final class RecordingSetupState {
             if provider == .local {
                 try await ModelManager.shared.downloadModel(whisper)
             } else {
-                _ = try await UvBootstrap.ensureVenv(userPython: nil) { _ in }
+                _ = try await UvBootstrap.ensureVenv(userPython: nil, forceRefresh: true) { _ in }
                 await MLXModelManager.shared.downloadParakeetModel(repo: parakeet.rawValue)
                 if !(await cacheCheck(parakeet)) {
                     installError = MLXModelManager.shared.downloadProgress[parakeet.rawValue]

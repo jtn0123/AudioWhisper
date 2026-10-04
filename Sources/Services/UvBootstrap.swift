@@ -1,6 +1,5 @@
 import Foundation
 import CryptoKit
-import os.log
 
 internal enum UvError: Error, LocalizedError {
     case uvNotFound
@@ -38,6 +37,16 @@ internal actor VenvSerializer {
     /// one-after-the-other execution even though `op` is async (a plain actor
     /// would otherwise admit a second caller at the first `await` inside `op`).
     private var chainTail: Task<Void, Never>?
+    private var prepared: (key: String, python: URL)?
+
+    func preparedPython(for key: String) -> URL? {
+        guard let prepared, prepared.key == key,
+              FileManager.default.isExecutableFile(atPath: prepared.python.path) else { return nil }
+        return prepared.python
+    }
+
+    func rememberPreparation(key: String, python: URL) { prepared = (key, python) }
+    func invalidatePreparation() { prepared = nil }
 
     /// Serialize an async, throwing operation. Concurrent callers execute
     /// strictly one-after-the-other: each call's work is wrapped in a `Task`
@@ -65,7 +74,6 @@ internal actor VenvSerializer {
         if chainTail == tail { chainTail = nil }
         return try result.get()
     }
-
 
 }
 
@@ -142,10 +150,17 @@ internal struct UvBootstrap {
     // Serialized through VenvSerializer so concurrent callers (Parakeet + MLX warmup
     // at app launch, etc.) don't race each other while creating the venv or running
     // `uv sync` on the same project directory.
-    static func ensureVenv(userPython: String? = nil, log: ((String) -> Void)? = nil) async throws -> URL {
+    static func ensureVenv(
+        userPython: String? = nil,
+        forceRefresh: Bool = false,
+        log: ((String) -> Void)? = nil
+    ) async throws -> URL {
         try await VenvSerializer.shared.run {
-            let uv = try findUv()
             let proj = try projectDir()
+            let key = try preparationKey(project: proj, python: userPython)
+            if !forceRefresh, let cached = await VenvSerializer.shared.preparedPython(for: key) { return cached }
+            await VenvSerializer.shared.invalidatePreparation()
+            let uv = try findUv()
 
             let fm = FileManager.default
             // Copy pyproject.toml and uv.lock from bundle to project dir (if present / newer)
@@ -153,10 +168,13 @@ internal struct UvBootstrap {
 
             // Ensure .venv exists using specified Python (or default)
             let venvDir = proj.appendingPathComponent(".venv", isDirectory: true)
-            if !fm.fileExists(atPath: venvDir.path) {
-                let pythonSpecifier = userPython.flatMap { $0.isEmpty ? nil : $0 } ?? defaultPythonVersion
+            let pythonSpecifier = userPython.flatMap { $0.isEmpty ? nil : $0 } ?? defaultPythonVersion
+            let specFile = proj.appendingPathComponent(".audiowhisper-python-specifier")
+            let previousSpecifier = try? String(contentsOf: specFile, encoding: .utf8)
+            let changedPython = previousSpecifier.map { $0 != pythonSpecifier } ?? (userPython != nil)
+            if !fm.fileExists(atPath: venvDir.path) || changedPython {
                 log?("Creating project .venv with Python \(pythonSpecifier)…")
-                let venvResult = runInDir(uv.path, ["venv", "--python", pythonSpecifier], cwd: proj)
+                let venvResult = runInDir(uv.path, ["venv", "--clear", "--python", pythonSpecifier], cwd: proj)
                 if venvResult.status != 0 {
                     throw UvError.venvCreationFailed(
                         venvResult.stderr.isEmpty ? venvResult.stdout : venvResult.stderr
@@ -181,7 +199,14 @@ internal struct UvBootstrap {
                 proj.appendingPathComponent(".venv/bin/python").path
             ]
             for candidate in candidates where fm.isExecutableFile(atPath: candidate) {
-                return URL(fileURLWithPath: candidate)
+                let python = URL(fileURLWithPath: candidate)
+                guard environmentImportsWork(python: python, project: proj) else {
+                    throw UvError.pythonNotUsable("runtime dependencies could not be imported; reinstall dependencies in Setup")
+                }
+                try pythonSpecifier.write(to: specFile, atomically: true, encoding: .utf8)
+                let preparedKey = try preparationKey(project: proj, python: userPython)
+                await VenvSerializer.shared.rememberPreparation(key: preparedKey, python: python)
+                return python
             }
             throw UvError.pythonNotUsable("project venv python not found")
         }
@@ -226,12 +251,18 @@ internal struct UvBootstrap {
     /// Check if the Python environment is ready (venv exists with python executable)
     static func isEnvReady() async -> Bool {
         do {
-            let proj = try projectDir()
-            let venvPython = proj.appendingPathComponent(".venv/bin/python3")
-            return FileManager.default.isExecutableFile(atPath: venvPython.path)
-        } catch {
-            return false
-        }
+            return try await VenvSerializer.shared.run {
+                let proj = try projectDir()
+                let key = try preparationKey(project: proj, python: nil)
+                if await VenvSerializer.shared.preparedPython(for: key) != nil { return true }
+                for name in ["pyproject.toml", "uv.lock"] {
+                    let bundledHash = try fileHash(bundledProjectFile(name))
+                    guard try bundledHash == fileHash(proj.appendingPathComponent(name)) else { return false }
+                }
+                let python = proj.appendingPathComponent(".venv/bin/python3")
+                return environmentImportsWork(python: python, project: proj)
+            }
+        } catch { return false }
     }
 
     /// Copies `pyproject.toml` AND `uv.lock` from the bundle into the per-user
@@ -246,29 +277,9 @@ internal struct UvBootstrap {
     /// it by never shipping the lock (E1).
     ///
     private static func copyProjectFilesIfNeeded(to proj: URL) throws {
-        let fm = FileManager.default
-        // Check both Bundle.main (build.sh) and SPM module bundle (Xcode builds)
-        let resourceURLs = [Bundle.main.resourceURL, ResourceLocator.moduleBundle?.resourceURL].compactMap { $0 }
-
-        // Support both flattened and nested resource layouts.
-        func candidates(for name: String) -> [URL] {
-            var urls: [URL] = []
-            for res in resourceURLs {
-                urls.append(res.appendingPathComponent(name))
-                urls.append(res.appendingPathComponent("Resources/\(name)"))
-            }
-            return urls
+        for name in ["pyproject.toml", "uv.lock"] {
+            try copyIfDifferent(src: bundledProjectFile(name), dst: proj.appendingPathComponent(name))
         }
-
-        guard let src = candidates(for: "pyproject.toml").first(where: { fm.fileExists(atPath: $0.path) }) else {
-            throw UvError.syncFailed("bundled pyproject.toml is missing; reinstall AudioWhisper")
-        }
-        try copyIfDifferent(src: src, dst: proj.appendingPathComponent("pyproject.toml"))
-
-        guard let lockSrc = candidates(for: "uv.lock").first(where: { fm.fileExists(atPath: $0.path) }) else {
-            throw UvError.syncFailed("bundled uv.lock is missing; reinstall AudioWhisper")
-        }
-        try copyIfDifferent(src: lockSrc, dst: proj.appendingPathComponent("uv.lock"))
     }
 
     // MARK: - Utilities
@@ -356,7 +367,7 @@ internal struct UvBootstrap {
     }
 
     /// SHA-256 of a file's full contents, lower-case hex.
-    private static func fileHash(_ url: URL) throws -> String {
+    static func fileHash(_ url: URL) throws -> String {
         let data = try Data(contentsOf: url)
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
