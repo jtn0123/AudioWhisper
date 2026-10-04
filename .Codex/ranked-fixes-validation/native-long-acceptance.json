@@ -1,0 +1,19 @@
+{
+  "build": "b47fe8e798ab5176afe8606e6327f43c1f11ca46",
+  "fixtureSeconds": 1800,
+  "resultObservedBySeconds": 33.568,
+  "wordCount": 5778,
+  "usageBefore": {
+    "sessions": 5,
+    "words": 48
+  },
+  "usageAfter": {
+    "sessions": 6,
+    "words": 5826
+  },
+  "cancelReturnedIdle": true,
+  "cancelDeliveredLateTranscript": false,
+  "cancelUsageChanged": false,
+  "pcmLeaseRemovedAfterWorkerCompletion": true,
+  "transcriptSavedToLibrary": false
+}

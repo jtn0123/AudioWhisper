@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-04",
+  "fixture": "Generated three-hour 16kHz mono Float32 WAV; loaders run in separate XCTest processes, sequentially. Peak RSS includes XCTest and excludes model inference.",
+  "results": {
+    "pcm-stream": [
+      "AUDIO_PREPARATION_BENCHMARK mode=pcm-stream seconds=10800 samples=172800000 largestChunk=4096 elapsed=0.250873541 seconds peakRSSBytes=31096832",
+      "AUDIO_PREPARATION_CANCEL mode=pcm-stream elapsed=0.000328042 seconds partialFileRemoved=true"
+    ],
+    "pcm-reference": [
+      "AUDIO_PREPARATION_BENCHMARK mode=pcm-reference seconds=10800 samples=172800000 largestChunk=172800000 elapsed=0.196827875 seconds peakRSSBytes=1413300224"
+    ],
+    "whisper-full": [
+      "AUDIO_PREPARATION_BENCHMARK mode=whisper-full seconds=10800 samples=172800000 largestChunk=172800000 elapsed=0.3844745 seconds peakRSSBytes=1989820416"
+    ],
+    "whisper-incremental": [
+      "AUDIO_PREPARATION_BENCHMARK mode=whisper-incremental seconds=10800 samples=172800000 largestChunk=480000 elapsed=0.283926833 seconds peakRSSBytes=62390272",
+      "AUDIO_PREPARATION_CANCEL mode=whisper-incremental elapsed=2.4e-05 seconds"
+    ],
+    "waveform": [
+      "WAVEFORM_BENCHMARK iterations=10000 direct=0.095769917 seconds copiedSlices=0.257933708 seconds"
+    ]
+  }
+}

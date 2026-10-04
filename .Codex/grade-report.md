@@ -3,8 +3,10 @@
 **Project:** AudioWhisper Rebuild
 **Audited:** 2026-10-04
 **Stack:** Native macOS SwiftUI/AppKit, SwiftData, AVFoundation, WhisperKit/Core ML, bundled uv/Python with Parakeet and MLX.
-**Version:** `rebuild/native-v2`; audit checkout `2d3e058`, packaged source `f0cc89a40dd380668c432ec186826772f3cd2b03`. Later commits contain documentation/evidence only. Backend means local engines and services.
+**Version:** `rebuild/native-v2`; audit checkout `2d3e058`, packaged source `f0cc89a40dd380668c432ec186826772f3cd2b03`. This version identifies the historical audit snapshot; subsequent selected fixes are tracked in the execution follow-up. Backend means local engines and services.
 **Previous reports:** [2026-10-03 rebuild audit](baseline-2026-10-03-native-v2/grade-report.md); [original app baseline](baseline-f3adb17/grade-report.md).
+**Execution follow-up (2026-10-04):** Selected ranks 1–9 and 14–17 are implemented; D3 remains partially verified. See [ranked fixes and native matrix](ranked-fixes-validation.md). Grades and original findings below describe the audit snapshot; current open counts exclude implemented items.
+
 **Fix evidence:** [Recommended fixes and native validation](recommended-fixes-validation.md). Existing IDs are retained; completed issues are excluded from open-item counts. B3 is new.
 
 ## Summary
@@ -12,17 +14,17 @@
 | ID | Category | Grade | Open items |
 |----|----------|-------|------------|
 | A | Architecture & Design | B+ | 0 |
-| B | Backend Quality | B | 1 |
+| B | Backend Quality | B | 0 |
 | C | Frontend Quality | B | 0 |
-| D | Testing & Reliability | B− | 2 |
+| D | Testing & Reliability | B− | 1 |
 | E | Security | B | 1 |
-| F | Dependencies & Tech Currency | B− | 3 |
-| G | Performance & Scalability | B | 2 |
+| F | Dependencies & Tech Currency | B− | 1 |
+| G | Performance & Scalability | B | 0 |
 | H | Documentation & Onboarding | B | 2 |
-| I | Developer Experience & Tooling | B | 2 |
-| **Overall** | | **B** | **13** |
+| I | Developer Experience & Tooling | B | 0 |
+| **Overall** | | **B** | **5** |
 
-**Top 5 highest-leverage fixes:** F1, D2, B3, G1, E2.
+**Remaining work after selected fixes:** D3, E2, H2, F2, H1.
 
 The rebuild improves from C+ to B because the confirmed setup, input, interruption, verification, retry and Library defects are now addressed with meaningful regression coverage. This is a solid local preview. Remaining work concerns the full production delivery test, native shortcut/paste/device acceptance, long-import memory, a pointer-lifetime defect and public distribution requirements. The grade is an evidence-based judgment, not a test-count average or a release certification.
 
@@ -65,7 +67,9 @@ Selected UID routing, unavailable-input errors and device-specific boost/restora
 
 Failed load verdicts block capture/import across refresh and relaunch until successful repair or changed assets invalidate them. Failure, repair, stale-result, changed-asset and thrown-error regressions are in `Tests/RebuildModelVerificationTests.swift:52-132`; fresh native Parakeet verification succeeded.
 
-#### B3 — Keep decoder writes inside the buffer's unsafe-access scope
+#### ~~B3~~ ✓ done 2026-10-04 — Keep decoder writes inside the buffer's unsafe-access scope
+
+**Completed:** Unsafe decoder writes are scoped inside the access closure; streaming conversion retains this contract. PCM parity/error/cancellation checks pass. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Services/ParakeetService.swift:212-221`.
 - **What's wrong:** `AudioBuffer.mData` escapes `withUnsafeMutableBytes`, then `ExtAudioFileRead` writes through it after the closure has returned. Swift guarantees this pointer only within that closure; this is a source-confirmed contract violation, not an observed crash. [Apple API contract](https://developer.apple.com/documentation/swift/array/withunsafemutablebytes%28_%3A%29).
@@ -98,7 +102,9 @@ Coordinator tests now exercise real injected permission/setup transitions rather
 
 Injectable permission, runtime/cache and installation services cover coalescing/denial, blocked recording commands, stale selection refresh, install failure/retry and maintenance. These tests simulate consent outcomes; they do not grant OS permissions.
 
-#### D2 — Finish isolated integration coverage of launched delivery [both]
+#### ~~D2~~ ✓ done 2026-10-04 — Finish isolated integration coverage of launched delivery [both]
+
+**Completed:** Live rebuild assembly accepts isolated delivery destinations; eight real-pipeline/pasteboard/SwiftData integration cases pass. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Rebuild/RebuildSession.swift:47-73,260-287`; `Tests/RebuildLibraryInvalidationTests.swift:40-45`; `Tests/RecordingDeliveryIntegrationTests.swift:37-52`.
 - **What's wrong:** The Library regression uses a real store but replaces transcription and clipboard. The complete isolated pipeline/clipboard/history test still constructs legacy RecordingViewModel, while the live rebuild factory hardwires global destinations.
@@ -108,6 +114,8 @@ Injectable permission, runtime/cache and installation services cover coalescing/
 - **Grade lift:** B− → B, by verifying the launched delivery path rather than its pieces alone.
 
 #### D3 — Complete the build-specific native acceptance matrix [FE]
+
+**Partially verified:** The per-scenario matrix distinguishes final-bundle setup/long-import/cancellation evidence from predecessor shortcut/editor/search checks; UI code is unchanged in the final follow-up. Microphone and Accessibility consent, physical keys, full-screen/hardware and native mounted-save rows remain open as recorded in [the matrix](ranked-fixes-validation.md).
 
 - **Where:** `.github/workflows/ci.yml:385-400`; `.Codex/recommended-fixes-validation.md:31-42`; `docs/rebuild.md:42`.
 - **What's wrong:** Packaged diagnostics exit without GUI interaction. Physical shortcut/hold, Smart Paste, full-screen Spaces, actual disconnect/sleep and mounted-Library native save lack current build-specific acceptance evidence.
@@ -141,7 +149,9 @@ Bundled 0.12.23 and the runtime minimum 0.11.15 address the reviewed vendor advi
 
 Swift/Python locks and frozen runtime synchronization support reproducibility (`Package.resolved:4-27`, `Sources/Resources/uv.lock`). Weekly monitoring covers standard dependency ecosystems (`.github/dependabot.yml:3-29`), and the affected bundled installer was upgraded. Two vendor improvements directly relevant to shortcuts and large audio imports remain unapplied; the separately pinned installer lacks an advisory signal. A newer version alone is not treated as a reproduced app bug.
 
-#### F1 — Update KeyboardShortcuts
+#### ~~F1~~ ✓ done 2026-10-04 — Update KeyboardShortcuts
+
+**Completed:** KeyboardShortcuts 3.1.0 is locked. Native custom/cleared/disabled recording and matching Record hints pass. Physical/menu-open delivery stays in D3. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Package.resolved:13-18`; `Package.swift:16`; `Sources/Rebuild/RebuildPreferencesView.swift:38`.
 - **What's wrong:** Locked 3.0.1 omits [vendor 3.1.0 fixes](https://github.com/sindresorhus/KeyboardShortcuts/releases/tag/3.1.0) for the recorder ignoring registered shortcuts and function-key delivery while menus are open. Vendor evidence is fresh; corresponding app failures were not reproduced.
@@ -159,7 +169,9 @@ Swift/Python locks and frozen runtime synchronization support reproducibility (`
 - **Effort:** S.
 - **Grade lift:** B− → B with F1, by protecting the installer update process.
 
-#### F3 — Adopt incremental Argmax audio loading
+#### ~~F3~~ ✓ done 2026-10-04 — Adopt incremental Argmax audio loading
+
+**Completed:** Argmax 1.1.0 incremental loading is enabled. Exact short-speech parity and three-hour loader RSS/cancellation measurements pass. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Package.resolved:4-9`; `Sources/Services/LocalWhisperService.swift:190-192`.
 - **What's wrong:** Locked SDK 1.0.0 uses whole-file loading. [Vendor 1.1.0](https://github.com/argmaxinc/argmax-oss-swift/releases/tag/v1.1.0) provides bounded incremental loading; the current call cannot opt into it. No app OOM was reproduced.
@@ -174,7 +186,9 @@ Swift/Python locks and frozen runtime synchronization support reproducibility (`
 
 Python retains one engine cache at a time, and Whisper uses an LRU with memory-pressure handling (`Sources/ml/loader.py:30-84`, `Sources/Services/LocalWhisperService.swift:87-93,123,144-155`). Capture publications are throttled, Library uses 50-row paging and export streams results (`Sources/Services/Audio/AudioEngineRecorder.swift:295-312`, `Sources/Rebuild/RebuildLibraryView.swift:117-121,141-148`). Prior cold/warm fixture timing demonstrates reuse on this Mac, not a comprehensive latency benchmark. Whole-file preparation and avoidable waveform allocations remain concrete hotspots.
 
-#### G1 — Stream Parakeet conversion with bounded memory
+#### ~~G1~~ ✓ done 2026-10-04 — Stream Parakeet conversion with bounded memory
+
+**Completed:** 4,096-frame conversion bounds Swift preparation and removes partial output on cancellation. A native 30-minute import exposed a 32 GB attention allocation; the follow-up reads/generates overlapping two-minute chunks and the same real fixture now succeeds. Separate loader and inference measurements are recorded. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Services/ParakeetService.swift:129-141,198-235`; `Sources/Services/Audio/AudioValidator.swift:24-28,112-126`.
 - **What's wrong:** Decoding appends the complete PCM file into a Float array, then creates another complete Data buffer. Validation imposes no size/duration limit; the conversion loop does not check cancellation.
@@ -183,7 +197,9 @@ Python retains one engine cache at a time, and Whisper uses an LRU with memory-p
 - **Effort:** M.
 - **Grade lift:** B → B+ with G2, by bounding supported audio preparation.
 
-#### G2 — Remove per-bin waveform slice allocations
+#### ~~G2~~ ✓ done 2026-10-04 — Remove per-bin waveform slice allocations
+
+**Completed:** RMS uses the original sample buffer. Output/remainder checks and the repeated-call benchmark pass. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift:90-102`; `Sources/Services/Audio/AudioEngineRecorder.swift:303-312`.
 - **What's wrong:** Each published waveform computes 128 RMS bins by allocating an Array for every slice, despite already-throttled publication.
@@ -222,7 +238,9 @@ Python retains one engine cache at a time, and Whisper uses an LRU with memory-p
 
 Primary CI runs strict Swift/Python checks, coverage and packaged diagnostics (`.github/workflows/ci.yml:187-188,248-306,347-400`). Resource-complete packaging and identity checks address failures that a bare executable cannot reveal. Normal make run still performs universal release packaging (`Makefile:22-29`, `scripts/build.sh:110-113,161-203`), and Sonar independently reruns the suite (`.github/workflows/sonarcloud.yml:51-71`). These costs slow an otherwise useful verification loop.
 
-#### I1 — Add incremental native development packaging
+#### ~~I1~~ ✓ done 2026-10-04 — Add incremental native development packaging
+
+**Completed:** Resource-complete host debug packaging/signing passes twice (9.05 s, 6.05 s). Release packaging remains universal. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Makefile:22-29`; `scripts/build.sh:110-113,161-203`.
 - **What's wrong:** Ordinary make run builds both release architectures and recreates the complete app bundle.
@@ -231,7 +249,9 @@ Primary CI runs strict Swift/Python checks, coverage and packaged diagnostics (`
 - **Effort:** M.
 - **Grade lift:** B → B+ with I2, by shortening the normal iteration loop.
 
-#### I2 — Reuse primary CI coverage in Sonar
+#### ~~I2~~ ✓ done 2026-10-04 — Reuse primary CI coverage in Sonar
+
+**Completed:** Primary test jobs export coverage once; same-run Sonar verifies report provenance. Real reports and seven rejection/acceptance tests pass; the Sonar scan retains master/PR scope. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `.github/workflows/ci.yml:105`; `.github/workflows/sonarcloud.yml:51-71`.
 - **What's wrong:** Master pushes/PRs run the full Swift suite separately for Sonar rather than consuming primary CI's coverage output.

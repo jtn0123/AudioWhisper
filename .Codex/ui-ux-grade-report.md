@@ -9,6 +9,8 @@
 **Previous reports:** [2026-10-03 rebuild audit](baseline-2026-10-03-native-v2/ui-ux-grade-report.md); [original app baseline](baseline-f3adb17/ui-ux-grade-report.md).
 **ID scope:** Existing UI IDs are retained. Prefix requests with **UI** to distinguish them from code IDs. Completed items are excluded from open counts.
 
+**Execution follow-up (2026-10-04):** All four selected UI fixes are implemented. [Ranked validation and native acceptance](ranked-fixes-validation.md) record tests and remaining D3 OS/hardware checks. The B grades retain their audit meaning; original finding text is preserved below.
+
 ## Summary
 
 | ID | Category | Grade | Open items |
@@ -16,15 +18,15 @@
 | A | Visual Design & Theme Cohesion | B | 0 |
 | B | Layout, Information Architecture & Navigation | B | 0 |
 | C | Interaction Design & Workflow Quality | B | 0 |
-| D | Accessibility & Inclusive UX | B− provisional | 1 |
-| E | Responsive & Cross-State Experience | B− provisional | 1 |
+| D | Accessibility & Inclusive UX | B− provisional | 0 |
+| E | Responsive & Cross-State Experience | B− provisional | 0 |
 | F | Frontend Code & Design System Health | B | 0 |
-| G | UI Performance & Asset Efficiency | B− provisional | 1 |
+| G | UI Performance & Asset Efficiency | B− provisional | 0 |
 | H | Data Linkages & State Reliability | B | 0 |
-| I | Polish, Delight & Product Feel | B− | 1 |
-| **Overall** | | **B** | **4** |
+| I | Polish, Delight & Product Feel | B− | 0 |
+| **Overall** | | **B** | **0** |
 
-**Top 5 highest-leverage actions:** UI I1, UI D1, UI G1, UI E1, and **code D3** (native acceptance). There are four open UI findings; the fifth action closes a validation gap tracked in the code report.
+**Remaining native acceptance:** code D3. The four UI implementation findings are completed; OS/hardware acceptance remains separately tracked.
 
 The previous C+ grade was driven by misleading state and incomplete device/data linkages. Those defects are now addressed, and this local preview earns B for its coherent utility design, clearer setup and working core recording path. A higher grade needs physical shortcut/Smart Paste/accessibility acceptance and measured large-file performance, alongside the remaining polish. B does not mean every macOS interaction or distribution requirement is complete.
 
@@ -68,7 +70,9 @@ Shared titles, enabled states and reasons are implemented with state-matrix regr
 
 Fresh AX trees expose selected navigation, named recording/import actions, checkboxes, pickers and a microphone-level value. Escape cancellation and Reduce Motion handling are connected (`Sources/Rebuild/RebuildWorkspace.swift:47`, `Sources/Views/Components/Waveform/WaveformContainer.swift:171,350`, `WaveformSubviews.swift:42-46`). Repeated profile/history actions and text editors still omit explicit target names. Actual VoiceOver, complete keyboard/focus order and measured contrast were not tested, limiting confidence.
 
-#### D1 — Name editors and repeated actions by their purpose
+#### ~~D1~~ ✓ done 2026-10-04 — Name editors and repeated actions by their purpose
+
+**Completed:** Native AX confirms Your transcript, Edit Terminal/Coding/etc. profile and Cleanup instructions for Terminal profile. Library Copy/Delete actions include transcript dates in source; complete VoiceOver navigation remains D3. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Rebuild/RebuildWorkspace.swift:209-210`; `Sources/Rebuild/RebuildWritingView.swift:97-102,131,217-218`; `Sources/Rebuild/RebuildLibraryView.swift:59-64`; [Writing AX](ui-ux-audit/2026-10-04-regrade/writing.ax.txt).
 - **Evidence:** Fresh AX lists six generic Edit buttons; source editors have no explicit accessibility names, and history actions reuse generic Copy/Delete. No severe VoiceOver failure is claimed without a VoiceOver run.
@@ -86,7 +90,9 @@ Fresh AX trees expose selected navigation, named recording/import actions, check
 
 The [history-off Library](ui-ux-audit/2026-10-04-regrade/library-off.png) clearly explains optional saving. Fresh Ready/verification/Listening/cancel states work, and coordinator/session tests cover denied consent, install failure/retry, stale refresh and failure ownership (`Tests/RebuildSetupTests.swift:42-141`, `Sources/Rebuild/RebuildSession.swift:151-193,325-424`). Current dark/system layouts are readable. Filtered-empty copy remains ambiguous, and other appearance/window/content/error combinations lack fresh visual evidence.
 
-#### E1 — Separate no search results from an empty Library
+#### ~~E1~~ ✓ done 2026-10-04 — Separate no search results from an empty Library
+
+**Completed:** Native nonempty search displays No matching transcripts; Clear search restores the true empty-library copy. History was returned to off and no test transcript was stored. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:43-46`; [history-off Library](ui-ux-audit/2026-10-04-regrade/library-off.png).
 - **Evidence:** Source uses the same empty-list message when saved transcripts do not match a query and when none exist. Fresh runtime only inspected history-off; the populated filtered state was not exercised.
@@ -110,7 +116,9 @@ Purpose-specific views reuse theme, page headings and section components (`Sourc
 
 Library uses 50-row paging/LazyVStack, deferred search and streamed export (`Sources/Rebuild/RebuildLibraryView.swift:43-81,117-121,141-148`). Capture publication is throttled and Reduce Motion is connected (`Sources/Services/Audio/AudioEngineRecorder.swift:295-312`, `Sources/Views/Components/Waveform/WaveformContainer.swift:171,350`). Native navigation worked, and prior same-source cold/warm fixtures support cache reuse. Whole-file decoding remains a real memory hotspot; no quantitative UI/large-file benchmark supports a higher grade.
 
-#### G1 — Bound memory during long audio imports
+#### ~~G1~~ ✓ done 2026-10-04 — Bound memory during long audio imports
+
+**Completed:** Production PCM conversion and Argmax incremental loading have short-file parity, three-hour loading RSS and active cancellation evidence. A subsequent native 30-minute import reproduced a 32 GB allocation failure. Bounded Python inference now completes that fixture; separate process/MLX peak measurements and native cancellation checks are recorded. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Services/ParakeetService.swift:129-141,198-235`; `Sources/Services/LocalWhisperService.swift:190-192`; `Package.resolved:4-9`.
 - **Evidence:** Parakeet retains complete decoded PCM plus another Data copy; validation has no size/duration limit. Locked Argmax 1.0.0 uses whole-file loading; [vendor 1.1.0 supplies incremental loading](https://github.com/argmaxinc/argmax-oss-swift/releases/tag/v1.1.0). App peak RSS and OOM behavior were not measured.
@@ -150,7 +158,9 @@ Successful SwiftData mutation advances an observed revision; query-preserving re
 
 The warm restrained identity and optional-feature/privacy copy give the rebuilt utility a consistent feel ([Record](ui-ux-audit/2026-10-04-regrade/record-ready.png), [Library](ui-ux-audit/2026-10-04-regrade/library-off.png)). Preferences clearly groups recording, delivery, privacy and appearance ([capture](ui-ux-audit/2026-10-04-regrade/preferences.png)). The configured shortcut still appears only in Preferences; Record always presents generic enable-in-Preferences guidance (`Sources/Rebuild/RebuildWorkspace.swift:155-158`). Surfacing this frequent control matters more than adding decorative animation.
 
-#### I1 — Show the configured shortcut where recording happens
+#### ~~I1~~ ✓ done 2026-10-04 — Show the configured shortcut where recording happens
+
+**Completed:** The native Record view opens Preferences directly and displays enabled, disabled and cleared shortcuts correctly. Custom shortcut recording passed in packaged predecessor `3f66210` (UI unchanged in final `b47fe8e`); menu/physical-key acceptance remains D3. [Validation](ranked-fixes-validation.md). Original finding preserved below.
 
 - **Where:** `Sources/Rebuild/RebuildWorkspace.swift:155-158`; `Sources/Rebuild/RebuildStatusController.swift:11,34-40`; `Sources/Rebuild/RebuildPreferencesView.swift:35-38`; [Record](ui-ux-audit/2026-10-04-regrade/record-ready.png) and [Preferences](ui-ux-audit/2026-10-04-regrade/preferences.png).
 - **Evidence:** Fresh Record shows generic shortcut advice; Preferences shows ⇧⌘Space with enable off. Source keeps the generic copy even when enabled, and menu keyEquivalent is empty. Custom/enabled/cleared behavior was not physically tested.

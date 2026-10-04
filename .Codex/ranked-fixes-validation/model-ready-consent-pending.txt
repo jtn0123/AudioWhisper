@@ -1,0 +1,38 @@
+Window: "AudioWhisper Rebuild", App: AudioWhisper Rebuild.
+0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
+	1 container
+		2 image Description: Waveform In A Filled Circle, ID: waveform.circle.fill
+		3 text MODELS & SETUP On your Mac Audio
+Whisper REBUILD / NATIVE V2
+		4 button Record
+		5 button Library
+		6 button (selected) Models & setup
+		7 button Writing profiles
+		8 button Preferences
+		9 text Allow microphone access Private by default.
+No cloud transcription.
+		10 scroll area
+			11 text Set up once. Speak freely. Two essentials: microphone access and an installed voice model. Everything else is optional. 01 / MICROPHONE Microphone access needed
+			12 button (disabled) Waiting for macOS…
+			13 text Requested only when you click Allow. The recording shortcut never opens a permission dialog. 02 / VOICE MODEL
+			14 Engine
+				15 radio button Description: Parakeet · fast & multilingual, Value: 1
+				16 radio button Description: Whisper · Intel & Apple Silicon, Value: 0
+			17 pop up button Model, Value: v3 · 25 languages
+			18 text Parakeet runs locally on Apple Silicon. Installation includes its Python runtime. Installed on this Mac
+			19 button Check installation
+			20 button Verify model
+			21 button Remove selected model
+			22 text Model ready (offline) Allow microphone access
+			23 button Description: Finish setup, Help: Allow microphone access in Voice Models.
+			24 text APP-MANAGED STORAGE Models and runtime files stay in Application Support. Setup does not scan your Documents, Desktop, or Downloads. /Users/justin/Library/Application Support/AudioWhisper Rebuild
+	25 text AudioWhisper Rebuild
+	26 menu button Window sharing
+27 menu bar
+	28 AudioWhisper Rebuild
+	29 Edit
+	30 View
+	31 Window
+	32 Help
+
+The focused UI element is 0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
