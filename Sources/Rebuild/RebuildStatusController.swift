@@ -1,4 +1,5 @@
 import AppKit
+import KeyboardShortcuts
 
 /// A native menu delegate can switch to accessory mode before opening over a
 /// full-screen Space. SwiftUI MenuBarExtra does not expose that lifecycle hook.
@@ -33,11 +34,21 @@ final class RebuildStatusController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         ActivationPolicyController.shared.statusMenuWillOpen()
+        recordItem.setShortcut(for: AppDefaults.defaults.bool(forKey: "rebuild.shortcutEnabled") ? .rebuildRecording : nil)
+        // AppKit handles the menu equivalent while tracking. Pausing Carbon
+        // avoids buffering a second invocation until the menu closes.
+        KeyboardShortcuts.disable(.rebuildRecording)
         recordItem.title = session.recordingActionTitle
         recordItem.isEnabled = session.canToggleRecording
         recordItem.toolTip = session.recordingBlockedReason
         menu.items[2].isEnabled = session.canImportAudio
         menu.items[2].toolTip = session.fileBlockedReason
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        if AppDefaults.defaults.bool(forKey: "rebuild.shortcutEnabled"), WindowServer.canRegisterGlobalHotkeys {
+            KeyboardShortcuts.enable(.rebuildRecording)
+        }
     }
 
     private func action(_ title: String, selector: Selector) -> NSMenuItem {

@@ -35,7 +35,7 @@ struct RebuildPreferencesView: View {
                     Toggle("Enable the rebuild’s recording shortcut", isOn: $shortcutEnabled)
                     Text("Keep this off while the original app uses the same shortcut.").font(.caption).foregroundStyle(
                         .secondary)
-                    KeyboardShortcuts.Recorder("Recording shortcut", name: .rebuildRecording)
+                    KeyboardShortcuts.Recorder("Recording shortcut", name: .rebuildRecording) { _ in settingsChanged() }
                     Toggle("Express Mode · record without showing the overlay", isOn: $express)
                     Toggle("Record while holding a modifier key", isOn: $holdEnabled)
                     if holdEnabled {

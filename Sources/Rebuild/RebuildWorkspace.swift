@@ -1,4 +1,5 @@
 import AppKit
+import KeyboardShortcuts
 import SwiftUI
 
 enum RebuildTheme {
@@ -33,7 +34,10 @@ struct RebuildRootView: View {
                 Divider()
                 Group {
                     switch navigation.selection {
-                    case .record: RebuildRecordView(session: session, recorder: recorder, importAudio: importAudio)
+                    case .record:
+                        RebuildRecordView(
+                            session: session, recorder: recorder, importAudio: importAudio,
+                            configureShortcut: { navigation.selection = .preferences })
                     case .library: RebuildLibraryView()
                     case .models: RebuildModelsView(session: session)
                     case .writing: RebuildWritingView(session: session)
@@ -119,6 +123,21 @@ struct RebuildRecordView: View {
     @Bindable var session: RebuildSession
     @ObservedObject var recorder: AudioEngineRecorder
     let importAudio: () -> Void
+    var configureShortcut: () -> Void = {}
+    @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
+    @State private var shortcut = KeyboardShortcuts.getShortcut(for: .rebuildRecording)?.description
+
+    private var shortcutHint: String {
+        guard shortcutEnabled else {
+            return session.phase == .recording
+                ? "Click stop to finish. Recording shortcut is off."
+                : "Recording shortcut is off. Click the microphone or set up your shortcut."
+        }
+        guard let shortcut else { return "No recording shortcut assigned. Choose your keys in Preferences." }
+        return session.phase == .recording
+            ? "Press \(shortcut) or click stop to finish recording."
+            : "Press \(shortcut) or click the microphone to record."
+    }
 
     var body: some View {
         ScrollView {
@@ -155,9 +174,10 @@ struct RebuildRecordView: View {
                             Text(
                                 session.phase == .transcribing
                                     ? "You can cancel while the local model works."
-                                    : "Click the microphone, or enable your shortcut in Preferences."
+                                    : shortcutHint
                             )
                             .font(.subheadline).foregroundStyle(.secondary)
+                            Button("Configure shortcut", action: configureShortcut).buttonStyle(.link).font(.caption)
                             if session.phase == .recording {
                                 ProgressView(value: Double(recorder.audioLevel)).frame(width: 220)
                                     .accessibilityLabel("Microphone level")
@@ -219,6 +239,9 @@ struct RebuildRecordView: View {
                 }
                 RebuildUsageView()
             }.padding(36).frame(maxWidth: 950, alignment: .leading)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .rebuildSettingsChanged)) { _ in
+            shortcut = KeyboardShortcuts.getShortcut(for: .rebuildRecording)?.description
         }
         .dropDestination(for: URL.self) { urls, _ in
             guard urls.count == 1, let url = urls.first, session.canImportAudio else { return false }
