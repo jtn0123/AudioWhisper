@@ -396,24 +396,23 @@ sign_app() {
     echo "🔏 Code signing app with: $identity"
   fi
 
-  codesign --force --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements AudioWhisper.app
-  if [ $? -eq 0 ]; then
-    echo "🔍 Verifying signature..."
-    codesign --verify --verbose AudioWhisper.app
-    echo "✅ App signed successfully"
-    return 0
-  else
-    echo "❌ Code signing failed"
-    return 1
-  fi
+  codesign --force --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements AudioWhisper.app || return 1
+  echo "🔍 Verifying signature..."
+  codesign --verify --strict --verbose AudioWhisper.app || return 1
+  echo "✅ App signed successfully"
 }
 
-# Optional: Code sign the app (requires Apple Developer account)
+# TCC identifies microphone clients through their code signing requirement.
+# The linker's executable-only signature has neither a bound Info.plist nor
+# sealed bundle resources. Even local previews must sign the completed bundle.
+# Ad-hoc signing retains permission for this build across launches; a Developer
+# ID is still required to retain that identity across different releases.
 if [ -n "$SIGNING_IDENTITY" ]; then
-  sign_app "$SIGNING_IDENTITY" "$SIGNING_NAME"
+  sign_app "$SIGNING_IDENTITY" "$SIGNING_NAME" || exit 1
 else
-  echo "💡 No Developer ID found. App will be unsigned."
-  echo "💡 To sign the app, get a Developer ID certificate from Apple Developer Portal."
+  echo "🔏 Signing the local preview ad hoc (not a notarized release)."
+  codesign --force --sign - --entitlements AudioWhisper.entitlements AudioWhisper.app || exit 1
+  codesign --verify --strict --verbose AudioWhisper.app || exit 1
 fi
 
 FINAL_UV_SHA256=$(shasum -a 256 AudioWhisper.app/Contents/Resources/bin/uv | awk '{print $1}')
@@ -492,4 +491,4 @@ fi
 
 echo "✅ Build complete!"
 echo ""
-open -R AudioWhisper.app
+echo "Preview: $PWD/AudioWhisper.app"

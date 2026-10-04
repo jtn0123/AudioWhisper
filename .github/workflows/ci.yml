@@ -352,6 +352,11 @@ jobs:
           test -x "$APP/Contents/MacOS/AudioWhisper" || { echo "::error::Missing executable"; exit 1; }
           test -f "$APP/Contents/Info.plist" || { echo "::error::Missing Info.plist"; exit 1; }
           plutil -lint "$APP/Contents/Info.plist"
+          # A linker-only signature leaves the bundle unidentified to TCC.
+          # Local previews also need a complete, verified bundle signature.
+          codesign --verify --strict --verbose "$APP"
+          codesign -d -r- "$APP" 2>&1 | grep -q 'designated =>'
+          codesign -dv "$APP" 2>&1 | grep -q '^Identifier=com.audiowhisper.rebuild$'
           # Confirm Python bootstrap binary made it into the bundle
           test -f "$APP/Contents/Resources/bin/uv" -o -f "$APP/Contents/Resources/uv" \
             || echo "::warning::uv binary not found in bundled Resources (may be missing for dev builds)"
@@ -368,8 +373,9 @@ jobs:
             test -d "$APP/Contents/Resources/$bundle.bundle" \
               || { echo "::error::Missing SwiftPM resource bundle $bundle"; exit 1; }
           done
-          test -f "$APP/Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle/Contents/Resources/en.lproj/Localizable.strings" \
-            || { echo "::error::Missing shortcut editor localization"; exit 1; }
+          # SwiftPM versions package macOS resources in either a flat bundle
+          # or Contents/Resources. Validate runtime resolution through Foundation.
+          xcrun swift -e 'import Foundation; let path = "AudioWhisper.app/Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle"; guard let bundle = Bundle(path: path), let url = bundle.url(forResource: "Localizable", withExtension: "strings", subdirectory: nil, localization: "en"), FileManager.default.fileExists(atPath: url.path) else { fatalError("Missing shortcut editor localization") }'
           # Confirm version was stamped (not left as a placeholder)
           if grep -q "VERSION_PLACEHOLDER\|BUILD_PLACEHOLDER" "$APP/Contents/MacOS/AudioWhisper" 2>/dev/null; then
             echo "::warning::Version placeholders found unsubstituted in binary"

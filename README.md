@@ -47,7 +47,7 @@ make build                        # produces the preview at AudioWhisper.app
 make run                          # installs beside the original as AudioWhisper Rebuild.app
 ```
 
-`make run` preserves `/Applications/AudioWhisper.app`. The preview is not signed/notarized for distribution without a configured signing identity.
+`make run` preserves `/Applications/AudioWhisper.app`. Without a configured signing identity, the completed preview bundle is signed ad hoc for local use. macOS retains its permissions for that build across launches; a different build can require a new grant. Distribution still requires a Developer ID and notarization.
 
 > Looking for a prebuilt `.app` or `brew install`? Those are published by
 > **upstream** ([mazdak/AudioWhisper](https://github.com/mazdak/AudioWhisper/releases),
