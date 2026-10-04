@@ -5,6 +5,7 @@ import SwiftData
 /// Mock implementation for DataManager to avoid SwiftData operations in tests
 @MainActor
 final class MockDataManager: DataManagerProtocol {
+    let historyRevision = HistoryRevision()
     // MARK: - State
 
     var isHistoryEnabled: Bool = true

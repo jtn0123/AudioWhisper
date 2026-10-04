@@ -3,6 +3,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct RebuildLibraryView: View {
+    private struct LoadRequest: Hashable {
+        let search: String
+        let enabled: Bool
+        let revision: UInt64
+    }
     @AppDefault(\.transcriptionHistoryEnabled) private var historyEnabled
     @State private var records: [TranscriptionRecord] = []
     @State private var search = ""
@@ -67,13 +72,14 @@ struct RebuildLibraryView: View {
                 if loading { ProgressView().controlSize(.small) }
             }
         }.padding(36)
-            .task(id: search) {
+            .task(id: LoadRequest(
+                search: search, enabled: historyEnabled, revision: DataManager.shared.historyRevision.value)
+            ) {
                 do {
                     try await Task.sleep(for: .milliseconds(200))
                     await load(reset: true)
                 } catch {}
             }
-            .onChange(of: historyEnabled) { _, _ in Task { await load(reset: true) } }
             .confirmationDialog("Delete every saved transcript permanently?", isPresented: $confirmClear) {
                 Button("Clear library", role: .destructive) {
                     Task {
@@ -106,10 +112,11 @@ struct RebuildLibraryView: View {
         loading = true
         defer { loading = false }
         let query = search
+        let revision = DataManager.shared.historyRevision.value
         do {
             let page = try await DataManager.shared.fetchRecords(
                 limit: 50, offset: reset ? 0 : records.count, search: query)
-            guard !Task.isCancelled, query == search else { return }
+            guard !Task.isCancelled, query == search, revision == DataManager.shared.historyRevision.value else { return }
             records = reset ? page : records + page
             hasMore = page.count == 50
             error = nil

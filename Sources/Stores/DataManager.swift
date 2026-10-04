@@ -66,6 +66,7 @@ internal protocol DataManagerProtocol {
     var isHistoryEnabled: Bool { get }
     var retentionPeriod: RetentionPeriod { get set }
     var sharedModelContainer: ModelContainer? { get }
+    var historyRevision: HistoryRevision { get }
 
     func initialize() throws
     func saveTranscription(_ record: TranscriptionRecord) async throws
@@ -112,6 +113,7 @@ internal protocol DataManagerProtocol {
 
 @MainActor
 internal final class DataManager: DataManagerProtocol {
+    let historyRevision = HistoryRevision()
     nonisolated(unsafe) static let shared: DataManagerProtocol = MainActor.assumeIsolated {
         DataManager()
     }
@@ -197,6 +199,7 @@ internal final class DataManager: DataManagerProtocol {
             let context = ModelContext(container)
             context.insert(record)
             try context.save()
+            historyRevision.advance()
 
             Logger.dataManager.info("Saved transcription record with ID: \(record.id)")
 
@@ -248,6 +251,7 @@ internal final class DataManager: DataManagerProtocol {
 
             context.delete(recordToDelete)
             try context.save()
+            historyRevision.advance()
 
             Logger.dataManager.info("Deleted transcription record with ID: \(record.id)")
 
@@ -281,6 +285,7 @@ internal final class DataManager: DataManagerProtocol {
             // in memory purely to throw it away.
             try context.delete(model: TranscriptionRecord.self)
             try context.save()
+            historyRevision.advance()
 
             Logger.dataManager.info("Deleted all transcription records")
 
@@ -322,6 +327,7 @@ internal final class DataManager: DataManagerProtocol {
             try context.save()
 
             if !expiredRecords.isEmpty {
+                historyRevision.advance()
                 Logger.dataManager.info("Cleaned up \(expiredRecords.count) expired transcription records")
             }
 

@@ -106,13 +106,16 @@ Small views share one observable session and theme (`Sources/Rebuild/RebuildWork
 
 **Implementation evidence:** Record, Voice Models and the status menu share titles, enabled states and blocked reasons. Import is gated before opening a picker or accepting a drop; retry remains visible with an explanation while blocked. State-matrix regressions cover setup, capture, processing, installation and maintenance; 37 related tests and strict targeted lint pass.
 
-#### C2 — Refresh a mounted Library after delivery
+#### ~~C2~~ ✓ done 2026-10-03 — Refresh a mounted Library after delivery
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:7,70-76,101-117`; `Sources/Rebuild/RebuildSession.swift:94,219-225`; `Sources/Stores/DataManager.swift:186-211`.
 - **What's wrong:** Library keeps a fetched snapshot. Save has no invalidation and `didDeliver` is an unassigned no-op, so a recording saved while Library is open does not appear until another refresh trigger.
 - **Impact:** Moderate — successful persistence can look like lost history.
 - **Fix:** Publish a history revision on successful save/retention/deletion, reload the mounted list and retain its query. Test delivery without navigation or search changes.
 - **Effort:** S.
 - **Grade lift:** C+ → B− with C1, by connecting saved data to the visible list.
+
+
+**Implementation evidence:** Successful history saves, deletion and retention advance an observable store revision. Library reloads on that revision while keeping its search, and fences stale fetch results. An in-memory SwiftData/session-delivery regression failed before publication and passes after; disabled/failed saves and no-op retention do not invalidate. All 18 related integration/paging/usage tests and strict targeted lint pass.
 
 ---
 

@@ -182,7 +182,7 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 
 **Implementation evidence:** Failed load verification is persisted by engine/model/asset identity and blocks recording and file transcription across refresh/relaunch. Whisper verification now loads the model. Eight focused regressions cover failure, successful repair, changed assets, stale results and thrown errors; 33 setup/session/verification tests and strict targeted lint pass.
 
-#### H4 — Refresh an open Library when a recording is saved
+#### ~~H4~~ ✓ done 2026-10-03 — Refresh an open Library when a recording is saved
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:7,70-76,101-117`; `Sources/Rebuild/RebuildSession.swift:94,219-225`; `Sources/Stores/DataManager.swift:186-211`.
 - **Evidence:** Library's fetched snapshot refreshes on search/history/actions. didDeliver has no assignment, and save emits no list invalidation.
 - **Layman's term:** A saved recording can be missing until you leave the Library or search again.
@@ -192,6 +192,9 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 - **Difficulty:** S.
 - **Fix:** Publish a successful-history revision and refresh mounted Library without changing query. Test shortcut/menu delivery with Library visible and cover retention/deletion.
 - **Grade lift:** C− → B− with H1/H2/H3, by making saved content visible promptly.
+
+
+**Implementation evidence:** Successful history saves, deletion and retention advance an observable store revision. Library reloads on that revision while keeping its search, and fences stale fetch results. An in-memory SwiftData/session-delivery regression failed before publication and passes after; disabled/failed saves and no-op retention do not invalidate. All 18 related integration/paging/usage tests and strict targeted lint pass.
 
 ---
 

@@ -139,6 +139,7 @@ final class UsageMetricsStoreTests: XCTestCase {
 
 @MainActor
 private final class TestDataManager: DataManagerProtocol {
+    let historyRevision = HistoryRevision()
     var isHistoryEnabled: Bool = true
     var retentionPeriod: RetentionPeriod = .oneMonth
     var sharedModelContainer: ModelContainer? { nil }
