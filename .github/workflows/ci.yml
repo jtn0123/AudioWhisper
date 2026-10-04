@@ -8,6 +8,7 @@ env:
   # mypy adds checks in minor releases, so an unpinned upgrade would fail the
   # build for nobody's mistake.
   MYPY_VERSION: "1.20.0"
+  COVERAGE_VERSION: "7.16.1"
 
 on:
   push:
@@ -156,6 +157,31 @@ jobs:
           # run is what made the first attempt at this gate fail.
           python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 27
 
+
+      - name: Export Swift coverage from the tested build
+        run: |
+          set -euo pipefail
+          COV_JSON=$(swift test --show-codecov-path)
+          PROFDATA="$(dirname "$COV_JSON")/default.profdata"
+          BIN="$(swift build --show-bin-path)/AudioWhisperTests.xctest/Contents/MacOS/AudioWhisperTests"
+          test -s "$PROFDATA"
+          test -f "$BIN"
+          xcrun llvm-cov export -format=lcov "$BIN" -instr-profile "$PROFDATA" \
+            --ignore-filename-regex='(\.build|/checkouts/|Tests/)' > coverage.lcov
+          python3 scripts/lcov-to-sonar.py coverage.lcov sonar-coverage.xml "$PWD"
+          python3 scripts/coverage-artifact.py create swift sonar-coverage.xml \
+            --commit "$(git rev-parse HEAD)" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Upload tested Swift coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-coverage-${{ github.sha }}
+          path: |
+            sonar-coverage.xml
+            sonar-coverage.xml.manifest.json
+          if-no-files-found: error
+          retention-days: 7
+
   lint:
     runs-on: macos-14
     steps:
@@ -269,7 +295,7 @@ jobs:
           # per-module so this runs against a bare checkout in seconds. mypy
           # itself goes in a throwaway venv: PEP 668 marks the runner's Homebrew
           # python as externally managed, so a bare `pip install` is refused
-          # (same reason as the coverage venv in sonarcloud.yml).
+          # (coverage collection uses the same venv below).
           set -euo pipefail
           python3 -m venv .mypy-venv
           .mypy-venv/bin/pip install --quiet --disable-pip-version-check "mypy==${MYPY_VERSION}"
@@ -300,10 +326,25 @@ jobs:
           # verify_mlx.py (the Settings "Verify" buttons) against fake model
           # libraries: offline hit, pinned download on a miss, and each error.
           set -e
-          python3 Tests/test_correction_sanitize.py
-          python3 Tests/test_hub.py
-          python3 Tests/test_rpc.py
-          python3 Tests/test_verify_scripts.py
+          .mypy-venv/bin/pip install --quiet --disable-pip-version-check "coverage==${COVERAGE_VERSION}"
+          .mypy-venv/bin/python -m coverage run --source=Sources Tests/test_correction_sanitize.py
+          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_hub.py
+          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_rpc.py
+          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_verify_scripts.py
+          .mypy-venv/bin/python -m coverage xml -o coverage-python.xml
+          python3 Tests/test_coverage_artifacts.py
+          python3 scripts/coverage-artifact.py create python coverage-python.xml \
+            --commit "$(git rev-parse HEAD)" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Upload tested Python coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage-${{ github.sha }}
+          path: |
+            coverage-python.xml
+            coverage-python.xml.manifest.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: TODO/FIXME audit (warn only)
         run: |
@@ -556,3 +597,39 @@ jobs:
           if [ "${count:-0}" -lt "$BASELINE" ]; then
             echo "::notice::unused_declaration fell to $count — lower BASELINE to lock it in."
           fi
+
+  sonarcloud:
+    name: SonarCloud Scan
+    needs: [build-and-test, lint]
+    # Match the former Sonar workflow's master/PR scope and secret boundary.
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+       (github.event_name == 'pull_request' && github.base_ref == 'master'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: swift-coverage-${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-coverage-${{ github.sha }}
+      - name: Verify tested coverage provenance
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 scripts/coverage-artifact.py verify swift sonar-coverage.xml \
+            --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+          python3 scripts/coverage-artifact.py verify python coverage-python.xml \
+            --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        with:
+          args: >-
+            -Dsonar.coverageReportPaths=sonar-coverage.xml
+            -Dsonar.python.coverage.reportPaths=coverage-python.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -144,3 +144,5 @@ coverage-python.xml
 .coverage
 .pycov/
 .mypy-venv/
+
+*.xml.manifest.json
