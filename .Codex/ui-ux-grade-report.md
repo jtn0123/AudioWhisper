@@ -139,7 +139,7 @@ Library uses 50-record paging/LazyVStack, 200 ms search deferral and streamed ex
 
 Readiness includes selected-model structural presence, runtime and microphone access, and selection changes reject stale setup results (`Sources/Rebuild/RebuildSession.swift:264-287`). Delivery preserves ownership and reports correction/history failures. Four confirmed gaps still contradict visible capture, input, verification or history state; these outweigh the normal-path successes.
 
-#### H1 — Reconcile recorder interruptions with Listening state
+#### ~~H1~~ ✓ done 2026-10-03 — Reconcile recorder interruptions with Listening state
 - **Where:** `Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift:50-65`; `Sources/Rebuild/RebuildSession.swift:135-168`; `Sources/Rebuild/RebuildApp.swift:72-100`.
 - **Evidence:** Sleep stops capture; engine failure cancels it. Their notifications have no new-shell subscriber.
 - **Layman's term:** The app can say Listening after the microphone has stopped.
@@ -149,6 +149,8 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 - **Difficulty:** M.
 - **Fix:** Deliver typed interruption events to the owning session, reconcile phase/overlay, deliberately preserve graceful audio and fence stale events. Test both paths and perform a native route-change check.
 - **Grade lift:** C− → C+; B− with H2/H3, by making capture status truthful.
+
+**Implementation evidence:** The interruption/session bridge and stale-event cleanup are implemented and covered by failing-before/passing-after regressions. Physical device disconnection remains unverified.
 
 #### H2 — Make the microphone choice control recording
 - **Where:** `Sources/Rebuild/RebuildPreferencesView.swift:10,51-55`; `Sources/Rebuild/RebuildSession.swift:44-50`; `Sources/Services/Audio/AudioEngineRecorder.swift:150-155`; [Preferences capture](ui-ux-audit/2026-10-03-native-v2/preferences-shortcut.png).

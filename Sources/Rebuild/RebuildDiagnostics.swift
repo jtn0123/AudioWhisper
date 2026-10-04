@@ -6,7 +6,7 @@ enum RebuildDiagnostics {
     static func snapshot(context: String = "commandLine") async -> RecordingDiagnosticReport {
         let session = RebuildSession(
             services: RebuildSessionServices(
-                start: { false }, stop: { nil }, cancel: {},
+                start: { _ in false }, stop: { nil }, cancel: {},
                 transcribe: { _, _, _ in TranscriptionResult(text: "", correctionOutcome: nil) },
                 copy: { _ in }, save: { _, _, _ in }))
         await session.refreshSetup()

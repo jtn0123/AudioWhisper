@@ -21,6 +21,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     private(set) var currentSessionStart: Date?
     private(set) var lastRecordingDuration: TimeInterval?
+    var recordingSessionID: UUID?
 
     // MARK: - Audio Engine
 
@@ -116,6 +117,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - AudioRecording Protocol
 
     func startRecording() -> Bool {
+        startRecording(sessionID: UUID())
+    }
+
+    func startRecording(sessionID: UUID) -> Bool {
         // Check permission via PermissionManager (single source of truth)
         guard PermissionManager.shared.microphonePermissionState == .granted else {
             return false
@@ -193,6 +198,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
             sampleBufferLock.unlock()
             isRecording = true
+            recordingSessionID = sessionID
 
             installInterruptionObservers()
 
@@ -243,6 +249,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
 
         isRecording = false
+        recordingSessionID = nil
         clearVisualizationData()
 
         // A recording is only usable if real audio frames were captured and at
@@ -272,6 +279,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
 
         isRecording = false
+        recordingSessionID = nil
         clearVisualizationData()
         cleanupRecording()
     }

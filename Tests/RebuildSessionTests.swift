@@ -10,6 +10,8 @@ final class RebuildSessionTests: IsolatedXCTestCase {
     private var copies: [String] = []
     private var saved: [String] = []
     private var session: RebuildSession!
+    private var captureID: UUID?
+    private var interruptionSource = NSObject()
     private var transcribe: ((URL, TranscriptionPipelineConfig, UUID) async throws -> TranscriptionResult)!
     private let ready = RebuildReadiness(
         microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
@@ -21,13 +23,16 @@ final class RebuildSessionTests: IsolatedXCTestCase {
         cancellations = 0
         copies = []
         saved = []
+        captureID = nil
+        interruptionSource = NSObject()
         AppDefaults.enableSmartPaste = false
         AppDefaults.playCompletionSound = false
         transcribe = { _, _, _ in TranscriptionResult(text: "A useful transcript", correctionOutcome: nil) }
         session = RebuildSession(
             services: RebuildSessionServices(
-                start: {
+                start: { id in
                     self.starts += 1
+                    self.captureID = id
                     return true
                 },
                 stop: {
@@ -38,7 +43,8 @@ final class RebuildSessionTests: IsolatedXCTestCase {
                 cancel: { self.cancellations += 1 },
                 transcribe: { url, config, id in try await self.transcribe(url, config, id) },
                 copy: { self.copies.append($0) },
-                save: { text, _, _ in self.saved.append(text) }
+                save: { text, _, _ in self.saved.append(text) },
+                interruptionSource: interruptionSource
             ))
     }
 
@@ -244,6 +250,63 @@ final class RebuildSessionTests: IsolatedXCTestCase {
         session.importAudio(URL(fileURLWithPath: "/tmp/selected-file.wav"))
         XCTAssertEqual(starts, 0)
         XCTAssertEqual(session.phase, .idle)
+    }
+
+}
+
+extension RebuildSessionTests {
+    func testFailedCaptureInterruptionLeavesListeningAndClosesRecorder() throws {
+        var closed = 0
+        session.closeRecorder = { closed += 1 }
+        session.readiness = ready
+        session.toggleRecording()
+        let id = try XCTUnwrap(captureID)
+        NotificationCenter.default.post(
+            name: .recordingInterrupted,
+            object: interruptionSource,
+            userInfo: ["event": RecordingInterruption.failed(sessionID: id, message: "Microphone disconnected")]
+        )
+        XCTAssertEqual(session.phase, .failed)
+        XCTAssertEqual(session.notice, "Microphone disconnected")
+        XCTAssertEqual(closed, 1)
+        XCTAssertTrue(copies.isEmpty)
+    }
+
+    func testGracefulInterruptionTranscribesCapturedAudioExactlyOnce() async throws {
+        let audio = FileManager.default.temporaryDirectory.appendingPathComponent("interrupted-\(UUID()).wav")
+        try Data("captured audio".utf8).write(to: audio)
+        defer { try? FileManager.default.removeItem(at: audio) }
+        session.readiness = ready
+        session.toggleRecording()
+        let id = try XCTUnwrap(captureID)
+        let event = RecordingInterruption.finished(sessionID: id, audio: audio, duration: 2.5)
+        NotificationCenter.default.post(name: .recordingInterrupted, object: interruptionSource, userInfo: ["event": event])
+        NotificationCenter.default.post(name: .recordingInterrupted, object: interruptionSource, userInfo: ["event": event])
+        await settle()
+        XCTAssertEqual(session.phase, .completed)
+        XCTAssertEqual(copies, ["A useful transcript"])
+        XCTAssertEqual(session.duration, 2.5)
+        XCTAssertEqual(stops, 0, "The recorder already stopped before publishing its audio")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: audio.path))
+    }
+
+    func testOldInterruptionCannotStopANewerCaptureAndCleansOwnedAudio() throws {
+        session.readiness = ready
+        session.toggleRecording()
+        let oldID = try XCTUnwrap(captureID)
+        session.cancel()
+        session.toggleRecording()
+        let audio = FileManager.default.temporaryDirectory.appendingPathComponent("stale-\(UUID()).wav")
+        try Data("old audio".utf8).write(to: audio)
+        defer { try? FileManager.default.removeItem(at: audio) }
+        NotificationCenter.default.post(
+            name: .recordingInterrupted,
+            object: interruptionSource,
+            userInfo: ["event": RecordingInterruption.finished(sessionID: oldID, audio: audio, duration: 1)]
+        )
+        XCTAssertEqual(session.phase, .recording)
+        XCTAssertTrue(copies.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: audio.path))
     }
 
     private func settle() async {

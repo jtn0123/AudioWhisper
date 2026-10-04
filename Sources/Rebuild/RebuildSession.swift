@@ -34,19 +34,20 @@ struct RebuildReadiness: Equatable {
 
 @MainActor
 struct RebuildSessionServices {
-    var start: () -> Bool
+    var start: (UUID) -> Bool
     var stop: () -> URL?
     var cancel: () -> Void
     var transcribe: (URL, TranscriptionPipelineConfig, UUID) async throws -> TranscriptionResult
     var copy: (String) -> Void
     var save: (String, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void
+    var interruptionSource: NSObject?
 
     static func live(recorder: AudioEngineRecorder) -> Self {
         let pipeline = TranscriptionPipeline()
         return Self(
-            start: {
+            start: { id in
                 PermissionManager.shared.checkPermissionState()
-                return recorder.startRecording()
+                return recorder.startRecording(sessionID: id)
             }, stop: { recorder.stopRecording() },
             cancel: { recorder.cancelRecording() },
             transcribe: { url, config, id in
@@ -68,7 +69,8 @@ struct RebuildSessionServices {
                             ? config.whisperModel?.rawValue : config.parakeetModel?.rawValue,
                         wordCount: count, characterCount: text.count, sourceAppBundleId: config.sourceAppBundleId
                     ))
-            }
+            },
+            interruptionSource: recorder
         )
     }
 }
@@ -102,6 +104,7 @@ final class RebuildSession {
     @ObservationIgnored private var refreshAgain = false
     @ObservationIgnored private let paste = PasteManager()
     @ObservationIgnored private var retryAudio: RetryAudio?
+    @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
 
     private struct RetryAudio {
         let url: URL
@@ -130,7 +133,45 @@ final class RebuildSession {
         retryAudio = nil
     }
 
-    init(services: RebuildSessionServices) { self.services = services }
+    init(services: RebuildSessionServices) {
+        self.services = services
+        if let source = services.interruptionSource {
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: .recordingInterrupted, object: source, queue: nil
+            ) { [weak self] notification in
+                guard let event = notification.userInfo?["event"] as? RecordingInterruption else { return }
+                MainActor.assumeIsolated { self?.handleInterruption(event) }
+            }
+        }
+    }
+
+    deinit {
+        if let interruptionObserver { NotificationCenter.default.removeObserver(interruptionObserver) }
+    }
+
+    private func handleInterruption(_ event: RecordingInterruption) {
+        guard event.sessionID == sessionID else {
+            if case .finished(_, let audio?, _) = event { try? FileManager.default.removeItem(at: audio) }
+            return
+        }
+        // A duplicate stop event must not delete audio already in transcription.
+        guard phase == .recording, let config = configuration else { return }
+        closeRecorder()
+        switch event {
+        case .finished(let id, let audio?, let capturedDuration):
+            duration = capturedDuration
+            notice = "Recording was interrupted. Transcribing the audio captured before it stopped."
+            transcribe(url: audio, config: config, id: id, removeAfterward: true)
+        case .finished:
+            phase = .failed
+            notice = "Recording was interrupted before usable audio was captured. Try again."
+            sessionID = nil
+        case .failed(_, let message):
+            phase = .failed
+            notice = message
+            sessionID = nil
+        }
+    }
 
     func toggleRecording() {
         if phase == .recording {
@@ -143,7 +184,7 @@ final class RebuildSession {
             return
         }
         prepareSession()
-        guard services.start() else {
+        guard let id = sessionID, services.start(id) else {
             phase = .failed
             notice = "The microphone could not start. Check the selected input and try again."
             sessionID = nil

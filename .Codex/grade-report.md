@@ -41,13 +41,15 @@ The rebuild materially improves session ownership, setup, window policy, packagi
 
 `Sources/Rebuild/RebuildSession.swift:35-73,182-206` gives jobs a single owner, injectable processing services and captured configuration with late-result guards. `Sources/Rebuild/RebuildApp.swift:72-100` connects the new shell; it never launches the legacy shell. The disconnected recorder/session boundary and retry admission prevent a higher grade; compiled legacy UI is acknowledged temporary regression-test debt in `docs/rebuild.md:9`.
 
-#### A1 — Connect recorder interruptions to the session
+#### ~~A1~~ ✓ done 2026-10-03 — Connect recorder interruptions to the session
 - **Where:** `Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift:50-65`; `Sources/Rebuild/RebuildSession.swift:135-168`; `Sources/Rebuild/RebuildApp.swift:72-100`.
 - **What's wrong:** Sleep stops recording and discards its audio URL; engine configuration failure cancels recording. Neither posted notification has a rebuild listener, so Listening can outlast actual capture.
 - **Impact:** Major — misleading capture state can lose speech and leave controls busy.
 - **Fix:** Deliver typed audio/error interruption events to the current session. Finish or fail once, close the overlay, preserve graceful-interruption audio deliberately, and fence stale events. Test both events and temporary-file ownership; validate a native route change.
 - **Effort:** M.
 - **Grade lift:** B− → B; B+ with A2, by reconciling hardware capture and session ownership.
+
+**Implementation evidence:** Typed recorder-scoped events now carry capture UUID and graceful audio/duration into the session. Failed, graceful, duplicate and stale-event regressions pass; 36 recorder/session tests and strict targeted lint passed. Physical route-change verification remains separate.
 
 #### A2 — Gate retry against maintenance and readiness
 - **Where:** `Sources/Rebuild/RebuildSession.swift:118-125,141-143,170-175`.
