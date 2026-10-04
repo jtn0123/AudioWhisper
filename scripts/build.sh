@@ -29,6 +29,49 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Create entitlements file for hardened runtime
+echo "Creating entitlements for hardened runtime..."
+cat >AudioWhisper.entitlements <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+SIGNING_IDENTITY=""
+SIGNING_NAME=""
+
+if [ -n "$CODE_SIGN_IDENTITY" ]; then
+  SIGNING_IDENTITY="$CODE_SIGN_IDENTITY"
+else
+  # Try to auto-detect signing identity in order of preference:
+  # 1. Developer ID Application (paid account, best for distribution)
+  # 2. Apple Development (free account, good for local development)
+  # 3. Mac Developer (older certificate type)
+
+  for CERT_TYPE in "Developer ID Application" "Apple Development" "Mac Developer"; do
+    DETECTED_HASH=$(security find-identity -v -p codesigning | grep "$CERT_TYPE" | head -1 | awk '{print $2}')
+    DETECTED_NAME=$(security find-identity -v -p codesigning | grep "$CERT_TYPE" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+    if [ -n "$DETECTED_HASH" ]; then
+      echo "🔍 Auto-detected signing identity: $DETECTED_NAME"
+      SIGNING_IDENTITY="$DETECTED_HASH"
+      SIGNING_NAME="$DETECTED_NAME"
+      break
+    fi
+  done
+fi
+
+export SIGNING_IDENTITY
+bash "$SCRIPT_DIR/prepare-uv.sh" || exit 1
+
 # Generate version info
 GIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(date '+%Y-%m-%d')
@@ -220,50 +263,9 @@ else
   echo "⚠️ Sources/ml package not found, ML daemon will not work"
 fi
 
-# Bundle uv (Python package manager required for MLX/Parakeet features)
-# Must be >= 0.8.5 to match UvBootstrap.minUvVersion
-UV_VERSION="0.8.5"
-UV_BUNDLED="Sources/Resources/bin/uv"
-
-# Download uv if not present
-if [ ! -f "$UV_BUNDLED" ]; then
-  echo "📥 Downloading uv v${UV_VERSION}..."
-  mkdir -p Sources/Resources/bin
-
-  # Detect architecture
-  ARCH=$(uname -m)
-  if [ "$ARCH" = "arm64" ]; then
-    UV_ARCH="aarch64"
-  else
-    UV_ARCH="x86_64"
-  fi
-
-  UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${UV_ARCH}-apple-darwin.tar.gz"
-
-  # Download and extract
-  curl -sL "$UV_URL" | tar -xz -C Sources/Resources/bin --strip-components=1 uv-${UV_ARCH}-apple-darwin/uv
-
-  if [ -f "$UV_BUNDLED" ]; then
-    chmod +x "$UV_BUNDLED"
-    echo "✅ Downloaded uv v${UV_VERSION} for ${UV_ARCH}"
-  else
-    echo "⚠️ Failed to download uv, MLX features may not work"
-  fi
-fi
-
-# Copy uv to app bundle
-if [ -f "$UV_BUNDLED" ]; then
-  cp "$UV_BUNDLED" AudioWhisper.app/Contents/Resources/bin/uv
-  chmod +x AudioWhisper.app/Contents/Resources/bin/uv
-  echo "Bundled uv binary"
-elif command -v uv >/dev/null 2>&1; then
-  UV_PATH=$(command -v uv)
-  cp "$UV_PATH" AudioWhisper.app/Contents/Resources/bin/uv
-  chmod +x AudioWhisper.app/Contents/Resources/bin/uv
-  echo "Bundled uv binary (from system: $UV_PATH)"
-else
-  echo "⚠️ No uv available; MLX/Parakeet features will not work"
-fi
+# Copy the verified, already signed bytes whose final hash was stamped above.
+cp Sources/Resources/bin/uv AudioWhisper.app/Contents/Resources/bin/uv || exit 1
+chmod +x AudioWhisper.app/Contents/Resources/bin/uv
 
 # Bundle pyproject.toml and uv.lock.
 #
@@ -277,7 +279,8 @@ if [ -f "Sources/Resources/pyproject.toml" ]; then
   cp Sources/Resources/pyproject.toml AudioWhisper.app/Contents/Resources/pyproject.toml
   echo "Bundled pyproject.toml"
 else
-  echo "ℹ️ No pyproject.toml found in Sources/Resources"
+  echo "Missing required pyproject.toml" >&2
+  exit 1
 fi
 
 if [ -f "Sources/Resources/uv.lock" ]; then
@@ -367,23 +370,6 @@ fi
 # Make executable
 chmod +x AudioWhisper.app/Contents/MacOS/AudioWhisper
 
-# Create entitlements file for hardened runtime
-echo "Creating entitlements for hardened runtime..."
-cat >AudioWhisper.entitlements <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
-</dict>
-</plist>
-EOF
-
 # Function to sign the app with a given identity
 sign_app() {
   local identity="$1"
@@ -395,12 +381,7 @@ sign_app() {
     echo "🔏 Code signing app with: $identity"
   fi
 
-  # Sign uv binary if present (nested executable)
-  if [ -f "AudioWhisper.app/Contents/Resources/bin/uv" ]; then
-    codesign --force --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements AudioWhisper.app/Contents/Resources/bin/uv
-  fi
-
-  codesign --force --deep --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements AudioWhisper.app
+  codesign --force --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements AudioWhisper.app
   if [ $? -eq 0 ]; then
     echo "🔍 Verifying signature..."
     codesign --verify --verbose AudioWhisper.app
@@ -413,34 +394,17 @@ sign_app() {
 }
 
 # Optional: Code sign the app (requires Apple Developer account)
-SIGNING_IDENTITY=""
-SIGNING_NAME=""
-
-if [ -n "$CODE_SIGN_IDENTITY" ]; then
-  SIGNING_IDENTITY="$CODE_SIGN_IDENTITY"
-else
-  # Try to auto-detect signing identity in order of preference:
-  # 1. Developer ID Application (paid account, best for distribution)
-  # 2. Apple Development (free account, good for local development)
-  # 3. Mac Developer (older certificate type)
-
-  for CERT_TYPE in "Developer ID Application" "Apple Development" "Mac Developer"; do
-    DETECTED_HASH=$(security find-identity -v -p codesigning | grep "$CERT_TYPE" | head -1 | awk '{print $2}')
-    DETECTED_NAME=$(security find-identity -v -p codesigning | grep "$CERT_TYPE" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-    if [ -n "$DETECTED_HASH" ]; then
-      echo "🔍 Auto-detected signing identity: $DETECTED_NAME"
-      SIGNING_IDENTITY="$DETECTED_HASH"
-      SIGNING_NAME="$DETECTED_NAME"
-      break
-    fi
-  done
-fi
-
 if [ -n "$SIGNING_IDENTITY" ]; then
   sign_app "$SIGNING_IDENTITY" "$SIGNING_NAME"
 else
   echo "💡 No Developer ID found. App will be unsigned."
   echo "💡 To sign the app, get a Developer ID certificate from Apple Developer Portal."
+fi
+
+FINAL_UV_SHA256=$(shasum -a 256 AudioWhisper.app/Contents/Resources/bin/uv | awk '{print $1}')
+if [ "$FINAL_UV_SHA256" != "$BUNDLED_UV_SHA256" ]; then
+  echo "Bundled uv changed after its checksum was stamped" >&2
+  exit 1
 fi
 
 # Clean up entitlements file

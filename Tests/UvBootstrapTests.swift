@@ -157,6 +157,38 @@ final class UvBootstrapTests: XCTestCase {
         )
     }
 
+    func testFailedFrozenSyncDoesNotRunUnlockedResolution() async throws {
+        let log = tempHome.appendingPathComponent("sync.log")
+        try writeExecutable("""
+        #!/bin/bash
+        echo "$*" >> '\(log.path)'
+        if [[ "$1" == "--version" ]]; then echo 'uv 0.9.0'; exit 0; fi
+        if [[ "$1" == "sync" && "$2" == "--frozen" ]]; then echo 'pinned failure' >&2; exit 1; fi
+        if [[ "$1" == "venv" ]]; then mkdir -p .venv; exit 0; fi
+        exit 0
+        """, to: tempBin.appendingPathComponent("uv"))
+        do {
+            _ = try await UvBootstrap.ensureVenv()
+            XCTFail("expected pinned install failure")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("pinned failure"))
+        }
+        let invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.hasPrefix("sync") }, ["sync --frozen"])
+    }
+
+    func testUnverifiedBinaryCannotExecuteAndFailedChecksRemainRetryable() throws {
+        let marker = tempHome.appendingPathComponent("executed")
+        let binary = tempBin.appendingPathComponent("unverified")
+        try writeExecutable("#!/bin/bash\ntouch '\(marker.path)'\necho 'uv 0.9.0'\n", to: binary)
+        for _ in 0..<2 {
+            XCTAssertThrowsError(try UvBootstrap.verifiedUvVersion(at: binary, expected: String(repeating: "0", count: 64)))
+            XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+        }
+        XCTAssertThrowsError(try UvBootstrap.verifiedUvVersion(at: binary, expected: ""))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+
     // MARK: - Helpers
 
     private func whichUVPath() -> String? {
@@ -181,15 +213,15 @@ final class UvBootstrapTests: XCTestCase {
         if let logFile {
             lines.append("echo \"$dir :: $*\" >> \"\(logFile.path)\"")
         }
+        lines.append("if [[ \"$1\" == \"--version\" ]]; then")
+        lines.append("  echo 'uv \(version)'")
+        lines.append("  exit 0")
+        lines.append("fi")
         // Always ensure a minimal venv layout so tests remain deterministic
         lines.append("mkdir -p \"$dir/.venv/bin\"")
         lines.append("cat > \"$dir/.venv/bin/python3\" <<'PY'\n#!/bin/bash\necho python\nPY")
         lines.append("chmod +x \"$dir/.venv/bin/python3\"")
         lines.append("ln -sf python3 \"$dir/.venv/bin/python\"")
-        lines.append("if [[ \"$1\" == \"--version\" ]]; then")
-        lines.append("  echo 'uv \(version)'")
-        lines.append("  exit 0")
-        lines.append("fi")
         lines.append("if [[ \"$1\" == \"venv\" ]]; then")
         lines.append("  exit 0")
         lines.append("fi")

@@ -196,18 +196,6 @@ final class UvBootstrapCoverageTests: XCTestCase {
         }
     }
 
-    func testVenvSerializerClaimVerificationIsOneShot() async {
-        let serializer = VenvSerializer()
-        let first = await serializer.claimVerification()
-        let second = await serializer.claimVerification()
-        XCTAssertTrue(first, "First claim should win")
-        XCTAssertFalse(second, "Subsequent claims should lose")
-
-        await serializer.resetVerificationForTesting()
-        let afterReset = await serializer.claimVerification()
-        XCTAssertTrue(afterReset, "Reset should re-enable claiming")
-    }
-
     /// Bug #2: two concurrent callers whose ops contain an `await` must NOT
     /// overlap. A plain actor would admit the second caller at the first
     /// suspension point; the chained-Task serializer must keep them disjoint.
