@@ -39,7 +39,7 @@
     "source": "ba6ef33 plus temporary route diagnostic",
     "state": "granted",
     "changedDebugBuildRetainedConsent": true,
-    "finalUniversalGuiContinuity": "pending native window recovery"
+    "finalUniversalGuiContinuity": "granted, no new prompt during 16 starts"
   },
   "guiAccessibility": {
     "source": "ba6ef33 plus temporary route diagnostic",
@@ -47,7 +47,7 @@
     "actualGuiCheckAccess": "Accessibility allowed",
     "staleRebuildRegistrationReset": true,
     "otherEntriesPreserved": true,
-    "finalUniversalGuiContinuity": "pending native window recovery"
+    "finalUniversalGuiContinuity": "Accessibility allowed"
   },
   "universalBundle": {
     "architectures": [
@@ -71,21 +71,46 @@
       "successfulStartCancelCycles": 26,
       "runInterruptedByNativeControlError": true
     },
-    "finalUniversal": "start/stop/shortcut/Smart Paste/hold pending native window recovery"
+    "finalUniversal": {
+      "source": "9617da8",
+      "successfulStartCancelCycles": 16,
+      "newPermissionPrompts": 0,
+      "startErrors": 0,
+      "uiHangObserved": false,
+      "liveStopTranscription": "completed",
+      "wordCount": 23,
+      "accuracy": "not scored: speaker fixture and ambient audio were mixed",
+      "librarySavingEnabled": false,
+      "libraryUi": "YOUR LIBRARY IS OFF",
+      "signatureAfterTranscription": "strict/deep valid",
+      "shortcutEditor": "custom Option Shift Command R captured, enabled, shown in recording help",
+      "syntheticExternalShortcut": "did not start recording; awaiting physical key test",
+      "smartPaste": "not verified; workspace-button session copies to clipboard without an external destination",
+      "physicalHold": "pending"
+    }
   },
   "ci": {
     "source": "9617da8",
     "run": 37229605626,
-    "status": "in_progress",
+    "status": "completed",
     "earlierSource": "4d12ddd",
     "earlierRun": 37228126275,
-    "earlierConclusion": "success, SonarCloud skipped"
+    "earlierConclusion": "success, SonarCloud skipped",
+    "conclusion": "success, SonarCloud skipped"
   },
   "strictLintSource": "9617da8",
   "testData": {
     "librarySavingEnabled": false,
     "usageUnchangedDuringCancelTests": true,
-    "disposableEditorMarkerCleared": true,
+    "disposableEditorMarkerCleared": false,
     "privateAudioCommitted": false
+  },
+  "testPreferences": {
+    "recordingShortcut": "Option Shift Command R",
+    "shortcutEnabled": true,
+    "smartPasteEnabled": true,
+    "holdEnabled": false,
+    "librarySavingEnabled": false,
+    "temporaryForPendingPhysicalTest": true
   }
 }
