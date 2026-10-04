@@ -41,9 +41,19 @@ struct RebuildLibraryView: View {
                 }
                 if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                 if records.isEmpty && !loading {
-                    ContentUnavailableView(
-                        "Room for your next idea", systemImage: "text.book.closed",
-                        description: Text("Saved transcripts appear here after your next recording."))
+                    if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        ContentUnavailableView(
+                            "Room for your next idea", systemImage: "text.book.closed",
+                            description: Text("Saved transcripts appear here after your next recording."))
+                    } else {
+                        ContentUnavailableView {
+                            Label("No matching transcripts", systemImage: "magnifyingglass")
+                        } description: {
+                            Text("Try another search, or clear it to see your saved transcripts.")
+                        } actions: {
+                            Button("Clear search") { search = "" }
+                        }
+                    }
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 16) {
