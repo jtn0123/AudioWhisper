@@ -34,11 +34,15 @@ internal extension AppDelegate {
         menu.addItem(.separator())
 
         // ── Primary actions
+        let isRecording = audioRecorder?.isRecording == true
+        let isBusy = isTranscriptionProcessing && !isRecording
+        let recordingTitle = isRecording ? "Stop Recording" : (isBusy ? "Transcribing…" : "Start Recording")
         let recordingItem = makeActionItem(
-            title: audioRecorder?.isRecording == true ? "Stop Recording" : "Start Recording",
+            title: recordingTitle,
             selector: #selector(startRecordingFromMenu),
             keyEquivalent: ""
         )
+        recordingItem.isEnabled = !isBusy
         RecordingShortcut.apply(AppDefaults.globalHotkey, to: recordingItem)
         menu.addItem(recordingItem)
         menu.addItem(makeActionItem(

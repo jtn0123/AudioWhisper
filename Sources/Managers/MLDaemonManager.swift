@@ -341,6 +341,8 @@ internal extension MLDaemonManager {
     /// Number of currently pending requests — test introspection only.
     func pendingCountForTesting() -> Int { pending.count }
 
+    func setRequestTimeoutForTesting(_ seconds: UInt64) { requestTimeoutSeconds = seconds }
+
     /// Whether a process handle is currently running — test introspection only.
     func isProcessRunningForTesting() -> Bool { process?.isRunning ?? false }
 

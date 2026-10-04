@@ -79,6 +79,32 @@ final class DaemonTransportReliabilityTests: XCTestCase {
         XCTAssertEqual(pending, 0)
     }
 
+    func testBlockedPipeWriterDoesNotPreventTimeoutOrReplacementDaemon() async throws {
+        let manager = try XCTUnwrap(manager)
+        await manager.setRequestTimeoutForTesting(1)
+        let blocked = Task { try await manager.warmup(type: .mlx, repo: "blocked") }
+        let arrived = directory.appendingPathComponent("arrived")
+        let deadline = ContinuousClock.now + .seconds(5)
+        while !FileManager.default.fileExists(atPath: arrived.path), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: arrived.path))
+        let writing = Task { try await manager.correct(repo: "test", text: String(repeating: "x", count: 900_000), prompt: nil) }
+        let finished = expectation(description: "stalled reader and blocked writer released")
+        Task {
+            do { try await blocked.value; XCTFail("expected timeout") } catch { XCTAssertTrue(error is MLDaemonError) }
+            do { _ = try await writing.value; XCTFail("expected teardown") } catch { XCTAssertTrue(error is MLDaemonError) }
+            finished.fulfill()
+        }
+        await fulfillment(of: [finished], timeout: 4)
+        let pending = await manager.pendingCountForTesting()
+        let running = await manager.isProcessRunningForTesting()
+        XCTAssertEqual(pending, 0)
+        XCTAssertFalse(running, "old worker must be reaped before callers resume")
+        let response = try await manager.correct(repo: "test", text: "after restart", prompt: nil)
+        XCTAssertEqual(response, "after restart")
+    }
+
     func testWarmupCancellationFinishesBeforeDaemonResponds() async throws {
         let manager = try XCTUnwrap(manager)
         let task = Task { try await manager.warmup(type: .mlx, repo: "blocked") }

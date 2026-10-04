@@ -40,6 +40,14 @@ final class AppDelegateMenuTests: XCTestCase {
         XCTAssertEqual(actionItems.map { $0.title }, expectedTitles)
     }
 
+    func testRecordingCommandShowsBusyStateAndCannotStartAnotherSession() {
+        appDelegate.isTranscriptionProcessing = true
+        let menu = appDelegate.makeStatusMenu()
+        let recording = menu.items.first { $0.action == #selector(AppDelegate.startRecordingFromMenu) }
+        XCTAssertEqual(recording?.title, "Transcribing…")
+        XCTAssertEqual(recording?.isEnabled, false)
+    }
+
     func testMakeStatusMenuHasBrandedHeader() {
         let menu = appDelegate.makeStatusMenu()
         // First item is the hosted header: a view item, disabled, no action.

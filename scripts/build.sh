@@ -287,8 +287,8 @@ if [ -f "Sources/Resources/uv.lock" ]; then
   cp Sources/Resources/uv.lock AudioWhisper.app/Contents/Resources/uv.lock
   echo "Bundled uv.lock"
 else
-  echo "::warning::No uv.lock in Sources/Resources — the app will fall back to"
-  echo "           unpinned dependency resolution. Run 'uv lock' in that directory."
+  echo "Missing required uv.lock; refusing to build an app without its dependency lock" >&2
+  exit 1
 fi
 
 # Note: AudioProcessorCLI binary no longer needed - using direct Swift audio processing
