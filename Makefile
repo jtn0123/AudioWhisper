@@ -7,7 +7,7 @@ help:
 	@echo "AudioWhisper Makefile"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  run                - Build, deploy to /Applications, and launch"
+	@echo "  run                - Build and launch the separate AudioWhisper Rebuild app"
 	@echo "  build              - Build the release app bundle"
 	@echo "  build-notarize     - Build and notarize the app"
 	@echo "  test               - Run tests"
@@ -22,14 +22,11 @@ help:
 build:
 	$(SCRIPTS)/build.sh
 
-# Build, deploy to /Applications, and launch
+# Build and launch the separate AudioWhisper Rebuild app
 run: build
-	@echo "Deploying to /Applications..."
-	@pkill -x AudioWhisper 2>/dev/null || true
-	@rm -rf /Applications/AudioWhisper.app
-	@cp -R AudioWhisper.app /Applications/
-	@echo "Launching AudioWhisper..."
-	@open /Applications/AudioWhisper.app
+	@echo "Installing the rebuild beside the original app..."
+	@ditto AudioWhisper.app "/Applications/AudioWhisper Rebuild.app"
+	@open "/Applications/AudioWhisper Rebuild.app"
 
 # Build and notarize the app
 build-notarize:

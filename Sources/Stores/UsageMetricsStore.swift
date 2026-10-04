@@ -226,6 +226,13 @@ internal final class UsageMetricsStore {
         persist(.empty)
     }
 
+    /// Recalculate explicitly requested totals without loading the complete library.
+    func rebuildFromHistory(dataManager: DataManagerProtocol = DataManager.shared) async throws {
+        var accumulator = RebuildAccumulator(mode: .full)
+        try await dataManager.forEachRecordPage(pageSize: Self.rebuildPageSize) { accumulator.add($0) }
+        persist(cleanupOldDailyActivityIn(accumulator.finish()))
+    }
+
     func bootstrapIfNeeded(dataManager: DataManagerProtocol = DataManager.shared) async {
         // If dailyActivity is empty but we have records, rebuild from records
         let needsDailyActivityBootstrap = snapshot.dailyActivity.isEmpty && dataManager.isHistoryEnabled

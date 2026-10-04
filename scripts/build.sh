@@ -224,6 +224,21 @@ BUILD_NUMBER="${VERSION//./}"
 # Copy executable (universal binary)
 cp "$RELEASE_BINARY" AudioWhisper.app/Contents/MacOS/
 
+# SwiftPM dependency code calls Bundle.module at runtime. Flattening only our
+# Python resources omitted KeyboardShortcuts' localizations and crashed as soon
+# as Preferences created its shortcut recorder. Carry every generated resource
+# bundle, then reject missing required bundles before signing.
+for resource_bundle in "$slice_dir"/*.bundle; do
+  [ -d "$resource_bundle" ] || continue
+  ditto "$resource_bundle" "AudioWhisper.app/Contents/Resources/$(basename "$resource_bundle")" || exit 1
+done
+for required_bundle in AudioWhisper_AudioWhisper KeyboardShortcuts_KeyboardShortcuts; do
+  if [ ! -d "AudioWhisper.app/Contents/Resources/$required_bundle.bundle" ]; then
+    echo "Missing required resource bundle: $required_bundle" >&2
+    exit 1
+  fi
+done
+
 # Copy dashboard logo
 if [ -f "Sources/Resources/DashboardLogo.jpg" ]; then
   cp Sources/Resources/DashboardLogo.jpg AudioWhisper.app/Contents/Resources/
@@ -305,11 +320,11 @@ cat >AudioWhisper.app/Contents/Info.plist <<EOF
     <key>CFBundleExecutable</key>
     <string>AudioWhisper</string>
     <key>CFBundleIdentifier</key>
-    <string>com.audiowhisper.app</string>
+    <string>com.audiowhisper.rebuild</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>AudioWhisper</string>
+    <string>AudioWhisper Rebuild</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

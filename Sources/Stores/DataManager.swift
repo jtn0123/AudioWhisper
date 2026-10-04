@@ -160,9 +160,10 @@ internal final class DataManager: DataManagerProtocol {
                 TranscriptionRecord.self
             ])
 
+            try RebuildStorage.prepare()
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
-                isStoredInMemoryOnly: false,
+                url: RebuildStorage.history,
                 allowsSave: true
             )
 

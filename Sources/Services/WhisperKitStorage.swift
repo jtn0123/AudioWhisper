@@ -3,8 +3,7 @@ import os.log
 
 internal enum WhisperKitStorage {
     private static func baseDirectory(fileManager: FileManager = .default) -> URL? {
-        fileManager.urls(for: .documentDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml", isDirectory: true)
+        RebuildStorage.whisperModels
     }
 
     static func storageDirectory(fileManager: FileManager = .default) -> URL? {

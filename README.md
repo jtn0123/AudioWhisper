@@ -12,15 +12,20 @@ A lightweight macOS menu bar app for fast, **fully on-device** audio transcripti
 > local-only. Upstream still ships them. Prebuilt binaries and the Homebrew cask are published
 > by upstream and are **not** this code — see [Installation](#installation-️).
 
-## Features ✨
+## Native v2 preview
 
-- **Global hotkey + push-to-talk** — Default ⌘⇧Space, optional press-and-hold on a modifier key, and an Express Mode that starts/stops with a single press
-- **Two offline engines** — WhisperKit (CoreML, runs on Intel and Apple Silicon) and Parakeet-MLX (Apple Silicon, 25 languages), with built-in model download and verification
-- **Semantic clean-up** — Optional on-device MLX pass that fixes typos, punctuation, and filler words, with app-aware categories (Terminal / Coding / Email / …)
-- **Transcribe files** — Menu bar → "Transcribe Audio File..." for existing audio
-- **History & insights** — Opt-in local transcript history with search and retention, plus a usage dashboard (sessions, words, WPM, time saved)
-- **Smart paste & focus** — Clipboard copy plus optional auto-⌘V, then returns focus to the app you came from
-- **Private by construction** — No API keys, no network calls for transcription, no analytics
+This branch rebuilds the app shell, setup, session ownership and every main screen. It is an isolated development preview, not a replacement for the installed app. See [rebuild notes](docs/rebuild.md) for feature coverage and remaining verification.
+
+- **One workspace** — recording, transcript library, models/setup, writing profiles and preferences.
+- **Explicit setup** — only the Allow microphone button requests access; blocked shortcuts open the same setup window. Readiness requires the selected voice model and runtime.
+- **One recording/job owner** — cancellation suppresses late delivery, settings are captured at the start, failed audio can be retried, cleanup failure preserves the original transcript.
+- **Two local engines** — Whisper on Intel/Apple Silicon and Parakeet on Apple Silicon, with installation, progress, verification and removal.
+- **Writing tools** — optional local MLX cleanup, editable custom profiles and per-app assignments.
+- **Files and library** — audio picker/drop, opt-in history, search, pagination, copying, bounded export, deletion and retention.
+- **Personalization** — shortcuts, hold-to-record, Express Mode, microphone/input boost, sound, startup, light/dark appearance and recorder visuals.
+- **Conventional windows** — the workspace stays on a desktop Space; only the recording overlay may cover full-screen apps.
+
+The preview uses `com.audiowhisper.rebuild` and a separate Application Support directory. Recording shortcuts start disabled so the original app can remain open. No permissions, old transcripts or settings are migrated automatically.
 
 ## Requirements 📋
 
@@ -37,12 +42,12 @@ This fork publishes **no releases and no Homebrew tap**. Build it from source:
 git clone https://github.com/jtn0123/AudioWhisper.git
 cd AudioWhisper
 
-make build                        # produces AudioWhisper.app
-cp -R AudioWhisper.app /Applications/
-open /Applications/AudioWhisper.app
+make build                        # produces the preview at AudioWhisper.app
+# Launch that bundle from Finder, or:
+make run                          # installs beside the original as AudioWhisper Rebuild.app
 ```
 
-`make run` does all of the above in one step.
+`make run` preserves `/Applications/AudioWhisper.app`. The preview is not signed/notarized for distribution without a configured signing identity.
 
 > Looking for a prebuilt `.app` or `brew install`? Those are published by
 > **upstream** ([mazdak/AudioWhisper](https://github.com/mazdak/AudioWhisper/releases),
@@ -59,25 +64,25 @@ System Settings → Privacy & Security → Accessibility.
 
 **Local WhisperKit (CoreML)**
 - Four models: Tiny (39 MB), Base (142 MB), Small (466 MB), Large Turbo (1.5 GB)
-- Download from Dashboard → **Models**. Runs on the Neural Engine, with per-model verify and delete.
+- Download from Models & setup. Runs on the Neural Engine, with per-model verify and delete.
 
 **Parakeet-MLX** — *Apple Silicon only*
 - Choose **v2 English** or **v3 Multilingual** (25 languages, ~2.5 GB each)
-- Click **Install Dependencies** to bootstrap the bundled uv/Python environment, then **Verify Parakeet Model**
+- Click **Install voice model** to prepare the runtime and selected model, then **Verify model**
 
 ### Semantic correction (optional)
 
 - Modes: **Off** or **Local MLX** (Apple Silicon)
-- Pick a correction model in Dashboard → **Models** (Correction section). The recommended default is `Qwen3-1.7B-4bit`.
-- App-aware categories (Terminal / Coding / Chat / Writing / Email / General) are editable in Dashboard → **Categories**
+- Pick a correction model in Models & setup (Correction section). The recommended default is `Qwen3-1.7B-4bit`.
+- App-aware categories (Terminal / Coding / Chat / Writing / Email / General) are editable in Writing profiles
 - Override any prompt by dropping a `*_prompt.txt` file into
-  `~/Library/Application Support/AudioWhisper/prompts/` (e.g. `terminal_prompt.txt`)
+  `~/Library/Application Support/AudioWhisper Rebuild/prompts/` (e.g. `terminal_prompt.txt`)
 
 ### History & usage stats (optional)
 
-- Enable **Save Transcription History** in Dashboard → **General**; retention: 1 week / 1 month / 3 months / forever
-- Dashboard → **Transcripts** offers search, expand, delete, and clear-all — all stored locally
-- The usage dashboard shows sessions, words, WPM, time saved, and keystrokes saved; rebuild from history or reset anytime
+- Enable **Save Transcription History** in Preferences; retention: 1 week / 1 month / 3 months / forever
+- Library offers search, expand, delete, and clear-all — all stored locally
+- The recording page shows sessions, words and estimated time saved. Preferences offers recalculation from history and reset.
 
 ### Productivity toggles
 
@@ -88,7 +93,7 @@ System Settings → Privacy & Security → Accessibility.
 
 ### First run
 
-1. Launch AudioWhisper and open Dashboard → **Setup**. The app lives in the menu bar and shows a Dock icon while a normal window is open.
+1. Launch AudioWhisper and open Models & setup. The app lives in the menu bar and shows a Dock icon while a normal window is open.
 2. Click **Allow microphone** and respond to the macOS prompt. If access was previously denied, Setup opens the Microphone settings instead.
 3. Choose your transcription engine and voice model, then install it from the same Setup page. Parakeet requires Apple Silicon; its install includes the local Python environment.
 4. Wait for **Ready to record**. Both microphone access and the selected voice model must be available. Using the recording shortcut before then opens Setup without recording or requesting more permissions.
@@ -96,7 +101,7 @@ System Settings → Privacy & Security → Accessibility.
 
 ## Usage 🎯
 
-1. **Press ⌘⇧Space.** With Express Mode on, the first press starts recording and the next stops and pastes without showing the window.
+1. **Enable your shortcut in Preferences, then press ⌘⇧Space.** With Express Mode on, the first press starts recording and the next stops and pastes without showing the window.
 2. **Start/stop** by clicking the mic or pressing Space — or hold your modifier key in Press & Hold mode.
 3. **Cancel** with ESC at any time.
 4. **Paste** — text lands on the clipboard; with Smart Paste on it auto-⌘Vs into the previous app and returns focus.
@@ -146,13 +151,13 @@ System Settings → Privacy & Security → Accessibility → enable AudioWhisper
 System Settings → Privacy & Security → Microphone → enable AudioWhisper.
 
 **Local models missing or failing**
-Dashboard → **Models** → Local Whisper: download or verify the selected model.
+Models & setup → Local Whisper: download or verify the selected model.
 
 **Parakeet or MLX not ready**
-Apple Silicon only. Dashboard → **Models** → Parakeet → Install Dependencies → Verify Parakeet Model.
+Apple Silicon only. Models & setup → Parakeet → Install Dependencies → Verify Parakeet Model.
 
 **Semantic correction not applying**
-Dashboard → **Models** → Correction: confirm the mode is Local MLX and that the selected model is downloaded. Correction fails open — if it errors, you still get the raw transcript.
+Models & setup → Correction: confirm the mode is Local MLX and that the selected model is downloaded. Correction fails open — if it errors, you still get the raw transcript.
 
 **Build fails resolving dependencies** ("incompatible tools version")
 Your Xcode is too old. `KeyboardShortcuts` 3.x declares `swift-tools-version: 6.2`, so this needs **Xcode 26.0+**. Check with `swift --version` — if it reports below 6.2, point at a newer Xcode: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.

@@ -22,6 +22,7 @@ on:
       - 'grade-fixes-**'
       - 'fix/**'
       - 'feat/**'
+      - 'rebuild/**'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -360,6 +361,15 @@ jobs:
           for py in ml_daemon.py download_model.py verify_parakeet.py verify_mlx.py ml/hub.py ml/rpc.py; do
             test -f "$APP/Contents/Resources/$py" || { echo "::error::Missing bundled Resources/$py"; exit 1; }
           done
+          # Opening Preferences creates the shortcut recorder, which resolves
+          # its localized text through Bundle.module. Missing resources trap at
+          # runtime even when the executable and headless tests pass.
+          for bundle in AudioWhisper_AudioWhisper KeyboardShortcuts_KeyboardShortcuts; do
+            test -d "$APP/Contents/Resources/$bundle.bundle" \
+              || { echo "::error::Missing SwiftPM resource bundle $bundle"; exit 1; }
+          done
+          test -f "$APP/Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle/Contents/Resources/en.lproj/Localizable.strings" \
+            || { echo "::error::Missing shortcut editor localization"; exit 1; }
           # Confirm version was stamped (not left as a placeholder)
           if grep -q "VERSION_PLACEHOLDER\|BUILD_PLACEHOLDER" "$APP/Contents/MacOS/AudioWhisper" 2>/dev/null; then
             echo "::warning::Version placeholders found unsubstituted in binary"
@@ -375,7 +385,7 @@ jobs:
               capture_output=True, text=True, timeout=30, check=True,
           )
           report = json.loads(result.stdout)
-          assert report["bundleIdentifier"] == "com.audiowhisper.app", report
+          assert report["bundleIdentifier"] == "com.audiowhisper.rebuild", report
           assert report["build"] == os.environ["GITHUB_SHA"], report
           assert report["launchContext"] == "commandLine", report
           assert report["nextStep"], report

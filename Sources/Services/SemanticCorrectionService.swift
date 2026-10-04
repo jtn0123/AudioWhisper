@@ -136,7 +136,7 @@ internal final class SemanticCorrectionService {
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
-        ).appendingPathComponent("AudioWhisper/prompts", isDirectory: true)
+        ).appendingPathComponent("\(RebuildStorage.directoryName)/prompts", isDirectory: true)
     }
 
     private func loadPrompt(for category: CategoryDefinition) -> String {

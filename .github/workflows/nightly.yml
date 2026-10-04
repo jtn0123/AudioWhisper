@@ -58,15 +58,15 @@ jobs:
         if: inputs.cold_whisper != true
         uses: actions/cache@v4
         with:
-          path: ~/Documents/huggingface/models/argmaxinc/whisperkit-coreml
-          key: whisper-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
+          path: ~/Library/Application Support/AudioWhisper Rebuild/Whisper
+          key: whisper-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
 
       - name: Cache uv Python environment
         uses: actions/cache@v4
         with:
-          path: ~/Library/Application Support/AudioWhisper/python_project
-          key: uv-${{ runner.os }}-${{ hashFiles('Sources/Resources/uv.lock') }}
-          restore-keys: uv-${{ runner.os }}-
+          path: ~/Library/Application Support/AudioWhisper Rebuild/python_project
+          key: uv-rebuild-${{ runner.os }}-${{ hashFiles('Sources/Resources/uv.lock') }}
+          restore-keys: uv-rebuild-${{ runner.os }}-
 
       - name: Prepare verified uv
         run: |

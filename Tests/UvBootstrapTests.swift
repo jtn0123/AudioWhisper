@@ -72,7 +72,7 @@ final class UvBootstrapTests: XCTestCase {
 
     func testFindUvFallsBackToUserToolsDirectory() throws {
         // No uv on PATH; add one under Application Support/AudioWhisper/bin/uv
-        let toolsDir = tempAppSupport.appendingPathComponent("AudioWhisper/bin", isDirectory: true)
+        let toolsDir = tempAppSupport.appendingPathComponent("\(RebuildStorage.directoryName)/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: toolsDir, withIntermediateDirectories: true)
 
         let uvURL = toolsDir.appendingPathComponent("uv")

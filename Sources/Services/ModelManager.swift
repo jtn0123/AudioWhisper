@@ -163,7 +163,7 @@ internal class ModelManager {
                 ModelManager.shared.downloadEstimates[model] = estimateDownloadTime(for: model)
             }
 
-            let config = WhisperKitConfig(model: model.whisperKitModelName)
+            let config = WhisperKitConfig(model: model.whisperKitModelName, downloadBase: RebuildStorage.whisperDownloadBase)
 
             // Update stage to processing
             await MainActor.run {
