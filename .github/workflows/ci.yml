@@ -163,7 +163,9 @@ jobs:
           set -euo pipefail
           COV_JSON=$(swift test --show-codecov-path)
           PROFDATA="$(dirname "$COV_JSON")/default.profdata"
-          BIN="$(swift build --show-bin-path)/AudioWhisperTests.xctest/Contents/MacOS/AudioWhisperTests"
+          # SwiftPM's native backend calls it AudioWhisperPackageTests;
+          # XCBuild calls it AudioWhisperTests. Resolve the actual single bundle.
+          BIN=$(python3 scripts/coverage-test-binary.py "$(swift build --show-bin-path)")
           test -s "$PROFDATA"
           test -f "$BIN"
           xcrun llvm-cov export -format=lcov "$BIN" -instr-profile "$PROFDATA" \

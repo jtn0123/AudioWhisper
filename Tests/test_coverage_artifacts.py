@@ -85,6 +85,30 @@ class CoverageArtifactsTests(unittest.TestCase):
             capture_output=True, text=True, check=False,
         )
 
+    def test_binary_resolves_native_and_xcbuild_bundle_names(self):
+        for name in ("AudioWhisperPackageTests", "AudioWhisperTests"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                binary = directory / f"{name}.xctest" / "Contents" / "MacOS" / name
+                binary.parent.mkdir(parents=True)
+                binary.touch()
+                result = self.resolve_binary(directory)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), str(binary))
+
+    def test_binary_rejects_missing_incomplete_and_ambiguous_bundles(self):
+        self.assertNotEqual(self.resolve_binary(self.directory).returncode, 0)
+        (self.directory / "First.xctest").mkdir()
+        self.assertNotEqual(self.resolve_binary(self.directory).returncode, 0)
+        (self.directory / "Second.xctest").mkdir()
+        self.assertNotEqual(self.resolve_binary(self.directory).returncode, 0)
+
+    def resolve_binary(self, directory):
+        return subprocess.run(
+            [sys.executable, str(ROOT / "scripts/coverage-test-binary.py"), str(directory)],
+            capture_output=True, text=True, check=False,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
