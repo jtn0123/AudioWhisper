@@ -54,16 +54,57 @@ final class AudioPreparationBenchmarkTests: XCTestCase {
         getrusage(RUSAGE_SELF, &usage)
         print("AUDIO_PREPARATION_BENCHMARK mode=\(mode) seconds=\(seconds) samples=\(count) largestChunk=\(largestChunk) elapsed=\(elapsed) peakRSSBytes=\(usage.ru_maxrss)")
         if mode == "pcm-stream" {
-            let task = Task.detached {
-                try RawPCMConverter.convert(input: input, output: directory.appendingPathComponent("cancel.raw"))
-            }
-            task.cancel()
-            do {
-                _ = try await task.value
-                XCTFail("Cancellation must interrupt long preparation")
-            } catch { XCTAssertTrue(error is CancellationError) }
-            XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("cancel.raw").path))
+            try await verifyPCMCancellation(input: input, directory: directory)
+        } else if mode == "whisper-incremental" {
+            try await verifyWhisperCancellation(input: input, frames: frames)
         }
+    }
+
+    private func verifyPCMCancellation(input: URL, directory: URL) async throws {
+        let task = Task.detached {
+            try RawPCMConverter.convert(input: input, output: directory.appendingPathComponent("cancel.raw"))
+        }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while !FileManager.default.fileExists(atPath: directory.appendingPathComponent("cancel.raw").path),
+              ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(1))
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("cancel.raw").path))
+        let cancelStart = ContinuousClock.now
+        task.cancel()
+        do {
+            _ = try await task.value
+            XCTFail("Cancellation must interrupt long preparation")
+        } catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: directory.appendingPathComponent("cancel.raw").path))
+        print("AUDIO_PREPARATION_CANCEL mode=pcm-stream elapsed=\(cancelStart.duration(to: .now)) partialFileRemoved=true")
+    }
+
+    private func verifyWhisperCancellation(input: URL, frames: Int) async throws {
+
+        let (started, signal) = AsyncStream<Void>.makeStream()
+        let task = Task.detached {
+            defer { signal.finish() }
+            let stream = try AudioProcessor.loadFileIncrementally(
+                fromPath: input.path, chunkDurationSeconds: 120, maxBufferedChunks: 1)
+            var consumed = 0
+            for try await chunk in stream {
+                try Task.checkCancellation()
+                consumed += chunk.audioChunk.audioSamples.count
+                signal.yield(())
+                chunk.completionSignal()
+            }
+            return consumed
+        }
+        for await _ in started { break }
+        let cancelStart = ContinuousClock.now
+        task.cancel()
+        do {
+            let consumed = try await task.value
+            XCTAssertLessThan(consumed, frames)
+        } catch { XCTAssertTrue(error is CancellationError) }
+        signal.finish()
+        print("AUDIO_PREPARATION_CANCEL mode=whisper-incremental elapsed=\(cancelStart.duration(to: .now))")
     }
 
     private func makeAudio(_ url: URL, frames: Int) throws {
