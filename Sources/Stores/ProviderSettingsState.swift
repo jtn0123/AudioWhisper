@@ -23,6 +23,7 @@ final class ProviderSettingsState {
 
     // MARK: - Model Download State
     var downloadError: String?
+    var failedDownloadModel: WhisperModel?
     var totalModelsSize: Int64 = 0
     var downloadedModels: [WhisperModel] = []
     var modelDownloadStates: [WhisperModel: Bool] = [:]
@@ -49,6 +50,25 @@ final class ProviderSettingsState {
         case .parakeet:
             return envReady ? ("Ready", true) : ("Setup", false)
         }
+    }
+
+    func beginDownload(_ model: WhisperModel) {
+        downloadError = nil
+        failedDownloadModel = nil
+        downloadStartTime[model] = Date()
+    }
+
+    func finishDownload(_ model: WhisperModel, error: String? = nil) {
+        downloadStartTime.removeValue(forKey: model)
+        if let error {
+            downloadError = error
+            failedDownloadModel = model
+        }
+    }
+
+    func retryFailedDownload(using download: (WhisperModel) -> Void) {
+        guard let model = failedDownloadModel else { return }
+        download(model)
     }
 
     // MARK: - Environment Check
@@ -110,6 +130,7 @@ final class ProviderSettingsState {
         parakeetVerifyMessage = nil
         isVerifyingParakeet = false
         downloadError = nil
+        failedDownloadModel = nil
         totalModelsSize = 0
         downloadedModels = []
         modelDownloadStates = [:]

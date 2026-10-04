@@ -54,20 +54,12 @@ internal extension DashboardProvidersView {
                     .stroke(DashboardTheme.rule, lineWidth: 1)
             )
 
-            // Error message — uses the shared DownloadProgressView so retry
-            // is exposed consistently across providers. The retry target is
-            // the most recently attempted download (derived from
-            // downloadStartTime), or clears the error if no candidate exists.
+            // Keep the failed model separate from active download timings.
             if let error = downloadError {
                 DownloadProgressView(
                     state: .failed(message: error),
-                    onRetry: {
-                        if let lastModel = downloadStartTime
-                            .max(by: { $0.value < $1.value })?.key {
-                            downloadModel(lastModel)
-                        } else {
-                            downloadError = nil
-                        }
+                    onRetry: state.failedDownloadModel == nil ? nil : {
+                        state.retryFailedDownload(using: downloadModel)
                     }
                 )
                 .padding(DashboardTheme.Spacing.md)
@@ -224,16 +216,14 @@ internal extension DashboardProvidersView {
 
     // MARK: - Actions
     private func downloadModel(_ model: WhisperModel) {
-        downloadError = nil
-        downloadStartTime[model] = Date()
+        state.beginDownload(model)
         Task {
             do {
                 try await modelManager.downloadModel(model)
-                downloadStartTime.removeValue(forKey: model)
+                state.finishDownload(model)
                 loadModelStates()
             } catch {
-                downloadError = error.localizedDescription
-                downloadStartTime.removeValue(forKey: model)
+                state.finishDownload(model, error: error.localizedDescription)
             }
         }
     }
