@@ -32,6 +32,20 @@ def report_hash(report: Path, kind: str) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def make_python_portable(report: Path) -> None:
+    # Class filenames are already project-relative Sources/... paths (validated
+    # above). Do not carry the macOS producer's absolute checkout into Linux.
+    tree = ET.parse(report)
+    root = tree.getroot()
+    sources = root.find("sources")
+    if sources is None:
+        sources = ET.Element("sources")
+        root.insert(0, sources)
+    sources.clear()
+    ET.SubElement(sources, "source").text = "."
+    tree.write(report, encoding="utf-8", xml_declaration=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("create", "verify"))
@@ -43,6 +57,9 @@ def main() -> int:
     args = parser.parse_args()
     manifest = args.report.with_suffix(args.report.suffix + ".manifest.json")
     try:
+        if args.action == "create" and args.kind == "python":
+            report_hash(args.report, args.kind)
+            make_python_portable(args.report)
         expected = {
             "schema": 1,
             "kind": args.kind,

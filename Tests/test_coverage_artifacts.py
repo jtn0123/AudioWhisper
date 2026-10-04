@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -59,6 +60,18 @@ class CoverageArtifactsTests(unittest.TestCase):
         self.assertEqual(self.artifact("verify", kind="python").returncode, 0)
         self.report.write_text(self.report.read_text().replace("Sources/ml/rpc.py", "Tests/test_rpc.py"))
         self.assertNotEqual(self.artifact("create", kind="python").returncode, 0)
+
+    def test_python_producer_paths_are_portable_before_hashing(self):
+        self.report.write_text(
+            '<coverage><sources><source>/Users/runner/work/project</source></sources>'
+            '<packages><package><classes><class filename="Sources/ml/rpc.py">'
+            '<lines><line number="1" hits="1"/></lines></class></classes></package></packages></coverage>'
+        )
+        self.assertEqual(self.artifact("create", kind="python").returncode, 0)
+        root = ET.parse(self.report).getroot()
+        self.assertEqual(root.findtext("sources/source"), ".")
+        self.assertEqual(root.find(".//class").get("filename"), "Sources/ml/rpc.py")
+        self.assertEqual(self.artifact("verify", kind="python").returncode, 0)
 
     def test_lcov_export_filters_dependencies_and_merges_hits(self):
         lcov = self.directory / "input.lcov"
