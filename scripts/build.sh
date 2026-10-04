@@ -15,6 +15,7 @@ cd "$SCRIPT_DIR/.." || exit 1
 # Parse command line arguments
 NOTARIZE=false
 DEBUG_BUILD=false
+LOCAL_SIGNING=false
 while [[ $# -gt 0 ]]; do
   case $1 in
   --debug)
@@ -25,9 +26,13 @@ while [[ $# -gt 0 ]]; do
     NOTARIZE=true
     shift
     ;;
+  --local-signing)
+    LOCAL_SIGNING=true
+    shift
+    ;;
   *)
     echo "Unknown option: $1"
-    echo "Usage: $0 [--debug | --notarize]"
+    echo "Usage: $0 [--debug | --notarize] [--local-signing]"
     exit 1
     ;;
   esac
@@ -35,6 +40,10 @@ done
 
 if [ "$DEBUG_BUILD" = true ] && [ "$NOTARIZE" = true ]; then
   echo "Debug packaging cannot be notarized; use the universal release build." >&2
+  exit 1
+fi
+if [ "$LOCAL_SIGNING" = true ] && [ "$NOTARIZE" = true ]; then
+  echo "Local signing is for this Mac; notarization requires Developer ID." >&2
   exit 1
 fi
 
@@ -76,6 +85,24 @@ else
       break
     fi
   done
+fi
+
+# Reuse this machine's certificate even though it is not an Apple-issued
+# distribution identity. Its leaf-bound requirement survives code changes;
+# unlike ad-hoc requirements, it does not use the executable's current hash.
+if [ -z "$SIGNING_IDENTITY" ]; then
+  if [ "$LOCAL_SIGNING" = true ]; then
+    SIGNING_IDENTITY=$(bash "$SCRIPT_DIR/setup-local-signing.sh") || exit 1
+    SIGNING_NAME="AudioWhisper Rebuild Local Development"
+  else
+    SIGNING_IDENTITY=$(security find-identity -p codesigning | awk \
+      'index($0, "\"AudioWhisper Rebuild Local Development\"") {print $2; exit}')
+    if [ -n "$SIGNING_IDENTITY" ]; then SIGNING_NAME="AudioWhisper Rebuild Local Development"; fi
+  fi
+fi
+if [ "$NOTARIZE" = true ] && [ "$SIGNING_NAME" = "AudioWhisper Rebuild Local Development" ]; then
+  echo "Notarization requires a Developer ID identity, not the local development certificate." >&2
+  exit 1
 fi
 
 export SIGNING_IDENTITY
@@ -345,6 +372,8 @@ cat >AudioWhisper.app/Contents/Info.plist <<EOF
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>AudioWhisper Rebuild</string>
+    <key>CFBundleDisplayName</key>
+    <string>AudioWhisper Rebuild</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -425,8 +454,9 @@ sign_app() {
 # TCC identifies microphone clients through their code signing requirement.
 # The linker's executable-only signature has neither a bound Info.plist nor
 # sealed bundle resources. Even local previews must sign the completed bundle.
-# Ad-hoc signing retains permission for this build across launches; a Developer
-# ID is still required to retain that identity across different releases.
+# Certificate signing retains local identity across different builds. Developer
+# ID is required for notarized distribution. Ad-hoc CI previews retain consent
+# only for the exact build, so they are not permission-persistence acceptance.
 if [ -n "$SIGNING_IDENTITY" ]; then
   sign_app "$SIGNING_IDENTITY" "$SIGNING_NAME" || exit 1
 else

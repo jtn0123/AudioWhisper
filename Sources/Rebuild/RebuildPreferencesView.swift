@@ -23,6 +23,7 @@ struct RebuildPreferencesView: View {
     @State private var microphones: [AVCaptureDevice] = []
     @State private var resetUsage = false
     @State private var message: String?
+    @State private var accessibilityAllowed = AccessibilityPermissionManager().checkPermission()
 
     var body: some View {
         ScrollView {
@@ -64,9 +65,10 @@ struct RebuildPreferencesView: View {
                     .font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Label(
-                            AccessibilityPermissionManager().checkPermission()
+                            accessibilityAllowed
                                 ? "Accessibility allowed" : "Accessibility not enabled", systemImage: "hand.raised")
                         Spacer()
+                        Button("Check access", action: refreshAccessibility)
                         Button("Open Accessibility settings") {
                             if let url = URL(
                                 string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -133,10 +135,14 @@ struct RebuildPreferencesView: View {
             Button("Reset totals", role: .destructive) { UsageMetricsStore.shared.reset() }
         }
         .task {
+            refreshAccessibility()
             guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
             microphones =
                 AVCaptureDevice.DiscoverySession(deviceTypes: [.microphone], mediaType: .audio, position: .unspecified)
                 .devices
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshAccessibility()
         }
         .onChange(of: shortcutEnabled) { _, _ in settingsChanged() }
         .onChange(of: holdEnabled) { _, _ in settingsChanged() }
@@ -161,4 +167,11 @@ struct RebuildPreferencesView: View {
     }
 
     private func settingsChanged() { NotificationCenter.default.post(name: .rebuildSettingsChanged, object: nil) }
+
+    private func refreshAccessibility() {
+        let allowed = AccessibilityPermissionManager().checkPermission()
+        guard allowed != accessibilityAllowed else { return }
+        accessibilityAllowed = allowed
+        settingsChanged()
+    }
 }

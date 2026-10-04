@@ -34,6 +34,22 @@ SwiftPM's debug cache. `make run` (or `make run-dev`) installs that bundle besid
 the original app and launches it. `make build` still produces the universal
 arm64/x86_64 release bundle; debug packaging cannot be combined with notarization.
 
+For live development testing, run `bash scripts/build.sh --debug --local-signing`
+once. This creates an AudioWhisper Rebuild Local Development code-signing identity
+in your user keychain. Later builds reuse it automatically. Its private key stays
+in the keychain; temporary key/export files are removed. It changes no system
+certificate trust settings and grants no app permissions. The leaf certificate
+and app identifier keep macOS's code identity stable across builds. Switching
+from a previous ad-hoc build requires one fresh consent for this identity.
+The certificate is local development signing, not Developer ID or notarization.
+CI still uses ad-hoc signing when no certificate is available.
+
+The rebuild prepares microphone hardware on a serial worker with a four-second
+deadline. Cancelled or timed-out preparation cannot activate recording later.
+A blocked worker rejects further starts until it returns, keeping the UI usable
+without stacking hardware requests. Already selected inputs are verified without
+reassigning the Audio Unit's current device.
+
 CI exports Swift coverage from its primary test run and Python coverage from its
 primary Python tests. The Sonar job downloads both artifacts from the same workflow
 run and validates their commit, run attempt and content hashes before scanning.
@@ -53,4 +69,4 @@ coverage is deliberately rejected.
 - The build now signs local previews ad hoc when no certificate is available and fails on signature errors. CI checks the complete bundle signature, app identifier, signing requirement and Foundation localization resolution. The latter handles SwiftPM's flat and Contents/Resources bundle layouts.
 - A post-transcription signature check found Python adding `ml/__pycache__` inside the signed app. Daemon, download and verification subprocesses now disable bytecode writes; packaging strips development caches from every resource bundle before signing. A real daemon ping regression reproduced the added files before the fix and preserved the resource tree afterward. All 89 targeted daemon, model verification, download and session checks passed, with strict SwiftLint still clean.
 
-The global shortcut could not be exercised by the native automation key command, so physical shortcut delivery remains unverified; its temporary test setting was returned to off. Hold-to-record, Smart Paste and the full desktop/full-screen window matrix still need native validation under the new identity. The known Whisper failure on a macOS CI runner is unresolved. Ad-hoc signing retains permission for the same build across launches; a different build may need new consent. Distribution needs a Developer ID and notarization. Existing library import is intentionally pending explicit migration design.
+The global shortcut could not be exercised by the native automation key command, so physical shortcut delivery remains unverified; its temporary test setting was returned to off. Hold-to-record, Smart Paste and the full desktop/full-screen window matrix still need native validation under the new identity. The known Whisper failure on a macOS CI runner is unresolved. Ad-hoc signing retains permission for the same build across launches; use the persistent local identity for development permission tests. Distribution needs a Developer ID and notarization. Existing library import is intentionally pending explicit migration design.
