@@ -12,6 +12,7 @@ internal struct ContentView: View {
 
     @AppDefault(\.transcriptionProvider) var transcriptionProvider
     @AppDefault(\.selectedWhisperModel) var selectedWhisperModel
+    @AppDefault(\.selectedParakeetModel) var selectedParakeetModel
     @AppDefault(\.immediateRecording) var immediateRecording
     @AppDefault(\.hasShownFirstModelUseHint) var hasShownFirstModelUseHint
 
@@ -71,8 +72,6 @@ internal struct ContentView: View {
                     } else {
                         viewModel.showSuccess = false
                     }
-                } else if permissionManager.microphonePermissionState != .granted {
-                    permissionManager.requestPermissionWithEducation()
                 } else {
                     startRecording()
                 }
@@ -164,6 +163,13 @@ internal struct ContentView: View {
             }
         }
         .onChange(of: permissionManager.allPermissionsGranted) { _, _ in
+            updateStatus()
+        }
+        .onChange(of: RecordingSetupState.shared.requirement) { _, _ in
+            updateStatus()
+        }
+        .task(id: "\(transcriptionProvider.rawValue):\(selectedWhisperModel.rawValue):\(selectedParakeetModel.rawValue)") {
+            await RecordingSetupState.shared.refresh()
             updateStatus()
         }
     }

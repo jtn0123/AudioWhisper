@@ -230,7 +230,7 @@ final class DashboardNavItemTests: XCTestCase {
     }
 
     func testNavItemCasesCount() {
-        XCTAssertEqual(DashboardNavItem.allCases.count, 8)
+        XCTAssertEqual(DashboardNavItem.allCases.count, 9)
     }
 
     func testNavItemConformsToIdentifiable() {

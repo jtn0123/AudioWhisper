@@ -12,7 +12,7 @@ internal extension AppDelegate {
     func setupNotificationObservers() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(showDashboard),
+            selector: #selector(showFirstRecordingSetup),
             name: .welcomeCompleted,
             object: nil
         )
@@ -44,6 +44,10 @@ internal extension AppDelegate {
             name: .transcriptionProcessingStateChanged,
             object: nil
         )
+    }
+
+    @objc func showFirstRecordingSetup() {
+        WindowCoordinator.shared.presentRecordingSetup()
     }
 
     @objc private func onPressAndHoldSettingsChanged(_ notification: Notification) {

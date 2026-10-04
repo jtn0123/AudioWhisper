@@ -221,6 +221,8 @@ internal struct InkRippleRecordingView: View {
             return "Tap to record"
         case .permissionRequired:
             return "Permission needed"
+        case .setupRequired:
+            return "Finish recording setup"
         case .error(let message):
             return message
         }
@@ -234,7 +236,7 @@ internal struct InkRippleRecordingView: View {
             return "ellipsis"
         case .success:
             return "checkmark"
-        case .ready, .permissionRequired:
+        case .ready, .permissionRequired, .setupRequired:
             return "mic.fill"
         case .error:
             return "exclamationmark"
@@ -251,7 +253,7 @@ internal struct InkRippleRecordingView: View {
             return Color(red: 0.35, green: 0.55, blue: 0.40)
         case .ready:
             return inkColor.opacity(0.15)
-        case .permissionRequired, .error:
+        case .permissionRequired, .setupRequired, .error:
             return mutedColor.opacity(0.2)
         }
     }
@@ -264,7 +266,7 @@ internal struct InkRippleRecordingView: View {
             return mutedColor
         case .ready:
             return inkColor
-        case .permissionRequired, .error:
+        case .permissionRequired, .setupRequired, .error:
             return mutedColor
         }
     }

@@ -35,8 +35,8 @@ internal extension AppDelegate {
 
         // ── Primary actions
         menu.addItem(makeActionItem(
-            title: "Start Recording",
-            selector: #selector(toggleRecordWindow),
+            title: audioRecorder?.isRecording == true ? "Stop Recording" : "Start Recording",
+            selector: #selector(startRecordingFromMenu),
             keyEquivalent: " ",
             modifiers: [.command, .shift]
         ))
@@ -100,7 +100,8 @@ internal extension AppDelegate {
 
         let host = NSHostingView(rootView: MenuHeaderView(
             providerRaw: providerRaw,
-            todayWPM: wpm > 0 ? wpm : nil
+            todayWPM: wpm > 0 ? wpm : nil,
+            readiness: RecordingSetupState.shared.requirement
         ))
         host.frame = NSRect(x: 0, y: 0, width: menuWidth, height: 44)
         item.view = host

@@ -7,6 +7,7 @@ internal enum AppStatus: Equatable {
     case success
     case ready
     case permissionRequired
+    case setupRequired(String)
 
     var message: String {
         switch self {
@@ -22,6 +23,8 @@ internal enum AppStatus: Equatable {
             return "Ready"
         case .permissionRequired:
             return "Microphone access required"
+        case .setupRequired(let message):
+            return message
         }
     }
 
@@ -37,7 +40,7 @@ internal enum AppStatus: Equatable {
             return .green
         case .ready:
             return .blue
-        case .permissionRequired:
+        case .permissionRequired, .setupRequired:
             return .gray
         }
     }
@@ -56,6 +59,8 @@ internal enum AppStatus: Equatable {
             return nil
         case .permissionRequired:
             return "mic.slash.fill"
+        case .setupRequired:
+            return "checklist"
         }
     }
 
@@ -70,7 +75,7 @@ internal enum AppStatus: Equatable {
 
     var showInfoButton: Bool {
         switch self {
-        case .permissionRequired:
+        case .permissionRequired, .setupRequired:
             return true
         default:
             return false
@@ -79,7 +84,7 @@ internal enum AppStatus: Equatable {
 }
 
 @Observable internal class StatusViewModel {
-    var currentStatus: AppStatus = .ready
+    var currentStatus: AppStatus = .setupRequired("Checking recording setup")
 
     func updateStatus(
         isRecording: Bool,
@@ -87,7 +92,8 @@ internal enum AppStatus: Equatable {
         progressMessage: String,
         hasPermission: Bool,
         showSuccess: Bool,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        setupMessage: String? = nil
     ) {
         if let error = errorMessage {
             currentStatus = .error(error)
@@ -97,10 +103,12 @@ internal enum AppStatus: Equatable {
             currentStatus = .recording
         } else if isProcessing {
             currentStatus = .processing(progressMessage)
-        } else if hasPermission {
-            currentStatus = .ready
-        } else {
+        } else if !hasPermission {
             currentStatus = .permissionRequired
+        } else if let setupMessage {
+            currentStatus = .setupRequired(setupMessage)
+        } else {
+            currentStatus = .ready
         }
     }
 }

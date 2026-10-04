@@ -33,13 +33,9 @@ internal class WindowController {
     }
 
     func toggleRecordWindow(_ window: NSWindow? = nil, completion: (() -> Void)? = nil) {
-        // Don't show recorder window during first-run welcome experience
-        let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
-        if !hasCompletedWelcome {
-            completion?()
-            return
-        }
-
+        // Recording entry points enforce microphone/model readiness. The
+        // window must remain available even if the optional welcome is open,
+        // so an active recorder always has its controls and Stop observer.
         // In test environment, exit early
         if isTestEnvironment {
             completion?()

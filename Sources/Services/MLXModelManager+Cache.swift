@@ -26,7 +26,7 @@ extension MLXModelManager {
         // Fallback to in-memory check after refresh
         await refreshModelList()
         if downloadedModels.contains(repo) { return }
-        await downloadParakeetModel()
+        await downloadParakeetModel(repo: repo)
     }
 
     /// Direct filesystem check for model cache - avoids race conditions with async refreshModelList
@@ -99,8 +99,8 @@ extension MLXModelManager {
         }
     }
 
-    func downloadParakeetModel() async {
-        let repo = Self.parakeetRepo
+    func downloadParakeetModel(repo: String? = nil) async {
+        let repo = repo ?? Self.parakeetRepo
         do {
             try await downloadSerializer.run(key: repo) { [weak self] in
                 await self?.performDownloadParakeetModel(repo: repo)

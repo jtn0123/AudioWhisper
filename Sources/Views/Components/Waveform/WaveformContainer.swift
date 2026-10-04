@@ -355,7 +355,7 @@ extension WaveformContainer {
         case .success:            return successColor
         case .error:              return coralColor
         case .ready:              return creamDim
-        case .permissionRequired: return mutedColor
+        case .permissionRequired, .setupRequired: return mutedColor
         }
     }
 
@@ -386,6 +386,7 @@ extension WaveformContainer {
         case .success:             return "COPIED"
         case .ready:               return "TAP TO RECORD"
         case .permissionRequired:  return "PERMISSION NEEDED"
+        case .setupRequired:       return "FINISH SETUP"
         case .error(let message):  return message.uppercased()
         }
     }

@@ -43,13 +43,21 @@ final class ProviderSettingsState {
 
     // MARK: - Status Helpers
 
-    func statusInfo(for provider: TranscriptionProvider) -> (text: String, isReady: Bool) {
-        switch provider {
-        case .local:
-            return downloadedModels.isEmpty ? ("Setup", false) : ("Ready", true)
-        case .parakeet:
-            return envReady ? ("Ready", true) : ("Setup", false)
-        }
+    func statusInfo(
+        for provider: TranscriptionProvider,
+        selectedWhisperModel: WhisperModel = AppDefaults.selectedWhisperModel,
+        parakeetModelCached: Bool = false
+    ) -> (text: String, isReady: Bool) {
+        let requirement = RecordingSetupRequirement.modelRequirement(RecordingSetupInputs(
+            provider: provider,
+            whisperModel: selectedWhisperModel,
+            downloadedWhisperModels: Set(downloadedModels),
+            parakeetModel: AppDefaults.selectedParakeetModel,
+            environmentReady: envReady,
+            parakeetModelCached: parakeetModelCached,
+            supportsParakeet: RecordingSetupState.supportsParakeet
+        ))
+        return (requirement.isReady ? "Installed" : "Setup", requirement.isReady)
     }
 
     func beginDownload(_ model: WhisperModel) {

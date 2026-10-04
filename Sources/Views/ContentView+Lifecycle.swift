@@ -38,10 +38,8 @@ internal extension ContentView {
 
             if audioRecorder.isRecording {
                 stopAndProcess()
-            } else if !isProcessing && permissionManager.microphonePermissionState == .granted && !viewModel.showSuccess {
+            } else if !isProcessing && !viewModel.showSuccess {
                 startRecording()
-            } else if permissionManager.microphonePermissionState != .granted {
-                permissionManager.requestPermissionWithEducation()
             }
 
             // Debounce: prevent rapid repeated space key triggers

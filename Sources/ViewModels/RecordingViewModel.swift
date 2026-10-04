@@ -201,10 +201,18 @@ final class RecordingViewModel {
     /// `MockAudioEngineRecorder` conforms to it.
     func startRecording<Recorder: AudioRecording>(
         audioRecorder: Recorder,
-        permissionManager: PermissionManager
+        permissionManager: PermissionManager,
+        setupRequirement: RecordingSetupRequirement? = nil,
+        presentSetup: (() -> Void)? = nil
     ) {
-        if permissionManager.microphonePermissionState != .granted {
-            permissionManager.requestPermissionWithEducation()
+        let requirement = setupRequirement ?? RecordingSetupState.shared.requirement
+        guard permissionManager.microphonePermissionState == .granted, requirement.isReady else {
+            showError = false
+            if let presentSetup {
+                presentSetup()
+            } else {
+                WindowCoordinator.shared.presentRecordingSetup()
+            }
             return
         }
 

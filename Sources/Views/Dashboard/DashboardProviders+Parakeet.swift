@@ -186,7 +186,10 @@ internal extension DashboardProvidersView {
         }
         .padding(DashboardTheme.Spacing.md)
         .onChange(of: selectedParakeetModel) { _, _ in
-            Task { await mlxModelManager.ensureParakeetModel() }
+            Task {
+                await mlxModelManager.ensureParakeetModel()
+                await RecordingSetupState.shared.refresh()
+            }
         }
     }
 
@@ -208,6 +211,7 @@ internal extension DashboardProvidersView {
                     setupStatus = "✓ Environment ready"
                     envReady = true
                 }
+                await RecordingSetupState.shared.refresh()
                 try? await Task.sleep(for: .milliseconds(600))
                 await MainActor.run {
                     showSetupSheet = false
@@ -263,7 +267,10 @@ internal extension DashboardProvidersView {
                     parakeetVerifyMessage = result.message
                     if result.succeeded {
                         hasSetupParakeet = true
-                        Task { await mlxModelManager.refreshModelList() }
+                        Task {
+                            await mlxModelManager.refreshModelList()
+                            await RecordingSetupState.shared.refresh()
+                        }
                     }
                 }
             } catch {

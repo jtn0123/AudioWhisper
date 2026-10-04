@@ -29,10 +29,10 @@ final class WindowControllerTests: IsolatedXCTestCase {
     
     // MARK: - Welcome Completion Check Tests
     
-    func testToggleRecordWindowBlockedDuringWelcome() {
+    func testToggleRecordWindowIsSafeWithWelcomeOpen() {
         AppDefaults.defaults.set(false, forKey: "hasCompletedWelcome")
 
-        // During welcome, toggling the record window must be a safe no-op.
+        // Welcome visibility must not prevent the recording control path.
         XCTAssertNoThrow(windowController.toggleRecordWindow())
     }
     

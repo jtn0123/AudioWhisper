@@ -81,12 +81,12 @@ final class RecordingViewModelCoverageTests: IsolatedXCTestCase {
 
     func testStartRecordingClearsLastAudioURLWhenPermitted() {
         let vm = makeViewModel()
-        let recorder = AudioEngineRecorder()
+        let recorder = MockAudioEngineRecorder()
         let permissionManager = PermissionManager()
         vm.lastAudioURL = URL(fileURLWithPath: "/tmp/stale.m4a")
         // Exercises the start path. When permission is granted, lastAudioURL is
         // reset before recording; when not granted, the request path runs.
-        vm.startRecording(audioRecorder: recorder, permissionManager: permissionManager)
+        vm.startRecording(audioRecorder: recorder, permissionManager: permissionManager, setupRequirement: .ready)
         if permissionManager.microphonePermissionState == .granted {
             XCTAssertNil(vm.lastAudioURL)
         } else {

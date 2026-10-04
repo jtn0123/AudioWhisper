@@ -109,8 +109,8 @@ internal class ParakeetService {
 
     /// Checks if the model is cached on disk.
     /// This is an async function to avoid blocking the main thread with file I/O operations.
-    private func isModelCached() async -> Bool {
-        let repo = selectedRepo
+    func isModelCached(model: ParakeetModel? = nil) async -> Bool {
+        let repo = model?.rawValue ?? selectedRepo
         // Run file I/O on a background thread to avoid blocking main thread
         return await Task.detached(priority: .userInitiated) {
             let escaped = repo.replacingOccurrences(of: "/", with: "--")
