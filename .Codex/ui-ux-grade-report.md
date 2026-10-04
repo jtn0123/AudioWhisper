@@ -165,7 +165,7 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 
 **Implementation evidence:** Capture now applies the selected input UID and displays unavailable-device errors. Device-specific boost/restoration is covered by regression tests; physical two-input validation remains separate.
 
-#### H3 — Let failed model verification invalidate Ready
+#### ~~H3~~ ✓ done 2026-10-03 — Let failed model verification invalidate Ready
 - **Where:** `Sources/Rebuild/RebuildModelsView.swift:149-177`; `Sources/Rebuild/RebuildSession.swift:274-287`; [Setup capture](ui-ux-audit/2026-10-03-native-v2/models-ready.png).
 - **Evidence:** Verification's succeeded flag is ignored; refresh recomputes readiness from structural presence and runtime, not load success.
 - **Layman's term:** The app can say Ready after its own model check failed.
@@ -175,6 +175,9 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 - **Difficulty:** M.
 - **Fix:** Keep engine/model/asset-keyed verification status. Block readiness on failure and offer repair; invalidate after asset/selection changes. Test present assets with failed load and successful recovery.
 - **Grade lift:** C− → B− with H1/H2, by aligning setup claims with engine evidence.
+
+
+**Implementation evidence:** Failed load verification is persisted by engine/model/asset identity and blocks recording and file transcription across refresh/relaunch. Whisper verification now loads the model. Eight focused regressions cover failure, successful repair, changed assets, stale results and thrown errors; 33 setup/session/verification tests and strict targeted lint pass.
 
 #### H4 — Refresh an open Library when a recording is saved
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:7,70-76,101-117`; `Sources/Rebuild/RebuildSession.swift:94,219-225`; `Sources/Stores/DataManager.swift:186-211`.

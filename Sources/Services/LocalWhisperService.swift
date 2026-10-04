@@ -222,6 +222,13 @@ internal final class LocalWhisperService: Sendable {
         await cache.clear()
     }
 
+    /// Reload the on-disk assets, rather than validating a previously cached
+    /// instance after an installation or repair.
+    func verifyModel(_ model: WhisperModel) async throws {
+        await cache.clear()
+        _ = try await cache.getOrCreate(model: model, maxCached: maxCachedModels, progressCallback: nil)
+    }
+
     // Provide helpful duration hints based on model speed
     private func getDurationHint(for model: WhisperModel) -> String {
         switch model {

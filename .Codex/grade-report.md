@@ -75,13 +75,16 @@ The rebuild materially improves session ownership, setup, window policy, packagi
 
 **Implementation evidence:** Selected UID is resolved and applied to the input Audio Unit before format/tap setup; routing is read back and unavailable input errors reach the UI. Boost and queued restore target the captured device, even if preferences change. Routing/boost regression and all 55 related recorder/session tests pass; physical two-input recording remains pending.
 
-#### B2 — Make readiness consume verification outcomes
+#### ~~B2~~ ✓ done 2026-10-03 — Make readiness consume verification outcomes
 - **Where:** `Sources/Rebuild/RebuildModelsView.swift:149-177`; `Sources/Rebuild/RebuildSession.swift:274-287`.
 - **What's wrong:** Parakeet verification displays its message but ignores `result.succeeded`. Refresh computes Ready from asset presence/imports, so failed load verification does not block recording.
 - **Impact:** Major — the app can encourage recording after learning its model cannot load.
 - **Fix:** Keep verification state keyed by engine/model/asset identity; failure blocks readiness and offers repair. Invalidate after selection/install/delete changes. Test present-but-unloadable assets and successful repair.
 - **Effort:** M.
 - **Grade lift:** C+ → B with B1, by aligning setup and service results.
+
+
+**Implementation evidence:** Failed load verification is persisted by engine/model/asset identity and blocks recording and file transcription across refresh/relaunch. Whisper verification now loads the model. Eight focused regressions cover failure, successful repair, changed assets, stale results and thrown errors; 33 setup/session/verification tests and strict targeted lint pass.
 
 ---
 

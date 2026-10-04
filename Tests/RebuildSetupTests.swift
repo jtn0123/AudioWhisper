@@ -34,7 +34,8 @@ final class RebuildSetupTests: IsolatedXCTestCase {
                 install: { selection in
                     self.installs += 1
                     if let operation = self.installOperation { try await operation(selection) } else { self.installed = true }
-                }
+                },
+                verify: { _ in ModelVerificationResult(succeeded: true, message: "Fixture loaded") }
             ))
     }
 

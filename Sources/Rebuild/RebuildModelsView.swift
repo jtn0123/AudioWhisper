@@ -6,7 +6,7 @@ struct RebuildModelsView: View {
     @AppDefault(\.selectedWhisperModel) private var whisper
     @AppDefault(\.selectedParakeetModel) private var parakeet
     @State private var verification: String?
-    @State private var verifying = false
+    private var verifying: Bool { session.isVerifyingVoiceModel }
     @State private var deletionRequested = false
 
     var body: some View {
@@ -74,13 +74,19 @@ struct RebuildModelsView: View {
                     }
                     if session.readiness.modelInstalled {
                         HStack {
-                            Button(verifying ? "Verifying…" : "Verify model") { Task { await verify() } }.disabled(
+                            Button(verifying ? "Verifying…" : "Verify model") {
+                                Task { await session.verifyVoiceModel() }
+                            }.disabled(
                                 verifying || session.phase.isBusy)
                             Button("Remove selected model", role: .destructive) { deletionRequested = true }
                                 .disabled(session.phase.isBusy || session.isInstalling || verifying)
                         }
                     }
                     if let verification { Text(verification).font(.caption).textSelection(.enabled) }
+                    if let message = session.verificationMessage {
+                        Text(message).font(.caption).textSelection(.enabled)
+                            .foregroundStyle(session.readiness.modelVerificationFailed ? Color.red : Color.secondary)
+                    }
                 }
                 HStack {
                     Label(
@@ -146,34 +152,4 @@ struct RebuildModelsView: View {
         return MLXModelManager.shared.downloadProgress[parakeet.rawValue] ?? "Preparing runtime and model files"
     }
 
-    private func verify() async {
-        guard !session.phase.isBusy, !session.isInstalling, !session.maintenanceInProgress else { return }
-        verifying = true
-        session.maintenanceInProgress = true
-        verification = nil
-        defer {
-            verifying = false
-            session.maintenanceInProgress = false
-        }
-        let selectedProvider = provider
-        let selectedModel = parakeet
-        let selectedWhisper = whisper
-        do {
-            if selectedProvider == .parakeet {
-                let python = try await UvBootstrap.ensureVenv()
-                let result = try await ModelVerificationService.verify(
-                    scriptName: "verify_parakeet",
-                    arguments: [selectedModel.rawValue] + ModelPins.scriptArguments(for: selectedModel.rawValue),
-                    pythonPath: python.path, successFallback: "Parakeet is ready"
-                )
-                verification = result.message
-            } else {
-                verification =
-                    WhisperKitStorage.isModelDownloaded(selectedWhisper)
-                    ? "All required Whisper model assets are present. Actual inference is checked separately."
-                    : "The model is incomplete. Remove it and install it again."
-            }
-        } catch { verification = error.localizedDescription }
-        await session.refreshSetup()
-    }
 }

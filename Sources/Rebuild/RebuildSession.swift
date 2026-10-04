@@ -21,12 +21,14 @@ struct RebuildReadiness: Equatable {
     var modelInstalled = false
     var runtimeReady = false
     var checking = true
-    var ready: Bool { !checking && microphoneGranted && modelInstalled && runtimeReady }
+    var modelVerificationFailed = false
+    var ready: Bool { !checking && microphoneGranted && modelInstalled && runtimeReady && !modelVerificationFailed }
     var nextStep: String {
         if checking { return "Checking your recording setup" }
         if !microphoneGranted { return "Allow microphone access" }
         if !runtimeReady { return "Install the local runtime" }
         if !modelInstalled { return "Install your voice model" }
+        if modelVerificationFailed { return "Repair or verify your voice model" }
         return "Ready to record"
     }
 }
@@ -89,6 +91,8 @@ final class RebuildSession {
     private(set) var isInstalling = false
     var maintenanceInProgress = false
     private(set) var isRequestingMicrophone = false
+    private(set) var isVerifyingVoiceModel = false
+    private(set) var verificationMessage: String?
     private(set) var duration: TimeInterval?
     var canRetry: Bool { phase == .failed && retryAudio != nil }
     var openSetup: () -> Void = {}
@@ -97,6 +101,7 @@ final class RebuildSession {
     var didDeliver: () -> Void = {}
     @ObservationIgnored private let services: RebuildSessionServices
     @ObservationIgnored private let setup: RebuildSetupServices
+    @ObservationIgnored private let verificationStore: RebuildModelVerificationStore
     @ObservationIgnored private var job: Task<Void, Never>?
     @ObservationIgnored private var sessionID: UUID?
     @ObservationIgnored private var configuration: TranscriptionPipelineConfig?
@@ -107,6 +112,8 @@ final class RebuildSession {
     @ObservationIgnored private let paste = PasteManager()
     @ObservationIgnored private var retryAudio: RetryAudio?
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
+    @ObservationIgnored private var verificationSelection: RebuildModelSelection?
+    @ObservationIgnored private var verificationAssets: String?
 
     private struct RetryAudio {
         let url: URL
@@ -117,6 +124,7 @@ final class RebuildSession {
 
     func selectionChanged() {
         readiness.checking = true
+        verificationMessage = nil
         Task { await refreshSetup() }
     }
 
@@ -135,9 +143,13 @@ final class RebuildSession {
         retryAudio = nil
     }
 
-    init(services: RebuildSessionServices, setup: RebuildSetupServices? = nil) {
+    init(
+        services: RebuildSessionServices, setup: RebuildSetupServices? = nil,
+        verificationDefaults: UserDefaults? = nil
+    ) {
         self.services = services
         self.setup = setup ?? .live
+        self.verificationStore = RebuildModelVerificationStore(defaults: verificationDefaults ?? AppDefaults.defaults)
         if let source = services.interruptionSource {
             interruptionObserver = NotificationCenter.default.addObserver(
                 forName: .recordingInterrupted, object: source, queue: nil
@@ -213,7 +225,8 @@ final class RebuildSession {
 
     func importAudio(_ url: URL) {
         guard !phase.isBusy, !isInstalling, !maintenanceInProgress else { return }
-        guard readiness.modelInstalled && readiness.runtimeReady && !readiness.checking else {
+        guard readiness.modelInstalled && readiness.runtimeReady
+            && !readiness.checking && !readiness.modelVerificationFailed else {
             openSetup()
             return
         }
@@ -305,6 +318,36 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    func verifyVoiceModel() async {
+        guard !phase.isBusy, !isInstalling, !maintenanceInProgress else { return }
+        isVerifyingVoiceModel = true
+        maintenanceInProgress = true
+        verificationMessage = nil
+        defer {
+            isVerifyingVoiceModel = false
+            maintenanceInProgress = false
+        }
+        let selection = setup.selection()
+        let assets = await setup.assetIdentity(selection)
+        guard !Task.isCancelled, selection == setup.selection() else { return }
+        let result: ModelVerificationResult
+        do {
+            result = try await setup.verify(selection)
+        } catch {
+            result = ModelVerificationResult(succeeded: false, message: "Verification failed: \(error.localizedDescription)")
+        }
+        let currentAssets = await setup.assetIdentity(selection)
+        guard !Task.isCancelled, selection == setup.selection(), assets == currentAssets else {
+            await refreshSetup()
+            return
+        }
+        verificationStore.record(result, for: selection, assets: assets)
+        verificationSelection = selection
+        verificationAssets = assets
+        verificationMessage = result.message
+        await refreshSetup()
+    }
+
     func refreshSetup() async {
         refreshAgain = true
         guard !refreshInFlight else { return }
@@ -315,13 +358,22 @@ extension RebuildSession {
             let selection = setup.selection()
             let runtime = await setup.runtimeReady(selection)
             let installed = await setup.modelInstalled(selection)
+            let assets = await setup.assetIdentity(selection)
             guard selection == setup.selection() else {
                 refreshAgain = true
                 continue
             }
+            let failure = verificationStore.failure(for: selection, assets: assets)
+            if verificationSelection != selection || verificationAssets != assets { verificationMessage = nil }
+            if let failure {
+                verificationSelection = selection
+                verificationAssets = assets
+                verificationMessage = failure
+            }
             readiness = RebuildReadiness(
                 microphoneGranted: setup.microphoneStatus() == .authorized,
-                modelInstalled: installed, runtimeReady: runtime, checking: false
+                modelInstalled: installed, runtimeReady: runtime, checking: false,
+                modelVerificationFailed: failure != nil
             )
         }
     }
