@@ -118,6 +118,7 @@ struct WaveformContainer: View {
             }
         }
         .buttonStyle(.plain)
+        .disabled(isProcessing)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         // Outer soft shadow — always on
         .shadow(color: .black.opacity(0.55), radius: 30, x: 0, y: 16)

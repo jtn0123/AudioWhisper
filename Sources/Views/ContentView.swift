@@ -63,6 +63,7 @@ internal struct ContentView: View {
             waveformSamples: audioRecorder.waveformSamples,
             frequencyBands: audioRecorder.frequencyBands,
             onTap: {
+                guard !viewModel.isProcessing else { return }
                 if audioRecorder.isRecording {
                     stopAndProcess()
                 } else if viewModel.showSuccess {
