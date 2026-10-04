@@ -187,3 +187,13 @@ MIT — see [LICENSE](LICENSE).
 ---
 
 Made with ❤️ for the macOS community.
+
+### Recording diagnostics
+
+For a read-only setup check from the built app:
+
+```bash
+AudioWhisper.app/Contents/MacOS/AudioWhisper --diagnose-recording
+```
+
+The command prints JSON with the build, configured recording shortcut, selected voice model, model/runtime availability, microphone and Smart Paste permission states, and the next required setup step, then exits. It does not include transcripts, history or credentials. Permissions are reported for this diagnostic process; desktop prompts and focus behavior still require checking the running app.

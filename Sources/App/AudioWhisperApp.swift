@@ -1,6 +1,5 @@
 import SwiftUI
 
-@main
 internal struct AudioWhisperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 

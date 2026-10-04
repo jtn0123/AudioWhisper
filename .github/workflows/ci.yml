@@ -366,6 +366,24 @@ jobs:
           fi
           echo "App bundle smoke test passed."
 
+      - name: Run read-only recording diagnostics from the packaged app
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          result = subprocess.run(
+              ["AudioWhisper.app/Contents/MacOS/AudioWhisper", "--diagnose-recording"],
+              capture_output=True, text=True, timeout=30, check=True,
+          )
+          report = json.loads(result.stdout)
+          assert report["bundleIdentifier"] == "com.audiowhisper.app", report
+          assert report["build"] == os.environ["GITHUB_SHA"], report
+          assert report["launchContext"] == "commandLine", report
+          assert report["nextStep"], report
+          if report["microphonePermission"] != "granted":
+              assert not report["readyToRecord"], report
+          print("Packaged recording diagnostics exited cleanly and reported valid setup state")
+          PY
+
       - name: Show bundle size
         run: |
           du -sh AudioWhisper.app
