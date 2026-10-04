@@ -7,8 +7,7 @@ func cancellableValue<Value: Sendable>(of task: Task<Value, Error>) async throws
         try await withCheckedThrowingContinuation { continuation in
             bridge.install(continuation)
             Task.detached {
-                do { bridge.finish(.success(try await task.value)) }
-                catch { bridge.finish(.failure(error)) }
+                do { bridge.finish(.success(try await task.value)) } catch { bridge.finish(.failure(error)) }
             }
         }
     } onCancel: {

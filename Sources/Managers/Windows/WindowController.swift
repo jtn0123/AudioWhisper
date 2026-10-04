@@ -121,10 +121,9 @@ internal class WindowController {
         }
     }
 
-    private func storePreviousApp() {
-        let workspace = NSWorkspace.shared
+    func storePreviousApp(frontmostApp: NSRunningApplication? = NSWorkspace.shared.frontmostApplication) {
         Logger.paste.debug("storePreviousApp called")
-        if let frontmostApp = workspace.frontmostApplication,
+        if let frontmostApp,
            frontmostApp.bundleIdentifier != Bundle.main.bundleIdentifier {
             previousApp = frontmostApp
             WindowController.storedTargetApp = frontmostApp
@@ -136,6 +135,8 @@ internal class WindowController {
                 object: frontmostApp
             )
         } else {
+            previousApp = nil
+            WindowController.storedTargetApp = nil
             Logger.paste.debug("storePreviousApp: no suitable frontmost app found")
         }
     }

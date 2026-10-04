@@ -26,7 +26,10 @@ enum HuggingFaceCache {
         let config = snapshot.appendingPathComponent("config.json")
         guard let configData = try? Data(contentsOf: config),
               (try? JSONSerialization.jsonObject(with: configData)) is [String: Any] else { return false }
-        guard ["tokenizer.json", "tokenizer.model"].contains(where: { nonemptyFile(snapshot.appendingPathComponent($0)) }) else { return false }
+        let hasTokenizer = ["tokenizer.json", "tokenizer.model"].contains {
+            nonemptyFile(snapshot.appendingPathComponent($0))
+        }
+        guard hasTokenizer else { return false }
         let index = snapshot.appendingPathComponent("model.safetensors.index.json")
         if fm.fileExists(atPath: index.path) {
             guard let data = try? Data(contentsOf: index),
@@ -41,7 +44,8 @@ enum HuggingFaceCache {
     }
 
     private static func completeWeights(_ url: URL) -> Bool {
-        guard let size = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]).fileSize,
+        let resolved = url.resolvingSymlinksInPath()
+        guard let size = try? resolved.resourceValues(forKeys: [.fileSizeKey]).fileSize,
               size > 8, let handle = try? FileHandle(forReadingFrom: url) else { return false }
         defer { try? handle.close() }
         guard let prefix = try? handle.read(upToCount: 8), prefix.count == 8 else { return false }
@@ -57,7 +61,8 @@ enum HuggingFaceCache {
     }
 
     private static func nonemptyFile(_ url: URL) -> Bool {
-        guard let values = try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]) else { return false }
+        let resolved = url.resolvingSymlinksInPath()
+        guard let values = try? resolved.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]) else { return false }
         return values.isRegularFile == true && (values.fileSize ?? 0) > 0
     }
 }

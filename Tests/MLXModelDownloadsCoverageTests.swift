@@ -45,7 +45,7 @@ final class MLXModelDownloadsCoverageTests: IsolatedXCTestCase {
         try revision.write(to: refsDir.appendingPathComponent("main"), atomically: true, encoding: .utf8)
         if createSnapshotDir {
             let snapDir = modelDir.appendingPathComponent("snapshots/\(revision)")
-            try FileManager.default.createDirectory(at: snapDir, withIntermediateDirectories: true)
+            try HuggingFaceFixture.writeAssets(to: snapDir)
         }
         try FileManager.default.createDirectory(
             at: modelDir.appendingPathComponent("blobs"),

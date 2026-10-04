@@ -67,8 +67,7 @@ final class DaemonTransportReliabilityTests: XCTestCase {
         }
         XCTAssertTrue(FileManager.default.fileExists(atPath: arrived.path))
         task.cancel()
-        do { _ = try await task.value; XCTFail("expected cancellation") }
-        catch { XCTAssertTrue(error is CancellationError) }
+        do { _ = try await task.value; XCTFail("expected cancellation") } catch { XCTAssertTrue(error is CancellationError) }
         XCTAssertTrue(FileManager.default.fileExists(atPath: pcm.path), "worker still owns its audio")
         FileManager.default.createFile(atPath: directory.appendingPathComponent("release").path, contents: Data())
         let cleanupDeadline = ContinuousClock.now + .seconds(3)
@@ -92,8 +91,7 @@ final class DaemonTransportReliabilityTests: XCTestCase {
         let finished = expectation(description: "canceled caller released")
         task.cancel()
         Task {
-            do { try await task.value; XCTFail("expected cancellation") }
-            catch { XCTAssertTrue(error is CancellationError) }
+            do { try await task.value; XCTFail("expected cancellation") } catch { XCTAssertTrue(error is CancellationError) }
             finished.fulfill()
         }
         await fulfillment(of: [finished], timeout: 1)

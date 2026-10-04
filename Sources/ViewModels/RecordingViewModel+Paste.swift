@@ -23,10 +23,10 @@ extension RecordingViewModel {
 
     // MARK: - Source App Info
 
-    func capturePasteTarget() {
+    func capturePasteTarget(useStoredTarget: Bool = true) {
         let foreground = NSWorkspace.shared.frontmostApplication
         let target = foreground?.bundleIdentifier != Bundle.main.bundleIdentifier
-            ? foreground : WindowController.storedTargetApp
+            ? foreground : (useStoredTarget ? WindowController.storedTargetApp : nil)
         hasCapturedPasteTarget = true
         targetAppForPaste = target?.isTerminated == false ? target : nil
         lastSourceAppInfo = targetAppForPaste.flatMap { SourceAppInfo.from(app: $0) } ?? .unknown
@@ -114,6 +114,7 @@ extension RecordingViewModel {
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             retainedWindow.animator().alphaValue = 0.0
         }, completionHandler: {
+            Task { @MainActor in
             guard self.isCurrentSession(id) else {
                 retainedWindow.alphaValue = 1.0
                 return
@@ -126,6 +127,7 @@ extension RecordingViewModel {
             retainedWindow.orderOut(nil)
             retainedWindow.alphaValue = 1.0
             completion?()
+            }
         })
     }
 
@@ -198,4 +200,3 @@ extension RecordingViewModel {
         notificationTasks.removeAll()
     }
 }
-

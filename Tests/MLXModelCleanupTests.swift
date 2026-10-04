@@ -29,7 +29,12 @@ final class MLXModelCleanupTests: XCTestCase {
         cacheRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("MLXModelCleanupTests-\(UUID().uuidString)", isDirectory: true)
         for repo in [parakeet, otherAppsModel, curated, retiredInUse, retired] {
-            try FileManager.default.createDirectory(at: modelDirectory(repo), withIntermediateDirectories: true)
+            let model = modelDirectory(repo)
+            let revision = String(repeating: "a", count: 40)
+            try HuggingFaceFixture.writeAssets(to: model.appendingPathComponent("snapshots/" + revision))
+            let refs = model.appendingPathComponent("refs")
+            try FileManager.default.createDirectory(at: refs, withIntermediateDirectories: true)
+            try revision.write(to: refs.appendingPathComponent("main"), atomically: true, encoding: .utf8)
         }
         // The default migration keeps a user on Llama-3.2-1B if they had it.
         AppDefaults.semanticCorrectionModelRepo = retiredInUse

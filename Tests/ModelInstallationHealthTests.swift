@@ -9,11 +9,13 @@ final class ModelInstallationHealthTests: IsolatedXCTestCase {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        try Data("{}".utf8).write(to: directory.appendingPathComponent("config.json"))
+        let config = directory.appendingPathComponent("config.json")
+        try Data("{}".utf8).write(to: config)
         XCTAssertFalse(WhisperKitStorage.hasRequiredAssets(at: directory))
         for name in ["MelSpectrogram", "AudioEncoder", "TextDecoder"] {
             let model = directory.appendingPathComponent(name + ".mlmodelc")
-            try FileManager.default.createDirectory(at: model.appendingPathComponent("weights"), withIntermediateDirectories: true)
+            let weightsDirectory = model.appendingPathComponent("weights")
+            try FileManager.default.createDirectory(at: weightsDirectory, withIntermediateDirectories: true)
             for file in ["coremldata.bin", "model.mil", "weights/weight.bin"] {
                 try Data([1]).write(to: model.appendingPathComponent(file))
             }
@@ -45,6 +47,11 @@ final class ModelInstallationHealthTests: IsolatedXCTestCase {
         try Data(#"{"weight_map":{"w":"missing.safetensors"}}"#.utf8)
             .write(to: snapshot.appendingPathComponent("model.safetensors.index.json"))
         XCTAssertFalse(HuggingFaceCache.completeSnapshot(in: directory))
+    }
+
+    func testDownloadNotificationSafelySkipsUnbundledProcess() async {
+        XCTAssertNotEqual(Bundle.main.bundleURL.pathExtension, "app")
+        await ModelManager.shared.sendDownloadCompletionNotification(for: .base)
     }
 
     func testCapacityLookupFailureReleasesDownloadAndAllowsRetry() async {

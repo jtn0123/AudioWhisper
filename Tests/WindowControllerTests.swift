@@ -87,6 +87,13 @@ final class WindowControllerTests: IsolatedXCTestCase {
         XCTAssertNoThrow(windowController.restoreFocusToPreviousApp())
     }
     
+    func testMissingForegroundClearsPreviouslyStoredPasteDestination() {
+        WindowController.storedTargetApp = .current
+        XCTAssertNotNil(WindowController.storedTargetApp)
+        windowController.storePreviousApp(frontmostApp: nil)
+        XCTAssertNil(WindowController.storedTargetApp)
+    }
+
     func testFocusRestorationFlow() {
         // Test the focus restoration mechanism doesn't crash
         XCTAssertNoThrow(windowController.restoreFocusToPreviousApp())

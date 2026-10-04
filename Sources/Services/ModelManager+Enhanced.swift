@@ -45,7 +45,7 @@ extension ModelManager {
 
     nonisolated func sendDownloadCompletionNotification(for model: WhisperModel) async {
         // Check if notifications are available (only works in proper app bundles)
-        guard Bundle.main.bundleIdentifier != nil else {
+        guard Bundle.main.bundleURL.pathExtension == "app", Bundle.main.bundleIdentifier != nil else {
             // Running in development/debug mode, skip notifications
             return
         }
