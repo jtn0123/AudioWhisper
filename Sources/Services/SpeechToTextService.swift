@@ -142,6 +142,8 @@ internal class SpeechToTextService {
             // Already a domain error (e.g. .noSpeechDetected) — preserve it
             // instead of burying it under .localTranscriptionFailed.
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw SpeechToTextError.localTranscriptionFailed(error)
         }
@@ -181,6 +183,8 @@ internal class SpeechToTextService {
                 let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
                 return try Self.cleanedNonEmptyTranscription(text)
             }
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Pass through model-not-ready distinctly so UI can redirect to Settings
             if let pe = error as? ParakeetError, pe == .modelNotReady {

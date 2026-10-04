@@ -38,7 +38,9 @@ internal class ParakeetService {
     static let shared = ParakeetService()
 
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "ParakeetService")
-    private let daemon = MLDaemonManager.shared
+    private let daemon: MLDaemonManager
+
+    init(daemon: MLDaemonManager = .shared) { self.daemon = daemon }
 
     func transcribe(audioFileURL: URL, pythonPath _: String? = nil) async throws -> String {
         // Step 0: Do not download here; just verify model cache exists
@@ -49,6 +51,10 @@ internal class ParakeetService {
         // Step 1: Process audio with Swift AudioProcessor to create raw PCM data
         let pcmDataURL = try await processAudioToRawPCM(audioFileURL: audioFileURL)
 
+        return try await transcribePreparedPCM(pcmDataURL, repo: selectedRepo)
+    }
+
+    func transcribePreparedPCM(_ pcmDataURL: URL, repo: String) async throws -> String {
         // Step 2: Call Python with the raw PCM data.
         //
         // The daemon runs in a SEPARATE subprocess that keeps reading the PCM
@@ -58,7 +64,6 @@ internal class ParakeetService {
         // daemon call runs in a detached, non-cancellable task whose completion
         // — success, failure, OR timeout — is what triggers deletion.
         let pcmPath = pcmDataURL.path
-        let repo = selectedRepo
         let daemonRef = daemon
         let loggerRef = logger
         let daemonTask = Task.detached(priority: .userInitiated) { () -> String in
@@ -77,14 +82,7 @@ internal class ParakeetService {
             }
         }
 
-        // Await the detached task. If THIS task is cancelled the await throws
-        // CancellationError, but the detached task keeps running and cleans up
-        // the PCM file itself once the daemon is genuinely done with it.
-        return try await withTaskCancellationHandler {
-            try await daemonTask.value
-        } onCancel: {
-            // Do not delete the file here — the detached task still owns it.
-        }
+        return try await cancellableValue(of: daemonTask)
     }
 
     /// Default Parakeet model used when the stored `selectedParakeetModel` value

@@ -55,6 +55,31 @@ final class DaemonTransportReliabilityTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
+    func testCanceledTranscriptionKeepsPCMUntilWorkerActuallyFinishes() async throws {
+        let pcm = directory.appendingPathComponent("audio.raw")
+        try "leased audio".write(to: pcm, atomically: true, encoding: .utf8)
+        let service = ParakeetService(daemon: manager)
+        let task = Task { try await service.transcribePreparedPCM(pcm, repo: "blocked") }
+        let arrived = directory.appendingPathComponent("arrived")
+        let deadline = ContinuousClock.now + .seconds(5)
+        while !FileManager.default.fileExists(atPath: arrived.path), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: arrived.path))
+        task.cancel()
+        do { _ = try await task.value; XCTFail("expected cancellation") }
+        catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: pcm.path), "worker still owns its audio")
+        FileManager.default.createFile(atPath: directory.appendingPathComponent("release").path, contents: Data())
+        let cleanupDeadline = ContinuousClock.now + .seconds(3)
+        while FileManager.default.fileExists(atPath: pcm.path), ContinuousClock.now < cleanupDeadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: pcm.path))
+        let pending = await manager.pendingCountForTesting()
+        XCTAssertEqual(pending, 0)
+    }
+
     func testWarmupCancellationFinishesBeforeDaemonResponds() async throws {
         let manager = try XCTUnwrap(manager)
         let task = Task { try await manager.warmup(type: .mlx, repo: "blocked") }
