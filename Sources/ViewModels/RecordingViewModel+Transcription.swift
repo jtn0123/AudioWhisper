@@ -102,7 +102,7 @@ internal extension RecordingViewModel {
     ) {
         cancelProcessing()
         capturedRecordingSettings = nil
-        capturePasteTarget()
+        capturePasteTarget(useStoredTarget: false)
 
         let shouldHint = shouldHintThisRun(alreadyShown: hasShownFirstModelUseHint)
         if shouldHint { showFirstModelUseHint = true }
@@ -302,7 +302,10 @@ internal extension RecordingViewModel {
             provider: provider,
             whisperModel: provider == .local ? AppDefaults.selectedWhisperModel : nil,
             applySemanticCorrection: AppDefaults.semanticCorrectionMode != .off,
-            sourceAppBundleId: currentSourceAppInfo().bundleIdentifier
+            sourceAppBundleId: currentSourceAppInfo().bundleIdentifier,
+            parakeetModel: AppDefaults.selectedParakeetModel,
+            correctionMode: AppDefaults.semanticCorrectionMode,
+            correctionModelRepo: AppDefaults.semanticCorrectionModelRepo
         )
     }
 

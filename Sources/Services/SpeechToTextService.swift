@@ -158,7 +158,9 @@ internal class SpeechToTextService {
         guard Arch.isAppleSilicon else {
             throw SpeechToTextError.transcriptionFailed("Parakeet requires an Apple Silicon Mac.")
         }
-        let semanticCorrectionMode = AppDefaults.semanticCorrectionMode
+        let options = TranscriptionProgress.pipelineConfig
+        let semanticCorrectionMode = options?.correctionMode ?? AppDefaults.semanticCorrectionMode
+        let parakeetModel = options?.parakeetModel ?? AppDefaults.selectedParakeetModel
         let shouldWarmup = semanticCorrectionMode != .off
         // Ensure managed Python environment with uv
         let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
@@ -171,16 +173,20 @@ internal class SpeechToTextService {
                 // each other but disagreed with the Dashboard. Now there is one
                 // source of truth, which also means the warmup is no longer
                 // wasted on a model the correction pass won't use.
-                let modelRepo = AppDefaults.semanticCorrectionModelRepo
+                let modelRepo = options?.correctionModelRepo ?? AppDefaults.semanticCorrectionModelRepo
                 // Warm up the MLX daemon in parallel, but treat its outcome as
                 // non-fatal: a warmup failure must NOT abort an otherwise-good
                 // transcription. Its error is swallowed (logged by the daemon).
                 async let warmupTask: Void = MLDaemonManager.shared.warmup(type: .mlx, repo: modelRepo)
-                let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
+                let text = try await parakeetService.transcribe(
+                    audioFileURL: audioURL, pythonPath: pythonPath, model: parakeetModel
+                )
                 try? await warmupTask
                 return try Self.cleanedNonEmptyTranscription(text)
             } else {
-                let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
+                let text = try await parakeetService.transcribe(
+                    audioFileURL: audioURL, pythonPath: pythonPath, model: parakeetModel
+                )
                 return try Self.cleanedNonEmptyTranscription(text)
             }
         } catch is CancellationError {

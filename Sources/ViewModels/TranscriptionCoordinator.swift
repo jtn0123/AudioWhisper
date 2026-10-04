@@ -10,7 +10,14 @@ struct TranscriptionRunContext {
     let selectedWhisperModel: WhisperModel
     let shouldHintThisRun: Bool
     let setHintShown: () -> Void
-    var sessionID: UUID? = nil
+    var sessionID: UUID?
+}
+
+@MainActor
+struct TranscriptionDelivery {
+    var copyText: (String) -> Void = PasteManager.copyToClipboard
+    var historyEnabled: () -> Bool = { DataManager.shared.isHistoryEnabled }
+    var saveRecord: (TranscriptionRecord) async -> Void = { await DataManager.shared.saveTranscriptionQuietly($0) }
 }
 
 /// Coordinates the transcription pipeline + post-processing tail for the
@@ -30,6 +37,7 @@ final class TranscriptionCoordinator {
     /// correction. After audit item B1 this is the sole owner of correction
     /// orchestration.
     private let pipeline: TranscriptionPipeline
+    private let delivery: TranscriptionDelivery
 
     /// Weak back-reference to the owning view model. The coordinator is
     /// constructed and stored by the view model so the lifetime is bounded by
@@ -37,8 +45,9 @@ final class TranscriptionCoordinator {
     /// teardown.
     weak var viewModel: RecordingViewModel?
 
-    init(pipeline: TranscriptionPipeline) {
+    init(pipeline: TranscriptionPipeline, delivery: TranscriptionDelivery? = nil) {
         self.pipeline = pipeline
+        self.delivery = delivery ?? TranscriptionDelivery()
     }
 
     /// Convenience init that builds a pipeline from the given services so
@@ -62,7 +71,9 @@ final class TranscriptionCoordinator {
         audioURL: URL,
         config: TranscriptionPipelineConfig
     ) async throws -> TranscriptionResult {
-        try await pipeline.transcribe(audioURL: audioURL, config: config)
+        try await TranscriptionProgress.$pipelineConfig.withValue(config) {
+            try await pipeline.transcribe(audioURL: audioURL, config: config)
+        }
     }
 
     // MARK: - Shared Transcription Tail (audit item C1)
@@ -92,7 +103,7 @@ final class TranscriptionCoordinator {
         let wordCount = UsageMetricsStore.estimatedWordCount(for: text)
         let characterCount = text.count
 
-        PasteManager.copyToClipboard(text)
+        delivery.copyText(text)
 
         // Live stats (UsageMetricsStore / SourceUsageStore) are gated behind the
         // SAME `isHistoryEnabled` condition as the history save. When history is
@@ -100,7 +111,7 @@ final class TranscriptionCoordinator {
         // delete reconstructs stats solely from persisted records — recording a
         // session here would make live totals diverge and then plunge on the
         // next delete-triggered rebuild.
-        if DataManager.shared.isHistoryEnabled {
+        if delivery.historyEnabled() {
             let modelUsed: String? = (context.transcriptionProvider == .local)
                 ? context.selectedWhisperModel.rawValue
                 : nil
@@ -115,7 +126,7 @@ final class TranscriptionCoordinator {
                 sourceAppName: sourceInfo.displayName,
                 sourceAppIconData: sourceInfo.iconData
             )
-            await DataManager.shared.saveTranscriptionQuietly(record)
+            await delivery.saveRecord(record)
             guard viewModel.isCurrentSession(id), !Task.isCancelled else { return }
 
             UsageMetricsStore.shared.recordSession(

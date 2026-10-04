@@ -42,16 +42,20 @@ internal class ParakeetService {
 
     init(daemon: MLDaemonManager = .shared) { self.daemon = daemon }
 
-    func transcribe(audioFileURL: URL, pythonPath _: String? = nil) async throws -> String {
+    func transcribe(audioFileURL: URL, pythonPath: String? = nil) async throws -> String {
+        try await transcribe(audioFileURL: audioFileURL, pythonPath: pythonPath, model: safeSelectedParakeetModel)
+    }
+
+    func transcribe(audioFileURL: URL, pythonPath _: String?, model: ParakeetModel) async throws -> String {
         // Step 0: Do not download here; just verify model cache exists
-        guard await isModelCached() else {
+        guard await isModelCached(model: model) else {
             throw ParakeetError.modelNotReady
         }
 
         // Step 1: Process audio with Swift AudioProcessor to create raw PCM data
         let pcmDataURL = try await processAudioToRawPCM(audioFileURL: audioFileURL)
 
-        return try await transcribePreparedPCM(pcmDataURL, repo: selectedRepo)
+        return try await transcribePreparedPCM(pcmDataURL, repo: model.rawValue)
     }
 
     func transcribePreparedPCM(_ pcmDataURL: URL, repo: String) async throws -> String {

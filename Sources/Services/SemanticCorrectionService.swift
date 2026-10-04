@@ -30,7 +30,8 @@ internal enum CorrectionOutcome {
 /// Mode is read from preferences: off / local MLX / cloud (uses the active
 /// transcription provider).
 internal final class SemanticCorrectionService {
-    private let mlxService = MLXCorrectionService()
+    private let mlxService: MLXCorrectionService
+    private let preparePython: () async throws -> URL
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "SemanticCorrection")
 
     @MainActor
@@ -39,7 +40,13 @@ internal final class SemanticCorrectionService {
         return AppCategoryManager.shared.category(for: id)
     }
 
-    init() {}
+    init(
+        mlxService: MLXCorrectionService = MLXCorrectionService(),
+        preparePython: @escaping () async throws -> URL = { try await UvBootstrap.ensureVenv() }
+    ) {
+        self.mlxService = mlxService
+        self.preparePython = preparePython
+    }
 
     /// Applies semantic correction to `text`. Reads `semanticCorrectionMode` from
     /// `UserDefaults` and picks: off (returns input unchanged) or local MLX. The
@@ -66,9 +73,12 @@ internal final class SemanticCorrectionService {
     func correctWithOutcome(
         text: String,
         providerUsed: TranscriptionProvider,
-        sourceAppBundleId: String? = nil
+        sourceAppBundleId: String? = nil,
+        mode: SemanticCorrectionMode? = nil,
+        modelRepo: String? = nil
     ) async -> CorrectionOutcome {
-        let mode = AppDefaults.semanticCorrectionMode
+        let mode = mode ?? AppDefaults.semanticCorrectionMode
+        let modelRepo = modelRepo ?? AppDefaults.semanticCorrectionModelRepo
 
         let category = await categoryFor(bundleId: sourceAppBundleId)
         logger.info("Correction category: \(category.id) for bundleId: \(sourceAppBundleId ?? "nil")")
@@ -80,7 +90,7 @@ internal final class SemanticCorrectionService {
             // Allow local MLX correction regardless of STT provider
             logger.info("Running local MLX correction")
             do {
-                let corrected = try await correctLocallyWithMLXThrowing(text: text, category: category)
+                let corrected = try await correctLocallyWithMLXThrowing(text: text, category: category, modelRepo: modelRepo)
                 return .applied(corrected)
             } catch {
                 logger.error("MLX correction failed: \(error.localizedDescription)")
@@ -93,7 +103,9 @@ internal final class SemanticCorrectionService {
     /// so callers can distinguish success from failure. On non-Apple-Silicon
     /// hosts this returns the input unchanged (treated as a successful no-op,
     /// not a failure — there's nothing to recover from).
-    private func correctLocallyWithMLXThrowing(text: String, category: CategoryDefinition) async throws -> String {
+    private func correctLocallyWithMLXThrowing(
+        text: String, category: CategoryDefinition, modelRepo: String
+    ) async throws -> String {
         guard Arch.isAppleSilicon else { return text }
         // B1: honour `AppDefaults.semanticCorrectionModelRepo` unconditionally.
         // This used to fall back to Llama-3.2-1B whenever the key was unset,
@@ -101,8 +113,7 @@ internal final class SemanticCorrectionService {
         // so users on the implicit default saw one model and ran another.
         // Existing installs are pinned to the legacy model by
         // `AppSetupHelper.migrateSemanticCorrectionModelDefault()`.
-        let modelRepo = AppDefaults.semanticCorrectionModelRepo
-        let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
+        let pyURL = try await preparePython()
         let prompt = loadPrompt(for: category)
         let output = try await mlxService.correct(text: text, modelRepo: modelRepo, pythonPath: pyURL.path, systemPrompt: prompt)
         let merged = Self.safeMerge(

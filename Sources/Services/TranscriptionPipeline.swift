@@ -55,6 +55,7 @@ internal class TranscriptionPipeline {
     func transcribe(audioURL: URL, config: TranscriptionPipelineConfig) async throws -> TranscriptionResult {
         logger.debug("Starting transcription pipeline with provider: \(config.provider.rawValue)")
 
+        try Task.checkCancellation()
         // Step 1: Validate audio file
         let validationResult = await AudioValidator.validateAudioFile(at: audioURL)
         switch validationResult {
@@ -65,10 +66,12 @@ internal class TranscriptionPipeline {
             throw SpeechToTextError.transcriptionFailed(error.localizedDescription)
         }
 
+        try Task.checkCancellation()
         // Step 2: Perform transcription
         let rawText = try await performTranscription(audioURL: audioURL, config: config)
         logger.debug("Raw transcription completed: \(rawText.prefix(50))...")
 
+        try Task.checkCancellation()
         // Step 3: Apply semantic correction if enabled
         guard config.applySemanticCorrection else {
             return TranscriptionResult(text: rawText, correctionOutcome: nil)
@@ -77,7 +80,9 @@ internal class TranscriptionPipeline {
         let outcome = await correctionService.correctWithOutcome(
             text: rawText,
             providerUsed: config.provider,
-            sourceAppBundleId: config.sourceAppBundleId
+            sourceAppBundleId: config.sourceAppBundleId,
+            mode: config.correctionMode,
+            modelRepo: config.correctionModelRepo
         )
         logger.debug("Semantic correction completed")
 

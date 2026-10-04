@@ -26,6 +26,13 @@ internal protocol LocalWhisperTranscribing: Sendable {
 /// See `LocalWhisperTranscribing` for why this exists.
 internal protocol ParakeetTranscribing: AnyObject {
     func transcribe(audioFileURL: URL, pythonPath: String?) async throws -> String
+    func transcribe(audioFileURL: URL, pythonPath: String?, model: ParakeetModel) async throws -> String
+}
+
+extension ParakeetTranscribing {
+    func transcribe(audioFileURL: URL, pythonPath: String?, model: ParakeetModel) async throws -> String {
+        try await transcribe(audioFileURL: audioFileURL, pythonPath: pythonPath)
+    }
 }
 
 extension LocalWhisperService: LocalWhisperTranscribing {}
