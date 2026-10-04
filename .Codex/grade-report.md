@@ -349,4 +349,4 @@ Validation evidence:
 - Native attachment to the rebuilt bundle also timed out. The running app was not restarted, so the changed native permission/recording journey remains unverified.
 - [Setup layout previews](ui-ux-audit/README.md) were generated and inspected in light/dark using ImageRenderer. This validates composition, not real macOS interactions.
 
-Next priorities remain native setup/recording verification (D1), processing-run ownership (remaining A1), safe captured paste destinations (E1/A2), and complete daemon frame serialization (B2). No native permission grants, permission resets, model downloads, public releases, or main-branch merges were performed by this polishing pass.
+The paragraph above records the first batch only. The subsequent [ten-item reliability pass](reliability-roadmap.md) implements A1, E1/A2, B2/B3/B4, G1/G2/G3, E2/E3, production delivery coverage and real local engine fixtures. It also completes shortcut/duration/model-control polish. Native workflow validation remains open. The roadmap records current evidence, measurements and limitations; these baseline grades are preserved until the physical workflow is verified.
