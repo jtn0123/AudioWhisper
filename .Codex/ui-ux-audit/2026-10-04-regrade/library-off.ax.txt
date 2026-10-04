@@ -1,0 +1,28 @@
+Window: "AudioWhisper Rebuild", App: AudioWhisper Rebuild.
+0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
+	1 container
+		2 image Description: Waveform In A Filled Circle, ID: waveform.circle.fill
+		3 text LIBRARY On your Mac Audio
+Whisper Keep the useful words. REBUILD / NATIVE V2 A searchable library, stored only on this Mac. Saving is your choice.
+		4 button Record
+		5 text YOUR LIBRARY IS OFF
+		6 button (selected) Library
+		7 text Recordings still become text and reach your clipboard. Enable history to keep future transcripts here.
+		8 button Models & setup
+		9 checkbox Description: Save future transcripts, Value: 0
+		10 button Writing profiles
+		11 button Preferences
+		12 text Ready to record Private by default.
+No cloud transcription.
+	13 close button
+	14 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	15 minimize button
+	16 text AudioWhisper Rebuild
+17 menu bar
+	18 AudioWhisper Rebuild
+	19 Edit
+	20 View
+	21 Window
+	22 Help
+
+The focused UI element is 0 standard window AudioWhisper Rebuild, Secondary Actions: Raise

@@ -1,226 +1,173 @@
 # UI/UX Grade Report
 
 **Project:** AudioWhisper Rebuild
-**Audited:** 2026-10-03
-**Stack:** Native macOS 14+ SwiftUI/AppKit, AVFoundation, SwiftData and on-device voice/writing engines.
-**Version:** `rebuild/native-v2`, code commit `c75a55d3b0b12c2bd5dc7f5c67422584de792246`.
-**Runtime evidence:** Fresh native screenshots and accessibility trees of Record, Library, Models & setup, Writing profiles and Preferences. Earlier live recording/transcription/cancel and same-build relaunch checks passed at this exact code build.
-**Artifacts:** `.Codex/ui-ux-audit/2026-10-03-native-v2/`
-**Historical report:** [Original app UI baseline](baseline-f3adb17/ui-ux-grade-report.md). These new IDs describe the rebuild.
-
-**Recommended-fix follow-up:** [Implementation and validation](recommended-fixes-validation.md). Addressed IDs are marked below; the original grades and audit evidence remain historical.
+**Audited:** 2026-10-04
+**Stack:** Native macOS SwiftUI/AppKit, observable session, SwiftData, local speech and writing engines.
+**Version:** `rebuild/native-v2`; audit checkout `2d3e058`; packaged source `f0cc89a40dd380668c432ec186826772f3cd2b03`.
+**Runtime evidence:** Fresh native rendered Record, Models & setup, Writing profiles, Preferences and history-off Library; actual installed-model verification and recording start/cancel. Earlier same-build live transcription, repeated capture and cold relaunch evidence is identified separately.
+**Artifacts:** `.Codex/ui-ux-audit/2026-10-04-regrade/` ([provenance and capture index](ui-ux-audit/2026-10-04-regrade/README.md)).
+**Previous reports:** [2026-10-03 rebuild audit](baseline-2026-10-03-native-v2/ui-ux-grade-report.md); [original app baseline](baseline-f3adb17/ui-ux-grade-report.md).
+**ID scope:** Existing UI IDs are retained. Prefix requests with **UI** to distinguish them from code IDs. Completed items are excluded from open counts.
 
 ## Summary
 
-| ID | Category | Grade | Items |
-|----|----------|-------|-------|
+| ID | Category | Grade | Open items |
+|----|----------|-------|------------|
 | A | Visual Design & Theme Cohesion | B | 0 |
 | B | Layout, Information Architecture & Navigation | B | 0 |
-| C | Interaction Design & Workflow Quality | C+ | 1 |
+| C | Interaction Design & Workflow Quality | B | 0 |
 | D | Accessibility & Inclusive UX | B− provisional | 1 |
 | E | Responsive & Cross-State Experience | B− provisional | 1 |
 | F | Frontend Code & Design System Health | B | 0 |
 | G | UI Performance & Asset Efficiency | B− provisional | 1 |
-| H | Data Linkages & State Reliability | C− | 4 |
+| H | Data Linkages & State Reliability | B | 0 |
 | I | Polish, Delight & Product Feel | B− | 1 |
-| **Overall** | | **C+** | **9** |
+| **Overall** | | **B** | **4** |
 
-**Top 5 highest-leverage fixes:** H1, H2, H3, C1, H4.
+**Top 5 highest-leverage actions:** UI I1, UI D1, UI G1, UI E1, and **code D3** (native acceptance). There are four open UI findings; the fifth action closes a validation gap tracked in the code report.
 
-The interface is substantially clearer and more coherent than the original: recording, setup, writing and opt-in history have distinct homes. Visual quality earns B. Overall C+ weights truthful capture, model readiness and saved-history updates more heavily than decoration. Zero-item categories have no independently validated visual/navigation defect worth inventing; their remaining improvement is better workflow reliability and broader verification.
+The previous C+ grade was driven by misleading state and incomplete device/data linkages. Those defects are now addressed, and this local preview earns B for its coherent utility design, clearer setup and working core recording path. A higher grade needs physical shortcut/Smart Paste/accessibility acceptance and measured large-file performance, alongside the remaining polish. B does not mean every macOS interaction or distribution requirement is complete.
 
 ---
 
 ## Evidence Limits
 
-Five fresh screenshots show the actual running dark/system appearance; they are not ImageRenderer proposals. The live user-facing tests referenced in `docs/rebuild.md:31-42` were completed earlier in this same rebuild session, not repeated merely for this report. This pass navigated and inspected without altering preferences, microphone access, history or the user's shortcut.
-
-VoiceOver announcements, keyboard focus through every sheet, smallest-window resizing, long content, increased text sizes, high contrast, light-mode captures at the final build, physical shortcut/hold recording, Smart Paste and the complete desktop/full-screen Spaces matrix remain unverified. No measured UI frame/startup benchmark was collected. Accessibility, cross-state and performance grades therefore remain provisional.
-
-H1/H2/H3/H4 and C1 are source-confirmed linkage/admission problems, not physical route/sleep/corrupt-model experiments. The normal native recording and same-build microphone-consent paths passed. Earlier permission spam is not assumed still present after the signing/bytecode fixes. The preview remains ad-hoc signed, so a different rebuilt artifact can require fresh development consent.
-
-Writing capture contains a white strip outside the content near its bottom; this was not confirmed as an app rendering defect and is not counted. Library history was off, so its populated/export workflows were assessed from source. The full audit's security/dependency concerns are in the [code report](grade-report.md), not hidden inside this visual grade.
-
-### Captures
-
-- [Record workspace](ui-ux-audit/2026-10-03-native-v2/record-dark.png): primary action, readiness, empty transcript and safe test totals.
-- [Library with history off](ui-ux-audit/2026-10-03-native-v2/library-history-off.png): clear optional saving and local-storage copy.
-- [Models ready](ui-ux-audit/2026-10-03-native-v2/models-ready.png): permission/model checklist and explicit verification/removal.
-- [Writing profiles](ui-ux-audit/2026-10-03-native-v2/writing-capture.png): optional cleanup and profile actions.
-- [Preferences/shortcut](ui-ux-audit/2026-10-03-native-v2/preferences-shortcut.png): actual shortcut field and enable state.
+- All five screenshots are actual app windows, inspected visually alongside native accessibility trees. Dark/system appearance at the current window size is readable; minimum-size layouts, light mode, long-content stress and all error states were not visually retested.
+- Fresh installed Parakeet verification showed disabled **Verifying…** controls and reached **Model ready (offline)**. Fresh recording start showed **Finish recording**, Record showed Listening and microphone levels, file import was disabled with an explanation, and Cancel returned to Ready without a permission prompt.
+- Writing controls were all disabled during the active recording. A suspected Writing-button mismatch during recording was disproved and excluded. Possible behavior during unrelated model maintenance remains an unconfirmed investigation candidate, not a graded finding.
+- Earlier observations of this same source passed five start/cancel cycles, selected MacBook Pro Microphone capture, stop/transcription with nonempty clipboard output and cold quit/relaunch without renewed consent. Signature checks after inference passed. Those observations are documented in [recommended-fix validation](recommended-fixes-validation.md), not claimed as all freshly repeated.
+- History remained off and preferences were unchanged. Fresh inspection did not test a real save into a mounted Library, a populated filtered list, Smart Paste, physical global shortcut/hold, VoiceOver, actual disconnect/sleep or the complete normal-window/recording-overlay Spaces matrix. The mounted-list fix has isolated real SwiftData/session/observation coverage.
+- No frame/jank, startup or long-file peak-memory benchmark was collected during this audit. Prior fixture cold/warm timings establish local cache reuse only. Performance and cross-state grades are provisional where direct evidence is missing.
+- Current preview is universal and completely ad-hoc signed. Developer ID/notarization and stability across changed signing identities remain separate distribution concerns.
 
 ---
 
 ## A — Visual Design & Theme Cohesion — B
 
-The running screens share charcoal/ink surfaces, warm rust accents, serif page headings and consistent section treatment; the [Record](ui-ux-audit/2026-10-03-native-v2/record-dark.png), [Models](ui-ux-audit/2026-10-03-native-v2/models-ready.png) and [Preferences](ui-ux-audit/2026-10-03-native-v2/preferences-shortcut.png) captures support this grade. `Sources/Rebuild/RebuildWorkspace.swift:4-12,93-114` centralizes theme and page chrome. The primary action stands out and dense controls remain grouped, though final-build alternate appearance/contrast validation is incomplete. No separate verified visual defect is assigned.
+[Record](ui-ux-audit/2026-10-04-regrade/record-ready.png) and [Preferences](ui-ux-audit/2026-10-04-regrade/preferences.png) share a restrained paper/ink/rust identity, serif headings, consistent section cards and native controls. Theme tokens and shared headings/sections keep the five screens visually related (`Sources/Rebuild/RebuildWorkspace.swift:4-12,93-114`). The app has a recognizable point of view appropriate for a private dictation utility; no decorative redesign is needed to improve its remaining workflows.
 
 ---
 
 ## B — Layout, Information Architecture & Navigation — B
 
-Five explicit sidebar destinations make the main jobs discoverable (`Sources/Rebuild/RebuildApp.swift:36-55`; `Sources/Rebuild/RebuildWorkspace.swift:128-137`). [Models & setup](ui-ux-audit/2026-10-03-native-v2/models-ready.png) groups the two recording prerequisites, while Writing profiles and Library remain optional and separate. Native navigation among these screens worked. Shortcut visibility in the primary workflow is addressed by I1; the full keyboard/minimum-window matrix is still unverified.
+The five explicit destinations separate recording, saved text, setup, writing and preferences (`Sources/Rebuild/RebuildWorkspace.swift:35-41,63-75`). [Models](ui-ux-audit/2026-10-04-regrade/models-ready.png) presents the two required setup steps before optional features; [Writing](ui-ux-audit/2026-10-04-regrade/writing.png) keeps cleanup separate from speech setup. Native navigation and selected sidebar semantics worked in fresh checks. Minimum-size and realistic long-content inspection remain limits rather than invented layout defects (`Sources/Rebuild/RebuildApp.swift:36-55`).
 
 ---
 
-## C — Interaction Design & Workflow Quality — C+
+## C — Interaction Design & Workflow Quality — B
 
-One shared session handles recording, cancellation, retry and captured delivery; inline failure and optional cleanup fallback improve recovery (`Sources/Rebuild/RebuildSession.swift:135-179,198-259`). Live normal recording and repeat-cancel checks support the happy path. Some connected controls still contradict session admission, and H's device-state gaps affect the central workflow.
+Shared session action rules now drive Record, Voice Models, menu and import (`Sources/Rebuild/RebuildSession.swift:325-365`, `RebuildModelsView.swift:98-100`, `RebuildStatusController.swift:34-40`). Fresh verification and recording checks showed appropriate disabled/finish/cancel controls and explained why file import was unavailable. Retry retains captured audio and reports blocked admission instead of discarding it; correction failure preserves the original transcript. Physical shortcut/hold and Smart Paste acceptance remain **code D3**, so the grade stops below A.
 
-#### ~~C1~~ ✓ done 2026-10-03 — Match action labels and enabled states to actual behavior
-- **Where:** `Sources/Rebuild/RebuildModelsView.swift:92`; `Sources/Rebuild/RebuildWorkspace.swift:141-176`; `Sources/Rebuild/RebuildStatusController.swift:34-38`; `Sources/Rebuild/RebuildSession.swift:141-143,170-175`.
-- **Evidence:** Models always renders Start recording when readiness is true; that command stops an active recording and ignores a transcribing one. Import remains enabled during maintenance/install while the session rejects it silently.
-- **Layman's term:** A button can mean something different from its label, or accept a file and then do nothing.
-- **What's wrong:** Views duplicate only part of the session's action rules.
-- **Impact:** Moderate — confusing controls and discarded import attempts.
-- **Significance:** High — these are primary recording/file actions.
-- **Difficulty:** S.
-- **Fix:** Expose shared recording/import titles, availability and blocked reasons. Apply them to Record, setup and menu; test idle, recording, transcribing, installing and maintenance.
-- **Grade lift:** C+ → B−; B with H's fixes, by making actions predictable.
+#### ~~C1~~ ✓ done 2026-10-03 — Match recording/import affordances to actual actions
 
-
-**Implementation evidence:** Record, Voice Models and the status menu share titles, enabled states and blocked reasons. Import is gated before opening a picker or accepting a drop; retry remains visible with an explanation while blocked. State-matrix regressions cover setup, capture, processing, installation and maintenance; 37 related tests and strict targeted lint pass.
+Shared titles, enabled states and reasons are implemented with state-matrix regressions. Fresh AX evidence confirms disabled Verifying, Finish recording, Listening, blocked import and cancellation back to Ready; the prior Voice Models/import mismatch is closed.
 
 ---
 
 ## D — Accessibility & Inclusive UX — B− provisional
 
-Fresh AX observations expose selected navigation, named record controls, checkboxes, pickers and the shortcut field. Escape cancellation and connected Reduce Motion handling exist (`Sources/Views/Components/Waveform/WaveformContainer.swift:171,350`; `Sources/Views/Components/Waveform/WaveformSubviews.swift:42-46`), so the original app's motion finding is not carried forward. Generic editor/action names remain; actual VoiceOver and complete keyboard/focus testing were not performed.
+Fresh AX trees expose selected navigation, named recording/import actions, checkboxes, pickers and a microphone-level value. Escape cancellation and Reduce Motion handling are connected (`Sources/Rebuild/RebuildWorkspace.swift:47`, `Sources/Views/Components/Waveform/WaveformContainer.swift:171,350`, `WaveformSubviews.swift:42-46`). Repeated profile/history actions and text editors still omit explicit target names. Actual VoiceOver, complete keyboard/focus order and measured contrast were not tested, limiting confidence.
 
 #### D1 — Name editors and repeated actions by their purpose
-- **Where:** `Sources/Rebuild/RebuildWorkspace.swift:199`; `Sources/Rebuild/RebuildWritingView.swift:97-102,218`; `Sources/Rebuild/RebuildLibraryView.swift:54-59`; [Writing capture](ui-ux-audit/2026-10-03-native-v2/writing-capture.png).
-- **Evidence:** Editors lack explicit accessible names; profile/history rows reuse generic Edit, Copy and Delete.
-- **Layman's term:** Without visual context, controls are harder to tell apart.
-- **What's wrong:** Names omit the target content or editor purpose.
-- **Impact:** Moderate — screen-reader and keyboard navigation become harder.
-- **Significance:** Medium.
+
+- **Where:** `Sources/Rebuild/RebuildWorkspace.swift:209-210`; `Sources/Rebuild/RebuildWritingView.swift:97-102,131,217-218`; `Sources/Rebuild/RebuildLibraryView.swift:59-64`; [Writing AX](ui-ux-audit/2026-10-04-regrade/writing.ax.txt).
+- **Evidence:** Fresh AX lists six generic Edit buttons; source editors have no explicit accessibility names, and history actions reuse generic Copy/Delete. No severe VoiceOver failure is claimed without a VoiceOver run.
+- **Layman's term:** Without seeing the row, it is harder to know which text or profile a control affects.
+- **What's wrong:** Control names omit their target content or editor purpose.
+- **Impact:** Moderate — repeated controls are harder to distinguish with assistive navigation.
+- **Significance:** Medium — inclusive access affects editing and saved-text use.
 - **Difficulty:** S.
-- **Fix:** Label transcript/profile editors and contextual actions using profile titles or concise transcript dates/context. Verify AX names, VoiceOver announcements and keyboard focus through sheets.
+- **Fix:** Give transcript/profile editors explicit names and contextual row actions based on profile names or concise transcript date/context. Verify fresh AX labels, VoiceOver announcements and keyboard focus through sheets.
 - **Grade lift:** B− provisional → B after native verification, by making control targets understandable.
 
 ---
 
 ## E — Responsive & Cross-State Experience — B− provisional
 
-The [history-off screen](ui-ux-audit/2026-10-03-native-v2/library-history-off.png) explains optional saving clearly. Setup has explicit missing/denied/install states, while session failure/cancel/retry and optional correction fallback exist in source (`Sources/Rebuild/RebuildSession.swift:216-246,292-337`). Dark/system layouts were readable at the current window size; minimum size, long content and all errors were not visually exercised.
+The [history-off Library](ui-ux-audit/2026-10-04-regrade/library-off.png) clearly explains optional saving. Fresh Ready/verification/Listening/cancel states work, and coordinator/session tests cover denied consent, install failure/retry, stale refresh and failure ownership (`Tests/RebuildSetupTests.swift:42-141`, `Sources/Rebuild/RebuildSession.swift:151-193,325-424`). Current dark/system layouts are readable. Filtered-empty copy remains ambiguous, and other appearance/window/content/error combinations lack fresh visual evidence.
 
-#### E1 — Distinguish no search matches from an empty Library
-- **Where:** `Sources/Rebuild/RebuildLibraryView.swift:38-41,70-76`.
-- **Evidence:** The same empty copy says future recordings will appear even when existing saved transcripts simply do not match the query.
-- **Layman's term:** Search can make it look as if your Library has no recordings.
-- **What's wrong:** Empty-history and filtered-empty states use the same message.
+#### E1 — Separate no search results from an empty Library
+
+- **Where:** `Sources/Rebuild/RebuildLibraryView.swift:43-46`; [history-off Library](ui-ux-audit/2026-10-04-regrade/library-off.png).
+- **Evidence:** Source uses the same empty-list message when saved transcripts do not match a query and when none exist. Fresh runtime only inspected history-off; the populated filtered state was not exercised.
+- **Layman's term:** Searching can make it look as if the Library has no recordings.
+- **What's wrong:** Empty history and no matching search results share copy.
 - **Impact:** Minor — unnecessary uncertainty about saved content.
-- **Significance:** Medium.
+- **Significance:** Medium — search should clarify what happened to saved text.
 - **Difficulty:** XS.
-- **Fix:** Show a query-specific No matching transcripts state with Clear search; keep the first-save explanation for truly empty history. Verify empty/query/history-off states.
-- **Grade lift:** B− provisional → B with cross-state verification, by clarifying the list's state.
+- **Fix:** Show No matching transcripts with Clear search for a nonempty query; keep first-save copy for truly empty history and privacy copy for history-off. Verify those three states.
+- **Grade lift:** B− provisional → B with cross-state verification, by explaining the list's actual state.
 
 ---
 
 ## F — Frontend Code & Design System Health — B
 
-Purpose-specific native views reuse theme, page headings and sections (`Sources/Rebuild/RebuildWorkspace.swift:4-12,93-114`), rather than copying the legacy shell. Profile editing uses its observable store and removes stale mappings on profile deletion (`Sources/Rebuild/RebuildWritingView.swift:148-154,222-227`). Action-rule duplication is already an executable C1 finding; there is no additional refactor invented merely to fill this category.
+Purpose-specific views reuse theme, page headings and section components (`Sources/Rebuild/RebuildWorkspace.swift:4-12,93-114`). One observable session owns job admission/state; Library observes mutation revisions and fences stale reloads (`RebuildSession.swift:325-365`, `RebuildLibraryView.swift:75-81,107-123`). Profile editing uses the existing store and removes obsolete mappings when deleting profiles (`RebuildWritingView.swift:148-154,222-227`). These foundations support consistent polish without a broad frontend rewrite; specific accessibility improvements are already D1.
 
 ---
 
 ## G — UI Performance & Asset Efficiency — B− provisional
 
-Library uses 50-record paging/LazyVStack, 200 ms search deferral and streamed exports (`Sources/Rebuild/RebuildLibraryView.swift:43-76,110-114,134-142`). Recorder publication is bounded/throttled (`Sources/Services/Audio/AudioEngineRecorder.swift:388-400`) and Reduce Motion is connected. Native navigation worked, but no quantitative frame/startup/memory benchmark supports an A-level claim.
+Library uses 50-row paging/LazyVStack, deferred search and streamed export (`Sources/Rebuild/RebuildLibraryView.swift:43-81,117-121,141-148`). Capture publication is throttled and Reduce Motion is connected (`Sources/Services/Audio/AudioEngineRecorder.swift:295-312`, `Sources/Views/Components/Waveform/WaveformContainer.swift:171,350`). Native navigation worked, and prior same-source cold/warm fixtures support cache reuse. Whole-file decoding remains a real memory hotspot; no quantitative UI/large-file benchmark supports a higher grade.
 
 #### G1 — Bound memory during long audio imports
-- **Where:** `Sources/Services/ParakeetService.swift:129-141,198-232`; `Sources/Services/LocalWhisperService.swift:185`; `Package.resolved`.
-- **Evidence:** Parakeet retains complete decoded audio plus another Data copy; imports have no size/duration cap. Current Argmax 1.0.0 uses whole-file loading.
-- **Layman's term:** A long recording uses much more memory before transcription even starts.
-- **What's wrong:** File preparation grows with the complete input instead of bounded chunks.
-- **Impact:** Moderate — large imports can put pressure on the Mac; no app OOM was reproduced.
+
+- **Where:** `Sources/Services/ParakeetService.swift:129-141,198-235`; `Sources/Services/LocalWhisperService.swift:190-192`; `Package.resolved:4-9`.
+- **Evidence:** Parakeet retains complete decoded PCM plus another Data copy; validation has no size/duration limit. Locked Argmax 1.0.0 uses whole-file loading; [vendor 1.1.0 supplies incremental loading](https://github.com/argmaxinc/argmax-oss-swift/releases/tag/v1.1.0). App peak RSS and OOM behavior were not measured.
+- **Layman's term:** A long recording uses much more memory before transcription starts.
+- **What's wrong:** Audio preparation grows with the complete input instead of bounded chunks, and conversion does not check cancellation.
+- **Impact:** Moderate — large imports can put pressure on the Mac and delay cancellation; no app OOM was reproduced.
 - **Significance:** High — file transcription is a supported workflow.
 - **Difficulty:** M.
-- **Fix:** Stream Parakeet PCM conversion with cancellation/cleanup; adopt supported incremental Whisper loading. Measure a representative long file and verify short-file output parity. Coordinate with code G1/F3 rather than duplicating work.
+- **Fix:** Stream Parakeet PCM with cancellation/cleanup and adopt incremental Whisper loading. Verify short-file output parity and measure representative long-file memory/cancel behavior. Coordinate with **code G1/F3** rather than duplicating implementation.
 - **Grade lift:** B− provisional → B after measured verification, by bounding import memory.
 
 ---
 
-## H — Data Linkages & State Reliability — C−
+## H — Data Linkages & State Reliability — B
 
-Readiness includes selected-model structural presence, runtime and microphone access, and selection changes reject stale setup results (`Sources/Rebuild/RebuildSession.swift:264-287`). Delivery preserves ownership and reports correction/history failures. Four confirmed gaps still contradict visible capture, input, verification or history state; these outweigh the normal-path successes.
+Typed capture interruptions are tied to the owning session, selected input routing reaches the Audio Unit, and failed model load verdicts persist into readiness (`Sources/Rebuild/RebuildSession.swift:151-193,368-424`, `Sources/Services/Audio/AudioInputRouting.swift:23-64`). Store revisions now invalidate mounted Library queries only after successful mutation (`RebuildLibraryView.swift:75-81,107-123`, `Tests/RebuildLibraryInvalidationTests.swift:27-95`). Fresh verification/start/cancel supports the normal path, and prior same-build selected-input transcription/cold relaunch supports the improved trust level. Hardware interruption, two-source comparison and mounted-Library native acceptance remain explicit evidence gaps.
 
 #### ~~H1~~ ✓ done 2026-10-03 — Reconcile recorder interruptions with Listening state
-- **Where:** `Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift:50-65`; `Sources/Rebuild/RebuildSession.swift:135-168`; `Sources/Rebuild/RebuildApp.swift:72-100`.
-- **Evidence:** Sleep stops capture; engine failure cancels it. Their notifications have no new-shell subscriber.
-- **Layman's term:** The app can say Listening after the microphone has stopped.
-- **What's wrong:** Hardware recording and session phase can diverge.
-- **Impact:** Major — potentially lost speech and stuck busy controls.
-- **Significance:** High.
-- **Difficulty:** M.
-- **Fix:** Deliver typed interruption events to the owning session, reconcile phase/overlay, deliberately preserve graceful audio and fence stale events. Test both paths and perform a native route-change check.
-- **Grade lift:** C− → C+; B− with H2/H3, by making capture status truthful.
 
-**Implementation evidence:** The interruption/session bridge and stale-event cleanup are implemented and covered by failing-before/passing-after regressions. Physical device disconnection remains unverified.
+The typed capture/session bridge, ownership and stale-event cleanup are implemented and regression-tested. Physical device disconnection/sleep remain unperformed.
 
 #### ~~H2~~ ✓ done 2026-10-03 — Make the microphone choice control recording
-- **Where:** `Sources/Rebuild/RebuildPreferencesView.swift:10,51-55`; `Sources/Rebuild/RebuildSession.swift:44-50`; `Sources/Services/Audio/AudioEngineRecorder.swift:150-155`; [Preferences capture](ui-ux-audit/2026-10-03-native-v2/preferences-shortcut.png).
-- **Evidence:** The picker stores selectedMicrophone, but the connected recorder reads no such preference and uses the default input; boost targets the default too.
-- **Layman's term:** Picking a microphone changes the setting, not the mic being recorded.
-- **What's wrong:** Advertised device selection has no routing implementation.
-- **Impact:** Major — wrong-source or silent recording.
-- **Significance:** High.
-- **Difficulty:** M.
-- **Fix:** Capture/route selected CoreAudio device UID and apply boost/restoration to it. Report missing inputs; test device routing plus two distinguishable physical inputs.
-- **Grade lift:** C− → C+; B− with H1/H3, by connecting the user's choice to capture.
 
-**Implementation evidence:** Capture now applies the selected input UID and displays unavailable-device errors. Device-specific boost/restoration is covered by regression tests; physical two-input validation remains separate.
+Selected UID routing and device-specific boost/restoration are implemented. Prior explicitly selected MacBook Pro Microphone native recording/transcription passed; two distinguishable physical inputs remain unavailable for comparison.
 
 #### ~~H3~~ ✓ done 2026-10-03 — Let failed model verification invalidate Ready
-- **Where:** `Sources/Rebuild/RebuildModelsView.swift:149-177`; `Sources/Rebuild/RebuildSession.swift:274-287`; [Setup capture](ui-ux-audit/2026-10-03-native-v2/models-ready.png).
-- **Evidence:** Verification's succeeded flag is ignored; refresh recomputes readiness from structural presence and runtime, not load success.
-- **Layman's term:** The app can say Ready after its own model check failed.
-- **What's wrong:** Verification feedback and recording eligibility disagree.
-- **Impact:** Major — users can begin recording with a known unusable selected model.
-- **Significance:** High.
-- **Difficulty:** M.
-- **Fix:** Keep engine/model/asset-keyed verification status. Block readiness on failure and offer repair; invalidate after asset/selection changes. Test present assets with failed load and successful recovery.
-- **Grade lift:** C− → B− with H1/H2, by aligning setup claims with engine evidence.
 
-
-**Implementation evidence:** Failed load verification is persisted by engine/model/asset identity and blocks recording and file transcription across refresh/relaunch. Whisper verification now loads the model. Eight focused regressions cover failure, successful repair, changed assets, stale results and thrown errors; 33 setup/session/verification tests and strict targeted lint pass.
+Engine/model/asset-keyed failures persist and block recording/import across refresh/relaunch; successful repair clears the verdict. Whisper verification loads the actual model. Fresh Parakeet verification reached Model ready (offline); failure/recovery contracts are regression-tested.
 
 #### ~~H4~~ ✓ done 2026-10-03 — Refresh an open Library when a recording is saved
-- **Where:** `Sources/Rebuild/RebuildLibraryView.swift:7,70-76,101-117`; `Sources/Rebuild/RebuildSession.swift:94,219-225`; `Sources/Stores/DataManager.swift:186-211`.
-- **Evidence:** Library's fetched snapshot refreshes on search/history/actions. didDeliver has no assignment, and save emits no list invalidation.
-- **Layman's term:** A saved recording can be missing until you leave the Library or search again.
-- **What's wrong:** Background delivery does not update the visible list.
-- **Impact:** Moderate — saving appears unreliable.
-- **Significance:** High.
-- **Difficulty:** S.
-- **Fix:** Publish a successful-history revision and refresh mounted Library without changing query. Test shortcut/menu delivery with Library visible and cover retention/deletion.
-- **Grade lift:** C− → B− with H1/H2/H3, by making saved content visible promptly.
 
-
-**Implementation evidence:** Successful history saves, deletion and retention advance an observable store revision. Library reloads on that revision while keeping its search, and fences stale fetch results. An in-memory SwiftData/session-delivery regression failed before publication and passes after; disabled/failed saves and no-op retention do not invalidate. All 18 related integration/paging/usage tests and strict targeted lint pass.
+Successful SwiftData mutation advances an observed revision; query-preserving reload and stale-fetch fencing are connected. A real isolated store/session/observation regression protects this behavior; a native save-while-mounted check remains code D3.
 
 ---
 
 ## I — Polish, Delight & Product Feel — B−
 
-The warm restrained visual identity, clear optional-feature copy and [Library privacy explanation](ui-ux-audit/2026-10-03-native-v2/library-history-off.png) give the rebuild a cohesive product feel. The actual shortcut is hidden from the primary Record flow, even though recording is the app's frequent action. Broader delight/interaction claims await the physical shortcut and window matrix.
+The warm restrained identity and optional-feature/privacy copy give the rebuilt utility a consistent feel ([Record](ui-ux-audit/2026-10-04-regrade/record-ready.png), [Library](ui-ux-audit/2026-10-04-regrade/library-off.png)). Preferences clearly groups recording, delivery, privacy and appearance ([capture](ui-ux-audit/2026-10-04-regrade/preferences.png)). The configured shortcut still appears only in Preferences; Record always presents generic enable-in-Preferences guidance (`Sources/Rebuild/RebuildWorkspace.swift:155-158`). Surfacing this frequent control matters more than adding decorative animation.
 
 #### I1 — Show the configured shortcut where recording happens
-- **Where:** `Sources/Rebuild/RebuildWorkspace.swift:155-157`; `Sources/Rebuild/RebuildStatusController.swift:11,36`; `Sources/Rebuild/RebuildPreferencesView.swift:35-38`; [Record capture](ui-ux-audit/2026-10-03-native-v2/record-dark.png).
-- **Evidence:** Record always says enable your shortcut in Preferences, even when enabled. Menu lacks the configured equivalent; only Preferences/diagnostics show the keys.
+
+- **Where:** `Sources/Rebuild/RebuildWorkspace.swift:155-158`; `Sources/Rebuild/RebuildStatusController.swift:11,34-40`; `Sources/Rebuild/RebuildPreferencesView.swift:35-38`; [Record](ui-ux-audit/2026-10-04-regrade/record-ready.png) and [Preferences](ui-ux-audit/2026-10-04-regrade/preferences.png).
+- **Evidence:** Fresh Record shows generic shortcut advice; Preferences shows ⇧⌘Space with enable off. Source keeps the generic copy even when enabled, and menu keyEquivalent is empty. Custom/enabled/cleared behavior was not physically tested.
 - **Layman's term:** The app does not remind you which keys record.
-- **What's wrong:** Shortcut state is absent from the primary workflow.
-- **Impact:** Minor — a frequent action is harder to discover/remember.
-- **Significance:** Medium.
+- **What's wrong:** Shortcut value and enabled state are absent from the primary recording flow.
+- **Impact:** Minor — a frequent action is harder to discover and remember.
+- **Significance:** Medium — shortcut recording is a daily convenience.
 - **Difficulty:** S.
-- **Fix:** Show the current rebuildRecording shortcut when enabled, a direct enable/configure path otherwise, and bind the menu equivalent to the same shortcut name. Verify custom, disabled and cleared shortcuts.
+- **Fix:** Show the current rebuildRecording shortcut when enabled and a direct configure/enable path otherwise. Bind the menu equivalent to the same shortcut name; verify custom, disabled and cleared values. Coordinate with **code F1/D3**.
 - **Grade lift:** B− → B, by surfacing an essential daily control.
 
 ---
 
 ## Changing the recording shortcut
 
-Open **Preferences → Shortcuts & recording**. Click the field showing **⇧⌘Space** (Recording shortcut) and press the desired combination; the library saves it automatically. Enable **the rebuild’s recording shortcut** to activate it. Current observed value is Command+Shift+Space and the enable checkbox is off. If the original app is also running, use a different combination or stop its conflicting shortcut registration.
+Open **Preferences → Shortcuts & recording**, click the field showing **⇧⌘Space**, and press the desired combination. The library saves it automatically. Enable **the rebuild's recording shortcut** to activate it. The observed value is Command+Shift+Space and the enable checkbox remains off; this audit did not change it. If the original app is running with the same shortcut, choose a different combination or stop its conflicting registration.
 
-The normal global shortcut and optional modifier-hold setting are separate controls. The latter requires Accessibility access; changing the normal shortcut does not require enabling hold recording.
+Global shortcut and modifier-hold recording are separate controls. Hold recording requires Accessibility; changing the normal shortcut does not require enabling hold recording.
 
-Request UI fixes by prefix, for example **UI H1 H2 I1**. Code IDs in the other report have different meanings. This is an audit, not a claim these findings are already repaired.
+Request UI fixes by prefix, for example **UI I1 D1 G1 E1**. Code IDs have different meanings. This grading run changes reports/evidence only.

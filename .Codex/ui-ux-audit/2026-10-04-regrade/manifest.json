@@ -1,0 +1,27 @@
+{
+  "captured": "2026-10-04",
+  "branch": "rebuild/native-v2",
+  "auditCheckout": "2d3e0581af4de6b46e3221f92a3735a63922a480",
+  "packagedSource": "f0cc89a40dd380668c432ec186826772f3cd2b03",
+  "files": {
+    "README.md": "dceeaff2e9866f08f6703ae6531f8df924e88ebecd6efe39cb60db6490e6106f",
+    "code-ci.json": "8df1c2eb781451fcb1c8ff73b2679cdea557152c07a1fde053632dfd972a4486",
+    "library-off.ax.txt": "f9f7562b106604230cd407e59134b96148d846857a98676f3ca9e06b0a724103",
+    "library-off.png": "eafdc7e7d2f7f4ce6766de0bf16b96b8cb94f4b22613cc6d5c4cdbec164428c4",
+    "models-ready.ax.txt": "5e54c42cc631b491fa95ca98271fd62d6913b585cd58a0727de3ceaa45ec6048",
+    "models-ready.png": "241d6ba16c4493245d3b1761afbc06ccadd03164b43d3b37e9df6ff43f627a7a",
+    "preferences.ax.txt": "9ac3a86f2ca851609d33493bba6af77b12f9ee96238e9663090e8546771568de",
+    "preferences.png": "14534d24c72ee50a4340500703a23471022724793c0cc896d3b5a734ab443a6e",
+    "record-ready.ax.txt": "eed947b9a5154e7238983c3e28e86720e7a5561ad2249004cefcf328c6603fe7",
+    "record-ready.png": "52dd94698801c6b2bd7973a6fd5668522b2a4ac6d8ddbc7a73aee44835b9b101",
+    "recording-cancel.ax.txt": "eed947b9a5154e7238983c3e28e86720e7a5561ad2249004cefcf328c6603fe7",
+    "recording-start.ax.txt": "bc1d0345cb26fc5552865eff002c75abb5b3d5c628ba51bf6ccb715c0e372156",
+    "verification-result.ax.txt": "285fc393fb0fa8c8d33295d1a489961a9944e9e859679c6e899848d2725025bd",
+    "verification-result.png": "5797ab0374abcf713f9d7257dc9c132204d6cb7691b5dd0d9c1104e1c0c3608d",
+    "verification-start.ax.txt": "0a755e29c65f1c86e8d1a8fd786b504573994074dfab388ba39ce7bd9b02c635",
+    "writing-during-recording.ax.txt": "8ea1c117d3a428b0824bd3a7afa7224d7e78354be9152d3ce89af615376e9611",
+    "writing-during-verification.ax.txt": "ba7957a37ee542df2e6199e7ea869e4957440894e7d7c0fff50ce1e392ad1b69",
+    "writing.ax.txt": "ba7957a37ee542df2e6199e7ea869e4957440894e7d7c0fff50ce1e392ad1b69",
+    "writing.png": "170aa081c8bfc522614cd48c83eaf5a9be86987892b61c4c650de0a1605b5943"
+  }
+}
