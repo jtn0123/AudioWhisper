@@ -20,6 +20,8 @@ final class SpeechToTextServiceCoverageTests: IsolatedXCTestCase {
         let error = SpeechToTextError.transcriptionFailed("disk full")
         XCTAssertNotNil(error.errorDescription)
         XCTAssertTrue(error.errorDescription!.contains("disk full"))
+        XCTAssertFalse(error.errorDescription!.contains("API key"))
+        XCTAssertFalse(error.errorDescription!.contains("internet"))
     }
 
     func testLocalTranscriptionFailedErrorDescription() {

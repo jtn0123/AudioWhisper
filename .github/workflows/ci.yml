@@ -333,6 +333,7 @@ jobs:
           .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_hub.py
           .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_rpc.py
           .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_verify_scripts.py
+          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_parakeet.py
           .mypy-venv/bin/python -m coverage xml -o coverage-python.xml
           python3 Tests/test_coverage_artifacts.py
           python3 scripts/coverage-artifact.py create python coverage-python.xml \
