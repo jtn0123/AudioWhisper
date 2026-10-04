@@ -1,6 +1,6 @@
 # Recommended rebuild fixes — validation
 
-Date: 2026-10-03. Worktree: `/Users/justin/.t3/worktrees/AudioWhisper/native-v2`.
+Implementation date: 2026-10-03. Native follow-up: 2026-10-04. Worktree: `/Users/justin/.t3/worktrees/AudioWhisper/native-v2`.
 Branch: `rebuild/native-v2`. Packaged source commit: `f0cc89a40dd380668c432ec186826772f3cd2b03`.
 App: `AudioWhisper.app`, bundle ID `com.audiowhisper.rebuild`, version 2.0.0.
 
@@ -29,12 +29,16 @@ App: `AudioWhisper.app`, bundle ID `com.audiowhisper.rebuild`, version 2.0.0.
 ## Native verification
 
 - Final artifact launches in a conventional workspace window.
-- Fresh build consent is not granted yet; readiness correctly says Allow microphone access.
+- Before granting fresh-build consent, readiness correctly said Allow microphone access. The 2026-10-04 follow-up observes microphone access allowed and Ready to record; no re-prompt was needed.
 - Five blocked recording commands stay in one setup window and do not request permission. Only clicking Allow microphone requests OS consent; the button becomes Waiting for macOS and is disabled.
-- Live recording, same-build cold relaunch, selected-input and mounted Library checks are pending that one macOS consent click.
+- Five successive live start/cancel cycles pass without renewed permission prompts; real microphone levels are visible during capture.
+- Explicit MacBook Pro Microphone selection starts capture; stopping enters Transcribing and completes with a nonempty transcript copied to the clipboard. Ambient transcript text is omitted from stored evidence; history stayed disabled. The prior System default selection was restored.
+- Full quit is confirmed in native app inventory; reopening the identical build retains consent, and another start/cancel cycle passes without a prompt. Cold first launch remains a background menu-bar launch; Finder reopen shows the workspace.
+- Strict/deep signature verification still passes after packaged live transcription and cold relaunch, with zero bundled Python cache files.
+- Mounted Library behavior has in-memory SwiftData/session/observation regression coverage; a native save-while-mounted experiment remains unperformed.
 
 ## Limits
 
 Only one physical microphone is attached. Two distinguishable inputs, actual device disconnection/sleep, VoiceOver, physical global shortcut delivery and Smart Paste remain unverified. The original worktree is clean and synced at 37301a1. No distribution certificate, notarization or release is claimed.
 
-Remote CI: [code run](https://github.com/jtn0123/AudioWhisper/actions/runs/37178898261) is in progress. The prior grade reports remain the original C+ audit with addressed IDs marked complete; these changes are not a fresh nine-category regrade.
+Remote CI: [code run](https://github.com/jtn0123/AudioWhisper/actions/runs/37178898261) and [documentation-head run](https://github.com/jtn0123/AudioWhisper/actions/runs/37179132940) both completed successfully. This follow-up changes validation documentation/evidence only, and skips redundant CI. The prior grade reports remain the original C+ audit with addressed IDs marked complete; these changes are not a fresh nine-category regrade.

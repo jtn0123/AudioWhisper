@@ -1,0 +1,27 @@
+[
+  {
+    "cycle": 1,
+    "started": true,
+    "cancelled": true
+  },
+  {
+    "cycle": 2,
+    "started": true,
+    "cancelled": true
+  },
+  {
+    "cycle": 3,
+    "started": true,
+    "cancelled": true
+  },
+  {
+    "cycle": 4,
+    "started": true,
+    "cancelled": true
+  },
+  {
+    "cycle": 5,
+    "started": true,
+    "cancelled": true
+  }
+]
