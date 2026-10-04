@@ -1,6 +1,5 @@
 import Foundation
 import os.log
-import AudioToolbox
 
 internal enum ParakeetError: Error, LocalizedError, Equatable {
     case pythonNotFound(path: String)
