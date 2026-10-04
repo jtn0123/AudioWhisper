@@ -1,4 +1,3 @@
-import AVFoundation
 import AppKit
 import Observation
 
@@ -97,6 +96,7 @@ final class RebuildSession {
     var closeRecorder: () -> Void = {}
     var didDeliver: () -> Void = {}
     @ObservationIgnored private let services: RebuildSessionServices
+    @ObservationIgnored private let setup: RebuildSetupServices
     @ObservationIgnored private var job: Task<Void, Never>?
     @ObservationIgnored private var sessionID: UUID?
     @ObservationIgnored private var configuration: TranscriptionPipelineConfig?
@@ -135,8 +135,9 @@ final class RebuildSession {
         retryAudio = nil
     }
 
-    init(services: RebuildSessionServices) {
+    init(services: RebuildSessionServices, setup: RebuildSetupServices? = nil) {
         self.services = services
+        self.setup = setup ?? .live
         if let source = services.interruptionSource {
             interruptionObserver = NotificationCenter.default.addObserver(
                 forName: .recordingInterrupted, object: source, queue: nil
@@ -311,22 +312,15 @@ extension RebuildSession {
         defer { refreshInFlight = false }
         while refreshAgain {
             refreshAgain = false
-            let provider = AppDefaults.transcriptionProvider
-            let whisper = AppDefaults.selectedWhisperModel
-            let parakeet = AppDefaults.selectedParakeetModel
-            let runtime = provider == .local ? true : await UvBootstrap.isEnvReady()
-            let installed =
-                provider == .local
-                ? WhisperKitStorage.isModelDownloaded(whisper)
-                : await ParakeetService.shared.isModelCached(model: parakeet)
-            guard provider == AppDefaults.transcriptionProvider,
-                whisper == AppDefaults.selectedWhisperModel, parakeet == AppDefaults.selectedParakeetModel
-            else {
+            let selection = setup.selection()
+            let runtime = await setup.runtimeReady(selection)
+            let installed = await setup.modelInstalled(selection)
+            guard selection == setup.selection() else {
                 refreshAgain = true
                 continue
             }
             readiness = RebuildReadiness(
-                microphoneGranted: AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
+                microphoneGranted: setup.microphoneStatus() == .authorized,
                 modelInstalled: installed, runtimeReady: runtime, checking: false
             )
         }
@@ -334,19 +328,17 @@ extension RebuildSession {
 
     func requestMicrophone() {
         guard !isRequestingMicrophone else { return }
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        switch setup.microphoneStatus() {
         case .notDetermined:
             isRequestingMicrophone = true
-            AVCaptureDevice.requestAccess(for: .audio) { [weak self] _ in
+            setup.requestMicrophone { [weak self] _ in
                 Task { @MainActor in
                     self?.isRequestingMicrophone = false
                     await self?.refreshSetup()
                 }
             }
         case .denied, .restricted:
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-                NSWorkspace.shared.open(url)
-            }
+            setup.openMicrophoneSettings()
         default: Task { await refreshSetup() }
         }
     }
@@ -356,26 +348,9 @@ extension RebuildSession {
         isInstalling = true
         setupError = nil
         defer { isInstalling = false }
-        let provider = AppDefaults.transcriptionProvider
-        let whisper = AppDefaults.selectedWhisperModel
-        let parakeet = AppDefaults.selectedParakeetModel
+        let selection = setup.selection()
         do {
-            if provider == .local {
-                try await ModelManager.shared.downloadModel(whisper)
-            } else {
-                guard Arch.isAppleSilicon else {
-                    setupError = "Parakeet needs Apple Silicon. Choose Whisper on this Mac."
-                    return
-                }
-                _ = try await UvBootstrap.ensureVenv(forceRefresh: true)
-                await MLXModelManager.shared.downloadParakeetModel(repo: parakeet.rawValue)
-                guard await ParakeetService.shared.isModelCached(model: parakeet) else {
-                    setupError =
-                        MLXModelManager.shared.downloadProgress[parakeet.rawValue]
-                        ?? "The download did not finish. Check your connection and retry."
-                    return
-                }
-            }
+            try await setup.install(selection)
         } catch { setupError = error.localizedDescription }
         await refreshSetup()
     }

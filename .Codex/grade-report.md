@@ -111,13 +111,15 @@ Small views share one observable session and theme (`Sources/Rebuild/RebuildWork
 
 Session tests cover ownership, cancellation, captured settings, retry and empty output (`Tests/RebuildSessionTests.swift`); real-engine fixtures and `Tests/BundledPythonImmutabilityTests.swift` add meaningful evidence. CI enforces coverage and bundle checks. Nevertheless, setup/live delivery assembly lack critical integration coverage; test count and 37.22% aggregate coverage do not establish those new paths.
 
-#### D1 — Cover the new setup coordinator [both]
+#### ~~D1~~ ✓ done 2026-10-03 — Cover the new setup coordinator [both]
 - **Where:** `Sources/Rebuild/RebuildSession.swift:264-337`; `Tests/RebuildSessionTests.swift:52-78`.
 - **What's wrong:** Tests assign readiness directly, bypassing async refresh, new-session microphone coalescing/denial and installation failure/retry. Setup methods directly call globals.
 - **Impact:** Major — first-recording setup can regress with a green suite.
 - **Fix:** Inject permission, runtime/cache and installation services. Test repeated requests, denial, delayed refresh after selection changes, failed install/retry and concurrent commands, including B2.
 - **Effort:** M.
 - **Grade lift:** C+ → B−; B with D2, by protecting actual first-use coordination.
+
+**Implementation evidence:** New injectable setup services have seven coordinator tests for request coalescing/denial, blocked commands, allowed consent, stale selection refresh, failed install/retry, concurrent install and maintenance. All 62 combined setup/recording/input tests and targeted strict lint passed. Tests do not grant OS consent or install real models.
 
 #### D2 — Exercise native delivery through isolated real stores [both]
 - **Where:** `Sources/Rebuild/RebuildSession.swift:44-70,198-246`; `Tests/RecordingDeliveryIntegrationTests.swift:44-52`; `Tests/RebuildSessionTests.swift:27-42`.
