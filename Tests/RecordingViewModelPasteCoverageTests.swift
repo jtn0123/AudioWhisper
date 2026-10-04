@@ -53,6 +53,13 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
 
     // MARK: - findValidTargetApp / findFallbackTargetApp
 
+    func testMissingPasteTargetNeverChoosesAnotherRunningApp() {
+        let vm = makeViewModel()
+        WindowController.storedTargetApp = nil
+        vm.targetAppForPaste = nil
+        XCTAssertNil(vm.findValidTargetApp(), "keep the transcript on the clipboard when its destination is unknown")
+    }
+
     func testFindFallbackTargetAppSkipsSelfBundle() {
         let vm = makeViewModel()
         let fallback = vm.findFallbackTargetApp()
@@ -92,7 +99,7 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
         WindowController.storedTargetApp = nil
         vm.targetAppForPaste = NSRunningApplication.current
         let result = vm.findValidTargetApp()
-        XCTAssertNotNil(result)
+        XCTAssertNil(result, "a terminated or invalid application cannot be a paste destination")
     }
 
     func testFindValidTargetAppReturnsNilOrFallbackWhenNothingSet() {

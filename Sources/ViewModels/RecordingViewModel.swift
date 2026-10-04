@@ -99,6 +99,7 @@ final class RecordingViewModel {
     var sessionID = UUID()
     var cancellationTail: (() -> Void)?
     var completedAudioDuration: TimeInterval?
+    var hasCapturedPasteTarget = false
     var capturedRecordingSettings: TranscriptionPipelineConfig?
 
     func isCurrentSession(_ id: UUID?) -> Bool {
@@ -334,7 +335,7 @@ final class RecordingViewModel {
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
                 guard let self, self.isCurrentSession(id) else { return }
-                let recordWindow = NSApp.windows.first { $0.title == WindowTitles.recording }
+                let recordWindow = NSApp?.windows.first { $0.title == WindowTitles.recording }
 
                 let onFadeComplete = {
                     NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
