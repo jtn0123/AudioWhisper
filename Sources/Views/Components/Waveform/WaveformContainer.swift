@@ -141,8 +141,8 @@ struct WaveformContainer: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Recording waveform")
-        .accessibilityValue(isRecording ? "Active" : "Idle")
+        .accessibilityLabel(accessibilityAction)
+        .accessibilityValue(status.message)
     }
 
     // MARK: - Chrome layers
@@ -389,6 +389,17 @@ extension WaveformContainer {
         case .permissionRequired:  return "PERMISSION NEEDED"
         case .setupRequired:       return "FINISH SETUP"
         case .error(let message):  return message.uppercased()
+        }
+    }
+
+    private var accessibilityAction: String {
+        switch status {
+        case .recording: return "Stop recording"
+        case .processing: return "Transcribing recording"
+        case .success: return "Transcript copied"
+        case .permissionRequired, .setupRequired: return "Open recording setup"
+        case .error: return "Try recording again"
+        case .ready: return "Start recording"
         }
     }
 
