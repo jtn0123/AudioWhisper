@@ -6,23 +6,26 @@
       "unused_declaration": 131,
       "superfluous_disable_command": 1,
       "unused_import": 7
-    }
+    },
+    "source": "4d12ddd"
   },
   "changedSourceImportAnalyzer": {
     "filesAnalyzed": 8,
     "findings": []
   },
   "swiftSuite": {
-    "discovered": 3053,
-    "exitCode": 0
+    "discovered": 3054,
+    "exitCode": 0,
+    "source": "9617da8"
   },
   "focusedStartupSuite": {
     "cases": 54,
     "exitCode": 0
   },
   "integrationAndStartupSuite": {
-    "cases": 20,
-    "exitCode": 0
+    "cases": 21,
+    "exitCode": 0,
+    "source": "9617da8"
   },
   "strictLintExitCode": 0,
   "xcodeBuildForTestingExitCode": 0,
@@ -30,8 +33,59 @@
     "arm64": 0,
     "x86_64": 0
   },
-  "guiBundleSource": "c3646e5",
-  "implementationHead": "4d12ddd",
-  "guiMicrophone": "awaitingOSConsent",
-  "guiAccessibility": "notEnabled, stale registration reset, re-registration pending"
+  "guiBundleSource": "9617da8",
+  "implementationHead": "9617da8",
+  "guiMicrophone": {
+    "source": "ba6ef33 plus temporary route diagnostic",
+    "state": "granted",
+    "changedDebugBuildRetainedConsent": true,
+    "finalUniversalGuiContinuity": "pending native window recovery"
+  },
+  "guiAccessibility": {
+    "source": "ba6ef33 plus temporary route diagnostic",
+    "state": "granted",
+    "actualGuiCheckAccess": "Accessibility allowed",
+    "staleRebuildRegistrationReset": true,
+    "otherEntriesPreserved": true,
+    "finalUniversalGuiContinuity": "pending native window recovery"
+  },
+  "universalBundle": {
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "strictDeepCodesignExitCode": 0,
+    "stableCertificateRequirement": true,
+    "source": "9617da8"
+  },
+  "nativeAcceptance": {
+    "firstPatch": {
+      "source": "c3646e5",
+      "successfulStartCancelCycles": 3,
+      "failedStart": 4,
+      "errorCode": 1852797029,
+      "uiResponsive": true
+    },
+    "subsequentDiagnosticBuild": {
+      "source": "ba6ef33 plus temporary route diagnostic; route behavior unchanged",
+      "successfulStartCancelCycles": 26,
+      "runInterruptedByNativeControlError": true
+    },
+    "finalUniversal": "start/stop/shortcut/Smart Paste/hold pending native window recovery"
+  },
+  "ci": {
+    "source": "9617da8",
+    "run": 37229605626,
+    "status": "in_progress",
+    "earlierSource": "4d12ddd",
+    "earlierRun": 37228126275,
+    "earlierConclusion": "success, SonarCloud skipped"
+  },
+  "strictLintSource": "9617da8",
+  "testData": {
+    "librarySavingEnabled": false,
+    "usageUnchangedDuringCancelTests": true,
+    "disposableEditorMarkerCleared": true,
+    "privateAudioCommitted": false
+  }
 }
