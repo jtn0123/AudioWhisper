@@ -27,6 +27,26 @@ final class LocalEngineFixtureTests: XCTestCase {
             let words = text.lowercased()
             XCTAssertTrue(["quick", "brown", "fox", "lazy", "dog"].filter(words.contains).count >= 4, text)
             print("REAL_WHISPER run=\(run) elapsed=\(start.duration(to: .now)) transcript=\(text)")
+            if run == 0 && !words.contains("fox") {
+                try await diagnoseCPUOnlyWhisper(audio: audio)
+            }
+        }
+    }
+
+    private func diagnoseCPUOnlyWhisper(audio: URL) async throws {
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let config = WhisperKitConfig(
+            modelFolder: path,
+            computeOptions: ModelComputeOptions(
+                melCompute: .cpuOnly, audioEncoderCompute: .cpuOnly, textDecoderCompute: .cpuOnly
+            ),
+            verbose: true, logLevel: .debug
+        )
+        let reference = try await WhisperKit(config)
+        let results = try await reference.transcribe(audioPath: audio.path)
+        for result in results {
+            print("REAL_WHISPER_CPU_ONLY language=\(result.language) text=\(result.text)")
+            print("REAL_WHISPER_CPU_ONLY tokens=\(result.segments.flatMap { $0.tokens })")
         }
     }
 
