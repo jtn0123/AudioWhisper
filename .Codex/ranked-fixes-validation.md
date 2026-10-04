@@ -2,6 +2,8 @@
 
 User-selected ranks: **1–9 and 14–17**. Worktree: `/Users/justin/.t3/worktrees/AudioWhisper/native-v2`, branch `rebuild/native-v2`. Original checkout/app data are separate.
 
+Later recording/permission follow-up: implementation `cb3bf44`, `c3646e5`, analyzer annotation `4d12ddd`. See [current breakout and verification boundaries](recording-permission-fixes.md). The current persistent-identity bundle is awaiting initial OS microphone consent; new live tests and Accessibility re-registration are incomplete. The results below retain their original build identities.
+
 Final code/build source: **b47fe8e798ab5176afe8606e6327f43c1f11ca46**. Native shortcut, search and accessibility checks first ran on predecessor `3f66210`; the final bundle adds bounded Parakeet inference and neutral offline error advice. CI follow-ups `b81723e` and `98d77e6` resolve the runner test-binary layout and portable Python coverage paths. Report commits leave packaged behavior unchanged.
 
 | Rank | Report ID | Plain-language result and status | Main commit |

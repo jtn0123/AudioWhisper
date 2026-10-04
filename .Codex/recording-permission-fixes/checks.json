@@ -1,0 +1,37 @@
+{
+  "fullLocalAnalyzer": {
+    "version": "0.65.1",
+    "filesAnalyzed": 431,
+    "counts": {
+      "unused_declaration": 131,
+      "superfluous_disable_command": 1,
+      "unused_import": 7
+    }
+  },
+  "changedSourceImportAnalyzer": {
+    "filesAnalyzed": 8,
+    "findings": []
+  },
+  "swiftSuite": {
+    "discovered": 3053,
+    "exitCode": 0
+  },
+  "focusedStartupSuite": {
+    "cases": 54,
+    "exitCode": 0
+  },
+  "integrationAndStartupSuite": {
+    "cases": 20,
+    "exitCode": 0
+  },
+  "strictLintExitCode": 0,
+  "xcodeBuildForTestingExitCode": 0,
+  "releaseSlices": {
+    "arm64": 0,
+    "x86_64": 0
+  },
+  "guiBundleSource": "c3646e5",
+  "implementationHead": "4d12ddd",
+  "guiMicrophone": "awaitingOSConsent",
+  "guiAccessibility": "notEnabled, stale registration reset, re-registration pending"
+}
