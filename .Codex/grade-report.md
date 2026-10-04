@@ -1,352 +1,254 @@
 # Codebase Grade Report
 
-**Project:** AudioWhisper
+**Project:** AudioWhisper Rebuild
 **Audited:** 2026-10-03
-**Stack:** Native macOS SwiftUI/AppKit app, SwiftData history, WhisperKit/CoreML, embedded Python/uv with Parakeet and MLX correction.
-**Baseline:** `f3adb171169f0625cdd19d57ba80ce2ae62019ce` (`f3adb17`); this is a fresh baseline audit, not a regrade of the polishing branch. File line references describe that baseline.
+**Stack:** Native macOS SwiftUI/AppKit, SwiftData, AVFoundation, WhisperKit/Core ML, bundled uv/Python with Parakeet and MLX.
+**Version:** `rebuild/native-v2`, code commit `c75a55d3b0b12c2bd5dc7f5c67422584de792246`; the packaged app reports this exact commit. Backend means local engines/services, not a hosted API.
+**Historical report:** [Original app baseline and implementation notes](baseline-f3adb17/grade-report.md). New IDs below apply to the rebuild.
 
 ## Summary
 
 | ID | Category | Grade | Items |
 |----|----------|-------|-------|
-| A | Architecture & Design | C+ | 2 |
-| B | Backend Quality | C | 4 |
-| C | Frontend Quality | C | 3 |
-| D | Testing & Reliability | C+ | 4 |
-| E | Security | C+ | 4 |
-| F | Dependencies & Tech Currency | B | 2 |
-| G | Performance & Scalability | C+ | 3 |
-| H | Documentation & Onboarding | B− | 3 |
-| I | Developer Experience & Tooling | B− | 4 |
-| **Overall** | | **C** | **29** |
+| A | Architecture & Design | B− | 2 |
+| B | Backend Quality | C+ | 2 |
+| C | Frontend Quality | C+ | 2 |
+| D | Testing & Reliability | C+ | 3 |
+| E | Security | C+ | 2 |
+| F | Dependencies & Tech Currency | C+ | 3 |
+| G | Performance & Scalability | B | 2 |
+| H | Documentation & Onboarding | B | 2 |
+| I | Developer Experience & Tooling | B | 2 |
+| **Overall** | | **C+** | **20** |
 
-**Top 5 highest-leverage fixes:** C1, C2, A1, E1, B2.
+**Top 5 highest-leverage fixes:** E1, A1, B1, B2, D1.
 
-The app has substantial functionality, useful service boundaries, and a large test suite, but essential recording/setup/cancellation/paste workflows contain concrete defects. A passing unit suite does not establish a reliable desktop experience. Overall C weights these workflow and safety problems more heavily than dependency hygiene or documentation.
+The rebuild materially improves session ownership, setup, window policy, packaging and permission persistence. The normal native recording path works. C+ reflects concrete input/state integration defects, critical setup coverage gaps, and an affected bundled installer. Attractive screens and a large passing suite do not cancel those findings. Fixing the first five plus related control/history contracts would put a B-level regrade within reach, subject to native validation.
 
 ### Evidence and limits
 
-- Findings below are confirmed by baseline source inspection unless explicitly described as a runtime inference or an upstream dependency issue. Timing-sensitive impact and actual macOS focus/permission behavior require native verification.
-- The user reports a false Ready state, at least five permission asks described as audio permissions after pressing the recording key, and a hidden missing-model error. Source paths explain how readiness and permission sequencing can produce this experience; the full physical journey was not independently reproduced during this audit.
-- Native CUA app attachment timed out four times. An idle app sample does **not** establish that the app froze. There is no completed physical workflow proof or release-readiness claim.
-- Baseline [CI](https://github.com/jtn0123/AudioWhisper/actions/runs/37167335636), [CodeQL](https://github.com/jtn0123/AudioWhisper/actions/runs/37167335644), and [SonarCloud](https://github.com/jtn0123/AudioWhisper/actions/runs/37167335696) all completed successfully at the final refresh. Earlier app commit `6026cda` passed [primary CI](https://github.com/jtn0123/AudioWhisper/actions/runs/37158321394) but failed its separately repeated Sonar test run. A later green run does not explain that intermittent stream-output failure.
-- The [Oct 3 Nightly](https://github.com/jtn0123/AudioWhisper/actions/runs/37122087420), at `51cb703`, genuinely ran one real Parakeet model test and passed in 37 seconds. It was not an architecture skip and is not proof of the later desktop changes.
-- Existing historical reports are preserved. This report records baseline findings; implementation progress below is not a regrade.
+- Fresh native screenshots/AX observations cover Record, history-off Library, Models & setup, Writing profiles and Preferences at this build. [UI report](ui-ux-grade-report.md) separates visual quality from state reliability.
+- Earlier live checks of this exact build passed start/stop/transcription, repeated start/cancel and cold relaunch/start/cancel without another microphone prompt. Strict complete-bundle signature verification remained valid after transcription and GUI Parakeet/MLX verification. Python resource immutability has a real daemon regression.
+- Current [CI run](https://github.com/jtn0123/AudioWhisper/actions/runs/37176336885) passed build/tests (2,992 cases), strict lint/Python checks and packaged bundle smoke. Sources coverage: 37.22% (14,031/37,693 lines); gate: 27%. SwiftLint analysis also completed successfully; the whole primary CI run is green.
+- Prior local full suite passed 2,991 tests before the last added regression; latest focused suite passed 89. Actual local Parakeet, Whisper and MLX fixtures passed after the signature fix. A separate macOS-runner Whisper inference failure remains unresolved.
+- Routing, interruption, verification, maintenance/retry and mounted-Library findings are source-confirmed. External input disconnection, deliberate machine sleep and corrupt-model runtime experiments were not performed.
+- Physical global shortcut delivery, hold recording, Smart Paste, VoiceOver, long-file memory behavior and the full desktop/full-screen Spaces matrix remain unverified. Synthetic key input did not prove physical Carbon delivery. Shortcut remains disabled.
+- Preview is completely ad-hoc signed, not Developer ID signed/notarized. Same-build permission persistence passed; replacing a build can change its signing identity.
 
 ---
 
-## A — Architecture & Design — C+
+## A — Architecture & Design — B−
 
-The app has explicit transcription service/protocol boundaries and a shared coordinator rather than duplicating the pipeline in views (`Sources/ViewModels/RecordingViewModel+Transcription.swift:220-294`). However, recording interaction and canceled-run cleanup do not have a common ownership/state rule (`Sources/ViewModels/RecordingViewModel.swift:202-223`, `Sources/Views/ContentView.swift:64-78`). Paste destinations also span global and view-model state without an explicit recording-session lifetime (`Sources/ViewModels/RecordingViewModel+Paste.swift:78-110`).
+`Sources/Rebuild/RebuildSession.swift:35-73,182-206` gives jobs a single owner, injectable processing services and captured configuration with late-result guards. `Sources/Rebuild/RebuildApp.swift:72-100` connects the new shell; it never launches the legacy shell. The disconnected recorder/session boundary and retry admission prevent a higher grade; compiled legacy UI is acknowledged temporary regression-test debt in `docs/rebuild.md:9`.
 
-#### A1 — Give recording and transcription runs explicit state ownership
-- **Where:** `Sources/ViewModels/RecordingViewModel.swift:202-223`, `Sources/Views/ContentView.swift:64-78`, `Sources/ViewModels/RecordingViewModel+Transcription.swift:220-269,308-314`.
-- **What's wrong:** The waveform mouse action and start-recording method do not reject an already-processing run. A canceled task can later execute its cleanup against shared state after a newer run begins; there is no run identity guarding those writes.
-- **Impact:** Major — users can start overlapping work or see the old run clear the new run's processing state. The source permits this interleaving; its actual frequency was not measured.
-- **Fix:** Route mouse, menu, and key actions through the same state-aware recording command. Assign each processing run an identity and allow only the current run to publish results, errors, and cleanup. Reproduce busy-click and delayed-cancellation interleavings with controllable service doubles.
+#### A1 — Connect recorder interruptions to the session
+- **Where:** `Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift:50-65`; `Sources/Rebuild/RebuildSession.swift:135-168`; `Sources/Rebuild/RebuildApp.swift:72-100`.
+- **What's wrong:** Sleep stops recording and discards its audio URL; engine configuration failure cancels recording. Neither posted notification has a rebuild listener, so Listening can outlast actual capture.
+- **Impact:** Major — misleading capture state can lose speech and leave controls busy.
+- **Fix:** Deliver typed audio/error interruption events to the current session. Finish or fail once, close the overlay, preserve graceful-interruption audio deliberately, and fence stale events. Test both events and temporary-file ownership; validate a native route change.
 - **Effort:** M.
-- **Grade lift:** C+ → B−, by making primary-flow transitions consistent and preventing stale task ownership.
+- **Grade lift:** B− → B; B+ with A2, by reconciling hardware capture and session ownership.
 
-#### A2 — Bind paste-target state to the current recording session
-- **Where:** `Sources/ViewModels/RecordingViewModel+Paste.swift:24-46,78-110`, `Sources/ViewModels/RecordingViewModel.swift:202-223`.
-- **What's wrong:** Paste/source resolution prefers persistent `WindowController.storedTargetApp` and cached view-model target/source state. These values are not consistently captured and retired as part of a particular recording run.
-- **Impact:** Major — a later transcript can use a destination or category from an earlier interaction. Wrong-app paste impact is addressed separately in E1.
-- **Fix:** Capture an explicit destination/source-app value when a recording command starts, carry it in that run's context, and clear ownership on cancellation/completion/new recording. Test two consecutive recordings initiated from different applications and delayed completion of the first.
-- **Effort:** M.
-- **Grade lift:** C+ → B−, by removing stale session state from a user-facing action.
-
----
-
-## B — Backend Quality — C
-
-Here backend means local transcription, subprocess, and model-management services; this app has no hosted API backend. Typed RPC envelopes, a dedicated verification service, and per-model download serialization are useful foundations (`Sources/Managers/MLDaemonManager.swift:131-168`, `Sources/Services/ModelManager.swift:98-106`). Current stream draining, concurrent writes, cancellation, and exceptional cleanup violate those boundaries in ways that can lose messages, delay cancellation, or leave downloads stuck.
-
-#### ~~B1~~ ✓ done 2026-10-03 — Drain and frame verification output before returning its result
-- **Where:** `Sources/Services/ModelVerificationService.swift:24-29,125-158`.
-- **What's wrong:** Readability handlers consume arbitrary chunks as complete text/JSON lines; a split JSON message can be discarded. Waiting for process exit does not wait for both pipe handlers to reach EOF, so the final result can be read before the last stdout/stderr data is collected.
-- **Impact:** Major — verification can lose useful failure details or success messages. The earlier Sonar failure in `testFailureFallsBackToStderr` is concrete intermittent evidence; a later successful run does not remove the race.
-- **Fix:** Use independent stream readers with byte buffering and complete-line framing, await both EOFs after exit, and flush any final unterminated line before result construction. Test split UTF-8/JSON, burst output, and a short process that writes immediately before exit.
-- **Effort:** M.
-- **Grade lift:** C → C+, by making subprocess completion include complete output delivery.
-
-#### B2 — Serialize complete daemon request frames
-- **Where:** `Sources/Managers/MLDaemonManager.swift:170-180`.
-- **What's wrong:** Each request creates a detached writer and writes JSON and its newline separately to the same pipe. Concurrent writers can interleave frames despite the manager's actor-isolated pending-request dictionary.
-- **Impact:** Major — legitimate concurrent requests can arrive as malformed or combined JSON and lead to protocol errors/timeouts. The corruption risk is source-confirmed; no frequency is claimed.
-- **Fix:** Add a dedicated serialized writer outside the response-handling actor, write each complete JSON-plus-newline frame as one operation, and fail affected pending requests on write failure. Verify concurrent requests with a real pipe-backed fake daemon and a deliberately blocked reader.
-- **Effort:** M.
-- **Grade lift:** C → C+, by preserving the RPC framing contract under concurrency.
-
-#### B3 — Let canceled Parakeet callers return promptly
-- **Where:** `Sources/Services/ParakeetService.swift:64-87`.
-- **What's wrong:** A detached daemon task owns PCM cleanup, but the caller awaits its value with an empty cancellation handler. The comment claims the await throws on caller cancellation; awaiting an unstructured task's value does not itself provide that cancellation behavior.
-- **Impact:** Major — cancellation can keep waiting for model inference or timeout, contributing to stale UI work and a stuck-looking recording flow.
-- **Fix:** Race or bridge caller cancellation with the daemon result using an exactly-once completion mechanism. Return cancellation promptly while the detached request retains PCM ownership until its real completion; test delayed daemon responses and cancellation without early file deletion.
-- **Effort:** M.
-- **Grade lift:** C → C+, by honoring cancellation while preserving subprocess file ownership.
-
-#### B4 — Clean download state when capacity lookup throws
-- **Where:** `Sources/Services/ModelManager.swift:111-148`.
-- **What's wrong:** The model is marked downloading before `getAvailableStorageSpace()` runs, but that throwing capacity call is outside the cleanup-protected download `do/catch`. Its error leaves the model in the downloading/preparing collections.
-- **Impact:** Moderate — a disk-capacity lookup failure can leave a download stuck and block retry.
-- **Fix:** Put all post-registration work inside one cleanup scope, or use a reliable deferred MainActor cleanup path. Inject a throwing capacity provider and verify that downloading/stage state is cleared and a second attempt can proceed.
+#### A2 — Gate retry against maintenance and readiness
+- **Where:** `Sources/Rebuild/RebuildSession.swift:118-125,141-143,170-175`.
+- **What's wrong:** Retry skips recording/import installation and maintenance gates. Retrying a failed job can overlap model installation, verification or deletion after navigation.
+- **Impact:** Moderate — asset operations can race processing that needs those assets.
+- **Fix:** Apply common admission rules and validate the retry's captured model configuration. Preserve its audio and show a blocked reason. Test retry during install, verify and removal.
 - **Effort:** S.
-- **Grade lift:** C → C+, by restoring retryability after an existing exceptional path.
+- **Grade lift:** B− → B+ with A1, by sharing admission rules across session entry points.
 
 ---
 
-## C — Frontend Quality — C
+## B — Backend Quality — C+
 
-The dashboard has coherent sections and dedicated settings components, while window policy distinguishes normal windows from the recording overlay (`Sources/Views/Dashboard/DashboardView.swift:129-149`, `Sources/Managers/Windows/ActivationPolicyController.swift:57-88`). These strengths do not resolve the central setup experience: the menu declares Ready unconditionally, provider status does not validate the selected model, permission prompts are independently scheduled, and a failed model's Retry loses its target.
+`Sources/Services/TranscriptionPipeline.swift:55-97` preserves validation, cancellation and optional-correction fallback. `Sources/Managers/MLDaemonManager.swift:177-204` serializes RPC frames and handles timed-out workers. Input choice and model verification do not fully reach the engine/readiness contract, limiting local-service reliability.
 
-#### ~~C1~~ ✓ done 2026-10-03 — Show readiness for the selected engine and required setup
-- **Where:** `Sources/Views/Components/MenuPopupViews.swift:80-92`, `Sources/Stores/ProviderSettingsState.swift:45-50`, `Sources/App/AppStatus.swift:84-104`.
-- **What's wrong:** Menu text is hardcoded Ready. Local provider readiness means any Whisper model is downloaded, Parakeet readiness means only its Python environment is ready, and recording status has no selected-model readiness input. These checks can claim Ready with the selected model absent or microphone unavailable.
-- **Impact:** Major — users start recording under a false promise and encounter a missing-model error after speaking, matching the user's report.
-- **Fix:** Introduce one readiness model for the selected provider/model, microphone, supported architecture, runtime, and in-flight setup. Drive menu, dashboard, and recording commands from it. Show a single actionable setup checklist before recording and keep optional correction/Smart Paste separate from recording prerequisites.
+#### B1 — Route the selected microphone
+- **Where:** `Sources/Rebuild/RebuildPreferencesView.swift:10,51-55`; `Sources/Rebuild/RebuildSession.swift:44-50`; `Sources/Services/Audio/AudioEngineRecorder.swift:150-155`; `Sources/Managers/MicrophoneVolumeManager.swift:44-52`.
+- **What's wrong:** The picker saves a device identifier that recording never reads. AVAudioEngine and boost use the system-default input.
+- **Impact:** Major — selecting an external mic can still record another source or silence.
+- **Fix:** Capture the selected CoreAudio device UID at start and route before format/tap setup. Boost/restore that same device; report unavailable inputs. Add routing-contract tests and native recordings from two distinguishable inputs.
 - **Effort:** M.
-- **Grade lift:** C → C+, by making readiness truthful and resolving blockers before users record.
+- **Grade lift:** C+ → B−; B with B2, by implementing the advertised input choice.
 
-#### ~~C2~~ ✓ done 2026-10-03 — Make permission requests single-flight and sequential
-- **Where:** `Sources/Managers/PermissionManager.swift:87-91,94-135,157-184`, `Sources/Views/ContentView.swift:101-140`.
-- **What's wrong:** The combined setup flow schedules Accessibility after 300 ms without waiting for the microphone result, denial schedules another recovery sheet, and refresh can overwrite Accessibility `.requesting`. The test path also fails to reserve `.requesting` before scheduling, allowing repeated calls to queue work.
-- **Impact:** Major — repeated hotkey/view events can create overlapping or cascading audio/Accessibility prompts, consistent with the reported prompt storm.
-- **Fix:** Reserve request state synchronously, coalesce repeat commands, preserve in-flight states on refresh, and use one modal owner. Continue to optional Accessibility only after the microphone result succeeds. Provide microphone-only setup and leave denial inline until an explicit recovery action.
+#### B2 — Make readiness consume verification outcomes
+- **Where:** `Sources/Rebuild/RebuildModelsView.swift:149-177`; `Sources/Rebuild/RebuildSession.swift:274-287`.
+- **What's wrong:** Parakeet verification displays its message but ignores `result.succeeded`. Refresh computes Ready from asset presence/imports, so failed load verification does not block recording.
+- **Impact:** Major — the app can encourage recording after learning its model cannot load.
+- **Fix:** Keep verification state keyed by engine/model/asset identity; failure blocks readiness and offers repair. Invalidate after selection/install/delete changes. Test present-but-unloadable assets and successful repair.
 - **Effort:** M.
-- **Grade lift:** C → C+, by replacing competing permission prompts with one understandable setup flow.
+- **Grade lift:** C+ → B with B1, by aligning setup and service results.
 
-#### ~~C3~~ ✓ done 2026-10-03 — Retain the failed Whisper download target for Retry
-- **Where:** `Sources/Views/Dashboard/DashboardProviders+LocalWhisper.swift:61-71,225-237`.
-- **What's wrong:** Retry finds its model in `downloadStartTime`, but the failure handler removes that entry. With no other active download, Retry simply clears the error; with another download, it can choose the wrong model.
-- **Impact:** Moderate — the advertised recovery control does not retry the failed action.
-- **Fix:** Store the failed model independently from in-progress timing data, clear it on success or an explicit new action, and have Retry invoke that exact model. Verify single-failure and overlapping-download cases.
+---
+
+## C — Frontend Quality — C+
+
+Small views share one observable session and theme (`Sources/Rebuild/RebuildWorkspace.swift:4-12,128-137`), with inline recovery and cancellation. Fresh native controls render correctly. Alongside A1/B1/B2, incomplete action and persistence linkages prevent a stronger grade.
+
+#### C1 — Match action labels and availability to session state
+- **Where:** `Sources/Rebuild/RebuildModelsView.swift:92`; `Sources/Rebuild/RebuildWorkspace.swift:141-176`; `Sources/Rebuild/RebuildStatusController.swift:34-38`; `Sources/Rebuild/RebuildSession.swift:141-143,170-175`.
+- **What's wrong:** Models says Start recording while the action stops an active recording or does nothing during transcription. Import controls can accept a file during maintenance/install that the session silently rejects.
+- **Impact:** Moderate — available controls promise another action or discard a request.
+- **Fix:** Expose shared action titles, enabled states and blocked reasons. Use them in workspace, setup and menu; reject before opening the picker when appropriate. Test all busy/install/maintenance states.
 - **Effort:** S.
-- **Grade lift:** C → C+, by making a visible recovery action perform the promised work.
+- **Grade lift:** C+ → B−; B with C2 and A1/B1/B2, by matching views to session admission.
+
+#### C2 — Refresh a mounted Library after delivery
+- **Where:** `Sources/Rebuild/RebuildLibraryView.swift:7,70-76,101-117`; `Sources/Rebuild/RebuildSession.swift:94,219-225`; `Sources/Stores/DataManager.swift:186-211`.
+- **What's wrong:** Library keeps a fetched snapshot. Save has no invalidation and `didDeliver` is an unassigned no-op, so a recording saved while Library is open does not appear until another refresh trigger.
+- **Impact:** Moderate — successful persistence can look like lost history.
+- **Fix:** Publish a history revision on successful save/retention/deletion, reload the mounted list and retain its query. Test delivery without navigation or search changes.
+- **Effort:** S.
+- **Grade lift:** C+ → B− with C1, by connecting saved data to the visible list.
 
 ---
 
 ## D — Testing & Reliability — C+
 
-The real Swift/Python contract tests and opt-in Parakeet transcription test are meaningful (`Tests/MLRPCContractTests.swift:14-22`, `Tests/Integration/ParakeetEndToEndTests.swift:51-94`). Several suites described as integration/full-flow instead insert records, invoke clipboard APIs, or post notifications manually (`Tests/Integration/TranscriptionFlowIntegrationTests.swift:81-173`, `Tests/Integration/SmartPasteIntegrationTests.swift:43-73,156-163`). Native startup/paste are disabled in test mode, all snapshots are local opt-in, and the current source-coverage floor trails measured CI by about eleven percentage points.
+Session tests cover ownership, cancellation, captured settings, retry and empty output (`Tests/RebuildSessionTests.swift`); real-engine fixtures and `Tests/BundledPythonImmutabilityTests.swift` add meaningful evidence. CI enforces coverage and bundle checks. Nevertheless, setup/live delivery assembly lack critical integration coverage; test count and 37.22% aggregate coverage do not establish those new paths.
 
-#### D1 — [FE] Verify the actual native recording journeys
-- **Where:** `Tests/Managers/Windows/WindowBehaviorTests.swift:26-30,79-114,175-187`, `Tests/SnapshotTestCase.swift:44-51`, `Sources/App/AppDelegate+Lifecycle.swift:9-12`, `Sources/Managers/PasteManager.swift:191-195`.
-- **What's wrong:** Window tests inject Space visibility and assert properties; they do not establish actual menu opening, placement, focus return, or paste delivery between applications. There is no complete automated native recording journey.
-- **Impact:** Major — a large green suite can coexist with the visible desktop bugs reported by the user.
-- **Fix:** Keep a reproducible release matrix for menu/key initiation, desktop/full-screen, dashboard open/closed/minimized, record/stop/cancel, and target-app focus/paste. Automate stable journeys with a native app harness and retain explicit manual evidence for Space transitions that cannot be reliably automated.
-- **Effort:** L.
-- **Grade lift:** C+ → B−, by testing the product behavior the user actually experiences.
-
-#### D2 — [both] Replace simulated integration assertions with production flows
-- **Where:** `Tests/Integration/TranscriptionFlowIntegrationTests.swift:81-173`, `Tests/Integration/SmartPasteIntegrationTests.swift:43-73,156-163`.
-- **What's wrong:** The cancellation test performs no cancellation; correction tests manually save already corrected text. Clipboard and success-notification tests invoke platform APIs or post notifications themselves, so they keep passing if the corresponding production flow breaks.
-- **Impact:** Major — misleading test names/counts obscure critical gaps.
-- **Fix:** Drive the production recording view model/coordinator with controllable service boundaries. Assert cancellation stops publication, correction reaches storage/clipboard, raw text survives correction failure, and production code emits the paste result. Rename remaining storage/API tests accurately.
+#### D1 — Cover the new setup coordinator [both]
+- **Where:** `Sources/Rebuild/RebuildSession.swift:264-337`; `Tests/RebuildSessionTests.swift:52-78`.
+- **What's wrong:** Tests assign readiness directly, bypassing async refresh, new-session microphone coalescing/denial and installation failure/retry. Setup methods directly call globals.
+- **Impact:** Major — first-recording setup can regress with a green suite.
+- **Fix:** Inject permission, runtime/cache and installation services. Test repeated requests, denial, delayed refresh after selection changes, failed install/retry and concurrent commands, including B2.
 - **Effort:** M.
-- **Grade lift:** C+ → B−, by turning purported flow coverage into genuine regression protection.
+- **Grade lift:** C+ → B−; B with D2, by protecting actual first-use coordination.
 
-#### D3 — [BE] Add real WhisperKit and correction model checks
-- **Where:** `Tests/LocalWhisperServiceTests.swift:58-59`, `Tests/Integration/ParakeetEndToEndTests.swift:26-94`, `.github/workflows/nightly.yml:83-92`, `Sources/Resources/pyproject.toml:29-36`.
-- **What's wrong:** Nightly real-model coverage exercises one Parakeet model. There is no corresponding real WhisperKit transcription or MLX correction check; the dependency-upgrade checklist names only Parakeet E2E.
-- **Impact:** Major — the other supported engine and optional correction can fail at load/inference despite mocked tests passing.
-- **Fix:** Add opt-in/nightly speech-fixture checks for WhisperKit tiny/base and the recommended correction model. Assert recognizable transcript words, successful correction inference, and meaning preservation; require relevant checks before dependency upgrades.
+#### D2 — Exercise native delivery through isolated real stores [both]
+- **Where:** `Sources/Rebuild/RebuildSession.swift:44-70,198-246`; `Tests/RecordingDeliveryIntegrationTests.swift:44-52`; `Tests/RebuildSessionTests.swift:27-42`.
+- **What's wrong:** Native tests replace copy/save with array appends. Existing store integration constructs legacy RecordingViewModel rather than new live services.
+- **Impact:** Major — central clipboard/history behavior lacks integration coverage on the launched path.
+- **Fix:** Inject clipboard/history destinations into native live assembly. Exercise pipeline → isolated pasteboard/SwiftData, including correction fallback, save failure, cancellation and retry-audio cleanup.
 - **Effort:** M.
-- **Grade lift:** C+ → B−, by checking both engine families and the real correction boundary.
+- **Grade lift:** C+ → B with D1, by verifying production delivery wiring.
 
-#### D4 — [both] Advance the source-coverage ratchet
-- **Where:** `.github/workflows/ci.yml:142-156`, `scripts/coverage-gate.py:72-81`.
-- **What's wrong:** The floor remains 27%, while completed app CI run 37158321394 reports 38.26% own-source coverage (12,584/32,895 lines across 165 files). About eleven percentage points of regression can pass the advertised ratchet.
-- **Impact:** Moderate — substantial loss of existing coverage can go unnoticed by the gate.
-- **Fix:** Measure several clean CI runs, raise the floor conservatively to the current runner baseline, and record the associated commit/runs. Improve meaningful critical-flow coverage rather than adding assertions merely for totals.
-- **Effort:** S.
-- **Grade lift:** C+ → C+ with a stronger gate; native/real-flow coverage remains the larger limitation.
+#### D3 — Keep a build-specific native acceptance matrix [FE]
+- **Where:** `.github/workflows/ci.yml:385-400`; `Sources/Rebuild/RebuildApp.swift:143-191`; `docs/rebuild.md:31-42`.
+- **What's wrong:** Diagnostic smoke exits before GUI creation. Physical shortcut, hold, paste and full-screen window scenarios remain unverified.
+- **Impact:** Moderate — headless success leaves central OS workflows unproven.
+- **Fix:** Record fresh/denied consent, click/menu/physical shortcut/hold, cancel/re-record, import, destination paste and normal-window Spaces results per build; automate practical portions.
+- **Effort:** M.
+- **Grade lift:** C+ → B+ with D1/D2, by covering native interaction boundaries. Coverage gaps are not newly reproduced OS defects.
 
 ---
 
 ## E — Security — C+
 
-This fork runs transcription locally, uses explicit permissions, and pins model/runtime dependencies (`README.md:118-123`, `Sources/Services/UvBootstrap.swift:180-198`). However, native paste events are global and destination activation is not revalidated, uv integrity verification can be disabled by clean-build ordering, frozen installation silently retries live resolution, and successful recordings retain owned raw audio in temporary storage. These are source-confirmed safety/privacy boundaries; no exploitation or wrong-destination physical paste was demonstrated.
+Verified uv archives/final signed bytes, frozen installation and allowlisted subprocess environments are strong foundations (`scripts/prepare-uv.sh:21-34`; `Sources/Services/UvBootstrap.swift`; `Sources/Managers/MLDaemonManager+Process.swift`). Bytecode suppression preserves signed resources; permissions are explicit and data isolated. An affected installer and permissive public-release signing path remain material gaps.
 
-#### E1 — Paste only into the explicitly captured and verified destination
-- **Where:** `Sources/ViewModels/RecordingViewModel+Paste.swift:78-122,153-190`, `Sources/Managers/PasteManager.swift:191-232`.
-- **What's wrong:** If stored targets are unavailable, the code chooses the first eligible running application. Target activation is followed by global synthetic Command-V without verifying that this process is actually frontmost at dispatch time.
-- **Impact:** Major — transcript text can land in an unintended app or context. The unsafe selection/event path is confirmed; actual misdelivery was not reproduced.
-- **Fix:** Require the destination captured for the current user action, verify its process/frontmost state immediately before event dispatch, and fail to clipboard-only delivery if it disappears or activation fails. Inject destination/activation/event boundaries and test changed focus, terminated target, and failed activation.
+#### E1 — Upgrade affected bundled uv
+- **Where:** `scripts/prepare-uv.sh:4-17`; `Sources/Services/UvBootstrap.swift:81`.
+- **What's wrong:** uv 0.8.5 is affected by the vendor's [entry-point advisory](https://github.com/astral-sh/uv/security/advisories/GHSA-4gg8-gxpx-9rph), patched in 0.11.15: malicious wheels can write executables outside their environment. Exploitation with this frozen trusted lock was not demonstrated.
+- **Impact:** Major — a known-affected installer runs under the user's account.
+- **Fix:** Pin a reviewed supported uv ≥0.11.15; update both architecture checksums and runtime minimum. Preserve signing/hashing and rerun bootstrap, frozen failure, bundle and engine checks. Review [uninstall](https://github.com/astral-sh/uv/security/advisories/GHSA-pjjw-68hj-v9mw) and [ZIP](https://github.com/astral-sh/uv/security/advisories/GHSA-pqhf-p39g-3x64) advisories too.
 - **Effort:** M.
-- **Grade lift:** C+ → B−, by removing an unintended-destination path for potentially sensitive text.
+- **Grade lift:** C+ → B−; B with E2, by removing the confirmed affected component.
 
-#### E2 — Verify bundled uv before executing it and stamp its actual bytes
-- **Where:** `scripts/build.sh:36-46,225-263`, `Sources/Services/UvBootstrap.swift:128-129,157-160,234-236`.
-- **What's wrong:** Build metadata captures uv version/checksum before the clean-build download, leaving the first bundle with an empty checksum. Runtime verification then no-ops; discovery also executes uv for its version before verifying the bundled binary.
-- **Impact:** Major — the intended integrity check can be absent on a fresh build and occurs after execution when present.
-- **Fix:** Download/validate the expected uv artifact before metadata generation, stamp the exact bundled executable after it exists, and verify its bytes before version probing or execution. Fail release builds if required integrity metadata is missing; test clean-build ordering and tampered-binary rejection.
+#### E2 — Require distribution trust checks for public releases
+- **Where:** `Makefile:77-84`; `scripts/build.sh:407-418`.
+- **What's wrong:** Public release can upload the preview-capable script's ad-hoc artifact without requiring Developer ID signing/notarization/stapling. Local complete ad-hoc signing is appropriate for this preview.
+- **Impact:** Moderate — public artifacts can skip intended distribution validation.
+- **Fix:** Require distribution signing and notarization/stapling before release upload, fail clearly without credentials and keep local preview packaging separate.
 - **Effort:** M.
-- **Grade lift:** C+ → B−, by making the existing integrity boundary real rather than best-effort.
-
-#### E3 — Fail closed when frozen Python installation fails
-- **Where:** `Sources/Services/UvBootstrap.swift:198-205`.
-- **What's wrong:** Any failed `uv sync --frozen` retries unrestricted `uv sync`. An unrelated network/install error can therefore replace the shipped, reviewed dependency selection with live PyPI resolution.
-- **Impact:** Major — users can execute a runtime different from the committed lockfile; logging the downgrade does not preserve the pin.
-- **Fix:** Keep production installation frozen and surface an actionable install error. Repair corrupted project files from the bundle without resolving new versions, and test that frozen-sync failure never invokes live resolution.
-- **Effort:** S.
-- **Grade lift:** C+ → B−, by preserving deterministic dependency execution on failure.
-
-#### E4 — Give owned recording audio a bounded retention lifetime
-- **Where:** `Sources/Services/Audio/AudioEngineRecorder.swift:145-148,258-294`, `Sources/ViewModels/RecordingViewModel+Transcription.swift:77-78,117-118`, `Sources/ViewModels/RecordingViewModel.swift:189-192`.
-- **What's wrong:** Successful stop returns the raw recording URL; cleanup is used for cancellation/unusable audio, while successful/replaced recordings are not consistently deleted through explicit ownership. Clearing/replacing a URL is not deleting its file.
-- **Impact:** Moderate — sensitive raw audio can remain in temporary storage beyond the user-facing recording/history operation.
-- **Fix:** Distinguish app-owned recordings from imported user files. Retain only the owned current retry file for a bounded lifetime and delete it when replaced, explicitly discarded, or aged out. Preserve any subprocess lease and never delete imported originals; verify each ownership transition.
-- **Effort:** M.
-- **Grade lift:** C+ → B−, by making raw-audio privacy match an explicit retention rule.
+- **Grade lift:** C+ → B with E1, by making public distribution fail closed.
 
 ---
 
-## F — Dependencies & Tech Currency — B
+## F — Dependencies & Tech Currency — C+
 
-Swift and Python lockfiles are checked in, uv runtime installation is intended to be frozen, and Swift/Actions/uv all have weekly Dependabot coverage (`Package.resolved:2-29`, `Sources/Resources/uv.lock:1-15`, `.github/dependabot.yml:3-29`). The current GitHub Dependabot alert refresh returned 21 alerts, all fixed; this is not a claim that undisclosed vulnerabilities do not exist. The app misses released direct-dependency improvements relevant to menus/hotkeys and imported-file memory, while its recently updated Python bounds warrant deliberate compatibility review rather than indiscriminate upgrades.
+Swift/Python locks, curated model pins, frozen installation and weekly checks support reproducibility (`Package.resolved`; `Sources/Resources/uv.lock`; `.github/dependabot.yml`). Bundled uv escapes that monitoring. Relevant Swift fixes are available; merely newer ML releases are not considered confirmed defects.
 
-#### F1 — Adopt the released KeyboardShortcuts menu/hotkey fixes
-- **Where:** `Package.resolved:13-18`, `Package.swift:16`.
-- **What's wrong:** The lock pins 3.0.1. Current 3.1.0 fixes laggy menu highlighting, function-key shortcuts not firing while a menu is open, and shortcut recorder handling of the currently registered shortcut. These are upstream-confirmed issues, not reproduced AudioWhisper failures. [Primary release notes](https://github.com/sindresorhus/KeyboardShortcuts/releases/tag/3.1.0).
-- **Impact:** Moderate — the app misses concrete fixes in a dependency central to the reported interaction problems.
-- **Fix:** Update the lock to 3.1.0, build both release architectures, run hotkey tests, and verify actual menu-open function-key shortcuts and shortcut reassignment.
+#### F1 — Update KeyboardShortcuts
+- **Where:** `Package.swift:16`; `Package.resolved`; `Sources/Rebuild/RebuildPreferencesView.swift:38`.
+- **What's wrong:** Pinned 3.0.1 misses [vendor 3.1.0 fixes](https://github.com/sindresorhus/KeyboardShortcuts/releases/tag/3.1.0) for recorder behavior and function keys with menus open. App reproduction remains untested.
+- **Impact:** Moderate — core shortcut functionality has relevant maintained fixes available.
+- **Fix:** Update the lock; verify custom recording, registered-shortcut display and menu-open function-key delivery in the packaged app.
 - **Effort:** S.
-- **Grade lift:** B → B+, by adopting relevant released fixes after compatibility verification.
+- **Grade lift:** C+ → B with E1, by adopting core-control fixes.
 
-#### F2 — Evaluate the newer WhisperKit incremental file loader
-- **Where:** `Package.resolved:4-9`, `Package.swift:22`, `Sources/Services/LocalWhisperService.swift:38-49`.
-- **What's wrong:** Argmax SDK is pinned to 1.0.0; 1.1.0 adds incremental audio-file loading. Upstream reports over 70% lower peak memory for three-hour audio; that is its benchmark, not a measured result in this app. [Primary release notes](https://github.com/argmaxinc/argmax-oss-swift/releases/tag/v1.1.0).
-- **Impact:** Moderate — long imported recordings miss a released memory improvement.
-- **Fix:** Upgrade in isolation, verify API and universal-bundle compatibility, run a real WhisperKit fixture, and compare peak memory on the same representative file before/after.
+#### F2 — Monitor bundled-tool advisories
+- **Where:** `.github/dependabot.yml`; `scripts/prepare-uv.sh:7-17`.
+- **What's wrong:** Package monitoring does not cover shell-script-pinned uv. Zero open Dependabot alerts do not clear E1.
+- **Impact:** Moderate — bundled installer advisories can remain unnoticed.
+- **Fix:** Centralize version/checksums and schedule vendor-advisory checks against the shipped version, without executing unreviewed upgrades automatically.
+- **Effort:** S.
+- **Grade lift:** C+ → B with E1/F1, by closing that maintenance blind spot.
+
+#### F3 — Adopt incremental Argmax audio loading
+- **Where:** `Package.resolved`; `Sources/Services/LocalWhisperService.swift:185`.
+- **What's wrong:** SDK 1.0.0 loads whole files. [Vendor 1.1.0](https://github.com/argmaxinc/argmax-oss-swift/releases/tag/v1.1.0) offers incremental loading to reduce long-file memory pressure.
+- **Impact:** Moderate — imports retain avoidable memory pressure; no app OOM reproduced here.
+- **Fix:** Upgrade and enable incremental loading in production. Verify short-speech parity and representative long-file memory behavior.
 - **Effort:** M.
-- **Grade lift:** B → B+, subject to measured compatibility and performance.
-
-Current maintainer releases [mlx-lm 0.32.0](https://pypi.org/project/mlx-lm/) and [parakeet-mlx 0.5.3](https://pypi.org/project/parakeet-mlx/) were published Oct 1. The repo pins 0.31.3/0.5.2 and deliberately bounds minors. A two-day version difference alone is not a defect.
+- **Grade lift:** C+ → B with E1/F1, by improving the actual import path.
 
 ---
 
-## G — Performance & Scalability — C+
+## G — Performance & Scalability — B
 
-The project has useful lazy/offline model loading, native model caching, and memory-pressure handling (`Sources/ml/loader.py:29-66`, `Sources/Services/LocalWhisperService.swift:122-150`). However, Python caches retain every loaded model, the native pressure handler reads the configured mask rather than delivered events, and transcription/correction repeatedly perform runtime setup. These establish resource/latency risks; the audit did not measure a physical freeze or quantify user-facing latency from them.
+Bounded Python caches (`Sources/ml/loader.py:30-42`), Whisper LRU/memory-pressure handling (`Sources/Services/LocalWhisperService.swift:87-93,144-155`) and throttled capture publication (`Sources/Services/Audio/AudioEngineRecorder.swift:388-400`) help normal usage. Library pages 50 rows and streams exports. Whole-file preparation/allocation churn remain confirmed costs; long-file memory and UI latency were not benchmarked.
 
-#### G1 — Bound the Python daemon's loaded-model caches
-- **Where:** `Sources/ml/loader.py:19-20,29-66`.
-- **What's wrong:** Both caches retain every successfully loaded repository for the lifetime of the daemon, with no eviction or unload policy. Switching among transcription/correction models therefore accumulates heavyweight model objects.
-- **Impact:** Moderate — model switching can progressively consume memory and increase pressure on the user's other apps.
-- **Fix:** Implement a bounded cache or one active model per engine with explicit unload/release behavior. Add fake-loader tests for switching/eviction and measure daemon memory while switching real models before selecting the limit.
+#### G1 — Stream Parakeet PCM preparation
+- **Where:** `Sources/Services/ParakeetService.swift:129-141,198-232`; imported-audio validation.
+- **What's wrong:** Conversion retains the complete Float array then another complete Data copy. Import has no duration/size cap.
+- **Impact:** Moderate — long files consume avoidable preprocessing memory.
+- **Fix:** Convert/write bounded chunks with cancellation and partial-file cleanup. Test short parity and long-input bounded buffers; measure resident memory.
 - **Effort:** M.
-- **Grade lift:** C+ → B−, by bounding a present resource-retention path.
+- **Grade lift:** B → B+ with G2, by bounding preprocessing memory.
 
-#### G2 — Handle delivered memory-pressure events
-- **Where:** `Sources/Services/LocalWhisperService.swift:130-150`.
-- **What's wrong:** The callback reads `source.mask`, which describes subscribed events (`warning` and `critical`), instead of `source.data`, which describes the delivered event. The critical branch is therefore selected even when the notification is only a warning.
-- **Impact:** Moderate — warnings unnecessarily clear every cached model and can force avoidable reloads.
-- **Fix:** Branch on the delivered event data and test warning versus critical handling through an injectable pressure-event seam. Confirm cache behavior under controlled pressure; do not infer a physical freeze from static inspection.
+#### G2 — Remove per-bin visualization allocations
+- **Where:** `Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift:74-79`.
+- **What's wrong:** Downsampling creates an Array per bin, typically 128 per publication.
+- **Impact:** Minor — recurring allocation churn; audible glitches unverified.
+- **Fix:** Compute RMS over slices/pointers, preserving semantics/throttling. Compare sample outputs and profile allocations.
 - **Effort:** S.
-- **Grade lift:** C+ → B−, by making the existing pressure policy behave as intended.
-
-#### G3 — Reuse verified Python runtime setup during transcription
-- **Where:** `Sources/Services/SpeechToTextService.swift:154-162`, `Sources/Services/SemanticCorrectionService.swift:96-107`, `Sources/Services/UvBootstrap.swift:155-205`.
-- **What's wrong:** Parakeet transcription and subsequent local correction each call the venv setup/sync path. Serialization prevents races but does not avoid repeated subprocess/filesystem work for an unchanged runtime.
-- **Impact:** Moderate — repeated runtime checks add avoidable work to the core transcription path; the exact latency is not measured.
-- **Fix:** Cache successful runtime preparation keyed by shipped project/lock/interpreter identity, invalidate on setup changes or relevant failures, and reuse it across transcription/correction. Measure warm-path process count and latency before/after.
-- **Effort:** M.
-- **Grade lift:** C+ → B−, by removing repeated preparation from the warm user journey.
+- **Grade lift:** B → B+ with G1, by reducing recurring recording work.
 
 ---
 
-## H — Documentation & Onboarding — B−
+## H — Documentation & Onboarding — B
 
-The README clearly distinguishes this fork from upstream, explains local transcription and permissions, and gives the current Xcode requirement (`README.md:9-13,25-54,118-123`). ADRs and test docs explain unusual architectural/verification constraints (`docs/adr/README.md:7-12`, `Tests/README.md:74-107`). Some current instructions still conflict with implemented Dock/storage behavior, effective toolchain requirements, and the actual dependency inventory.
+`docs/rebuild.md:7-27,31-42` explains isolation, architecture, permissions and conventional desktop policy, then separates observed checks from outstanding scenarios. README still uses legacy destinations. Network/integrity claims require alignment with production; the feature-parity list is a target, not proof B1 works.
 
-#### H1 — Align first-run and storage instructions with current behavior
-- **Where:** `README.md:29,91`, `Sources/Managers/Windows/ActivationPolicyController.swift:57-73`, `Sources/Services/WhisperKitStorage.swift:5-7`.
-- **What's wrong:** README says there is no Dock icon, but the app becomes a regular Dock/Command-Tab app while normal windows are open. It describes all model storage under `~/.cache/huggingface/hub`, while WhisperKit uses `~/Documents/huggingface/models/argmaxinc/whisperkit-coreml`.
-- **Impact:** Moderate — users get inaccurate expectations and inspect the wrong directory when troubleshooting missing models.
-- **Fix:** Explain window-dependent Dock behavior and list WhisperKit and MLX storage separately. Verify first-run instructions against the completed setup flow after polishing.
+#### H1 — Replace legacy usage instructions
+- **Where:** `README.md:76,104-118,157-160`; `Sources/Rebuild/RebuildStatusController.swift:27-30`; `docs/rebuild.md:13-19`.
+- **What's wrong:** README refers to Correction under Models, Dashboard and old controls. Current shell separates Writing profiles and Models & setup with opt-in shortcut registration.
+- **Impact:** Moderate — users follow labels absent from the rebuild.
+- **Fix:** Document current setup/recording/shortcut destinations, Express overlay behavior and optional Smart Paste. Distinguish implemented features from unverified/outstanding parity.
 - **Effort:** S.
-- **Grade lift:** B− → B, by making user-facing setup/troubleshooting accurate.
+- **Grade lift:** B → B+ with H2, by matching onboarding to shipped controls.
 
-#### H2 — Remove contradictory development and test instructions
-- **Where:** `CONTRIBUTING.md:20-24,40-46,60,84-100`, `Tests/README.md:3-9`.
-- **What's wrong:** The guide correctly requires Xcode 26/Swift 6.2 tooling, later says Swift 5.9+, and alternates between preferring make and always using bare Swift commands. Test docs call make test the whole stock-checkout suite, while it runs only Swift and needs prior generated VersionInfo.
-- **Impact:** Moderate — contributors follow conflicting commands or believe they ran checks that did not execute.
-- **Fix:** State one effective toolchain floor and one supported workflow. Distinguish Swift-only from complete verification and document or eliminate generated-source bootstrap.
-- **Effort:** S.
-- **Grade lift:** B− → B, by making onboarding consistent and reproducible.
-
-#### H3 — Correct dependency inventory and maintenance comments
-- **Where:** `README.md:175-178`, `Package.swift:10-22`, `Sources/Resources/pyproject.toml:8-10`, `.github/dependabot.yml:26-29`.
-- **What's wrong:** README lists ViewInspector, absent from the manifest/lock, and groups parakeet-mlx under MIT although its current maintainer metadata declares Apache-2.0. The Python manifest says Dependabot does not manage it even though a uv updater is configured. [Parakeet metadata](https://pypi.org/project/parakeet-mlx/).
-- **Impact:** Minor — inventory and maintenance guidance are misleading.
-- **Fix:** Derive the shipped/test dependency list from current manifests, use correct licenses, and describe deliberate compatibility review rather than absent dependency monitoring.
-- **Effort:** S.
-- **Grade lift:** B− → B, as part of a documentation correction pass.
-
----
-
-## I — Developer Experience & Tooling — B−
-
-CI enforces strict lint/analyzer checks, Python typing/tests, lock consistency, own-source coverage, and a universal bundle (`.github/workflows/ci.yml:111-156,186-187,220-305,343-367`). Local Xcode recovery and scratch-default isolation address real tooling friction (`scripts/run-tests.sh:28-40`). Generated source is not bootstrapped for local testing, there is no complete local verification entrypoint, and Sonar duplicates tests while accepting missing Swift coverage artifacts.
-
-#### I1 — Generate required version code for clean local test checkouts
-- **Where:** `.gitignore:127`, `Package.swift:32`, `scripts/run-tests.sh:102`, `scripts/build.sh:72-81`, `Sources/Services/UvBootstrap.swift:234`, `Sources/Views/Dashboard/DashboardPreferencesView.swift:199`.
-- **What's wrong:** VersionInfo.swift is ignored/untracked and its template is excluded from compilation. Production references the type, while make test does not generate it. CI explicitly generates it, masking the clean-checkout gap.
-- **Impact:** Major — the recommended local test command needs a prior release build to supply required source.
-- **Fix:** Extract a deterministic version-generation helper for local build/test and CI, keeping release integrity stamping after bundled uv preparation. Verify make test in an isolated checkout with no generated VersionInfo; static inspection established this gap, not a fresh-build reproduction in this audit.
-- **Effort:** S.
-- **Grade lift:** B− → B, by making the local test entrypoint independently usable.
-
-#### I2 — Provide one complete local verification command
-- **Where:** `Makefile:38-44`, `scripts/run-tests.sh:102-105`, `.github/workflows/ci.yml:255-305`, `scripts/lint.sh:22-24`, `scripts/typecheck.sh:13-15`.
-- **What's wrong:** make test runs only Swift. Python tests, typing, lint, and lock checks require separate commands; the lint/typecheck wrappers return success if their tools are missing. There is no single honest equivalent of the fast CI checks.
-- **Impact:** Moderate — local passing verification can omit the shipped Python code and quality gates.
-- **Fix:** Add make check for Swift tests, four Python suites, strict lint, typing, and lock consistency. Fail clearly for missing required tools in that entrypoint; retain explicit lightweight wrappers if useful.
-- **Effort:** S.
-- **Grade lift:** B− → B, by making complete local verification easy and explicit.
-
-#### I3 — Fail Sonar coverage export when required artifacts are missing
-- **Where:** `.github/workflows/sonarcloud.yml:78-85`.
-- **What's wrong:** Missing profdata/test-binary input emits an empty coverage XML and exits successfully, unlike the primary coverage gate's fail-on-missing-input behavior.
-- **Impact:** Moderate — broken artifact discovery becomes misleading coverage instead of a clear infrastructure failure.
-- **Fix:** Fail with expected paths and diagnostic artifact information, select the current test-build inputs deterministically, and verify exported own-source entries before scanning.
-- **Effort:** S.
-- **Grade lift:** B− → B, by making missing measurement visible.
-
-#### I4 — Reuse one verified test/coverage result for Sonar
-- **Where:** `.github/workflows/ci.yml:88-107,278-305`, `.github/workflows/sonarcloud.yml:51-71,118-125`.
-- **What's wrong:** Both workflows run the full Swift suite with coverage and the Python suites independently. The earlier app commit passed primary CI while its repeated Sonar test run failed, producing conflicting verification results as well as duplicate runner work.
-- **Impact:** Moderate — developers wait for repeated verification and diagnose separate outcomes for the same commit.
-- **Fix:** Consolidate into dependent jobs in one workflow, or publish commit-specific coverage artifacts from the verified run and consume them for Sonar. Preserve scanner failure visibility and meaningful required checks.
+#### H2 — Align download and integrity claims
+- **Where:** `README.md:123`; `docs/adr/0006-model-integrity.md:31-40`; `Sources/Services/UvBootstrap.swift:175-188`; `Sources/Services/LocalWhisperService.swift:96-101`; `Sources/Services/ParakeetService.swift:114-119`.
+- **What's wrong:** Runtime setup downloads Python/packages beyond models. ADR later-load integrity promises exceed direct structural probes in production engine paths.
+- **Impact:** Moderate — users/reviewers can misunderstand network and verification guarantees.
+- **Fix:** Document actual runtime/package downloads. Enforce a shared production integrity contract or narrow the ADR to actual checks; distinguish asset presence from successful loading.
 - **Effort:** M.
-- **Grade lift:** B− → B+, together with the local entrypoint improvements.
+- **Grade lift:** B → B+ with H1, by aligning operational claims and code.
 
 ---
 
-## Initial polishing work
+## I — Developer Experience & Tooling — B
 
-**Status: source fixes implemented and regression checks passing; native onboarding verification remains open.** These are baseline grades, not a regrade or release certification.
+Strict lint/analyzer rules, Python typing/tests, coverage and complete bundle checks enforce useful gates (`.github/workflows/ci.yml`). Current build/tests took roughly five minutes. Universal daily packaging and duplicate Sonar execution add avoidable iteration/CI cost.
 
-| Item | Result | Commit |
-|------|--------|--------|
-| C1 | Shared microphone + selected-engine/model readiness, a single Setup page, first-run/shortcut routing, inline installation errors, persistent installation state and an actual menu recording command. Refreshes coalesce and recheck changed Parakeet selections; microphone access refreshes on activation and before recording. | `71e0422`, `bb90d81` |
-| C2 | One active presentation/request; request reserved synchronously; microphone callback precedes optional Accessibility; no timer-driven recovery cascade; Setup requests microphone only. | `13604a0` |
-| C3 | Failed Whisper model retained separately from active downloads; Retry invokes that exact model. | `f52dd28` |
-| B1 | Complete concurrent stdout/stderr drains and handler-before-launch termination; removes the observed cross-thread exit wait hang. | `8f45089` |
-| A1 partial | Busy mouse/view-model recording actions are ignored; processing control disabled. Run identities and stale cancellation/result callbacks remain open. | `05b0597` |
-| UI D1 partial | Record-control accessibility describes its action and full status; Whisper-row actions and native VoiceOver verification remain open. | `472d1fe` |
-| H1 partial | First-run README instructions now explain the checklist, required microphone/model, normal windows and optional Smart Paste. Remaining storage/development documentation gaps remain open. | `528d36d` |
+#### I1 — Add an incremental native development target
+- **Where:** `Makefile:28-31`; `scripts/build.sh:107-115,161-203`.
+- **What's wrong:** Every normal launch builds both release architectures and recreates the full bundle.
+- **Impact:** Moderate — routine UI changes pay distribution costs.
+- **Fix:** Add host-architecture debug packaging with all resources, complete signing and stable rebuild identity. Keep universal release validation and document permission/signing boundaries.
+- **Effort:** M.
+- **Grade lift:** B → B+, by shortening normal iteration.
 
-Validation evidence:
+#### I2 — Reuse CI coverage in Sonar
+- **Where:** `.github/workflows/ci.yml:105`; `.github/workflows/sonarcloud.yml:65-71`.
+- **What's wrong:** Sonar independently reruns all tests instead of consuming gated coverage.
+- **Impact:** Moderate — duplicate work adds latency and different-run evidence.
+- **Fix:** Export commit-bound test/coverage artifacts from primary CI and consume them in Sonar, failing on missing/mismatched artifacts.
+- **Effort:** M.
+- **Grade lift:** B → B+, by reducing duplication while retaining provenance.
 
-- Baseline PermissionManager behavior failed three baseline-compatible coordination regressions with seven assertions: stacking presentations, clearing in-flight Accessibility state, and competing recovery/optional prompts. The original behavior was temporarily restored only for this reproduction and then the fixed source restored.
-- A streamed verification JSON message failed before the stream fix; the old fast-exit wait also hung during the 20-attempt stderr regression. All ten process tests now pass, including all 20 fast failures and the 300 ms hung-script timeout fixture.
-- Removing the busy guard makes the production view-model regression start a microphone recording during processing (one call instead of zero); restoring it passes.
-- 171 focused checks passed across permission orchestration, setup prerequisites, selection changes during an in-flight check, retry target, first-run routing, busy guard, status, provider badges, and window-controller logic.
-- Full `make test` passed on the latest source with 2,946 discovered tests. Opt-in snapshot and headless native-interaction cases are not physical desktop proof.
-- Strict SwiftLint passed with zero violations; Python strict typecheck passed for 11 source files.
-- `make build` passed; `lipo -info` confirms both arm64 and x86_64 in the local `AudioWhisper.app` executable. The bundle contains source commit `bb90d81`; later commits change tests/audit artifacts only. It is a local development bundle, not a notarized release.
-- Native attachment to the rebuilt bundle also timed out. The running app was not restarted, so the changed native permission/recording journey remains unverified.
-- [Setup layout previews](ui-ux-audit/README.md) were generated and inspected in light/dark using ImageRenderer. This validates composition, not real macOS interactions.
+---
 
-The paragraph above records the first batch only. The subsequent [ten-item reliability pass](reliability-roadmap.md) implements A1, E1/A2, B2/B3/B4, G1/G2/G3, E2/E3, production delivery coverage and real local engine fixtures. It also completes shortcut/duration/model-control polish. Native workflow validation remains open. The roadmap records current evidence, measurements and limitations; these baseline grades are preserved until the physical workflow is verified.
+Request fixes with a report prefix, for example **code E1 A1 B1**. UI IDs in the separate report have different meanings. This audit changes reports/artifacts only and does not claim these findings are repaired.
