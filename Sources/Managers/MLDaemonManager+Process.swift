@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import os.log
 
 // MARK: - Process lifecycle
@@ -61,8 +62,14 @@ internal extension MLDaemonManager {
         proc.standardOutput = stdout
         proc.standardError = stderr
 
+        let session = UUID()
+        processSessionID = session
+        writerQueue = DispatchQueue(label: "com.audiowhisper.daemon.stdin.\(session)")
+        // A daemon crash must throw from the write rather than deliver SIGPIPE
+        // to the entire app.
+        _ = fcntl(stdin.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
         proc.terminationHandler = { [weak self] process in
-            Task { await self?.processTerminated(exitCode: process.terminationStatus) }
+            Task { await self?.processTerminated(exitCode: process.terminationStatus, sessionID: session) }
         }
 
         stderr.fileHandleForReading.readabilityHandler = { [weak self] handle in
@@ -180,7 +187,8 @@ internal extension MLDaemonManager {
         }
     }
 
-    func processTerminated(exitCode: Int32) async {
+    func processTerminated(exitCode: Int32, sessionID: UUID? = nil) async {
+        guard sessionID == nil || sessionID == processSessionID else { return }
         logger.error("ml_daemon exited with code \(exitCode)")
         closePipes()
 
@@ -231,20 +239,25 @@ internal extension MLDaemonManager {
 
     func shutdown() async {
         isShuttingDown = true
-
-        // Cancel the stdout reader task and await its completion BEFORE we
-        // terminate the process or tear down pipes. This guarantees no
-        // straggler `handle(line:)` calls land on a disposed pipe and avoids
-        // leaking the reader Task across teardown.
-        let reader = stdoutReaderTask
-        stdoutReaderTask = nil
-        reader?.cancel()
-        _ = await reader?.value
-
-        closePipes()
-        process?.terminate()
-        process = nil
+        await stopProcessAndReap()
         completeAllPending(with: MLDaemonError.daemonUnavailable("shutdown"))
+    }
+
+    private func stopProcessAndReap() async {
+        let dead = process
+        process = nil
+        processSessionID = UUID()
+        dead?.terminationHandler = nil
+        if let dead, dead.isRunning {
+            dead.terminate()
+            let deadline = ContinuousClock.now + .seconds(1)
+            while dead.isRunning, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+            if dead.isRunning { kill(dead.processIdentifier, SIGKILL) }
+            while dead.isRunning { try? await Task.sleep(for: .milliseconds(10)) }
+        }
+        closePipes()
     }
 
     func completeAllPending(with error: Error) {
@@ -266,14 +279,12 @@ internal extension MLDaemonManager {
     ///
     /// Unlike `shutdown()` this does NOT set `isShuttingDown`, so a follow-up
     /// request is allowed to respawn — subject to the crash-loop limit (#8).
-    func teardownDeadDaemon() async {
+    func teardownDeadDaemon(error: Error = MLDaemonError.writeFailed) async {
         guard !isShuttingDown else { return }
-        logger.error("Tearing down dead ml_daemon after write failure")
-        closePipes()
-        let dead = process
-        process = nil
-        dead?.terminate()
-        completeAllPending(with: MLDaemonError.daemonUnavailable("write failed; daemon torn down"))
+        isStarting = true
+        await stopProcessAndReap()
+        completeAllPending(with: error)
+        isStarting = false
     }
 
     // MARK: - stderr Sanitisation (E2)

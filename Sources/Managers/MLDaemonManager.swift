@@ -49,13 +49,15 @@ internal actor MLDaemonManager {
     /// Uptime a daemon must accumulate before it's treated as "stable" and the
     /// crash-loop restart counter is reset. See `markDaemonStableIfHealthy`.
     static let stableUptimeSeconds: UInt64 = 10
-    private let requestTimeoutSeconds: UInt64 = 60
+    var requestTimeoutSeconds: UInt64 = 60
     /// Hard cap on a single JSON-RPC request payload (M6). Picked at 1 MiB —
     /// large enough for the longest realistic correction/transcription input
     /// but small enough that an oversize string can't DoS the Python daemon
     /// by exhausting memory while it deserializes.
     static let maxRequestBytes: Int = 1 * 1024 * 1024
 
+    var processSessionID = UUID()
+    var writerQueue = DispatchQueue(label: "com.audiowhisper.daemon.stdin")
     var process: Process?
     var stdinPipe: Pipe?
     var stdoutPipe: Pipe?
@@ -125,14 +127,15 @@ internal actor MLDaemonManager {
         // Drop any pending entries whose deadline has passed. This is cheap
         // (no separate timer) and guarantees the `pending` map can't grow
         // unboundedly if responses are lost.
-        sweepExpiredRequests()
+        try Task.checkCancellation()
         try await ensureDaemonRunning()
+        try Task.checkCancellation()
 
         let requestID = nextRequestID
         nextRequestID += 1
 
         let request = MLRPCRequest(id: requestID, method: method, params: params)
-        let data = try JSONEncoder().encode(request)
+        var data = try JSONEncoder().encode(request)
         // M6: cap payload size so a multi-MB string can't DoS the Python side.
         if data.count > Self.maxRequestBytes {
             throw MLDaemonError.daemonUnavailable("input too large (max \(Self.maxRequestBytes) bytes)")
@@ -141,11 +144,17 @@ internal actor MLDaemonManager {
             throw MLDaemonError.daemonUnavailable("stdin unavailable")
         }
 
+        data.append(0x0a)
+        let frame = data
+        let session = processSessionID
+        let queue = writerQueue
+
         // Use withCheckedThrowingContinuation with timeout via Task
         let timeoutNanos = requestTimeoutSeconds * 1_000_000_000
 
         let deadline = Date().addingTimeInterval(TimeInterval(requestTimeoutSeconds))
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response, Error>) in
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response, Error>) in
             // Register the pending request BEFORE writing to stdin (audit #24).
             // If the daemon replies faster than we'd otherwise register, the
             // stdout handler would find "no pending request" and drop the
@@ -167,32 +176,38 @@ internal actor MLDaemonManager {
                 deadline: deadline
             )
 
-            // H9: perform the synchronous stdin write OFF the actor. A blocked
-            // write (full pipe + stalled daemon) inside actor isolation would
-            // prevent `handle(line:)` from running, deadlocking the pair.
-            Task.detached { [weak self] in
+            if Task.isCancelled {
+                cancelRequest(requestID)
+                return
+            }
+            // Serialize complete frames off the actor. A large write may block,
+            // so neither actor isolation nor pipe atomicity is sufficient.
+            queue.async { [weak self] in
                 do {
-                    try writer.write(contentsOf: data)
-                    try writer.write(contentsOf: Data([0x0a])) // newline
+                    try writer.write(contentsOf: frame)
                 } catch {
-                    await self?.handleWriteFailure(requestID: requestID, error: error)
+                    Task { await self?.handleWriteFailure(requestID: requestID, error: error, sessionID: session) }
                 }
             }
-
-            // Start timeout task.
-            // SAFETY: Race condition between timeout and response is handled by actor isolation.
-            // Since MLDaemonManager is an actor, all accesses to `pending` are serialized.
-            // Both the timeout task and handle(line:) use removeValue(forKey:) which returns
-            // nil if the key was already removed - ensuring exactly one caller resumes the continuation.
-            Task {
+            Task { [weak self] in
                 try? await Task.sleep(nanoseconds: timeoutNanos)
-                // Atomically check-and-remove: only resume if WE removed it
-                // This prevents double-resume if response arrives simultaneously
-                if self.pending.removeValue(forKey: requestID) != nil {
-                    continuation.resume(throwing: MLDaemonError.timeout)
-                }
+                await self?.requestTimedOut(requestID, sessionID: session)
             }
+            }
+        } onCancel: {
+            Task { await self.cancelRequest(requestID) }
         }
+    }
+
+    func cancelRequest(_ id: Int) {
+        pending.removeValue(forKey: id)?.completion(.failure(CancellationError()))
+    }
+
+    private func requestTimedOut(_ id: Int, sessionID: UUID) async {
+        guard processSessionID == sessionID, pending[id] != nil else { return }
+        // Reap the worker before releasing file leases owned by transcription
+        // callers. A removed continuation alone does not stop Python inference.
+        await teardownDeadDaemon(error: MLDaemonError.timeout)
     }
 
     /// Routes a request to the injected test stub instead of the subprocess.
@@ -221,25 +236,10 @@ internal actor MLDaemonManager {
 
     /// Tears down the dead daemon and fails the in-flight request whose
     /// detached stdin write threw. Invoked from the H9 off-actor write path.
-    func handleWriteFailure(requestID: Int, error: Error) async {
+    func handleWriteFailure(requestID: Int, error: Error, sessionID: UUID? = nil) async {
+        guard sessionID == nil || sessionID == processSessionID else { return }
         logger.error("Failed to write to daemon stdin: \(error.localizedDescription)")
-        if let entry = pending.removeValue(forKey: requestID) {
-            entry.completion(.failure(MLDaemonError.writeFailed))
-        }
-        await teardownDeadDaemon()
-    }
-
-    /// Removes any pending requests whose deadline has passed, completing each
-    /// with `.timeout`. Cheap to call on every new request — keeps `pending`
-    /// bounded without a separate timer.
-    private func sweepExpiredRequests(now: Date = Date()) {
-        let expired = pending.filter { $0.value.deadline < now }
-        guard !expired.isEmpty else { return }
-        for (id, entry) in expired {
-            pending.removeValue(forKey: id)
-            entry.completion(.failure(MLDaemonError.timeout))
-        }
-        logger.error("Reaped \(expired.count, privacy: .public) expired ML daemon request(s)")
+        await teardownDeadDaemon(error: MLDaemonError.writeFailed)
     }
 
     func handle(line: String) {
