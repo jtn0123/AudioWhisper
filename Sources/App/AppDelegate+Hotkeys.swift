@@ -170,6 +170,7 @@ internal extension AppDelegate {
     /// Every recording entry point stops here until both required setup steps
     /// are complete. Repeated shortcuts bring forward the same setup window.
     func prepareForRecording(requirement: RecordingSetupRequirement? = nil) -> Bool {
+        if requirement == nil { PermissionManager.shared.checkPermissionState() }
         let requirement = requirement ?? RecordingSetupState.shared.requirement
         guard requirement.isReady else {
             WindowCoordinator.shared.presentRecordingSetup()

@@ -26,6 +26,13 @@ internal extension AppDelegate {
 
         NotificationCenter.default.addObserver(
             self,
+            selector: #selector(refreshRecordingSetup),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
             selector: #selector(onRecordingStopped),
             name: .recordingStopped,
             object: nil
@@ -44,6 +51,10 @@ internal extension AppDelegate {
             name: .transcriptionProcessingStateChanged,
             object: nil
         )
+    }
+
+    @objc private func refreshRecordingSetup() {
+        Task { await RecordingSetupState.shared.refresh() }
     }
 
     @objc func showFirstRecordingSetup() {

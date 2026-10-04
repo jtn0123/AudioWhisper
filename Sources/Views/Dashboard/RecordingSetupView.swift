@@ -36,9 +36,8 @@ internal struct RecordingSetupView: View {
                 setupCard(number: "2", title: "Voice model", complete: setup.modelRequirement.isReady) {
                     Picker("Transcription engine", selection: $provider) {
                         Text("Local Whisper").tag(TranscriptionProvider.local)
-                        if RecordingSetupState.supportsParakeet {
-                            Text("Parakeet").tag(TranscriptionProvider.parakeet)
-                        }
+                        Text("Parakeet").tag(TranscriptionProvider.parakeet)
+                            .disabled(!RecordingSetupState.supportsParakeet)
                     }
                     .disabled(setup.isInstalling)
                     if provider == .local {

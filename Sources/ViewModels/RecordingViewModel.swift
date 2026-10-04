@@ -206,6 +206,7 @@ final class RecordingViewModel {
         presentSetup: (() -> Void)? = nil
     ) {
         guard !isProcessing else { return }
+        if setupRequirement == nil { permissionManager.checkPermissionState() }
         let requirement = setupRequirement ?? RecordingSetupState.shared.requirement
         guard permissionManager.microphonePermissionState == .granted, requirement.isReady else {
             showError = false
