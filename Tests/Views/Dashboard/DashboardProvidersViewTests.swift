@@ -53,8 +53,13 @@ final class DashboardProvidersViewTests: XCTestCase {
             parakeetModelCached: true
         )
 
+        #if arch(arm64)
         XCTAssertEqual(text, "Installed")
         XCTAssertTrue(isReady)
+        #else
+        XCTAssertEqual(text, "Setup")
+        XCTAssertFalse(isReady)
+        #endif
     }
 
     func testStatusBadgeParakeetSetupWithoutEnv() {

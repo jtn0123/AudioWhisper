@@ -83,8 +83,13 @@ final class ProviderSettingsStateTests: XCTestCase {
         state.envReady = true
         let info = state.statusInfo(for: .parakeet, parakeetModelCached: true)
 
+        #if arch(arm64)
         XCTAssertEqual(info.text, "Installed")
         XCTAssertTrue(info.isReady)
+        #else
+        XCTAssertEqual(info.text, "Setup")
+        XCTAssertFalse(info.isReady)
+        #endif
     }
 
     func testModelDownloadStatesCanBeSetDirectly() {
