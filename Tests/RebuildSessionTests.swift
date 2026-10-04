@@ -255,6 +255,47 @@ final class RebuildSessionTests: IsolatedXCTestCase {
 }
 
 extension RebuildSessionTests {
+    func testRetryWaitsForMaintenanceAndKeepsItsAudio() async {
+        var attempts = 0
+        transcribe = { _, _, _ in
+            attempts += 1
+            if attempts == 1 { throw NSError(domain: "test", code: 1) }
+            return TranscriptionResult(text: "Recovered", correctionOutcome: nil)
+        }
+        session.readiness = ready
+        session.importAudio(URL(fileURLWithPath: "/tmp/selected-file.wav"))
+        await settle()
+        session.maintenanceInProgress = true
+        session.retry()
+        await settle()
+        XCTAssertEqual(attempts, 1)
+        XCTAssertEqual(session.phase, .failed)
+        session.maintenanceInProgress = false
+        session.retry()
+        await settle()
+        XCTAssertEqual(attempts, 2)
+        XCTAssertEqual(copies, ["Recovered"])
+    }
+
+    func testRetryCannotUseReadinessForAnotherModel() async {
+        AppDefaults.transcriptionProvider = .local
+        AppDefaults.selectedWhisperModel = .base
+        var attempts = 0
+        transcribe = { _, _, _ in
+            attempts += 1
+            throw NSError(domain: "test", code: 1)
+        }
+        session.readiness = ready
+        session.importAudio(URL(fileURLWithPath: "/tmp/selected-file.wav"))
+        await settle()
+        AppDefaults.selectedWhisperModel = .tiny
+        session.readiness = ready
+        session.retry()
+        await settle()
+        XCTAssertEqual(attempts, 1)
+        XCTAssertEqual(session.phase, .failed)
+    }
+
     func testFailedCaptureInterruptionLeavesListeningAndClosesRecorder() throws {
         var closed = 0
         session.closeRecorder = { closed += 1 }

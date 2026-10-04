@@ -94,7 +94,8 @@ final class RebuildSession {
     private(set) var isVerifyingVoiceModel = false
     private(set) var verificationMessage: String?
     private(set) var duration: TimeInterval?
-    var canRetry: Bool { phase == .failed && retryAudio != nil }
+    var hasRetryAudio: Bool { phase == .failed && retryAudio != nil }
+    var canRetry: Bool { hasRetryAudio && retryBlockedReason == nil }
     var openSetup: () -> Void = {}
     var showRecorder: () -> Void = {}
     var closeRecorder: () -> Void = {}
@@ -129,7 +130,11 @@ final class RebuildSession {
     }
 
     func retry() {
-        guard canRetry, let audio = retryAudio else { return }
+        guard hasRetryAudio, let audio = retryAudio else { return }
+        guard retryBlockedReason == nil else {
+            notice = retryBlockedReason
+            return
+        }
         retryAudio = nil
         sessionID = UUID()
         notice = nil
@@ -224,9 +229,9 @@ final class RebuildSession {
     }
 
     func importAudio(_ url: URL) {
-        guard !phase.isBusy, !isInstalling, !maintenanceInProgress else { return }
-        guard readiness.modelInstalled && readiness.runtimeReady
-            && !readiness.checking && !readiness.modelVerificationFailed else {
+        guard canImportAudio else {
+            notice = fileBlockedReason
+            if phase.isBusy || isInstalling || maintenanceInProgress { return }
             openSetup()
             return
         }
@@ -318,6 +323,29 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    var canImportAudio: Bool { fileBlockedReason == nil }
+
+    var fileBlockedReason: String? {
+        if phase == .recording { return "Finish or cancel the recording first." }
+        if phase == .transcribing { return "Wait for transcription or cancel it first." }
+        if isInstalling { return "Wait for the voice model installation to finish." }
+        if maintenanceInProgress { return "Wait for model verification or maintenance to finish." }
+        if readiness.checking { return "Wait for the setup check to finish." }
+        if !readiness.runtimeReady { return "Install the local runtime in Voice Models." }
+        if !readiness.modelInstalled { return "Install your voice model in Voice Models." }
+        if readiness.modelVerificationFailed { return "Repair or verify your voice model in Voice Models." }
+        return nil
+    }
+
+    var retryBlockedReason: String? {
+        if let reason = fileBlockedReason { return reason }
+        guard let config = retryAudio?.config else { return nil }
+        let selected = setup.selection()
+        let sameModel = config.provider == selected.provider && (
+            config.provider == .local ? config.whisperModel == selected.whisper : config.parakeetModel == selected.parakeet)
+        return sameModel ? nil : "Select the voice model used for this recording before retrying."
+    }
+
     func verifyVoiceModel() async {
         guard !phase.isBusy, !isInstalling, !maintenanceInProgress else { return }
         isVerifyingVoiceModel = true

@@ -51,13 +51,16 @@ The rebuild materially improves session ownership, setup, window policy, packagi
 
 **Implementation evidence:** Typed recorder-scoped events now carry capture UUID and graceful audio/duration into the session. Failed, graceful, duplicate and stale-event regressions pass; 36 recorder/session tests and strict targeted lint passed. Physical route-change verification remains separate.
 
-#### A2 — Gate retry against maintenance and readiness
+#### ~~A2~~ ✓ done 2026-10-03 — Gate retry against maintenance and readiness
 - **Where:** `Sources/Rebuild/RebuildSession.swift:118-125,141-143,170-175`.
 - **What's wrong:** Retry skips recording/import installation and maintenance gates. Retrying a failed job can overlap model installation, verification or deletion after navigation.
 - **Impact:** Moderate — asset operations can race processing that needs those assets.
 - **Fix:** Apply common admission rules and validate the retry's captured model configuration. Preserve its audio and show a blocked reason. Test retry during install, verify and removal.
 - **Effort:** S.
 - **Grade lift:** B− → B+ with A1, by sharing admission rules across session entry points.
+
+
+**Implementation evidence:** Retry and import share setup/install/maintenance gates; retry also checks its captured engine/model, preserves audio while blocked and exposes the reason. Both retry regressions failed before the fix and pass after; all 35 related setup/session/verification tests and strict targeted lint pass.
 
 ---
 
