@@ -133,6 +133,6 @@ internal class TranscriptionPipeline {
 
     /// Posts a progress notification for the current pipeline step.
     func postProgress(_ step: PipelineStep) {
-        NotificationCenter.default.post(name: .transcriptionProgress, object: step.rawValue)
+        TranscriptionProgress.post(step.rawValue, sessionID: TranscriptionProgress.sessionID)
     }
 }

@@ -10,6 +10,7 @@ struct TranscriptionRunContext {
     let selectedWhisperModel: WhisperModel
     let shouldHintThisRun: Bool
     let setHintShown: () -> Void
+    var sessionID: UUID? = nil
 }
 
 /// Coordinates the transcription pipeline + post-processing tail for the
@@ -84,7 +85,9 @@ final class TranscriptionCoordinator {
         correctionOutcome: CorrectionOutcome? = nil,
         context: TranscriptionRunContext
     ) async {
-        guard let viewModel else { return }
+        guard let viewModel, viewModel.isCurrentSession(context.sessionID), !Task.isCancelled else { return }
+        let id = viewModel.sessionID
+        let sourceInfo = viewModel.currentSourceAppInfo()
 
         let wordCount = UsageMetricsStore.estimatedWordCount(for: text)
         let characterCount = text.count
@@ -101,7 +104,6 @@ final class TranscriptionCoordinator {
             let modelUsed: String? = (context.transcriptionProvider == .local)
                 ? context.selectedWhisperModel.rawValue
                 : nil
-            let sourceInfo = viewModel.currentSourceAppInfo()
             let record = TranscriptionRecord(
                 text: text,
                 provider: context.transcriptionProvider,
@@ -114,22 +116,25 @@ final class TranscriptionCoordinator {
                 sourceAppIconData: sourceInfo.iconData
             )
             await DataManager.shared.saveTranscriptionQuietly(record)
+            guard viewModel.isCurrentSession(id), !Task.isCancelled else { return }
 
             UsageMetricsStore.shared.recordSession(
                 duration: context.source.duration,
                 wordCount: wordCount,
                 characterCount: characterCount
             )
-            recordSourceUsage(words: wordCount, characters: characterCount)
+            SourceUsageStore.shared.recordUsage(for: sourceInfo, words: wordCount, characters: characterCount)
         }
+        guard viewModel.isCurrentSession(id), !Task.isCancelled else { return }
         viewModel.transcriptionStartTime = nil
+        viewModel.completedAudioDuration = context.source.duration
 
         // Surface silent correction failures to the UI (audit item A4). The
         // raw transcript is still copied/pasted via showConfirmationAndPaste;
         // this just shows a brief warning so the user knows correction was
         // attempted but didn't apply.
         if case .failed = correctionOutcome {
-            presentCorrectionFailure()
+            presentCorrectionFailure(sessionID: id)
         }
 
         viewModel.showConfirmationAndPaste(text: text)
@@ -143,10 +148,11 @@ final class TranscriptionCoordinator {
     /// Sets `correctionFailedMessage` on the view model and schedules an
     /// auto-clear. Matches the existing success-toast pattern (delay then
     /// clear).
-    private func presentCorrectionFailure() {
+    private func presentCorrectionFailure(sessionID: UUID) {
         viewModel?.correctionFailedMessage = "Correction failed; raw transcript copied"
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            self?.viewModel?.correctionFailedMessage = nil
+            guard let vm = self?.viewModel, vm.isCurrentSession(sessionID) else { return }
+            vm.correctionFailedMessage = nil
         }
     }
 
@@ -204,13 +210,4 @@ final class TranscriptionCoordinator {
         }
     }
 
-    // MARK: - Private Helpers
-
-    private func recordSourceUsage(words: Int, characters: Int) {
-        // Zero-word sessions are still recorded by `SourceUsageStore` so its
-        // session totals stay in sync with `UsageMetricsStore` (bug #47).
-        guard let viewModel else { return }
-        let info = viewModel.currentSourceAppInfo()
-        SourceUsageStore.shared.recordUsage(for: info, words: words, characters: characters)
-    }
 }

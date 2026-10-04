@@ -38,7 +38,7 @@ internal extension RecordingViewModel {
         setHintShown: @escaping () -> Void,
         presentDashboard: @escaping (String) -> Void
     ) {
-        processingTask?.cancel()
+        cancelProcessing()
         NotificationCenter.default.post(name: .recordingStopped, object: nil)
 
         let shouldHint = shouldHintThisRun(alreadyShown: hasShownFirstModelUseHint)
@@ -100,7 +100,9 @@ internal extension RecordingViewModel {
         setHintShown: @escaping () -> Void,
         presentDashboard: @escaping (String) -> Void
     ) {
-        processingTask?.cancel()
+        cancelProcessing()
+        capturedRecordingSettings = nil
+        capturePasteTarget()
 
         let shouldHint = shouldHintThisRun(alreadyShown: hasShownFirstModelUseHint)
         if shouldHint { showFirstModelUseHint = true }
@@ -157,7 +159,7 @@ internal extension RecordingViewModel {
             return
         }
 
-        processingTask?.cancel()
+        cancelProcessing()
 
         runTranscriptionFlow(FlowSpec(
             progressMessage: "Retrying transcription...",
@@ -221,11 +223,20 @@ internal extension RecordingViewModel {
         // Set before creating the Task so a hotkey press arriving in the same
         // tick sees the in-flight state (the original comment: "prevent race
         // condition").
+        sessionID = UUID()
+        let id = sessionID
+        let config = capturedRecordingSettings ?? makePipelineConfig()
+        capturedRecordingSettings = nil
+        showError = false
+        showSuccess = false
+        correctionFailedMessage = nil
+        completedAudioDuration = nil
         isProcessingForFlow = true
         transcriptionStartTime = Date()
+        cancellationTail = spec.onCancelled
 
         processingTask = Task { [weak self] in
-            guard let self else { return }
+            guard let self, self.isCurrentSession(id) else { return }
             self.progressMessage = spec.progressMessage
 
             // Held outside the `do` so the failure tail reports the most
@@ -245,27 +256,36 @@ internal extension RecordingViewModel {
                 source = resolved.1
 
                 try Task.checkCancellation()
+                guard self.isCurrentSession(id) else { return }
+                self.completedAudioDuration = source.duration
 
-                let result = try await self.runPipeline(audioURL: resolved.0)
+                let result = try await TranscriptionProgress.$sessionID.withValue(id) {
+                    try await self.coordinator.runTranscription(audioURL: resolved.0, config: config)
+                }
 
                 try Task.checkCancellation()
 
+                guard self.isCurrentSession(id) else { return }
                 await self.finishTranscription(
                     text: result.text,
                     correctionOutcome: result.correctionOutcome,
                     context: TranscriptionRunContext(
                         source: source,
-                        transcriptionProvider: AppDefaults.transcriptionProvider,
-                        selectedWhisperModel: AppDefaults.selectedWhisperModel,
+                        transcriptionProvider: config.provider,
+                        selectedWhisperModel: config.whisperModel ?? AppDefaults.selectedWhisperModel,
                         shouldHintThisRun: spec.shouldHintThisRun,
-                        setHintShown: spec.setHintShown
+                        setHintShown: spec.setHintShown,
+                        sessionID: id
                     )
                 )
             } catch is CancellationError {
+                guard self.isCurrentSession(id) else { return }
                 spec.onCancelled()
             } catch {
+                guard self.isCurrentSession(id), !Task.isCancelled else { return }
                 await spec.onFailure(error, source)
             }
+            if self.isCurrentSession(id) { self.cancellationTail = nil }
         }
     }
 
@@ -276,22 +296,14 @@ internal extension RecordingViewModel {
     /// which constructed its own `TranscriptionPipeline` inline and so bypassed
     /// `TranscriptionCoordinator.runTranscription` entirely — leaving that method
     /// with no production callers despite having tests.
-    private func runPipeline(audioURL: URL) async throws -> TranscriptionResult {
+    func makePipelineConfig() -> TranscriptionPipelineConfig {
         let provider = AppDefaults.transcriptionProvider
-        let mode = AppDefaults.semanticCorrectionMode
-
-        let config = TranscriptionPipelineConfig(
+        return TranscriptionPipelineConfig(
             provider: provider,
             whisperModel: provider == .local ? AppDefaults.selectedWhisperModel : nil,
-            applySemanticCorrection: mode != .off,
+            applySemanticCorrection: AppDefaults.semanticCorrectionMode != .off,
             sourceAppBundleId: currentSourceAppInfo().bundleIdentifier
         )
-
-        if mode != .off {
-            progressMessage = "Semantic correction..."
-        }
-
-        return try await coordinator.runTranscription(audioURL: audioURL, config: config)
     }
 
     // MARK: - Helpers

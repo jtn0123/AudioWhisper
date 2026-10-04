@@ -128,12 +128,13 @@ internal class SpeechToTextService {
     /// provider's raw output; semantic correction is applied by
     /// `TranscriptionPipeline` (see audit item B1).
     private func transcribeWithLocal(audioURL: URL, model: WhisperModel) async throws -> String {
+        let sessionID = TranscriptionProgress.sessionID
         do {
             let text = try await localWhisperService.transcribe(
                 audioFileURL: audioURL,
                 model: model,
                 progressCallback: { progress in
-                    NotificationCenter.default.post(name: .transcriptionProgress, object: progress)
+                    TranscriptionProgress.post(progress, sessionID: sessionID)
                 }
             )
             return try Self.cleanedNonEmptyTranscription(text)

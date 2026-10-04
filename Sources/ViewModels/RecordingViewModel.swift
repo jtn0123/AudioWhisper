@@ -96,6 +96,23 @@ final class RecordingViewModel {
     /// Not `private` because the transcription flow lives in the
     /// `RecordingViewModel+Transcription.swift` extension (audit item A1).
     var processingTask: Task<Void, Never>?
+    var sessionID = UUID()
+    var cancellationTail: (() -> Void)?
+    var completedAudioDuration: TimeInterval?
+    var capturedRecordingSettings: TranscriptionPipelineConfig?
+
+    func isCurrentSession(_ id: UUID?) -> Bool {
+        id == nil || id == sessionID
+    }
+
+    func beginSession() {
+        cancelProcessing()
+        sessionID = UUID()
+        showError = false
+        showSuccess = false
+        correctionFailedMessage = nil
+        completedAudioDuration = nil
+    }
     /// Not `private` because `setupNotificationObservers` / `stopNotificationObservers`
     /// live in the `RecordingViewModel+Paste.swift` extension.
     var notificationTasks: [Task<Void, Never>] = []
@@ -218,6 +235,9 @@ final class RecordingViewModel {
             return
         }
 
+        beginSession()
+        capturePasteTarget()
+        capturedRecordingSettings = makePipelineConfig()
         lastAudioURL = nil
 
         let success = audioRecorder.startRecording()
@@ -230,6 +250,12 @@ final class RecordingViewModel {
     func cancelProcessing() {
         processingTask?.cancel()
         processingTask = nil
+        cancellationTail?()
+        cancellationTail = nil
+        isProcessing = false
+        transcriptionStartTime = nil
+        awaitingSemanticPaste = false
+        sessionID = UUID()
     }
 
     // MARK: - Private Helpers
@@ -289,6 +315,7 @@ final class RecordingViewModel {
     /// save + metrics tail. Internal so the coordinator can invoke it.
     func showConfirmationAndPaste(text: String) {
         Logger.paste.debug("showConfirmationAndPaste called with text length: \(text.count)")
+        let id = sessionID
         showSuccess = true
         isProcessing = false
         soundManager.playCompletionSound()
@@ -300,16 +327,18 @@ final class RecordingViewModel {
             let shouldPasteNow = !awaitingSemanticPaste
             if shouldPasteNow {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
-                    self?.performUserTriggeredPaste()
+                    guard let self, self.isCurrentSession(id) else { return }
+                    self.performUserTriggeredPaste()
                 }
             }
         } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                guard let self = self else { return }
+                guard let self, self.isCurrentSession(id) else { return }
                 let recordWindow = NSApp.windows.first { $0.title == WindowTitles.recording }
 
                 let onFadeComplete = {
                     NotificationCenter.default.post(name: .restoreFocusToPreviousApp, object: nil)
+                    guard self.isCurrentSession(id) else { return }
                     self.showSuccess = false
                 }
 

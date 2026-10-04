@@ -183,18 +183,33 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
     func testProgressNotificationUpdatesProgressMessage() async {
         let vm = makeViewModel()
         vm.setupNotificationObservers()
+        vm.isProcessingForFlow = true
         defer { vm.stopNotificationObservers() }
 
         await pollUntil(
             repost: {
                 NotificationCenter.default.post(
                     name: .transcriptionProgress,
-                    object: "Halfway there"
+                    object: "Halfway there",
+                    userInfo: ["sessionID": vm.sessionID]
                 )
             },
             condition: { vm.progressMessage == "Halfway there" }
         )
         XCTAssertEqual(vm.progressMessage, "Halfway there")
+    }
+
+    func testProgressFromOldSessionAndUnownedProgressAreIgnored() {
+        let vm = makeViewModel()
+        vm.isProcessingForFlow = true
+        XCTAssertFalse(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "old",
+                                                       userInfo: ["sessionID": UUID()])))
+        XCTAssertFalse(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "unowned")))
+        XCTAssertTrue(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "current",
+                                                      userInfo: ["sessionID": vm.sessionID])))
+        vm.cancelProcessing()
+        XCTAssertFalse(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "late",
+                                                       userInfo: ["sessionID": vm.sessionID])))
     }
 
     func testRecordingFailedNotificationSetsError() async {

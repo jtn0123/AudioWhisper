@@ -23,6 +23,19 @@ extension RecordingViewModel {
 
     // MARK: - Source App Info
 
+    func capturePasteTarget() {
+        let foreground = NSWorkspace.shared.frontmostApplication
+        let target = foreground?.bundleIdentifier != Bundle.main.bundleIdentifier
+            ? foreground : WindowController.storedTargetApp
+        targetAppForPaste = target?.isTerminated == false ? target : nil
+        lastSourceAppInfo = targetAppForPaste.flatMap { SourceAppInfo.from(app: $0) } ?? .unknown
+    }
+
+    func acceptProgress(_ notification: Notification) -> Bool {
+        guard isProcessing else { return false }
+        return (notification.userInfo?["sessionID"] as? UUID) == sessionID
+    }
+
     func currentSourceAppInfo() -> SourceAppInfo {
         if let cached = lastSourceAppInfo {
             return cached
@@ -134,11 +147,16 @@ extension RecordingViewModel {
     func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3, completion: (() -> Void)? = nil) {
         // Retain window during animation to prevent deallocation
         let retainedWindow = window
+        let id = sessionID
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = duration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             retainedWindow.animator().alphaValue = 0.0
         }, completionHandler: {
+            guard self.isCurrentSession(id) else {
+                retainedWindow.alphaValue = 1.0
+                return
+            }
             // Check window is still valid before operating on it
             guard retainedWindow.isVisible || retainedWindow.alphaValue == 0 else {
                 completion?()
@@ -244,7 +262,8 @@ extension RecordingViewModel {
         // Transcription progress
         let progressTask = Task { @MainActor [weak self] in
             for await notification in NotificationCenter.default.notifications(named: .transcriptionProgress) {
-                if let message = notification.object as? String {
+                if self?.acceptProgress(notification) == true,
+                   let message = notification.object as? String {
                     self?.progressMessage = message
                 }
             }
@@ -254,7 +273,8 @@ extension RecordingViewModel {
         // Target app stored
         let targetAppTask = Task { @MainActor [weak self] in
             for await notification in NotificationCenter.default.notifications(named: .targetAppStored) {
-                if let app = notification.object as? NSRunningApplication {
+                if self?.isProcessing == false, self?.capturedRecordingSettings == nil,
+                   let app = notification.object as? NSRunningApplication {
                     self?.targetAppForPaste = app
                     if let info = SourceAppInfo.from(app: app) {
                         self?.lastSourceAppInfo = info
