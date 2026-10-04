@@ -93,13 +93,15 @@ extension AudioEngineRecorder {
         let chunkSize = samples.count / targetCount
         var result = [Float](repeating: 0, count: targetCount)
 
-        for chunkIndex in 0..<targetCount {
-            let startIndex = chunkIndex * chunkSize
-            let endIndex = min(startIndex + chunkSize, samples.count)
-            let chunk = Array(samples[startIndex..<endIndex])
-            var rms: Float = 0
-            vDSP_rmsqv(chunk, 1, &rms, vDSP_Length(chunk.count))
-            result[chunkIndex] = rms
+        samples.withUnsafeBufferPointer { buffer in
+            guard let base = buffer.baseAddress else { return }
+            for chunkIndex in 0..<targetCount {
+                let startIndex = chunkIndex * chunkSize
+                let endIndex = min(startIndex + chunkSize, buffer.count)
+                var rms: Float = 0
+                vDSP_rmsqv(base.advanced(by: startIndex), 1, &rms, vDSP_Length(endIndex - startIndex))
+                result[chunkIndex] = rms
+            }
         }
 
         return result
