@@ -1,3 +1,4 @@
+// swiftlint:disable:next unused_import - verified required: removing it breaks AVAudioEngine/InputNode/Format resolution
 import AVFoundation
 import CoreAudio
 import Foundation
