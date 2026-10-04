@@ -17,7 +17,7 @@ let package = Package(
         // import sites are unchanged; only the URL and version move. The old
         // pin was `.upToNextMinor(from: "0.15.0")`, which capped us at 0.15.x
         // and silently skipped 0.16, 0.17, 0.18 and 1.0.
-        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.0.0")
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.1.0")
     ],
     targets: [
         .executableTarget(

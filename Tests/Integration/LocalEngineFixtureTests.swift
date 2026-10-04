@@ -52,6 +52,29 @@ final class LocalEngineFixtureTests: XCTestCase {
         }
     }
 
+    func testWhisperIncrementalLoadingPreservesShortSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(modelFolder: path, download: false))
+        var options = DecodingOptions()
+        options.task = .transcribe
+        options.language = nil
+        let full = try await engine.transcribe(
+            audioPath: audio.path,
+            audioInputOptions: AudioInputOptions(audioLoadingMode: .fullFile), decodeOptions: options)
+        let incremental = try await engine.transcribe(
+            audioPath: audio.path,
+            audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental), decodeOptions: options)
+        let reference = full.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        let actual = incremental.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertFalse(reference.isEmpty)
+        XCTAssertEqual(actual, reference)
+        print("REAL_WHISPER_LOADING_PARITY transcript=\(actual)")
+    }
+
     func testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse() async throws {
         try requireRealEngines()
         let repo = "mlx-community/Qwen3-4B-Instruct-2507-4bit"

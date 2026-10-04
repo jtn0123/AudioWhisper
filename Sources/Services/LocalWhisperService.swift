@@ -189,7 +189,10 @@ internal final class LocalWhisperService: Sendable {
 
         // Transcribe the audio file
         progressCallback?("Processing audio...")
-        let results = try await whisperKit.transcribe(audioPath: audioFileURL.path, decodeOptions: decodingOptions)
+        let results = try await whisperKit.transcribe(
+            audioPath: audioFileURL.path,
+            audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental),
+            decodeOptions: decodingOptions)
 
         // Combine all transcription segments into a single text
         let transcription = results.map { $0.text }.joined(separator: " ")
