@@ -320,10 +320,16 @@ private extension MLXModelManagerCacheTests {
         )
         try revision.write(to: refsMain, atomically: true, encoding: .utf8)
         if createSnapshotDir {
-            try FileManager.default.createDirectory(
-                at: modelDir.appendingPathComponent("snapshots/\(revision)"),
-                withIntermediateDirectories: true
-            )
+            let snapshot = modelDir.appendingPathComponent("snapshots/\(revision)")
+            try FileManager.default.createDirectory(at: snapshot, withIntermediateDirectories: true)
+            try Data("{}".utf8).write(to: snapshot.appendingPathComponent("config.json"))
+            try Data("{}".utf8).write(to: snapshot.appendingPathComponent("tokenizer.json"))
+            let header = Data(#"{"w":{"dtype":"U8","shape":[1],"data_offsets":[0,1]}}"#.utf8)
+            var headerSize = UInt64(header.count).littleEndian
+            var weights = withUnsafeBytes(of: &headerSize) { Data($0) }
+            weights.append(header)
+            weights.append(1)
+            try weights.write(to: snapshot.appendingPathComponent("model.safetensors"))
         }
         return modelDir
     }

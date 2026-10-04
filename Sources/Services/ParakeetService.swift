@@ -111,44 +111,7 @@ internal class ParakeetService {
         let repo = model?.rawValue ?? selectedRepo
         // Run file I/O on a background thread to avoid blocking main thread
         return await Task.detached(priority: .userInitiated) {
-            let escaped = repo.replacingOccurrences(of: "/", with: "--")
-            let base = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".cache/huggingface/hub/models--\(escaped)")
-            var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: base.path, isDirectory: &isDir), isDir.boolValue else { return false }
-            let refsMain = base.appendingPathComponent("refs/main")
-
-            // Validate file size before reading to prevent memory issues
-            // The refs/main file should be tiny (just a SHA hash, typically 40-64 bytes)
-            // If it's larger than 1KB, something is wrong - don't read it
-            let maxRefsFileSize: Int64 = 1024
-            guard let fileSize = try? FileManager.default.attributesOfItem(atPath: refsMain.path)[.size] as? Int64,
-                  fileSize <= maxRefsFileSize else {
-                return false
-            }
-
-            // The file holds a Hugging Face commit hash; require pure hex.
-            let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let rev = rawRev, !rev.isEmpty,
-                  rev.allSatisfy({ $0.isHexDigit }) else {
-                return false
-            }
-            // Resolve the snapshot directory by matching `rev` against the
-            // actual directory listing rather than interpolating it into a
-            // path: `snap` is built only from a filesystem-returned name.
-            let snapshotsDir = base.appendingPathComponent("snapshots")
-            let snapshotEntries = (try? FileManager.default.contentsOfDirectory(atPath: snapshotsDir.path)) ?? []
-            guard let matchedSnapshot = snapshotEntries.first(where: { $0 == rev }) else { return false }
-            let snap = snapshotsDir.appendingPathComponent(matchedSnapshot)
-            guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else { return false }
-            // Look for at least one weights file under snapshot or blobs
-            let snapFiles = (try? FileManager.default.contentsOfDirectory(atPath: snap.path)) ?? []
-            let blobsPath = base.appendingPathComponent("blobs").path
-            let blobsFiles = (try? FileManager.default.contentsOfDirectory(atPath: blobsPath)) ?? []
-            let hasWeights = snapFiles.contains { $0.hasSuffix(".safetensors") }
-                || blobsFiles.contains { $0.hasSuffix(".safetensors") }
-            return hasWeights
+            HuggingFaceCache.completeSnapshot(in: HuggingFaceCache.modelDirectory(repo: repo))
         }.value
     }
 

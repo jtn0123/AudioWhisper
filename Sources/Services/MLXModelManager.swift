@@ -98,8 +98,7 @@ internal final class MLXModelManager {
     // selected repo is resolved from `selectedParakeetModel` (see `parakeetRepo`).
 
     private convenience init() {
-        self.init(cacheDirectory: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/huggingface/hub"))
+        self.init(cacheDirectory: HuggingFaceCache.root)
         Task {
             await refreshModelList()
         }
@@ -170,7 +169,7 @@ internal final class MLXModelManager {
                 let mlxKeywords = ["mlx", "qwen", "llama", "phi", "mistral", "gemma", "starcoder", "parakeet"]
                 let isLikelyMLX = mlxKeywords.contains { modelName.lowercased().contains($0) }
 
-                if isLikelyMLX {
+                if isLikelyMLX, HuggingFaceCache.completeSnapshot(in: item) {
                     let size = Self.calculateDirectorySizeSync(at: item)
                     models.append((modelName, size))
                 }
