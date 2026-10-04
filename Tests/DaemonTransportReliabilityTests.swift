@@ -13,6 +13,8 @@ final class DaemonTransportReliabilityTests: XCTestCase {
         try """
         import json, sys, time, pathlib
         root = pathlib.Path(__file__).parent
+        if (root / "slow-start").exists():
+            time.sleep(2)
         for line in sys.stdin:
             try:
                 request = json.loads(line)
@@ -81,14 +83,15 @@ final class DaemonTransportReliabilityTests: XCTestCase {
 
     func testBlockedPipeWriterDoesNotPreventTimeoutOrReplacementDaemon() async throws {
         let manager = try XCTUnwrap(manager)
-        await manager.setRequestTimeoutForTesting(1)
+        FileManager.default.createFile(atPath: directory.appendingPathComponent("slow-start").path, contents: Data())
         let blocked = Task { try await manager.warmup(type: .mlx, repo: "blocked") }
         let arrived = directory.appendingPathComponent("arrived")
-        let deadline = ContinuousClock.now + .seconds(5)
+        let deadline = ContinuousClock.now + .seconds(10)
         while !FileManager.default.fileExists(atPath: arrived.path), ContinuousClock.now < deadline {
             try await Task.sleep(for: .milliseconds(10))
         }
         XCTAssertTrue(FileManager.default.fileExists(atPath: arrived.path))
+        await manager.setRequestTimeoutForTesting(1)
         let writing = Task { try await manager.correct(repo: "test", text: String(repeating: "x", count: 900_000), prompt: nil) }
         let finished = expectation(description: "stalled reader and blocked writer released")
         Task {
@@ -101,6 +104,7 @@ final class DaemonTransportReliabilityTests: XCTestCase {
         let running = await manager.isProcessRunningForTesting()
         XCTAssertEqual(pending, 0)
         XCTAssertFalse(running, "old worker must be reaped before callers resume")
+        await manager.setRequestTimeoutForTesting(60)
         let response = try await manager.correct(repo: "test", text: "after restart", prompt: nil)
         XCTAssertEqual(response, "after restart")
     }
