@@ -271,12 +271,14 @@ if [ -f "Sources/ml_daemon.py" ]; then
 fi
 if [ -d "Sources/ml" ]; then
   cp -R Sources/ml AudioWhisper.app/Contents/Resources/
-  # Remove __pycache__ directories
-  find AudioWhisper.app/Contents/Resources/ml -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
   echo "Copied ml package"
 else
   echo "⚠️ Sources/ml package not found, ML daemon will not work"
 fi
+
+# Test/dev interpreters can leave bytecode beside Sources/ml. Strip it from
+# both the flat resources and the copied SwiftPM bundle before sealing the app.
+find AudioWhisper.app/Contents/Resources -name "__pycache__" -type d -exec rm -rf {} + || exit 1
 
 # Copy the verified, already signed bytes whose final hash was stamped above.
 cp Sources/Resources/bin/uv AudioWhisper.app/Contents/Resources/bin/uv || exit 1

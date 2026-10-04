@@ -137,7 +137,9 @@ internal extension MLDaemonManager {
     ///
     /// Always-present keys: `PATH` (subprocess resolution), `HOME` (HuggingFace
     /// cache root `~/.cache/huggingface`), and `PYTHONUNBUFFERED` (line-buffered
-    /// stdout so JSON-RPC responses flush immediately).
+    /// stdout so JSON-RPC responses flush immediately), and
+    /// `PYTHONDONTWRITEBYTECODE` (keep bundled scripts immutable so Python
+    /// cannot invalidate the app's code signature).
     ///
     /// Pass-through-if-set keys: locale (`LANG`/`LC_ALL` — Python text codec),
     /// `TMPDIR` (macOS per-user temp many ML libs use), `AUDIOWHISPER_APP_SUPPORT_DIR`
@@ -152,7 +154,8 @@ internal extension MLDaemonManager {
         var env: [String: String] = [
             "PATH": parent["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin",
             "HOME": parent["HOME"] ?? NSHomeDirectory(),
-            "PYTHONUNBUFFERED": "1"
+            "PYTHONUNBUFFERED": "1",
+            "PYTHONDONTWRITEBYTECODE": "1"
         ]
 
         let passThroughIfSet = [

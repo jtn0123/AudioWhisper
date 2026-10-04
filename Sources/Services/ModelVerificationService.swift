@@ -114,6 +114,7 @@ internal enum ModelVerificationService {
         // Arguments are passed as argv entries, never interpolated into a shell
         // or into Python source, so a hostile repo name cannot break out.
         process.arguments = [scriptURL.path] + arguments
+        process.environment = MLDaemonManager.daemonEnvironment()
 
         let out = Pipe()
         let err = Pipe()
