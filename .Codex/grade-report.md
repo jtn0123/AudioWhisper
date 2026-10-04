@@ -65,13 +65,15 @@ The rebuild materially improves session ownership, setup, window policy, packagi
 
 `Sources/Services/TranscriptionPipeline.swift:55-97` preserves validation, cancellation and optional-correction fallback. `Sources/Managers/MLDaemonManager.swift:177-204` serializes RPC frames and handles timed-out workers. Input choice and model verification do not fully reach the engine/readiness contract, limiting local-service reliability.
 
-#### B1 — Route the selected microphone
+#### ~~B1~~ ✓ done 2026-10-03 — Route the selected microphone
 - **Where:** `Sources/Rebuild/RebuildPreferencesView.swift:10,51-55`; `Sources/Rebuild/RebuildSession.swift:44-50`; `Sources/Services/Audio/AudioEngineRecorder.swift:150-155`; `Sources/Managers/MicrophoneVolumeManager.swift:44-52`.
 - **What's wrong:** The picker saves a device identifier that recording never reads. AVAudioEngine and boost use the system-default input.
 - **Impact:** Major — selecting an external mic can still record another source or silence.
 - **Fix:** Capture the selected CoreAudio device UID at start and route before format/tap setup. Boost/restore that same device; report unavailable inputs. Add routing-contract tests and native recordings from two distinguishable inputs.
 - **Effort:** M.
 - **Grade lift:** C+ → B−; B with B2, by implementing the advertised input choice.
+
+**Implementation evidence:** Selected UID is resolved and applied to the input Audio Unit before format/tap setup; routing is read back and unavailable input errors reach the UI. Boost and queued restore target the captured device, even if preferences change. Routing/boost regression and all 55 related recorder/session tests pass; physical two-input recording remains pending.
 
 #### B2 — Make readiness consume verification outcomes
 - **Where:** `Sources/Rebuild/RebuildModelsView.swift:149-177`; `Sources/Rebuild/RebuildSession.swift:274-287`.

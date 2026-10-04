@@ -152,7 +152,7 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 
 **Implementation evidence:** The interruption/session bridge and stale-event cleanup are implemented and covered by failing-before/passing-after regressions. Physical device disconnection remains unverified.
 
-#### H2 — Make the microphone choice control recording
+#### ~~H2~~ ✓ done 2026-10-03 — Make the microphone choice control recording
 - **Where:** `Sources/Rebuild/RebuildPreferencesView.swift:10,51-55`; `Sources/Rebuild/RebuildSession.swift:44-50`; `Sources/Services/Audio/AudioEngineRecorder.swift:150-155`; [Preferences capture](ui-ux-audit/2026-10-03-native-v2/preferences-shortcut.png).
 - **Evidence:** The picker stores selectedMicrophone, but the connected recorder reads no such preference and uses the default input; boost targets the default too.
 - **Layman's term:** Picking a microphone changes the setting, not the mic being recorded.
@@ -162,6 +162,8 @@ Readiness includes selected-model structural presence, runtime and microphone ac
 - **Difficulty:** M.
 - **Fix:** Capture/route selected CoreAudio device UID and apply boost/restoration to it. Report missing inputs; test device routing plus two distinguishable physical inputs.
 - **Grade lift:** C− → C+; B− with H1/H3, by connecting the user's choice to capture.
+
+**Implementation evidence:** Capture now applies the selected input UID and displays unavailable-device errors. Device-specific boost/restoration is covered by regression tests; physical two-input validation remains separate.
 
 #### H3 — Let failed model verification invalidate Ready
 - **Where:** `Sources/Rebuild/RebuildModelsView.swift:149-177`; `Sources/Rebuild/RebuildSession.swift:274-287`; [Setup capture](ui-ux-audit/2026-10-03-native-v2/models-ready.png).

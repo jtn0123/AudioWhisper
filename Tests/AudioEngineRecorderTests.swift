@@ -122,7 +122,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         XCTAssertFalse(mockVolumeManager.boostCalled, "Should not boost volume when disabled")
     }
 
-    func testCancelRecordingRestoresVolume() async {
+    func testCancelWithoutOwnedBoostLeavesVolumeUntouched() async {
         AppDefaults.defaults.set(true, forKey: "autoBoostMicrophoneVolume")
         recorder = makeRecorder(dates: [Date(), Date(), Date()])
         PermissionManager.shared.microphonePermissionState = .granted
@@ -132,7 +132,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
 
         try? await Task.sleep(nanoseconds: 100_000_000)
 
-        XCTAssertTrue(mockVolumeManager.restoreCalled, "Should restore volume after cancel")
+        XCTAssertFalse(mockVolumeManager.restoreCalled, "An idle recorder must not restore another capture's volume")
     }
 
     // MARK: - Cancel Recording Tests
@@ -193,7 +193,7 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
 
     // MARK: - Deinit Cleanup Tests (bug #29)
 
-    func testDeinitRestoresVolumeWhenBoostEnabled() async {
+    func testDeinitWithoutOwnedBoostLeavesVolumeUntouched() async {
         // Bug #29 regression: AudioEngineRecorder had no deinit, so a recorder
         // dropped mid-recording never restored boosted mic volume. The deinit must
         // dispatch a restore when auto-boost is enabled.
@@ -208,7 +208,32 @@ final class AudioEngineRecorderTests: IsolatedXCTestCase {
         // deinit dispatches an async restore Task — give it time to run.
         try? await Task.sleep(nanoseconds: 200_000_000)
 
-        XCTAssertTrue(localManager.restoreCalled, "deinit should restore mic volume when boost is enabled")
+        XCTAssertFalse(localManager.restoreCalled, "An unused recorder owns no boosted device to restore")
+    }
+
+    func testCancelRestoresCapturedBoostAfterPreferenceIsDisabled() async {
+        AppDefaults.autoBoostMicrophoneVolume = true
+        recorder = makeRecorder()
+        let id = UUID()
+        recorder.recordingSessionID = id
+        recorder.scheduleVolumeBoost(deviceID: 99, sessionID: id)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertTrue(mockVolumeManager.boostCalled)
+        AppDefaults.autoBoostMicrophoneVolume = false
+        recorder.cancelRecording()
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertTrue(mockVolumeManager.restoreCalled, "Restoration follows captured ownership, not the current preference")
+    }
+
+    func testQueuedBoostCannotRunAfterItsCaptureIsCancelled() async {
+        AppDefaults.autoBoostMicrophoneVolume = true
+        recorder = makeRecorder()
+        let id = UUID()
+        recorder.recordingSessionID = id
+        recorder.scheduleVolumeBoost(deviceID: 99, sessionID: id)
+        recorder.cancelRecording()
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertFalse(mockVolumeManager.boostCalled)
     }
 
     func testDeinitDoesNotCrashWithoutActiveRecording() {

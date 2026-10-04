@@ -41,6 +41,7 @@ struct RebuildSessionServices {
     var copy: (String) -> Void
     var save: (String, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void
     var interruptionSource: NSObject?
+    var startError: () -> String? = { nil }
 
     static func live(recorder: AudioEngineRecorder) -> Self {
         let pipeline = TranscriptionPipeline()
@@ -70,7 +71,8 @@ struct RebuildSessionServices {
                         wordCount: count, characterCount: text.count, sourceAppBundleId: config.sourceAppBundleId
                     ))
             },
-            interruptionSource: recorder
+            interruptionSource: recorder,
+            startError: { recorder.lastStartError }
         )
     }
 }
@@ -186,7 +188,7 @@ final class RebuildSession {
         prepareSession()
         guard let id = sessionID, services.start(id) else {
             phase = .failed
-            notice = "The microphone could not start. Check the selected input and try again."
+            notice = services.startError() ?? "The microphone could not start. Check the selected input and try again."
             sessionID = nil
             return
         }
