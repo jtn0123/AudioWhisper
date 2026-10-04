@@ -343,7 +343,7 @@ private extension MLXModelManagerCacheTests {
         try writeExecutable("""
             #!/bin/bash
             case "$1" in
-              --version) echo 'uv 0.9.0'; exit 0 ;;
+              --version) echo 'uv 0.12.23'; exit 0 ;;
               venv) \(venvSucceeds ? "exit 0" : "echo 'no interpreter found' >&2; exit 1") ;;
               sync) exit 0 ;;
             esac
