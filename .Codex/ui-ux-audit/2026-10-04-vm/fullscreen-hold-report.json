@@ -1,0 +1,16 @@
+{
+  "status": "incomplete",
+  "checks": [
+    {
+      "case": "fullscreen-preferences-overlay-paste",
+      "status": "passed",
+      "document": "FULLSCREEN TEST: The quick brown fox jumps over the lazy dog."
+    },
+    {
+      "case": "modifier-hold-release-paste",
+      "status": "incomplete",
+      "modifier_flags": 524288,
+      "reason": "Guest remote input supplies Option but omits physical Left Option state"
+    }
+  ]
+}

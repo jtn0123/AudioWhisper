@@ -60,7 +60,7 @@ struct RebuildRootView: View {
                 Image(systemName: "waveform.circle.fill").font(.system(size: 32)).foregroundStyle(
                     Color(red: 0.94, green: 0.60, blue: 0.44))
                 Text("Audio\nWhisper").font(.system(size: 30, weight: .medium, design: .serif)).lineSpacing(-2)
-                Text("REBUILD / NATIVE V2").font(.system(size: 9, design: .monospaced)).tracking(1.5).foregroundStyle(
+                Text("PRIVATE DICTATION").font(.system(size: 9, design: .monospaced)).tracking(1.5).foregroundStyle(
                     .white.opacity(0.5))
             }.padding(.bottom, 12)
             VStack(spacing: 7) {
@@ -272,7 +272,8 @@ struct RebuildRecorderView: View {
                 Button(session.phase == .recording ? "Finish" : "Transcribing…", action: session.finishRecording)
                     .buttonStyle(.borderedProminent).disabled(session.phase != .recording)
             }.padding(.horizontal, 18)
-        }.padding(.vertical, 14).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        }.padding(.vertical, 14).frame(width: 380, height: 230)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
             .onExitCommand(perform: session.cancel)
     }
 }

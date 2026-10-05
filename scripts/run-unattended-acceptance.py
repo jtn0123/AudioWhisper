@@ -22,6 +22,7 @@ import uuid
 ROOT = Path(__file__).resolve().parent.parent
 STAGES = [
     ("setup", "RebuildSetupTests|RebuildModelVerificationTests"),
+    ("recorder-layout", "RebuildRecorderLayoutTests|RecordingWindowStyleTests"),
     ("capture", "RebuildStartupTests|RebuildSessionTests|AudioHardwarePreparationTests|AudioInputRoutingTests"),
     ("delivery", "RebuildDeliveryIntegrationTests"),
     ("paste-destination", "SmartPasteDestinationTests"),

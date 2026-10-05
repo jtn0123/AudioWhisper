@@ -54,9 +54,14 @@ make run                          # installs beside the original as AudioWhisper
 > `brew tap mazdak/tap`). That is a different build with cloud providers still
 > included — installing it will not give you this code.
 
-**After deploying a new build**, macOS invalidates Accessibility permission whenever the code
-signature changes. If Smart Paste stops working, remove and re-add AudioWhisper under
+For repeated development builds, use the persistent local signing identity
+described in [the rebuild notes](docs/rebuild.md). Switching signing identity can
+require fresh consent. If Smart Paste stops working, check the app's entry under
 System Settings → Privacy & Security → Accessibility.
+
+The [macOS VM QA workflow](scripts/vm/README.md) provides repeatable desktop tests;
+[the observed results](.Codex/macos-vm-validation.md) distinguish virtual guest
+coverage from physical hardware acceptance.
 
 ## Setup 🔧
 
@@ -145,7 +150,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development guide and
 Right-click the app → Open → confirm once.
 
 **Smart Paste or Press & Hold not working**
-System Settings → Privacy & Security → Accessibility → enable AudioWhisper. Re-add it after any rebuild — a changed code signature invalidates the grant.
+System Settings → Privacy & Security → Accessibility → enable AudioWhisper.
+Complete any authentication sheet before closing Settings. Development builds
+should reuse the same signing identity; if that identity changed, a fresh grant
+may be required.
 
 **Microphone not detected**
 System Settings → Privacy & Security → Microphone → enable AudioWhisper.

@@ -16,11 +16,21 @@ cd "$SCRIPT_DIR/.." || exit 1
 NOTARIZE=false
 DEBUG_BUILD=false
 LOCAL_SIGNING=false
+APP_BUNDLE="AudioWhisper.app"
 while [[ $# -gt 0 ]]; do
   case $1 in
   --debug)
     DEBUG_BUILD=true
     shift
+    ;;
+  --output)
+    if [[ $# -lt 2 || "$2" != */AudioWhisper.app ]]; then
+      echo "--output requires a path ending in /AudioWhisper.app" >&2
+      exit 1
+    fi
+    mkdir -p "$(dirname "$2")" || exit 1
+    APP_BUNDLE="$(cd "$(dirname "$2")" && pwd)/AudioWhisper.app"
+    shift 2
     ;;
   --notarize)
     NOTARIZE=true
@@ -32,7 +42,7 @@ while [[ $# -gt 0 ]]; do
     ;;
   *)
     echo "Unknown option: $1"
-    echo "Usage: $0 [--debug | --notarize] [--local-signing]"
+    echo "Usage: $0 [--debug | --notarize] [--local-signing] [--output /path/AudioWhisper.app]"
     exit 1
     ;;
   esac
@@ -143,9 +153,17 @@ if [ -f "Info.plist" ]; then
     sed -i '' "s|<key>CFBundleVersion</key>[[:space:]]*<string>[^<]*</string>|<key>CFBundleVersion</key><string>$BUILD_NUMBER</string>|" Info.plist
 fi
 
+# Never mutate the signed bundle of a running client: its resources and TCC
+# identity must remain stable. QA can package into a separate --output path.
+APP_EXECUTABLE="$(cd "$(dirname "$APP_BUNDLE")" && pwd)/$(basename "$APP_BUNDLE")/Contents/MacOS/AudioWhisper"
+if pgrep -f -x "$APP_EXECUTABLE" >/dev/null; then
+  echo "The target app is running. Quit it or use --output /path/AudioWhisper.app." >&2
+  exit 1
+fi
+
 # Clean previous builds
 if [ "$DEBUG_BUILD" = false ]; then rm -rf .build/release; fi
-rm -rf AudioWhisper.app
+rm -rf "$APP_BUNDLE"
 rm -f Sources/AudioProcessorCLI
 
 # Create version file from template
@@ -259,15 +277,15 @@ fi
 
 # Create app bundle
 echo "Creating app bundle..."
-mkdir -p AudioWhisper.app/Contents/MacOS
-mkdir -p AudioWhisper.app/Contents/Resources
-mkdir -p AudioWhisper.app/Contents/Resources/bin
+mkdir -p "$APP_BUNDLE/Contents/MacOS"
+mkdir -p "$APP_BUNDLE/Contents/Resources"
+mkdir -p "$APP_BUNDLE/Contents/Resources/bin"
 
 # Set build number for Info.plist
 BUILD_NUMBER="${VERSION//./}"
 
 # Copy executable (universal binary)
-cp "$RELEASE_BINARY" AudioWhisper.app/Contents/MacOS/
+cp "$RELEASE_BINARY" "$APP_BUNDLE/Contents/MacOS/"
 
 # SwiftPM dependency code calls Bundle.module at runtime. Flattening only our
 # Python resources omitted KeyboardShortcuts' localizations and crashed as soon
@@ -275,10 +293,10 @@ cp "$RELEASE_BINARY" AudioWhisper.app/Contents/MacOS/
 # bundle, then reject missing required bundles before signing.
 for resource_bundle in "$slice_dir"/*.bundle; do
   [ -d "$resource_bundle" ] || continue
-  ditto "$resource_bundle" "AudioWhisper.app/Contents/Resources/$(basename "$resource_bundle")" || exit 1
+  ditto "$resource_bundle" "$APP_BUNDLE/Contents/Resources/$(basename "$resource_bundle")" || exit 1
 done
 for required_bundle in AudioWhisper_AudioWhisper KeyboardShortcuts_KeyboardShortcuts; do
-  if [ ! -d "AudioWhisper.app/Contents/Resources/$required_bundle.bundle" ]; then
+  if [ ! -d "$APP_BUNDLE/Contents/Resources/$required_bundle.bundle" ]; then
     echo "Missing required resource bundle: $required_bundle" >&2
     exit 1
   fi
@@ -286,24 +304,24 @@ done
 
 # Copy dashboard logo
 if [ -f "Sources/Resources/DashboardLogo.jpg" ]; then
-  cp Sources/Resources/DashboardLogo.jpg AudioWhisper.app/Contents/Resources/
+  cp Sources/Resources/DashboardLogo.jpg "$APP_BUNDLE/Contents/Resources/"
   echo "Copied dashboard logo"
 fi
 
 # Copy Python scripts for Parakeet and MLX support
 # Copy verify scripts
 if [ -f "Sources/verify_parakeet.py" ]; then
-  cp Sources/verify_parakeet.py AudioWhisper.app/Contents/Resources/
+  cp Sources/verify_parakeet.py "$APP_BUNDLE/Contents/Resources/"
 fi
 if [ -f "Sources/verify_mlx.py" ]; then
-  cp Sources/verify_mlx.py AudioWhisper.app/Contents/Resources/
+  cp Sources/verify_mlx.py "$APP_BUNDLE/Contents/Resources/"
 fi
 
 # Model downloads run this. Like the verify scripts it imports the ml package,
 # so it must sit beside Resources/ml. Missing it breaks every MLX and Parakeet
 # download, so fail the build rather than ship that.
 if [ -f "Sources/download_model.py" ]; then
-  cp Sources/download_model.py AudioWhisper.app/Contents/Resources/
+  cp Sources/download_model.py "$APP_BUNDLE/Contents/Resources/"
 else
   echo "❌ Sources/download_model.py not found; model downloads would not work"
   exit 1
@@ -311,11 +329,11 @@ fi
 
 # Copy ML daemon entrypoint and package
 if [ -f "Sources/ml_daemon.py" ]; then
-  cp Sources/ml_daemon.py AudioWhisper.app/Contents/Resources/
+  cp Sources/ml_daemon.py "$APP_BUNDLE/Contents/Resources/"
   echo "Copied ML daemon entrypoint"
 fi
 if [ -d "Sources/ml" ]; then
-  cp -R Sources/ml AudioWhisper.app/Contents/Resources/
+  cp -R Sources/ml "$APP_BUNDLE/Contents/Resources/"
   echo "Copied ml package"
 else
   echo "⚠️ Sources/ml package not found, ML daemon will not work"
@@ -323,11 +341,11 @@ fi
 
 # Test/dev interpreters can leave bytecode beside Sources/ml. Strip it from
 # both the flat resources and the copied SwiftPM bundle before sealing the app.
-find AudioWhisper.app/Contents/Resources -name "__pycache__" -type d -exec rm -rf {} + || exit 1
+find "$APP_BUNDLE/Contents/Resources" -name "__pycache__" -type d -exec rm -rf {} + || exit 1
 
 # Copy the verified, already signed bytes whose final hash was stamped above.
-cp Sources/Resources/bin/uv AudioWhisper.app/Contents/Resources/bin/uv || exit 1
-chmod +x AudioWhisper.app/Contents/Resources/bin/uv
+cp Sources/Resources/bin/uv "$APP_BUNDLE/Contents/Resources/bin/uv" || exit 1
+chmod +x "$APP_BUNDLE/Contents/Resources/bin/uv"
 
 # Bundle pyproject.toml and uv.lock.
 #
@@ -338,7 +356,7 @@ chmod +x AudioWhisper.app/Contents/Resources/bin/uv
 # Microphone and Accessibility permissions. This step previously claimed to
 # bundle uv.lock in its comment but only ever copied pyproject.toml.
 if [ -f "Sources/Resources/pyproject.toml" ]; then
-  cp Sources/Resources/pyproject.toml AudioWhisper.app/Contents/Resources/pyproject.toml
+  cp Sources/Resources/pyproject.toml "$APP_BUNDLE/Contents/Resources/pyproject.toml"
   echo "Bundled pyproject.toml"
 else
   echo "Missing required pyproject.toml" >&2
@@ -346,7 +364,7 @@ else
 fi
 
 if [ -f "Sources/Resources/uv.lock" ]; then
-  cp Sources/Resources/uv.lock AudioWhisper.app/Contents/Resources/uv.lock
+  cp Sources/Resources/uv.lock "$APP_BUNDLE/Contents/Resources/uv.lock"
   echo "Bundled uv.lock"
 else
   echo "Missing required uv.lock; refusing to build an app without its dependency lock" >&2
@@ -357,7 +375,7 @@ fi
 
 # Create proper Info.plist
 echo "Creating Info.plist..."
-cat >AudioWhisper.app/Contents/Info.plist <<EOF
+cat >"$APP_BUNDLE/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -421,7 +439,7 @@ if [ -f "AudioWhisperIcon.png" ]; then
 
   # Create proper icns file directly in app bundle
   if command -v iconutil >/dev/null 2>&1; then
-    iconutil -c icns AudioWhisper.iconset -o AudioWhisper.app/Contents/Resources/AppIcon.icns 2>/dev/null || echo "Note: iconutil failed, app will use default icon"
+    iconutil -c icns AudioWhisper.iconset -o "$APP_BUNDLE/Contents/Resources/AppIcon.icns" 2>/dev/null || echo "Note: iconutil failed, app will use default icon"
   fi
 
   # Clean up temporary files
@@ -432,7 +450,7 @@ else
 fi
 
 # Make executable
-chmod +x AudioWhisper.app/Contents/MacOS/AudioWhisper
+chmod +x "$APP_BUNDLE/Contents/MacOS/AudioWhisper"
 
 # Function to sign the app with a given identity
 sign_app() {
@@ -445,9 +463,9 @@ sign_app() {
     echo "🔏 Code signing app with: $identity"
   fi
 
-  codesign --force --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements AudioWhisper.app || return 1
+  codesign --force --sign "$identity" --options runtime --entitlements AudioWhisper.entitlements "$APP_BUNDLE" || return 1
   echo "🔍 Verifying signature..."
-  codesign --verify --strict --verbose AudioWhisper.app || return 1
+  codesign --verify --strict --verbose "$APP_BUNDLE" || return 1
   echo "✅ App signed successfully"
 }
 
@@ -461,11 +479,11 @@ if [ -n "$SIGNING_IDENTITY" ]; then
   sign_app "$SIGNING_IDENTITY" "$SIGNING_NAME" || exit 1
 else
   echo "🔏 Signing the local preview ad hoc (not a notarized release)."
-  codesign --force --sign - --entitlements AudioWhisper.entitlements AudioWhisper.app || exit 1
-  codesign --verify --strict --verbose AudioWhisper.app || exit 1
+  codesign --force --sign - --entitlements AudioWhisper.entitlements "$APP_BUNDLE" || exit 1
+  codesign --verify --strict --verbose "$APP_BUNDLE" || exit 1
 fi
 
-FINAL_UV_SHA256=$(shasum -a 256 AudioWhisper.app/Contents/Resources/bin/uv | awk '{print $1}')
+FINAL_UV_SHA256=$(shasum -a 256 "$APP_BUNDLE/Contents/Resources/bin/uv" | awk '{print $1}')
 if [ "$FINAL_UV_SHA256" != "$BUNDLED_UV_SHA256" ]; then
   echo "Bundled uv changed after its checksum was stamped" >&2
   exit 1
@@ -495,7 +513,7 @@ if [ "$NOTARIZE" = true ]; then
   fi
 
   # Check if app is signed
-  if codesign -dvvv AudioWhisper.app 2>&1 | grep -q "Signature=adhoc"; then
+  if codesign -dvvv "$APP_BUNDLE" 2>&1 | grep -q "Signature=adhoc"; then
     echo "❌ App must be properly signed before notarization (not adhoc signed)"
     echo "Please ensure CODE_SIGN_IDENTITY is set or a Developer ID is available"
     exit 1
@@ -503,7 +521,7 @@ if [ "$NOTARIZE" = true ]; then
 
   # Create a zip file for notarization
   echo "Creating zip for notarization..."
-  ditto -c -k --keepParent AudioWhisper.app AudioWhisper.zip
+  ditto -c -k --keepParent "$APP_BUNDLE" AudioWhisper.zip
 
   # Submit for notarization
   echo "📤 Submitting to Apple for notarization..."
@@ -517,7 +535,7 @@ if [ "$NOTARIZE" = true ]; then
   if grep -q "status: Accepted" notarization.log; then
     # Staple the notarization ticket to the app
     echo "📎 Stapling notarization ticket..."
-    xcrun stapler staple AudioWhisper.app
+    xcrun stapler staple "$APP_BUNDLE"
 
     if [ $? -eq 0 ]; then
       echo "✅ Notarization ticket stapled successfully!"
@@ -541,4 +559,4 @@ fi
 
 echo "✅ Build complete!"
 echo ""
-echo "Preview: $PWD/AudioWhisper.app"
+echo "Preview: $APP_BUNDLE"

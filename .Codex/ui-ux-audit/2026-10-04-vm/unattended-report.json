@@ -1,0 +1,92 @@
+{
+  "commit": "77d85cdcc647e5c677320b246a2cacf69533302e",
+  "dirty": true,
+  "real_engine_requested": true,
+  "not_verified": [
+    "physical microphone capture",
+    "macOS consent persistence",
+    "OS global shortcut dispatch",
+    "paste into an external application",
+    "physical hold-key down/up"
+  ],
+  "checks": [
+    {
+      "status": "passed",
+      "tests": 15,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "setup",
+      "filter": "RebuildSetupTests|RebuildModelVerificationTests",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/setup.log",
+      "seconds": 3.13
+    },
+    {
+      "status": "passed",
+      "tests": 10,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "recorder-layout",
+      "filter": "RebuildRecorderLayoutTests|RecordingWindowStyleTests",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/recorder-layout.log",
+      "seconds": 1.36
+    },
+    {
+      "status": "passed",
+      "tests": 35,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "capture",
+      "filter": "RebuildStartupTests|RebuildSessionTests|AudioHardwarePreparationTests|AudioInputRoutingTests",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/capture.log",
+      "seconds": 1.42
+    },
+    {
+      "status": "passed",
+      "tests": 8,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "delivery",
+      "filter": "RebuildDeliveryIntegrationTests",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/delivery.log",
+      "seconds": 1.39
+    },
+    {
+      "status": "passed",
+      "tests": 4,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "paste-destination",
+      "filter": "SmartPasteDestinationTests",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/paste-destination.log",
+      "seconds": 1.17
+    },
+    {
+      "status": "passed",
+      "tests": 63,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "hold-events",
+      "filter": "PressAndHoldKeyMonitorTests|PressAndHoldKeyMonitorLocalEventTests",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/hold-events.log",
+      "seconds": 7.5
+    },
+    {
+      "status": "passed",
+      "tests": 2,
+      "skipped": 0,
+      "failures": 0,
+      "returncode": 0,
+      "name": "real-whisper",
+      "filter": "LocalEngineFixtureTests/testWhisper",
+      "log": "/private/tmp/audiowhisper-vm-final-acceptance/real-whisper.log",
+      "seconds": 8.63
+    }
+  ],
+  "status": "passed"
+}

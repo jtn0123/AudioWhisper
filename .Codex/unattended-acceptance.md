@@ -15,6 +15,7 @@ Omit `--real-engines` for a deterministic run without model downloads.
 | Stage | What it verifies | Boundary |
 |---|---|---|
 | Setup | Repeated consent requests coalesce; denial does not re-prompt; missing/broken models block readiness | Injected permission/model responses |
+| Recorder layout | Real SwiftUI hosting size, whole-frame placement, auxiliary panel and full-screen eligibility | Active WindowServer; no audio hardware |
 | Capture | Start/stop/cancel, startup deadlines, repeated shortcuts, retry ownership, stale results and input routing | Injected hardware and session commands |
 | Delivery | Real pipeline assembly, clipboard, history, usage, retry and cleanup | Stub speech provider; named clipboard and in-memory history |
 | Paste destination | Exactly one paste for matching destination; no paste for a changed destination or retired session | Injected PID, permission and keystroke sink |
@@ -45,12 +46,21 @@ incremental/full-file outputs agree. This run used the implementation at
 these contain fixture output only. Reporter tests also exercise a real hung
 child process to verify termination. The new runner's reporting tests run in CI.
 
-## VM feasibility
+## Latest observed run on 2026-10-04
 
-[Tart](https://tart.run/quick-start/) supports local Apple Silicon macOS guests
-and automation through SSH; its documented starter image download is 25 GB.
-The [guest agent](https://tart.run/blog/2025/06/01/bridging-the-gaps-with-the-tart-guest-agent/)
-also supports command execution. No VM has been provisioned for this run. A
-guest would provide a disposable desktop for future GUI testing but introduces
-its own OS permissions and audio device behavior. It does not substitute for
-physical-device acceptance on the user's Mac.
+All seven stages pass: **137 tests, zero skips or failures**, including the new
+10-test recorder-layout stage. This used `77d85cd` plus the VM polish changes.
+The report and adjacent logs are in `/tmp/audiowhisper-vm-final-acceptance/`.
+The full Swift suite separately executed 3,059 tests with 47 optional skips and
+zero failures (3,012 successful tests).
+
+## Native VM acceptance
+
+A disposable Tart Tahoe guest has now been provisioned and exercised. Actual
+guest shortcut dispatch, ten start/cancel cycles, Whisper transcription, native
+Smart Paste and full-screen recording pass. Physical modifier hold remains
+incomplete because the remote input stream omits left/right device flags.
+These checks use virtual guest audio and synthetic native OS events. They do
+not certify physical host hardware or replace minimum-version compatibility.
+See [the VM validation report](macos-vm-validation.md) and
+[repeatable VM instructions](../scripts/vm/README.md).

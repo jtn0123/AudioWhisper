@@ -44,6 +44,11 @@ from a previous ad-hoc build requires one fresh consent for this identity.
 The certificate is local development signing, not Developer ID or notarization.
 CI still uses ad-hoc signing when no certificate is available.
 
+Use `--output /path/AudioWhisper.app` to package into a separate QA destination.
+Packaging refuses to overwrite the exact target app while it is running.
+The [macOS VM workflow](../scripts/vm/README.md) tests the guest desktop without
+requesting repeated interaction with the host user.
+
 The rebuild prepares microphone hardware on a serial worker with a four-second
 deadline. Cancelled or timed-out preparation cannot activate recording later.
 A blocked worker rejects further starts until it returns, keeping the UI usable
@@ -69,4 +74,17 @@ coverage is deliberately rejected.
 - The build now signs local previews ad hoc when no certificate is available and fails on signature errors. CI checks the complete bundle signature, app identifier, signing requirement and Foundation localization resolution. The latter handles SwiftPM's flat and Contents/Resources bundle layouts.
 - A post-transcription signature check found Python adding `ml/__pycache__` inside the signed app. Daemon, download and verification subprocesses now disable bytecode writes; packaging strips development caches from every resource bundle before signing. A real daemon ping regression reproduced the added files before the fix and preserved the resource tree afterward. All 89 targeted daemon, model verification, download and session checks passed, with strict SwiftLint still clean.
 
-The global shortcut could not be exercised by the native automation key command, so physical shortcut delivery remains unverified; its temporary test setting was returned to off. Hold-to-record, Smart Paste and the full desktop/full-screen window matrix still need native validation under the new identity. The known Whisper failure on a macOS CI runner is unresolved. Ad-hoc signing retains permission for the same build across launches; use the persistent local identity for development permission tests. Distribution needs a Developer ID and notarization. Existing library import is intentionally pending explicit migration design.
+On 2026-10-04, a Tahoe 26.6.2 VM passed actual guest shortcut dispatch, ten
+start/cancel cycles without focus theft, Whisper transcription and native Smart
+Paste into TextEdit, including a full-screen destination. The recorder's
+collapsed size, partial off-screen placement and full-screen visibility were
+reproduced and fixed. Preferences stays on the desktop. See the
+[VM validation report](../.Codex/macos-vm-validation.md) for evidence and limits.
+Physical hold-to-record remains unverified because the guest input stream lacks
+left/right modifier state. Minimum-version Sonoma, multi-display Spaces,
+VoiceOver and physical microphone behavior need separate acceptance. These VM
+results do not resolve historical CI engine failures or certify distribution.
+Ad-hoc signing retains permission for the same build across launches; use the
+persistent local identity for development permission tests. Distribution needs
+a Developer ID and notarization. Existing library import remains pending
+explicit migration design.

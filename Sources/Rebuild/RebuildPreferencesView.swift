@@ -33,8 +33,8 @@ struct RebuildPreferencesView: View {
                     subtitle:
                         "Optional conveniences stay optional. Recording only requires a microphone and voice model.")
                 RebuildSection(title: "SHORTCUTS & RECORDING") {
-                    Toggle("Enable the rebuild’s recording shortcut", isOn: $shortcutEnabled)
-                    Text("Keep this off while the original app uses the same shortcut.").font(.caption).foregroundStyle(
+                    Toggle("Enable recording shortcut", isOn: $shortcutEnabled)
+                    Text("Choose a shortcut that other apps are not using.").font(.caption).foregroundStyle(
                         .secondary)
                     KeyboardShortcuts.Recorder("Recording shortcut", name: .rebuildRecording) { _ in settingsChanged() }
                     Toggle("Express Mode · record without showing the overlay", isOn: $express)
@@ -83,7 +83,7 @@ struct RebuildPreferencesView: View {
                         ForEach(RetentionPeriod.allCases, id: \.self) { Text($0.displayName).tag($0) }
                     }
                     Text(
-                        "The rebuild has its own empty library. It does not read or change the original app’s transcripts."
+                        "Saved transcripts stay on this Mac. Saving is optional and is off by default."
                     )
                     .font(.caption).foregroundStyle(.secondary)
                     Stepper("Whisper storage limit: \(Int(storageLimit)) GB", value: $storageLimit, in: 2...30, step: 1)
@@ -103,7 +103,7 @@ struct RebuildPreferencesView: View {
                     Text("The recorder respects macOS Reduce Motion. Normal windows stay on desktop Spaces.").font(
                         .caption
                     ).foregroundStyle(.secondary)
-                    Toggle("Open the rebuild at login", isOn: $login)
+                    Toggle("Open AudioWhisper at login", isOn: $login)
                 }
                 RebuildSection(title: "SUPPORT & USAGE") {
                     Button("Copy setup diagnostics") {

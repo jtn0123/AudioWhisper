@@ -97,9 +97,16 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
     func testFindValidTargetAppUsesTargetAppForPasteWhenNoStored() {
         let vm = makeViewModel()
         WindowController.storedTargetApp = nil
-        vm.targetAppForPaste = NSRunningApplication.current
-        let result = vm.findValidTargetApp()
-        XCTAssertNil(result, "a terminated or invalid application cannot be a paste destination")
+        // The test executable may be represented by its launching application
+        // on a live desktop. Do not assume .current is terminated or is our bundle.
+        guard let target = NSWorkspace.shared.runningApplications.first(where: {
+            !$0.isTerminated && $0.bundleIdentifier != Bundle.main.bundleIdentifier
+        }) else {
+            XCTFail("Expected a live external application")
+            return
+        }
+        vm.targetAppForPaste = target
+        XCTAssertEqual(vm.findValidTargetApp()?.processIdentifier, target.processIdentifier)
     }
 
     func testFindValidTargetAppReturnsNilOrFallbackWhenNothingSet() {
