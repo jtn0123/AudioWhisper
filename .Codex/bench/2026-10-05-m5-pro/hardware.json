@@ -1,0 +1,16 @@
+{
+  "machine_name": "MacBook Pro",
+  "machine_model": "Mac17,8",
+  "chip_type": "Apple M5 Pro",
+  "number_processors": "proc 18:6:12:0",
+  "physical_memory": "48 GB",
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2\nBuildVersion:\t\t26B5091g",
+  "power": "AC attached, battery 80 percent",
+  "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+  "notes": [
+    "Plugged into AC; existing user apps and VM left running.",
+    "Sequential inference; background processes can affect latency.",
+    "New process first-use; OS file caches not purged; downloads excluded."
+  ],
+  "observed_at_utc": "2026-10-05T13:18:17.121515+00:00"
+}

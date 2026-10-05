@@ -1,0 +1,1379 @@
+{
+  "speech": [
+    {
+      "model_id": "parakeet-v2",
+      "current": true,
+      "load_seconds": 1.3211277090013027,
+      "rss_peak_gb": 1.020739584,
+      "mlx_peak_gb": 3.200719456,
+      "model_files_gb": 2.471865399,
+      "errors": [],
+      "warm_median_seconds": 0.44928499998059124,
+      "warm_min_seconds": 0.4477170830068644,
+      "warm_max_seconds": 0.45111570798326284,
+      "first_use_seconds": 1.4725228330062237,
+      "short_clip_median_seconds": 0.06347291701240465,
+      "natural": {
+        "reference_words": 922,
+        "hits": 899,
+        "substitutions": 11,
+        "deletions": 12,
+        "insertions": 6,
+        "errors": 29,
+        "wer_percent": 3.1453362255965294
+      },
+      "natural_interval_95": [
+        1.879689951882674,
+        4.703277873610186
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 899,
+        "substitutions": 11,
+        "deletions": 12,
+        "insertions": 6,
+        "errors": 29,
+        "wer_percent": 3.1453362255965294
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 257,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 1,
+          "errors": 3,
+          "wer_percent": 1.1583011583011582
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 261,
+          "substitutions": 8,
+          "deletions": 11,
+          "insertions": 5,
+          "errors": 24,
+          "wer_percent": 8.571428571428571
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 381,
+          "substitutions": 1,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.5221932114882507
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 93,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 3,
+          "errors": 5,
+          "wer_percent": 5.2631578947368425
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 198,
+          "substitutions": 1,
+          "deletions": 2,
+          "insertions": 0,
+          "errors": 3,
+          "wer_percent": 1.492537313432836
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 471,
+          "substitutions": 8,
+          "deletions": 1,
+          "insertions": 1,
+          "errors": 10,
+          "wer_percent": 2.0833333333333335
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 0,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 0,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": ""
+        },
+        {
+          "case": "non-speech-1",
+          "text": ""
+        },
+        {
+          "case": "non-speech-2",
+          "text": ""
+        }
+      ],
+      "synthetic_missing_terms": [],
+      "long_seconds": 1.8398515000008047
+    },
+    {
+      "model_id": "parakeet-v3",
+      "current": true,
+      "load_seconds": 0.8897646249970421,
+      "rss_peak_gb": 1.028718592,
+      "mlx_peak_gb": 3.221236324,
+      "model_files_gb": 2.509044141,
+      "errors": [],
+      "warm_median_seconds": 0.4980782079801429,
+      "warm_min_seconds": 0.4947559580032248,
+      "warm_max_seconds": 0.5026459170039743,
+      "first_use_seconds": 0.9800946670002304,
+      "short_clip_median_seconds": 0.06672383348632138,
+      "natural": {
+        "reference_words": 922,
+        "hits": 896,
+        "substitutions": 17,
+        "deletions": 9,
+        "insertions": 6,
+        "errors": 32,
+        "wer_percent": 3.470715835140998
+      },
+      "natural_interval_95": [
+        2.0057127058333513,
+        5.128541448058764
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 896,
+        "substitutions": 17,
+        "deletions": 9,
+        "insertions": 6,
+        "errors": 32,
+        "wer_percent": 3.470715835140998
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 256,
+          "substitutions": 3,
+          "deletions": 0,
+          "insertions": 2,
+          "errors": 5,
+          "wer_percent": 1.9305019305019304
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 260,
+          "substitutions": 12,
+          "deletions": 8,
+          "insertions": 4,
+          "errors": 24,
+          "wer_percent": 8.571428571428571
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 380,
+          "substitutions": 2,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 3,
+          "wer_percent": 0.783289817232376
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 91,
+          "substitutions": 3,
+          "deletions": 1,
+          "insertions": 3,
+          "errors": 7,
+          "wer_percent": 7.368421052631579
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 197,
+          "substitutions": 2,
+          "deletions": 2,
+          "insertions": 0,
+          "errors": 4,
+          "wer_percent": 1.9900497512437811
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 423,
+          "substitutions": 3,
+          "deletions": 54,
+          "insertions": 0,
+          "errors": 57,
+          "wer_percent": 11.875
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 0,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 0,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": ""
+        },
+        {
+          "case": "non-speech-1",
+          "text": ""
+        },
+        {
+          "case": "non-speech-2",
+          "text": ""
+        }
+      ],
+      "synthetic_missing_terms": [],
+      "long_seconds": 1.515690000000177
+    },
+    {
+      "model_id": "granite-5",
+      "current": false,
+      "load_seconds": 1.0260056249971967,
+      "rss_peak_gb": 1.165950976,
+      "mlx_peak_gb": 2.022432769,
+      "model_files_gb": 0.947376815,
+      "errors": [],
+      "warm_median_seconds": 0.04791979098808952,
+      "warm_min_seconds": 0.04754437500378117,
+      "warm_max_seconds": 0.04907816697959788,
+      "first_use_seconds": 3.8056314999994356,
+      "short_clip_median_seconds": 0.014740062993951142,
+      "natural": {
+        "reference_words": 922,
+        "hits": 900,
+        "substitutions": 15,
+        "deletions": 7,
+        "insertions": 5,
+        "errors": 27,
+        "wer_percent": 2.928416485900217
+      },
+      "natural_interval_95": [
+        1.5841584158415842,
+        4.493271424599199
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 900,
+        "substitutions": 15,
+        "deletions": 7,
+        "insertions": 5,
+        "errors": 27,
+        "wer_percent": 2.928416485900217
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 257,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.7722007722007722
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 262,
+          "substitutions": 12,
+          "deletions": 6,
+          "insertions": 5,
+          "errors": 23,
+          "wer_percent": 8.214285714285714
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 381,
+          "substitutions": 1,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.5221932114882507
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 92,
+          "substitutions": 3,
+          "deletions": 0,
+          "insertions": 2,
+          "errors": 5,
+          "wer_percent": 5.2631578947368425
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 200,
+          "substitutions": 1,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 1,
+          "wer_percent": 0.4975124378109453
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 477,
+          "substitutions": 2,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 3,
+          "wer_percent": 0.625
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 4,
+          "errors": 4,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 3,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": "the"
+        },
+        {
+          "case": "non-speech-1",
+          "text": "thank you"
+        },
+        {
+          "case": "non-speech-2",
+          "text": "i"
+        }
+      ],
+      "synthetic_missing_terms": [
+        {
+          "case": "dictation-1",
+          "missing": [
+            "negative $42"
+          ]
+        },
+        {
+          "case": "dictation-7",
+          "missing": [
+            "Siobhan"
+          ]
+        }
+      ],
+      "long_seconds": 0.14379195802030154
+    },
+    {
+      "model_id": "cohere-8bit",
+      "current": false,
+      "load_seconds": 0.654130625014659,
+      "rss_peak_gb": 4.350230528,
+      "mlx_peak_gb": 5.652885314,
+      "model_files_gb": 4.134146095,
+      "errors": [],
+      "warm_median_seconds": 1.7815236669848673,
+      "warm_min_seconds": 1.7722260420268867,
+      "warm_max_seconds": 1.824747209000634,
+      "first_use_seconds": 1.9679065000091214,
+      "short_clip_median_seconds": 0.2177501249971101,
+      "natural": {
+        "reference_words": 922,
+        "hits": 897,
+        "substitutions": 15,
+        "deletions": 10,
+        "insertions": 8,
+        "errors": 33,
+        "wer_percent": 3.579175704989154
+      },
+      "natural_interval_95": [
+        2.0879063525201316,
+        5.315860347166252
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 897,
+        "substitutions": 15,
+        "deletions": 10,
+        "insertions": 8,
+        "errors": 33,
+        "wer_percent": 3.579175704989154
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 256,
+          "substitutions": 3,
+          "deletions": 0,
+          "insertions": 1,
+          "errors": 4,
+          "wer_percent": 1.5444015444015444
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 260,
+          "substitutions": 11,
+          "deletions": 9,
+          "insertions": 7,
+          "errors": 27,
+          "wer_percent": 9.642857142857142
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 381,
+          "substitutions": 1,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.5221932114882507
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 92,
+          "substitutions": 3,
+          "deletions": 0,
+          "insertions": 3,
+          "errors": 6,
+          "wer_percent": 6.315789473684211
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 199,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.9950248756218906
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 476,
+          "substitutions": 3,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 4,
+          "wer_percent": 0.8333333333333334
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 0,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 0,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": ""
+        },
+        {
+          "case": "non-speech-1",
+          "text": ""
+        },
+        {
+          "case": "non-speech-2",
+          "text": ""
+        }
+      ],
+      "synthetic_missing_terms": [],
+      "long_seconds": 5.042066040972713
+    },
+    {
+      "model_id": "qwen3-asr-4bit",
+      "current": false,
+      "load_seconds": 0.8125275000056718,
+      "rss_peak_gb": 2.064531456,
+      "mlx_peak_gb": 3.957701568,
+      "model_files_gb": 1.607633106,
+      "errors": [],
+      "warm_median_seconds": 1.260816124995472,
+      "warm_min_seconds": 1.2501519579964224,
+      "warm_max_seconds": 1.2648340830055531,
+      "first_use_seconds": 1.707619041990256,
+      "short_clip_median_seconds": 0.15999543749785516,
+      "natural": {
+        "reference_words": 922,
+        "hits": 891,
+        "substitutions": 19,
+        "deletions": 12,
+        "insertions": 8,
+        "errors": 39,
+        "wer_percent": 4.2299349240780915
+      },
+      "natural_interval_95": [
+        2.5613124560168896,
+        6.279993752181109
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 891,
+        "substitutions": 19,
+        "deletions": 12,
+        "insertions": 8,
+        "errors": 39,
+        "wer_percent": 4.2299349240780915
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 255,
+          "substitutions": 4,
+          "deletions": 0,
+          "insertions": 2,
+          "errors": 6,
+          "wer_percent": 2.3166023166023164
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 255,
+          "substitutions": 14,
+          "deletions": 11,
+          "insertions": 6,
+          "errors": 31,
+          "wer_percent": 11.071428571428571
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 381,
+          "substitutions": 1,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.5221932114882507
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 92,
+          "substitutions": 3,
+          "deletions": 0,
+          "insertions": 1,
+          "errors": 4,
+          "wer_percent": 4.2105263157894735
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 200,
+          "substitutions": 1,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 1,
+          "wer_percent": 0.4975124378109453
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 476,
+          "substitutions": 3,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 4,
+          "wer_percent": 0.8333333333333334
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 11,
+          "errors": 11,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 3,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": "I."
+        },
+        {
+          "case": "non-speech-1",
+          "text": "I."
+        },
+        {
+          "case": "non-speech-2",
+          "text": "I'm gonna get you out of here."
+        }
+      ],
+      "synthetic_missing_terms": [
+        {
+          "case": "dictation-7",
+          "missing": [
+            "Mateo",
+            "Siobhan"
+          ]
+        }
+      ],
+      "long_seconds": 4.089108417014359
+    },
+    {
+      "model_id": "whisper-tiny",
+      "current": true,
+      "load_seconds": 4.316175584,
+      "rss_peak_gb": 0.143622144,
+      "mlx_peak_gb": 0.0,
+      "model_files_gb": 0.076635397,
+      "errors": [],
+      "warm_median_seconds": 0.341848208,
+      "warm_min_seconds": 0.340776917,
+      "warm_max_seconds": 0.343180541,
+      "first_use_seconds": 4.374051292,
+      "short_clip_median_seconds": 0.0438742705,
+      "natural": {
+        "reference_words": 922,
+        "hits": 839,
+        "substitutions": 51,
+        "deletions": 32,
+        "insertions": 12,
+        "errors": 95,
+        "wer_percent": 10.303687635574837
+      },
+      "natural_interval_95": [
+        7.635805331492905,
+        13.413582380189677
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 839,
+        "substitutions": 51,
+        "deletions": 32,
+        "insertions": 12,
+        "errors": 95,
+        "wer_percent": 10.303687635574837
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 234,
+          "substitutions": 25,
+          "deletions": 0,
+          "insertions": 4,
+          "errors": 29,
+          "wer_percent": 11.196911196911197
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 233,
+          "substitutions": 17,
+          "deletions": 30,
+          "insertions": 7,
+          "errors": 54,
+          "wer_percent": 19.285714285714285
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 372,
+          "substitutions": 9,
+          "deletions": 2,
+          "insertions": 1,
+          "errors": 12,
+          "wer_percent": 3.133159268929504
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 88,
+          "substitutions": 6,
+          "deletions": 1,
+          "insertions": 3,
+          "errors": 10,
+          "wer_percent": 10.526315789473685
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 182,
+          "substitutions": 18,
+          "deletions": 1,
+          "insertions": 2,
+          "errors": 21,
+          "wer_percent": 10.447761194029852
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 455,
+          "substitutions": 22,
+          "deletions": 3,
+          "insertions": 1,
+          "errors": 26,
+          "wer_percent": 5.416666666666667
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 0,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 0,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": ""
+        },
+        {
+          "case": "non-speech-1",
+          "text": ""
+        },
+        {
+          "case": "non-speech-2",
+          "text": ""
+        }
+      ],
+      "synthetic_missing_terms": [
+        {
+          "case": "dictation-7",
+          "missing": [
+            "Siobhan"
+          ]
+        }
+      ],
+      "long_seconds": 0.944234958
+    },
+    {
+      "model_id": "whisper-base",
+      "current": true,
+      "load_seconds": 5.73653475,
+      "rss_peak_gb": 0.152731648,
+      "mlx_peak_gb": 0.0,
+      "model_files_gb": 0.146719453,
+      "errors": [],
+      "warm_median_seconds": 0.600822917,
+      "warm_min_seconds": 0.598981042,
+      "warm_max_seconds": 0.607158625,
+      "first_use_seconds": 5.974362542,
+      "short_clip_median_seconds": 0.070271708,
+      "natural": {
+        "reference_words": 922,
+        "hits": 847,
+        "substitutions": 36,
+        "deletions": 39,
+        "insertions": 8,
+        "errors": 83,
+        "wer_percent": 9.002169197396963
+      },
+      "natural_interval_95": [
+        6.0495666114654165,
+        12.645422299558293
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 847,
+        "substitutions": 36,
+        "deletions": 39,
+        "insertions": 8,
+        "errors": 83,
+        "wer_percent": 9.002169197396963
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 245,
+          "substitutions": 14,
+          "deletions": 0,
+          "insertions": 3,
+          "errors": 17,
+          "wer_percent": 6.563706563706564
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 226,
+          "substitutions": 16,
+          "deletions": 38,
+          "insertions": 5,
+          "errors": 59,
+          "wer_percent": 21.071428571428573
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 376,
+          "substitutions": 6,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 7,
+          "wer_percent": 1.8276762402088773
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 91,
+          "substitutions": 4,
+          "deletions": 0,
+          "insertions": 3,
+          "errors": 7,
+          "wer_percent": 7.368421052631579
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 191,
+          "substitutions": 9,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 10,
+          "wer_percent": 4.975124378109452
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 469,
+          "substitutions": 10,
+          "deletions": 1,
+          "insertions": 1,
+          "errors": 12,
+          "wer_percent": 2.5
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 0,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 0,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": ""
+        },
+        {
+          "case": "non-speech-1",
+          "text": ""
+        },
+        {
+          "case": "non-speech-2",
+          "text": ""
+        }
+      ],
+      "synthetic_missing_terms": [
+        {
+          "case": "dictation-7",
+          "missing": [
+            "Siobhan"
+          ]
+        }
+      ],
+      "long_seconds": 1.603147167
+    },
+    {
+      "model_id": "whisper-small",
+      "current": true,
+      "load_seconds": 16.671260166,
+      "rss_peak_gb": 0.351207424,
+      "mlx_peak_gb": 0.0,
+      "model_files_gb": 0.486487465,
+      "errors": [],
+      "warm_median_seconds": 1.730204042,
+      "warm_min_seconds": 1.718464,
+      "warm_max_seconds": 1.738078125,
+      "first_use_seconds": 16.848340792,
+      "short_clip_median_seconds": 0.19562741700000003,
+      "natural": {
+        "reference_words": 922,
+        "hits": 868,
+        "substitutions": 22,
+        "deletions": 32,
+        "insertions": 6,
+        "errors": 60,
+        "wer_percent": 6.507592190889371
+      },
+      "natural_interval_95": [
+        4.363550193881947,
+        9.039033892206275
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 868,
+        "substitutions": 22,
+        "deletions": 32,
+        "insertions": 6,
+        "errors": 60,
+        "wer_percent": 6.507592190889371
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 250,
+          "substitutions": 9,
+          "deletions": 0,
+          "insertions": 2,
+          "errors": 11,
+          "wer_percent": 4.2471042471042475
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 239,
+          "substitutions": 10,
+          "deletions": 31,
+          "insertions": 4,
+          "errors": 45,
+          "wer_percent": 16.071428571428573
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 379,
+          "substitutions": 3,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 4,
+          "wer_percent": 1.0443864229765014
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 92,
+          "substitutions": 3,
+          "deletions": 0,
+          "insertions": 3,
+          "errors": 6,
+          "wer_percent": 6.315789473684211
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 196,
+          "substitutions": 5,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 5,
+          "wer_percent": 2.487562189054726
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 460,
+          "substitutions": 10,
+          "deletions": 10,
+          "insertions": 0,
+          "errors": 20,
+          "wer_percent": 4.166666666666667
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 0,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 0,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": ""
+        },
+        {
+          "case": "non-speech-1",
+          "text": ""
+        },
+        {
+          "case": "non-speech-2",
+          "text": ""
+        }
+      ],
+      "synthetic_missing_terms": [],
+      "long_seconds": 4.5663216250000005
+    },
+    {
+      "model_id": "whisper-large-v3_turbo",
+      "current": true,
+      "load_seconds": 69.369477833,
+      "rss_peak_gb": 1.888075776,
+      "mlx_peak_gb": 0.0,
+      "model_files_gb": 3.195115988,
+      "errors": [],
+      "warm_median_seconds": 9.109102458,
+      "warm_min_seconds": 9.102460333,
+      "warm_max_seconds": 9.178988333,
+      "first_use_seconds": 70.80246775,
+      "short_clip_median_seconds": 1.0633815205000001,
+      "natural": {
+        "reference_words": 922,
+        "hits": 874,
+        "substitutions": 13,
+        "deletions": 35,
+        "insertions": 6,
+        "errors": 54,
+        "wer_percent": 5.856832971800434
+      },
+      "natural_interval_95": [
+        3.6129898547841655,
+        8.480238711782695
+      ],
+      "raw_natural": {
+        "reference_words": 922,
+        "hits": 874,
+        "substitutions": 13,
+        "deletions": 35,
+        "insertions": 6,
+        "errors": 54,
+        "wer_percent": 5.856832971800434
+      },
+      "groups": {
+        "librispeech-other": {
+          "reference_words": 259,
+          "hits": 257,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 1,
+          "errors": 3,
+          "wer_percent": 1.1583011583011582
+        },
+        "ami-meetings": {
+          "reference_words": 280,
+          "hits": 237,
+          "substitutions": 9,
+          "deletions": 34,
+          "insertions": 5,
+          "errors": 48,
+          "wer_percent": 17.142857142857142
+        },
+        "librispeech-clean": {
+          "reference_words": 383,
+          "hits": 380,
+          "substitutions": 2,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 3,
+          "wer_percent": 0.783289817232376
+        },
+        "synthetic-names-numbers": {
+          "reference_words": 95,
+          "hits": 93,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 3,
+          "errors": 5,
+          "wer_percent": 5.2631578947368425
+        },
+        "added-noise-10db": {
+          "reference_words": 201,
+          "hits": 199,
+          "substitutions": 1,
+          "deletions": 1,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.9950248756218906
+        },
+        "long-form": {
+          "reference_words": 480,
+          "hits": 478,
+          "substitutions": 2,
+          "deletions": 0,
+          "insertions": 0,
+          "errors": 2,
+          "wer_percent": 0.4166666666666667
+        },
+        "non-speech": {
+          "reference_words": 0,
+          "hits": 0,
+          "substitutions": 0,
+          "deletions": 0,
+          "insertions": 1,
+          "errors": 1,
+          "wer_percent": null
+        }
+      },
+      "silence_nonempty": 3,
+      "silence_outputs": [
+        {
+          "case": "non-speech-0",
+          "text": "you"
+        },
+        {
+          "case": "non-speech-1",
+          "text": "."
+        },
+        {
+          "case": "non-speech-2",
+          "text": "."
+        }
+      ],
+      "synthetic_missing_terms": [],
+      "long_seconds": 23.314909084
+    }
+  ],
+  "writing": [
+    {
+      "model_id": "writing-qwen4b",
+      "current": true,
+      "load_seconds": 1.3075862500118092,
+      "rss_peak_gb": 2.621964288,
+      "mlx_peak_gb": 2.815624522,
+      "model_files_gb": 2.278972236,
+      "errors": [],
+      "manual_passes": 21,
+      "manual_total": 28,
+      "warm_median_seconds": 0.29588291700929403,
+      "p90_seconds": 0.3968650922062807,
+      "passes": 50,
+      "total": 56,
+      "preservation_passes": 50,
+      "guard_rejections": 2,
+      "repair_passes": 22,
+      "repair_total": 26,
+      "first_use_seconds": 1.9545869159919675,
+      "by_category": {
+        "terminal": {
+          "passes": 8,
+          "total": 10
+        },
+        "email": {
+          "passes": 10,
+          "total": 10
+        },
+        "writing": {
+          "passes": 8,
+          "total": 8
+        },
+        "chat": {
+          "passes": 6,
+          "total": 6
+        },
+        "coding": {
+          "passes": 4,
+          "total": 6
+        },
+        "general": {
+          "passes": 14,
+          "total": 16
+        }
+      }
+    },
+    {
+      "model_id": "writing-gemma1b",
+      "current": true,
+      "load_seconds": 1.4838477089942899,
+      "rss_peak_gb": 1.728856064,
+      "mlx_peak_gb": 1.014671562,
+      "model_files_gb": 0.771863021,
+      "errors": [],
+      "manual_passes": 15,
+      "manual_total": 28,
+      "warm_median_seconds": 0.3292607500043232,
+      "p90_seconds": 0.6929860412026756,
+      "passes": 30,
+      "total": 56,
+      "preservation_passes": 48,
+      "guard_rejections": 26,
+      "repair_passes": 6,
+      "repair_total": 26,
+      "first_use_seconds": 2.7845584170136135,
+      "by_category": {
+        "terminal": {
+          "passes": 4,
+          "total": 10
+        },
+        "email": {
+          "passes": 8,
+          "total": 10
+        },
+        "writing": {
+          "passes": 4,
+          "total": 8
+        },
+        "chat": {
+          "passes": 2,
+          "total": 6
+        },
+        "coding": {
+          "passes": 2,
+          "total": 6
+        },
+        "general": {
+          "passes": 10,
+          "total": 16
+        }
+      }
+    },
+    {
+      "model_id": "writing-qwen1.7b",
+      "current": true,
+      "load_seconds": 0.8015479159948882,
+      "rss_peak_gb": 1.32620288,
+      "mlx_peak_gb": 1.459048814,
+      "model_files_gb": 0.984015687,
+      "errors": [],
+      "manual_passes": 20,
+      "manual_total": 28,
+      "warm_median_seconds": 0.8823024579905905,
+      "p90_seconds": 0.922809475188842,
+      "passes": 40,
+      "total": 56,
+      "preservation_passes": 50,
+      "guard_rejections": 0,
+      "repair_passes": 12,
+      "repair_total": 26,
+      "first_use_seconds": 1.673549416998867,
+      "by_category": {
+        "terminal": {
+          "passes": 2,
+          "total": 10
+        },
+        "email": {
+          "passes": 10,
+          "total": 10
+        },
+        "writing": {
+          "passes": 6,
+          "total": 8
+        },
+        "chat": {
+          "passes": 6,
+          "total": 6
+        },
+        "coding": {
+          "passes": 2,
+          "total": 6
+        },
+        "general": {
+          "passes": 14,
+          "total": 16
+        }
+      }
+    },
+    {
+      "model_id": "writing-qwen3.5-2b",
+      "current": false,
+      "load_seconds": 1.2455233329965267,
+      "rss_peak_gb": 1.720516608,
+      "mlx_peak_gb": 1.553475754,
+      "model_files_gb": 1.749081927,
+      "errors": [],
+      "manual_passes": 20,
+      "manual_total": 28,
+      "warm_median_seconds": 0.8269244999974035,
+      "p90_seconds": 0.8925493999966421,
+      "passes": 50,
+      "total": 56,
+      "preservation_passes": 54,
+      "guard_rejections": 0,
+      "repair_passes": 20,
+      "repair_total": 26,
+      "first_use_seconds": 2.8949732500186656,
+      "by_category": {
+        "terminal": {
+          "passes": 10,
+          "total": 10
+        },
+        "email": {
+          "passes": 10,
+          "total": 10
+        },
+        "writing": {
+          "passes": 8,
+          "total": 8
+        },
+        "chat": {
+          "passes": 4,
+          "total": 6
+        },
+        "coding": {
+          "passes": 2,
+          "total": 6
+        },
+        "general": {
+          "passes": 16,
+          "total": 16
+        }
+      }
+    },
+    {
+      "model_id": "writing-lfm1.2b",
+      "current": false,
+      "load_seconds": 0.8118001249968074,
+      "rss_peak_gb": 0.867958784,
+      "mlx_peak_gb": 0.952269568,
+      "model_files_gb": 0.663395788,
+      "errors": [],
+      "manual_passes": 16,
+      "manual_total": 28,
+      "warm_median_seconds": 0.06808945900411345,
+      "p90_seconds": 0.09718284979462624,
+      "passes": 40,
+      "total": 56,
+      "preservation_passes": 46,
+      "guard_rejections": 2,
+      "repair_passes": 14,
+      "repair_total": 26,
+      "first_use_seconds": 2.2597623339970596,
+      "by_category": {
+        "terminal": {
+          "passes": 6,
+          "total": 10
+        },
+        "email": {
+          "passes": 10,
+          "total": 10
+        },
+        "writing": {
+          "passes": 8,
+          "total": 8
+        },
+        "chat": {
+          "passes": 4,
+          "total": 6
+        },
+        "coding": {
+          "passes": 2,
+          "total": 6
+        },
+        "general": {
+          "passes": 10,
+          "total": 16
+        }
+      }
+    },
+    {
+      "model_id": "writing-gemma4",
+      "current": false,
+      "load_seconds": 1.8253225839871448,
+      "rss_peak_gb": 3.847110656,
+      "mlx_peak_gb": 2.93609641,
+      "model_files_gb": 3.583088661,
+      "errors": [],
+      "manual_passes": 22,
+      "manual_total": 28,
+      "warm_median_seconds": 1.050125375011703,
+      "p90_seconds": 1.1116845664102584,
+      "passes": 42,
+      "total": 56,
+      "preservation_passes": 50,
+      "guard_rejections": 2,
+      "repair_passes": 16,
+      "repair_total": 26,
+      "first_use_seconds": 3.894324584020069,
+      "by_category": {
+        "terminal": {
+          "passes": 6,
+          "total": 10
+        },
+        "email": {
+          "passes": 10,
+          "total": 10
+        },
+        "writing": {
+          "passes": 8,
+          "total": 8
+        },
+        "chat": {
+          "passes": 6,
+          "total": 6
+        },
+        "coding": {
+          "passes": 2,
+          "total": 6
+        },
+        "general": {
+          "passes": 10,
+          "total": 16
+        }
+      }
+    }
+  ]
+}

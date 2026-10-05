@@ -1,0 +1,141 @@
+{
+  "parakeet-v2": {
+    "repo": "mlx-community/parakeet-tdt-0.6b-v2",
+    "revision": "8ae155301e23d820d82aa60d24817c900e69e487",
+    "runtime": "current",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--parakeet-tdt-0.6b-v2/snapshots/8ae155301e23d820d82aa60d24817c900e69e487",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 20.200971833983203,
+    "logical_bytes": 2471865399
+  },
+  "parakeet-v3": {
+    "repo": "mlx-community/parakeet-tdt-0.6b-v3",
+    "revision": "ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15",
+    "runtime": "current",
+    "path": "/Users/justin/.cache/huggingface/hub/models--mlx-community--parakeet-tdt-0.6b-v3/snapshots/ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15",
+    "origin": "existing pinned app cache, read only",
+    "preparation_seconds": 1.3500015484169126e-05,
+    "logical_bytes": 2509044141
+  },
+  "granite-5": {
+    "repo": "ibm-granite/granite-speech-5.0-470m-turboctc",
+    "revision": "947f59af40db9791170a0628cf0f3f4812d720f1",
+    "runtime": "candidate",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--ibm-granite--granite-speech-5.0-470m-turboctc/snapshots/947f59af40db9791170a0628cf0f3f4812d720f1",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 10.450410416000523,
+    "logical_bytes": 947376815
+  },
+  "cohere-8bit": {
+    "repo": "mlx-community/cohere-transcribe-03-2026-mlx-8bit",
+    "revision": "a0acb7f93cd32d82c4fbf801b6d8fb39d20c509f",
+    "runtime": "cohere-speech",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--cohere-transcribe-03-2026-mlx-8bit/snapshots/a0acb7f93cd32d82c4fbf801b6d8fb39d20c509f/mlx-int8",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 32.75899958299124,
+    "logical_bytes": 4134146095
+  },
+  "qwen3-asr-4bit": {
+    "repo": "mlx-community/Qwen3-ASR-1.7B-4bit",
+    "revision": "78a389c776a5483b2d0d4ea5494e11012e0d6159",
+    "runtime": "candidate",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--Qwen3-ASR-1.7B-4bit/snapshots/78a389c776a5483b2d0d4ea5494e11012e0d6159",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 14.453125207975972,
+    "logical_bytes": 1607633106
+  },
+  "writing-qwen4b": {
+    "repo": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+    "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "runtime": "writing-current",
+    "path": "/Users/justin/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit/snapshots/50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "origin": "existing pinned app cache, read only",
+    "preparation_seconds": 8.874980267137289e-06,
+    "logical_bytes": 2278972236
+  },
+  "writing-gemma1b": {
+    "repo": "mlx-community/gemma-3-1b-it-qat-4bit",
+    "revision": "15fed4eafb456c6fcb2a1165f19ac609670ed14b",
+    "runtime": "writing-current",
+    "path": "/Users/justin/.cache/huggingface/hub/models--mlx-community--gemma-3-1b-it-qat-4bit/snapshots/15fed4eafb456c6fcb2a1165f19ac609670ed14b",
+    "origin": "existing pinned app cache, read only",
+    "preparation_seconds": 8.625007467344403e-06,
+    "logical_bytes": 771863021
+  },
+  "writing-qwen1.7b": {
+    "repo": "mlx-community/Qwen3-1.7B-4bit",
+    "revision": "3b1b1768f8f8cf8351c712464f906e86c2b8269e",
+    "runtime": "writing-current",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--Qwen3-1.7B-4bit/snapshots/3b1b1768f8f8cf8351c712464f906e86c2b8269e",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 9.560940708994167,
+    "logical_bytes": 984015687
+  },
+  "whisper-tiny": {
+    "repo": "argmaxinc/whisperkit-coreml",
+    "revision": "0f63a7800b00dd0226abd051b906c246e1907482",
+    "runtime": "whisper",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--argmaxinc--whisperkit-coreml/snapshots/0f63a7800b00dd0226abd051b906c246e1907482/openai_whisper-tiny",
+    "variant": "openai_whisper-tiny",
+    "origin": "isolated pinned benchmark download",
+    "preparation_seconds": 2.5727665000013076,
+    "logical_bytes": 76635397
+  },
+  "whisper-base": {
+    "repo": "argmaxinc/whisperkit-coreml",
+    "revision": "0f63a7800b00dd0226abd051b906c246e1907482",
+    "runtime": "whisper",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--argmaxinc--whisperkit-coreml/snapshots/0f63a7800b00dd0226abd051b906c246e1907482/openai_whisper-base",
+    "variant": "openai_whisper-base",
+    "origin": "isolated pinned benchmark download",
+    "preparation_seconds": 2.4843704579980113,
+    "logical_bytes": 146719453
+  },
+  "whisper-small": {
+    "repo": "argmaxinc/whisperkit-coreml",
+    "revision": "0f63a7800b00dd0226abd051b906c246e1907482",
+    "runtime": "whisper",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--argmaxinc--whisperkit-coreml/snapshots/0f63a7800b00dd0226abd051b906c246e1907482/openai_whisper-small",
+    "variant": "openai_whisper-small",
+    "origin": "isolated pinned benchmark download",
+    "preparation_seconds": 4.949790999991819,
+    "logical_bytes": 486487465
+  },
+  "whisper-large-v3_turbo": {
+    "repo": "argmaxinc/whisperkit-coreml",
+    "revision": "0f63a7800b00dd0226abd051b906c246e1907482",
+    "runtime": "whisper",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--argmaxinc--whisperkit-coreml/snapshots/0f63a7800b00dd0226abd051b906c246e1907482/openai_whisper-large-v3_turbo",
+    "variant": "openai_whisper-large-v3_turbo",
+    "origin": "isolated pinned benchmark download",
+    "preparation_seconds": 25.503586875012843,
+    "logical_bytes": 3195115988
+  },
+  "writing-qwen3.5-2b": {
+    "repo": "mlx-community/Qwen3.5-2B-4bit",
+    "revision": "674aaa7240b91e8012fcad5d791b7dfe5ba90207",
+    "runtime": "writing-candidate",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--Qwen3.5-2B-4bit/snapshots/674aaa7240b91e8012fcad5d791b7dfe5ba90207",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 14.542966292006895,
+    "logical_bytes": 1749081927
+  },
+  "writing-lfm1.2b": {
+    "repo": "mlx-community/LFM2.5-1.2B-Instruct-4bit",
+    "revision": "dee2f8a2786e6648bb644a7ca40652842490034b",
+    "runtime": "writing-candidate",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--LFM2.5-1.2B-Instruct-4bit/snapshots/dee2f8a2786e6648bb644a7ca40652842490034b",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 9.074884666013531,
+    "logical_bytes": 663395788
+  },
+  "writing-gemma4": {
+    "repo": "mlx-community/gemma-4-e2b-it-4bit",
+    "revision": "238767527555cb75a05732a84dff5d6ba0dd6809",
+    "runtime": "writing-candidate",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-05/hf/hub/models--mlx-community--gemma-4-e2b-it-4bit/snapshots/238767527555cb75a05732a84dff5d6ba0dd6809",
+    "origin": "isolated benchmark download",
+    "preparation_seconds": 26.57033579199924,
+    "logical_bytes": 3583088661
+  }
+}

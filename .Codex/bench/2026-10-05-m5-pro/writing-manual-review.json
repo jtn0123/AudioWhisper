@@ -1,0 +1,118 @@
+{
+  "reviewer": "Codex; one qualitative reviewer, no independent blinded ratings",
+  "criteria": [
+    "Requested unambiguous repairs completed.",
+    "Meaning, roles, names, amounts, polarity and commands preserved.",
+    "No invented content, assistant preambles, placeholders or code fences in ordinary prose.",
+    "Equivalent grammatical paraphrases accepted; a single filler in Chat is allowed by its light-cleanup prompt."
+  ],
+  "limitations": [
+    "Only 28 handcrafted tasks; not a published grammar leaderboard.",
+    "All second-repetition delivered outputs matched the first, so quality is scored once per task.",
+    "One-task differences should not establish universal quality superiority."
+  ],
+  "models": {
+    "writing-qwen4b": {
+      "reviewed_repetition": 0,
+      "total": 28,
+      "passes": 21,
+      "first_repetition_output_sha256": "57f2219a1c382b95be621ea99b450d481d9d7c4e2f98a5deaabf8ff3c6495b56",
+      "failures": {
+        "writing-2": "Wrong grep flag: -d v instead of -v.",
+        "writing-5": "Dropped await.",
+        "writing-11": "Invented sign-off and sender placeholder.",
+        "writing-15": "Dropped the dictated do-not-remove instruction.",
+        "writing-22": "Changed a request to send the URL into a statement that the speaker is sending it.",
+        "writing-23": "Invented emoji changes the tone despite the profile asking not to add content.",
+        "writing-27": "Invented sign-off and sender placeholder."
+      }
+    },
+    "writing-gemma1b": {
+      "reviewed_repetition": 0,
+      "total": 28,
+      "passes": 15,
+      "first_repetition_output_sha256": "dc964ad7ce052a96cf21b7d40a8acf9b31dc7a3de18b11e9455f3bb73ed153d6",
+      "failures": {
+        "writing-0": "Homophones and filler left; new code fence.",
+        "writing-1": "iTerm homophone and filler left.",
+        "writing-2": "Spoken flag and pipe not repaired.",
+        "writing-5": "async and for-loop homophones not repaired.",
+        "writing-6": "Changed useState to false rather than repairing the hook name.",
+        "writing-7": "Added a code fence to ordinary prose.",
+        "writing-8": "sand was not corrected to send.",
+        "writing-13": "weather not repaired.",
+        "writing-14": "Assistant preamble and invented Hey leak into output.",
+        "writing-17": "Dropped the instruction not to turn the balance positive.",
+        "writing-18": "right/there homophones not repaired.",
+        "writing-22": "URL homophone not repaired.",
+        "writing-26": "Dropped not Maria."
+      }
+    },
+    "writing-qwen1.7b": {
+      "reviewed_repetition": 0,
+      "total": 28,
+      "passes": 20,
+      "first_repetition_output_sha256": "3ec72d30b72b31b48d7b161fa43d396206b3dcfb835213016ef00c13e1a980e7",
+      "failures": {
+        "writing-0": "Dropped sudo and failed to repair cd.",
+        "writing-1": "iTerm not repaired.",
+        "writing-2": "Spoken flag and pipe not repaired.",
+        "writing-3": "Reversed Do not run rm into Then rm on the backup folder.",
+        "writing-5": "async and for-loop homophones not repaired.",
+        "writing-6": "Invented setStateToFalse instead of repairing useState.",
+        "writing-12": "Their/They are homophone not repaired.",
+        "writing-18": "right/there homophones not repaired."
+      }
+    },
+    "writing-lfm1.2b": {
+      "reviewed_repetition": 0,
+      "total": 28,
+      "passes": 16,
+      "first_repetition_output_sha256": "96248a88b951aebaf4bfec7eeb59870f461c8caeef4b1bb14896b85d5590c18a",
+      "failures": {
+        "writing-0": "Changed cd into documents to see the changes in documents.",
+        "writing-2": "Spoken flag and pipe not repaired.",
+        "writing-5": "Missed async/for-loop repairs and dropped await.",
+        "writing-6": "Missed useState repair.",
+        "writing-9": "Changed who must approve the invoice: I to you.",
+        "writing-10": "Invented an attached invoice and email boilerplate.",
+        "writing-12": "Their/They are homophone not repaired.",
+        "writing-14": "Changed remind me into remind yourself.",
+        "writing-15": "Dropped negation and introduced Do like this.",
+        "writing-17": "Dropped the instruction not to turn the balance positive.",
+        "writing-22": "Invented chat content and changed a request into a statement.",
+        "writing-27": "Invented personal greeting and sender placeholder."
+      }
+    },
+    "writing-qwen3.5-2b": {
+      "reviewed_repetition": 0,
+      "total": 28,
+      "passes": 20,
+      "first_repetition_output_sha256": "29d22b0381dbde8a6843e99fe696948bb9ba39bafea1d0b9e3a020505fddff3a",
+      "failures": {
+        "writing-4": "Invented executable && keep the port 2222 after ssh.",
+        "writing-5": "async homophone not repaired.",
+        "writing-6": "Dropped false and invented code rather than repairing useState.",
+        "writing-9": "Invented sign-off and sender placeholder.",
+        "writing-10": "Invented sign-off.",
+        "writing-11": "Invented sign-off.",
+        "writing-15": "Left an unmatched opening quotation mark in the delivered output.",
+        "writing-27": "Invented sign-off."
+      }
+    },
+    "writing-gemma4": {
+      "reviewed_repetition": 0,
+      "total": 28,
+      "passes": 22,
+      "first_repetition_output_sha256": "f6475ee6cff98d6dcfd015e3ed6f603f38da4436c70d01be633a99970a6086e6",
+      "failures": {
+        "writing-0": "Dropped sudo.",
+        "writing-2": "Did not turn pipe to less into | less as requested by the terminal profile.",
+        "writing-5": "async homophone not repaired.",
+        "writing-6": "useState homophone not repaired.",
+        "writing-15": "Dropped the dictated do-not-remove instruction.",
+        "writing-16": "Dropped the editor qualifier."
+      }
+    }
+  }
+}
