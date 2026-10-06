@@ -28,6 +28,15 @@ Existing macOS runner Whisper inference failure remains visible. No microphone o
 
 ## Development packaging
 
+Writing cleanup now offers pinned Qwen3.5 9B 4-bit and Qwen3.8 27B mixed
+3-bit builds. Qwen3.5 is the new-install recommendation; existing choices and
+cached prior defaults remain preserved, and cleanup stays opt-in. The Writing
+page shows readable model names, download size and measured M5 Pro tradeoffs.
+Generation requests a direct answer from the first pass, avoiding Qwen3.8's
+untagged reasoning continuation and Qwen3.5's think-then-retry overhead. The
+output sanitizer preserves content quotation marks. See the
+[production integration evidence](../.Codex/bench/2026-10-06-qwen-integration/README.md).
+
 `make build-dev` packages a host-only debug app with the same Python resources,
 dependency localizations and complete signing checks as the release app. It reuses
 SwiftPM's debug cache. `make run` (or `make run-dev`) installs that bundle beside

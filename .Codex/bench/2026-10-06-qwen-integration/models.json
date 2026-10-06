@@ -1,0 +1,18 @@
+{
+  "qwen3.5-9b": {
+    "repo": "mlx-community/Qwen3.5-9B-4bit",
+    "revision": "8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "path": "/Users/justin/.cache/huggingface/hub/models--mlx-community--Qwen3.5-9B-4bit/snapshots/8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "origin": "APFS clone of previously benchmarked pinned snapshot into app shared cache; external blob links materialized",
+    "logical_bytes": 5977073303,
+    "preparation_seconds": 0.001055583001289051
+  },
+  "qwen3.8-27b-3bit": {
+    "repo": "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+    "revision": "5fc234d9e6080b8388a11286380e801b7c9f535c",
+    "path": "/Users/justin/.cache/huggingface/hub/models--leonsarmiento--Qwen3.8-27B-3bit-mlx/snapshots/5fc234d9e6080b8388a11286380e801b7c9f535c",
+    "origin": "APFS clone of previously benchmarked pinned snapshot into app shared cache; external blob links materialized",
+    "logical_bytes": 12729689604,
+    "preparation_seconds": 112.78207233300054
+  }
+}

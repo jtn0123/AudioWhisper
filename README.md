@@ -31,7 +31,7 @@ The preview uses `com.audiowhisper.rebuild` and a separate Application Support d
 
 - **macOS 14.0 (Sonoma) or later**
 - **Apple Silicon** for Parakeet and on-device semantic correction. WhisperKit works on Intel, just slower.
-- **Disk space** — up to ~1.5 GB for Whisper Large Turbo, ~2.5 GB for a Parakeet model, ~0.6–2.4 GB for a correction model. Models cache under `~/.cache/huggingface/hub`.
+- **Disk space** — up to ~1.5 GB for Whisper Large Turbo, ~2.5 GB for a Parakeet model. Writing cleanup downloads range from ~0.8 GB to 12.7 GB; the recommended Qwen3.5 9B uses ~6 GB. MLX and Parakeet models cache under `~/.cache/huggingface/hub`.
 - **Building from source: Xcode 26.0+** (Swift 6.2 tooling). The binding constraint is the `KeyboardShortcuts` 3.x dependency, whose manifest declares `swift-tools-version: 6.2`; older Xcode fails resolution outright with "incompatible tools version". `swift-argument-parser` 1.8.x needs only 6.0, so its floor is no longer the one that bites.
 
 ## Installation 🛠️
@@ -165,7 +165,7 @@ Models & setup → Local Whisper: download or verify the selected model.
 Apple Silicon only. Models & setup → Parakeet → Install Dependencies → Verify Parakeet Model.
 
 **Semantic correction not applying**
-Models & setup → Correction: confirm the mode is Local MLX and that the selected model is downloaded. Correction fails open — if it errors, you still get the raw transcript.
+Writing profiles → Local writing cleanup: install the selected model, then enable “Clean up grammar, punctuation and filler words.” Qwen3.5 9B 4-bit is the recommended balance; Qwen3.8 27B mixed 3-bit is a larger option. Their download size and measured memory/speed tradeoffs appear below the picker. Existing model selections and the cleanup toggle are preserved on upgrade. If cleanup errors or the output guard rejects it, you still get the original transcript; the guard cannot detect every meaning change.
 
 **Build fails resolving dependencies** ("incompatible tools version")
 Your Xcode is too old. `KeyboardShortcuts` 3.x declares `swift-tools-version: 6.2`, so this needs **Xcode 26.0+**. Check with `swift --version` — if it reports below 6.2, point at a newer Xcode: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.

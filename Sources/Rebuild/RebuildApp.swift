@@ -79,6 +79,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             AppDefaults.Key.startAtLogin.rawValue: false,
             AppDefaults.Key.playCompletionSound.rawValue: true
         ])
+        AppSetupHelper.migrateSemanticCorrectionModelDefault()
         do { try DataManager.shared.initialize() } catch {
             session.notice = "The local library could not open: \(error.localizedDescription)"
         }

@@ -29,9 +29,15 @@ struct RebuildWritingView: View {
                 RebuildSection(title: "LOCAL WRITING CLEANUP") {
                     Picker("Correction model", selection: $model) {
                         ForEach(MLXModelManager.recommendedModels) {
-                            Text("\($0.displayName) · \($0.estimatedSize)").tag($0.repo)
+                            Text(modelLabel($0)).tag($0.repo)
                         }
                     }.disabled(installing || verifying || !Arch.isAppleSilicon)
+                    if let selected = MLXModelManager.recommendedModels.first(where: { $0.repo == model }) {
+                        Text(selected.description)
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text("Download: \(selected.estimatedSize). Memory estimates exclude your other apps.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Toggle(
                         "Clean up grammar, punctuation and filler words",
                         isOn: Binding(
@@ -186,6 +192,11 @@ struct RebuildWritingView: View {
                     colorHex: "#B34529", promptDescription: "Custom writing style", promptTemplate: "", isSystem: false
                 ))
         }
+    }
+
+    private func modelLabel(_ entry: MLXModel) -> String {
+        let recommendation = entry.repo == AppDefaults.defaultSemanticCorrectionModelRepo ? " · Recommended" : ""
+        return entry.displayName + recommendation
     }
 
     private func verifyModel() async {

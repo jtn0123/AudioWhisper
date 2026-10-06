@@ -80,7 +80,8 @@ final class MLXModelManagerTests: IsolatedXCTestCase {
         )
 
         for model in models {
-            XCTAssertTrue(model.repo.hasPrefix("mlx-community/"), "\(model.repo) is not an MLX repo")
+            XCTAssertEqual(model.repo.split(separator: "/").count, 2, "Expected a Hugging Face repo ID")
+            XCTAssertNotNil(ModelPins.revision(for: model.repo), "Every offered build must be pinned and tested")
             XCTAssertFalse(model.description.isEmpty, "\(model.repo) needs a description")
             XCTAssertFalse(model.estimatedSize.isEmpty, "\(model.repo) needs a size")
         }

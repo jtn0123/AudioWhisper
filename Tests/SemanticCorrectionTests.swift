@@ -145,7 +145,7 @@ final class SemanticCorrectionTests: IsolatedXCTestCase {
     func testRecommendedModelsCount() {
         // Not a frozen number for its own sake: the catalog must stay small
         // enough to be a curated recommendation rather than a dump of every
-        // model that exists. Three today (fast / small-accurate / best).
+        // model that exists. Keep lightweight choices alongside the larger editors.
         let models = MLXModelManager.recommendedModels
         XCTAssertGreaterThanOrEqual(models.count, 2, "Need at least a fast and an accurate option")
         XCTAssertLessThanOrEqual(models.count, 5, "Catalog should stay curated")
@@ -160,7 +160,9 @@ final class SemanticCorrectionTests: IsolatedXCTestCase {
         let expectedRepos: Set<String> = [
             "mlx-community/gemma-3-1b-it-qat-4bit",
             "mlx-community/Qwen3-1.7B-4bit",
-            "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+            "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+            "mlx-community/Qwen3.5-9B-4bit",
+            "leonsarmiento/Qwen3.8-27B-3bit-mlx"
         ]
         XCTAssertEqual(Set(modelRepos), expectedRepos)
         XCTAssertFalse(modelRepos.contains("mlx-community/gemma-2-2b-it-4bit"))

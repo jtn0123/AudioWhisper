@@ -45,13 +45,25 @@ def _safe_chat_template(
     text: str,
 ) -> str:
     try:
-        # Keep thinking enabled for better quality - we strip <think> tags from output
-        return _require_str(
-            tokenizer.apply_chat_template(
+        # Qwen3.5/3.8 default to reasoning. In 3.8 the opening <think> tag
+        # lives in the prompt, so stripping tags from the generated continuation
+        # cannot recover its untagged reasoning. Ask for the answer on the FIRST
+        # pass; a short correction does not need a think-then-retry round trip.
+        try:
+            templated = tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True,
-            ),
+                enable_thinking=False,
+            )
+        except TypeError:
+            # Older tokenizers may not accept this option. Keep their chat
+            # framing instead of immediately degrading to a plain-text prompt.
+            templated = tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+        return _require_str(
+            templated,
             "tokenizer.apply_chat_template",
         )
     except Exception:
@@ -198,7 +210,7 @@ def sanitize_model_output(generated: str) -> str:
 
     Deliberately conservative. Returning an EMPTY string is a useful outcome —
     `correct()` treats that as "the model produced only reasoning" and retries
-    with thinking disabled, which is exactly the right recovery. Guessing at an
+    once, still requesting a direct answer. Guessing at an
     answer buried inside a truncated reasoning dump would be worse.
 
     NOT handled, on purpose: models that emit several alternative answers
@@ -219,7 +231,9 @@ def sanitize_model_output(generated: str) -> str:
     # 4. A leading bare-text reasoning heading and everything after it.
     cleaned = _REASONING_HEADING_RE.sub("", cleaned)
 
-    return cleaned.strip().strip('"').strip("'").strip()
+    # Quotes are content, including a fully quoted sentence or a shell argument
+    # at the end. strip('"') used to silently remove legitimate closing quotes.
+    return cleaned.strip()
 
 
 def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
@@ -234,7 +248,7 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
     ]
 
     chat_prompt = _safe_chat_template(tokenizer, messages, system_prompt, text)
-    # Allow more tokens for thinking overhead
+    # Bound the answer budget for short dictation and longer passages.
     max_tokens = max(128, min(4096, int(len(text.split()) * 4)))
 
     generated = _safe_generate(model, tokenizer, chat_prompt, max_tokens)
@@ -244,15 +258,10 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
 
     cleaned = sanitize_model_output(generated)
 
-    # If result is empty (all thinking, no answer), retry with thinking disabled
+    # Recover once from an empty/reasoning-only response, never loop indefinitely.
     if not cleaned:
         try:
-            chat_prompt_no_think = _require_str(
-                tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=True, enable_thinking=False
-                ),
-                "tokenizer.apply_chat_template",
-            )
+            chat_prompt_no_think = _safe_chat_template(tokenizer, messages, system_prompt, text)
             generated = _safe_generate(model, tokenizer, chat_prompt_no_think, max_tokens)
             if generated.startswith(chat_prompt_no_think):
                 generated = generated[len(chat_prompt_no_think):]
@@ -266,4 +275,3 @@ def correct(repo: str, text: str, prompt: Optional[str]) -> Dict[str, Any]:
         cleaned = text
 
     return {"success": True, "text": cleaned}
-
