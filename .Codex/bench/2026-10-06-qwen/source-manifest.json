@@ -1,0 +1,10 @@
+{
+  "git_head": "a2285d3396c50b55babc0d0bcf294633fce15c89",
+  "sha256": {
+    "Sources/ml/correction.py": "00ca38f0c3f98a8a508fcda4b7aba396a6d392863b3959ca2aeb34a47d94f707",
+    "Sources/ml/loader.py": "ea5d28cf11b8c0423364cdbe02ed25516761a536d91ec7c4b854be4198383944",
+    "Sources/Models/CategoryDefinition.swift": "a3c834954996c4ba2692738f1fec5b8e6c25678e744daae1b3ed0ae37e95b4de",
+    "Sources/Services/SemanticCorrectionService.swift": "87df9f07063a4c2da775b37f3af36ec8840872dfe61f46547067600eabf3b127",
+    "Sources/Services/SpeechToTextService.swift": "9a2f2b2bf8971090f8082c0c56a8fb5e3d921b593c8acfe6efdc93746487fb72"
+  }
+}

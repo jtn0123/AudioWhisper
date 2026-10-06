@@ -78,3 +78,44 @@ separately as harness diagnostics and excluded from the ranked chart.
 Model repositories, revisions, runtime versions, raw transcripts, delivered
 transcripts, and per-case checks are retained with the report. No weights or
 audio files are committed.
+
+## Qwen 3.5 / 3.8 cleanup follow-up
+
+[The 2026-10-06 report](../../.Codex/bench/2026-10-06-qwen/README.md) compares the
+current Qwen3 4B Instruct 2507 with Qwen3.5 4B/9B and Qwen3.8 27B. It retains
+raw generation traces, the production Swift guard's delivered text, and a manual
+review of 64 English stress cases for each complete configuration. Thinking
+disabled, exact production behavior, and a stricter experimental prefix are
+separate conditions. This does not edit production prompts or model defaults.
+
+```sh
+QWEN_BASE="$HOME/Library/Caches/AudioWhisperBench/qwen-fresh-run"
+QWEN_PY="$HOME/Library/Caches/AudioWhisperBench/2026-10-05/.venv/bin/python"
+"$QWEN_PY" scripts/bench/qwen_prepare.py "$QWEN_BASE"
+python3 scripts/bench/qwen_run.py "$QWEN_BASE" --python "$QWEN_PY" --only qwen3-4b qwen3.5-4b qwen3.5-9b
+python3 scripts/bench/qwen_run.py "$QWEN_BASE" --python "$QWEN_PY" --only qwen3.8-27b --production-limit 19
+python3 scripts/bench/qwen_run.py "$QWEN_BASE" --python "$QWEN_PY" --only qwen3-4b qwen3.5-4b qwen3.5-9b qwen3.8-27b --modes strict
+```
+
+Use the follow-up's frozen requirements if creating a fresh runtime. Preparation
+reuses only the exact pinned revision, otherwise downloading into this isolated
+cache. Runs are sequential, each with a 20-minute timeout. Qwen3.8's production
+mode is intentionally limited because its default template is incompatible with
+current reasoning sanitization; a fresh bounded run can complete successfully
+even though its delivered text is rejected by the app guard.
+
+`qwen_report.py` compiles the actual production Swift helper and writes delivered
+outputs before checking the reviewer labels' hashes. Copy the retained
+`manual-review.json` only when outputs are identical; fresh or changed outputs
+need a new qualitative review using the recorded criteria. After review:
+
+```sh
+"$QWEN_PY" scripts/bench/qwen_report.py "$QWEN_BASE"
+```
+
+The optional `qwen_runtime_smoke.py` runs one short direct correction per model
+using the Python executable supplied by the caller. `--sources` can point at a
+read-only installed resource directory. Set `PYTHONDONTWRITEBYTECODE=1`,
+`HF_HUB_OFFLINE=1`, and `HF_HUB_DISABLE_IMPLICIT_TOKEN=1` when inspecting an
+installed runtime. This is a basic compatibility check, not an app acceptance
+test. All weights, binaries, virtual environments, and caches stay outside Git.

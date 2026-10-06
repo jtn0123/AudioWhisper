@@ -1,0 +1,35 @@
+{
+  "qwen3-4b": {
+    "repo": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+    "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "runtime": "writing-current",
+    "path": "/Users/justin/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit/snapshots/50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "origin": "existing pinned app cache, read only",
+    "preparation_seconds": 8.874980267137289e-06,
+    "logical_bytes": 2278972236
+  },
+  "qwen3.5-4b": {
+    "repo": "mlx-community/Qwen3.5-4B-4bit",
+    "revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen/hf/hub/models--mlx-community--Qwen3.5-4B-4bit/snapshots/0e7ffd5c629ef7719d4cbc04069232580bfa9d9c",
+    "logical_bytes": 3061130647,
+    "download_seconds": 41.48415466699953,
+    "origin": "isolated pinned benchmark download"
+  },
+  "qwen3.5-9b": {
+    "repo": "mlx-community/Qwen3.5-9B-4bit",
+    "revision": "8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen/hf/hub/models--mlx-community--Qwen3.5-9B-4bit/snapshots/8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "logical_bytes": 5977073303,
+    "download_seconds": 66.33211116700113,
+    "origin": "isolated pinned benchmark download"
+  },
+  "qwen3.8-27b": {
+    "repo": "mlx-community/Qwen3.8-27B-4bit",
+    "revision": "10c35caafbb80f7dc6a7a432cdd11af10a6d4818",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen/hf/hub/models--mlx-community--Qwen3.8-27B-4bit/snapshots/10c35caafbb80f7dc6a7a432cdd11af10a6d4818",
+    "logical_bytes": 16081490933,
+    "download_seconds": 170.09247687499737,
+    "origin": "isolated pinned benchmark download"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "python": "/Users/justin/Library/Application Support/AudioWhisper Rebuild/python_project/.venv/bin/python",
+  "versions": {
+    "mlx": "0.32.0",
+    "mlx-lm": "0.31.3",
+    "transformers": "5.10.1",
+    "huggingface-hub": "1.9.1"
+  },
+  "sources": {
+    "AudioWhisper.app/Contents/Resources/ml/correction.py": "00ca38f0c3f98a8a508fcda4b7aba396a6d392863b3959ca2aeb34a47d94f707",
+    "AudioWhisper.app/Contents/Resources/ml/loader.py": "ea5d28cf11b8c0423364cdbe02ed25516761a536d91ec7c4b854be4198383944"
+  },
+  "scope": "One short direct-answer correction per model; not an app, quality, or paste test.",
+  "models": {
+    "qwen3-4b": {
+      "seconds_including_load": 2.346049583000422,
+      "success": true,
+      "text": "She doesn't have the files yet."
+    },
+    "qwen3.5-4b": {
+      "seconds_including_load": 1.861963540999568,
+      "success": true,
+      "text": "She doesn't have the files yet."
+    },
+    "qwen3.5-9b": {
+      "seconds_including_load": 1.5177362079994055,
+      "success": true,
+      "text": "She doesn't have the files yet."
+    },
+    "qwen3.8-27b": {
+      "seconds_including_load": 4.110608499999216,
+      "success": true,
+      "text": "She doesn't have the files yet."
+    }
+  }
+}

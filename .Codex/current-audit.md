@@ -6,6 +6,7 @@ Audited code: `187eacdb55737ba8eb6b57c9bb59f5e0cc23c506`, 2026-10-04.
 - [UI/UX report](ui-ux-grade-report-187eacd.md): **B**, four concrete improvements and separately listed acceptance gaps.
 - [English-first model review](model-review-2026-10-04.md): current options, ranked challengers, publisher evidence and a comparison plan.
 - [Measured M5 Pro model comparison](bench/2026-10-05-m5-pro/README.md): nine speech and six cleanup models, local speed/quality/memory charts and semantic acceptance findings.
+- [Qwen3.5 / Qwen3.8 follow-up](bench/2026-10-06-qwen/README.md): 64 English cleanup stress cases on four models; 27B improved results at a memory/latency cost, with confirmed quote and thinking-template integration defects.
 - [Audit reproduction/CI evidence](audit-187eacd/README.md).
 - [Native macOS VM validation](macos-vm-validation.md): completed recorder/paste/full-screen checks and remaining hardware/compatibility limits.
 
@@ -16,6 +17,9 @@ Granite wins warm speed but lost amount polarity and invented words during
 non-speech; Cohere/Qwen ASR did not improve the sampled English tradeoff.
 Keep **Qwen3 4B Instruct 2507** as the balanced optional writing default; every
 tested writer made meaningful mistakes, including outputs accepted by the guard.
+The Qwen follow-up retains that default pending output-handling fixes and broader
+validation. Qwen3.5 9B is a balanced challenger; Qwen3.8 27B is a possible quality
+option. Neither was adopted or added to the installed app by the benchmark.
 
 Specify the report when requesting an item, for example **“187eacd codebase B1”**
 or **“187eacd UI B1.”** Older canonical reports describe historical snapshots and
