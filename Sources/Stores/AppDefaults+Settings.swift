@@ -36,7 +36,7 @@ extension AppDefaults {
         get {
             guard let rawValue = defaults.string(forKey: Key.selectedParakeetModel.rawValue),
                   let model = ParakeetModel(rawValue: rawValue) else {
-                return .v3Multilingual
+                return .v2English
             }
             return model
         }

@@ -37,7 +37,7 @@ internal final class MLXModelManager {
         // allowing future model repos that aren't yet in the enum. For validated
         // access, use `AppDefaults.selectedParakeetModel`.
         AppDefaults.defaults.string(forKey: AppDefaults.Key.selectedParakeetModel.rawValue)
-            ?? ParakeetModel.v3Multilingual.rawValue
+            ?? ParakeetModel.v2English.rawValue
     }
 
     /// Curated correction models, ordered fastest → highest quality.

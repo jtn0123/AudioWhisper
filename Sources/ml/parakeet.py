@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict
 
 from .loader import load_parakeet_model
 
-DEFAULT_PARAKEET_REPO = "mlx-community/parakeet-tdt-0.6b-v3"
+DEFAULT_PARAKEET_REPO = "mlx-community/parakeet-tdt-0.6b-v2"
 CHUNK_SECONDS = 120
 OVERLAP_SECONDS = 15
 

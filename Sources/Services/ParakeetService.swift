@@ -91,7 +91,7 @@ internal class ParakeetService {
     /// Default Parakeet model used when the stored `selectedParakeetModel` value
     /// is missing or doesn't match a known `ParakeetModel` case. Mirrors
     /// `AppDefaults.selectedParakeetModel`.
-    static let defaultModel: ParakeetModel = .v3Multilingual
+    static let defaultModel: ParakeetModel = .v2English
 
     /// Validates the persisted `selectedParakeetModel` against the
     /// `ParakeetModel` enum and falls back to `defaultModel` when the stored
@@ -100,7 +100,7 @@ internal class ParakeetService {
     /// that the app no longer recognises.
     var safeSelectedParakeetModel: ParakeetModel {
         // `AppDefaults.selectedParakeetModel` already validates against the enum and
-        // falls back to `.v3Multilingual` (== `defaultModel`).
+        // falls back to `.v2English` (== `defaultModel`).
         AppDefaults.selectedParakeetModel
     }
 

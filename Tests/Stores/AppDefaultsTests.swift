@@ -86,7 +86,7 @@ final class AppDefaultsTests: IsolatedXCTestCase {
 
     func testSelectedParakeetModelDefaultValue() {
         AppDefaults.removeValue(for: .selectedParakeetModel)
-        XCTAssertEqual(AppDefaults.selectedParakeetModel, .v3Multilingual)
+        XCTAssertEqual(AppDefaults.selectedParakeetModel, .v2English)
     }
 
     func testSelectedParakeetModelSetAndGet() {
