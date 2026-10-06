@@ -119,3 +119,44 @@ read-only installed resource directory. Set `PYTHONDONTWRITEBYTECODE=1`,
 `HF_HUB_OFFLINE=1`, and `HF_HUB_DISABLE_IMPLICIT_TOKEN=1` when inspecting an
 installed runtime. This is a basic compatibility check, not an app acceptance
 test. All weights, binaries, virtual environments, and caches stay outside Git.
+
+## Additional Qwen quantized builds
+
+Retained measurements and conclusions:
+[2026-10-06 quantized-build comparison](../../.Codex/bench/2026-10-06-qwen-quants/README.md).
+
+The quantization comparison reruns the current Qwen3 4B and both 4-bit Qwen
+controls alongside Qwen3.5 9B MLX 8-bit, Qwen3.8 27B MLX 6-bit, and Qwen3.8
+27B mixed 3-bit. Both direct and strict-prompt conditions use thinking disabled.
+These are comparisons of published builds, which may differ in conversion
+recipe and template as well as precision; changes cannot be attributed solely
+to bit width. No app model selection is changed by these scripts.
+
+```sh
+QWEN_QUANT_BASE="$HOME/Library/Caches/AudioWhisperBench/qwen-quants-fresh-run"
+QWEN_PY="$HOME/Library/Caches/AudioWhisperBench/2026-10-05/.venv/bin/python"
+"$QWEN_PY" scripts/bench/qwen_prepare.py "$QWEN_QUANT_BASE" --reuse-base "$HOME/Library/Caches/AudioWhisperBench/2026-10-06-qwen" --only qwen3-4b qwen3.5-9b qwen3.8-27b qwen3.5-9b-8bit qwen3.8-27b-6bit qwen3.8-27b-3bit
+python3 scripts/bench/qwen_run.py "$QWEN_QUANT_BASE" --python "$QWEN_PY" --only qwen3-4b qwen3.5-9b qwen3.5-9b-8bit qwen3.8-27b-3bit qwen3.8-27b qwen3.8-27b-6bit --modes direct strict --wait-all --continue-on-error
+"$QWEN_PY" scripts/bench/qwen_quant_review.py "$QWEN_QUANT_BASE" .Codex/bench/2026-10-06-qwen
+```
+
+`--wait-all` keeps downloads from competing with GPU inference. The run status
+retains thermal, swap and memory counters before and after each model. Those
+describe the whole host, not memory traffic attributable only to inference.
+`--continue-on-error` preserves a failed model's log and tries the remaining
+models; it does not turn failures into valid benchmark results.
+
+The review helper extracts delivered text through the production Swift guard.
+It reuses prior judgments only for identical case/input/category/output; app
+failure attribution additionally requires identical raw generation. Every novel
+output is exposed in `review-drafts.json` for qualitative review. Complete the
+hash-bound `manual-review.json` using the recorded criteria before reporting:
+
+```sh
+"$QWEN_PY" scripts/bench/qwen_quant_report.py "$QWEN_QUANT_BASE"
+```
+
+The report includes same-session controls, per-profile acceptance, critical
+failures, repeated short-task speed, peak MLX allocation/RSS, and case-by-case
+improvements/regressions against each model's 4-bit build. It refuses to grade
+incomplete runs or reuse labels against different delivered output.

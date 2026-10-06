@@ -1,0 +1,566 @@
+{
+  "qwen3-4b/direct": {
+    "acceptable": 51,
+    "total": 64,
+    "critical_failures": 6,
+    "app_failures": 0,
+    "median_task_seconds": 0.23441204199480126,
+    "p90_task_seconds": 0.3260318329994334,
+    "identical_short_task_median_seconds": 0.21424087500054156,
+    "identical_short_task_min_seconds": 0.197555332997581,
+    "identical_short_task_max_seconds": 0.23116162500082282,
+    "first_task_seconds": 1.8673984580018441,
+    "first_process_result_seconds": 3.210933499998646,
+    "load_seconds": 1.2933877499963273,
+    "peak_mlx_bytes": 2900460800,
+    "peak_rss_bytes": 2644918272,
+    "model_bytes": 2278972236,
+    "guard_rejections": 2,
+    "generation_retries": 0,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 1
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 2
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 7
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 5
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3-4b/strict": {
+    "acceptable": 57,
+    "total": 64,
+    "critical_failures": 4,
+    "app_failures": 0,
+    "median_task_seconds": 0.25970587500341935,
+    "p90_task_seconds": 0.35404108299553627,
+    "identical_short_task_median_seconds": 0.24088812500122003,
+    "identical_short_task_min_seconds": 0.22048033399914857,
+    "identical_short_task_max_seconds": 0.2423852080028155,
+    "first_task_seconds": 0.23082145900116302,
+    "first_process_result_seconds": null,
+    "load_seconds": 1.2933877499963273,
+    "peak_mlx_bytes": 2900460800,
+    "peak_rss_bytes": 2644918272,
+    "model_bytes": 2278972236,
+    "guard_rejections": 2,
+    "generation_retries": 0,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 4
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 3
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 9
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 5
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.5-9b/direct": {
+    "acceptable": 56,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 0,
+    "median_task_seconds": 0.44284424999932526,
+    "p90_task_seconds": 0.6108555829996476,
+    "identical_short_task_median_seconds": 0.43176408300496405,
+    "identical_short_task_min_seconds": 0.3772544170060428,
+    "identical_short_task_max_seconds": 0.4732033330001286,
+    "first_task_seconds": 1.6892523329952382,
+    "first_process_result_seconds": 3.809956625002087,
+    "load_seconds": 2.087444457996753,
+    "peak_mlx_bytes": 5797171942,
+    "peak_rss_bytes": 5702926336,
+    "model_bytes": 5977073303,
+    "guard_rejections": 3,
+    "generation_retries": 0,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 4
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 5
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 29
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 5
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.5-9b/strict": {
+    "acceptable": 55,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 0,
+    "median_task_seconds": 0.5167184590027318,
+    "p90_task_seconds": 0.6631775830028346,
+    "identical_short_task_median_seconds": 0.40770320799492765,
+    "identical_short_task_min_seconds": 0.4037133329984499,
+    "identical_short_task_max_seconds": 0.4185867499982123,
+    "first_task_seconds": 0.49669845800235635,
+    "first_process_result_seconds": null,
+    "load_seconds": 2.087444457996753,
+    "peak_mlx_bytes": 5797171942,
+    "peak_rss_bytes": 5702926336,
+    "model_bytes": 5977073303,
+    "guard_rejections": 2,
+    "generation_retries": 0,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 4
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 5
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 29
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 4
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.5-9b-8bit/direct": {
+    "acceptable": 55,
+    "total": 64,
+    "critical_failures": 3,
+    "app_failures": 0,
+    "median_task_seconds": 0.6999457499987329,
+    "p90_task_seconds": 0.9645395829938934,
+    "identical_short_task_median_seconds": 0.5797578749989043,
+    "identical_short_task_min_seconds": 0.5557571250028559,
+    "identical_short_task_max_seconds": 0.5927425420013606,
+    "first_task_seconds": 0.7033529580003233,
+    "first_process_result_seconds": 2.758379374994547,
+    "load_seconds": 2.02132837499812,
+    "peak_mlx_bytes": 10143269554,
+    "peak_rss_bytes": 10178494464,
+    "model_bytes": 10453446077,
+    "guard_rejections": 2,
+    "generation_retries": 0,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 5
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 27
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 5
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.5-9b-8bit/strict": {
+    "acceptable": 57,
+    "total": 64,
+    "critical_failures": 1,
+    "app_failures": 0,
+    "median_task_seconds": 0.74377000000095,
+    "p90_task_seconds": 1.0405008329980774,
+    "identical_short_task_median_seconds": 0.6112468749997788,
+    "identical_short_task_min_seconds": 0.5854577079953742,
+    "identical_short_task_max_seconds": 0.6406874160020379,
+    "first_task_seconds": 0.8174083749981946,
+    "first_process_result_seconds": null,
+    "load_seconds": 2.02132837499812,
+    "peak_mlx_bytes": 10143269554,
+    "peak_rss_bytes": 10178494464,
+    "model_bytes": 10453446077,
+    "guard_rejections": 0,
+    "generation_retries": 0,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 6
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 5
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.8-27b/direct": {
+    "acceptable": 58,
+    "total": 64,
+    "critical_failures": 1,
+    "app_failures": 1,
+    "median_task_seconds": 1.3873478329987847,
+    "p90_task_seconds": 1.9920205000016722,
+    "identical_short_task_median_seconds": 1.1635752090005553,
+    "identical_short_task_min_seconds": 1.1349072079974576,
+    "identical_short_task_max_seconds": 1.1750867079972522,
+    "first_task_seconds": 1.68067408400384,
+    "first_process_result_seconds": 4.406253459004802,
+    "load_seconds": 2.6936237910049385,
+    "peak_mlx_bytes": 16161854624,
+    "peak_rss_bytes": 15805497344,
+    "model_bytes": 16081490933,
+    "guard_rejections": 4,
+    "generation_retries": 0,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 5
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 7
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.8-27b/strict": {
+    "acceptable": 60,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 1,
+    "median_task_seconds": 1.5656445420027012,
+    "p90_task_seconds": 2.045311791000131,
+    "identical_short_task_median_seconds": 1.2853509999986272,
+    "identical_short_task_min_seconds": 1.2563092499985942,
+    "identical_short_task_max_seconds": 1.3226674159959657,
+    "first_task_seconds": 1.8201908749979339,
+    "first_process_result_seconds": null,
+    "load_seconds": 2.6936237910049385,
+    "peak_mlx_bytes": 16161854624,
+    "peak_rss_bytes": 15805497344,
+    "model_bytes": 16081490933,
+    "guard_rejections": 2,
+    "generation_retries": 0,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 9
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 27
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 6
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.8-27b-3bit/direct": {
+    "acceptable": 58,
+    "total": 64,
+    "critical_failures": 1,
+    "app_failures": 0,
+    "median_task_seconds": 1.576019959000405,
+    "p90_task_seconds": 2.0907984579971526,
+    "identical_short_task_median_seconds": 1.1278903749989695,
+    "identical_short_task_min_seconds": 1.0850269999937154,
+    "identical_short_task_max_seconds": 1.5992552090028767,
+    "first_task_seconds": 1.564885083003901,
+    "first_process_result_seconds": 3.9645360830036225,
+    "load_seconds": 2.3566585829976248,
+    "peak_mlx_bytes": 13178590368,
+    "peak_rss_bytes": 12565741568,
+    "model_bytes": 12729689604,
+    "guard_rejections": 4,
+    "generation_retries": 0,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 5
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 7
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.8-27b-3bit/strict": {
+    "acceptable": 62,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 0,
+    "median_task_seconds": 1.5572375409974484,
+    "p90_task_seconds": 2.9416839590048767,
+    "identical_short_task_median_seconds": 1.1610639170030481,
+    "identical_short_task_min_seconds": 1.1523062499982188,
+    "identical_short_task_max_seconds": 1.1833578330042656,
+    "first_task_seconds": 3.2686857920052717,
+    "first_process_result_seconds": null,
+    "load_seconds": 2.3566585829976248,
+    "peak_mlx_bytes": 13178590368,
+    "peak_rss_bytes": 12565741568,
+    "model_bytes": 12729689604,
+    "guard_rejections": 3,
+    "generation_retries": 0,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 9
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 7
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.8-27b-6bit/direct": {
+    "acceptable": 54,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 1,
+    "median_task_seconds": 1.7587251669974648,
+    "p90_task_seconds": 2.5629509999998845,
+    "identical_short_task_median_seconds": 1.4330105419940082,
+    "identical_short_task_min_seconds": 1.4086939170010737,
+    "identical_short_task_max_seconds": 1.504122667000047,
+    "first_task_seconds": 2.38667191699642,
+    "first_process_result_seconds": 6.231366625004739,
+    "load_seconds": 3.8118450000038138,
+    "peak_mlx_bytes": 22854276256,
+    "peak_rss_bytes": 17103077376,
+    "model_bytes": 22804840143,
+    "guard_rejections": 2,
+    "generation_retries": 0,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 4
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 4
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 5
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 27
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 6
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  },
+  "qwen3.8-27b-6bit/strict": {
+    "acceptable": 60,
+    "total": 64,
+    "critical_failures": 3,
+    "app_failures": 0,
+    "median_task_seconds": 2.020787375004147,
+    "p90_task_seconds": 2.7951521670038346,
+    "identical_short_task_median_seconds": 1.728488834000018,
+    "identical_short_task_min_seconds": 1.7099999170022784,
+    "identical_short_task_max_seconds": 1.7613670830032788,
+    "first_task_seconds": 1.921123959000397,
+    "first_process_result_seconds": null,
+    "load_seconds": 3.8118450000038138,
+    "peak_mlx_bytes": 22854276256,
+    "peak_rss_bytes": 17103077376,
+    "model_bytes": 22804840143,
+    "guard_rejections": 1,
+    "generation_retries": 0,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "coding": {
+        "total": 5,
+        "acceptable": 5
+      },
+      "email": {
+        "total": 9,
+        "acceptable": 9
+      },
+      "general": {
+        "total": 30,
+        "acceptable": 28
+      },
+      "terminal": {
+        "total": 7,
+        "acceptable": 5
+      },
+      "writing": {
+        "total": 8,
+        "acceptable": 8
+      }
+    }
+  }
+}

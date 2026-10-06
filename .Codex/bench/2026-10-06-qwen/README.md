@@ -4,6 +4,10 @@ Measured 2026-10-06 against production source `a2285d3396c50b55babc0d0bcf294633f
 This evaluates the second-stage text editor, after speech recognition. It does
 not change the app, its selected models, or Parakeet v2/v3 behavior.
 
+The subsequent [quantized-build comparison](../2026-10-06-qwen-quants/README.md)
+adds 9B 8-bit and 27B mixed 3-bit/6-bit builds with fresh same-session controls.
+The measurements below remain the original four-model study.
+
 **Qwen3.8 27B gave the best results with existing prompts, but Qwen3.5 9B is the
 more practical new challenger for quick dictation. Neither is a ready default
 replacement.** The larger model accepted only two more tasks than 9B, took

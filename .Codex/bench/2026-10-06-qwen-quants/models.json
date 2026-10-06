@@ -1,0 +1,50 @@
+{
+  "qwen3-4b": {
+    "repo": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+    "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "path": "/Users/justin/.cache/huggingface/hub/models--mlx-community--Qwen3-4B-Instruct-2507-4bit/snapshots/50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+    "origin": "previous pinned benchmark cache; read only",
+    "logical_bytes": 2278972236,
+    "preparation_seconds": 0.0008775829992373474
+  },
+  "qwen3.5-9b": {
+    "repo": "mlx-community/Qwen3.5-9B-4bit",
+    "revision": "8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen/hf/hub/models--mlx-community--Qwen3.5-9B-4bit/snapshots/8b2b98c00a6b4d291155e4890773ca8f769aee53",
+    "origin": "previous pinned benchmark cache; read only",
+    "logical_bytes": 5977073303,
+    "preparation_seconds": 0.001055583001289051
+  },
+  "qwen3.8-27b": {
+    "repo": "mlx-community/Qwen3.8-27B-4bit",
+    "revision": "10c35caafbb80f7dc6a7a432cdd11af10a6d4818",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen/hf/hub/models--mlx-community--Qwen3.8-27B-4bit/snapshots/10c35caafbb80f7dc6a7a432cdd11af10a6d4818",
+    "origin": "previous pinned benchmark cache; read only",
+    "logical_bytes": 16081490933,
+    "preparation_seconds": 0.0006139160032034852
+  },
+  "qwen3.5-9b-8bit": {
+    "repo": "mlx-community/Qwen3.5-9B-MLX-8bit",
+    "revision": "84f7c2deea248d8df56240f88102def51c7ed5d6",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen-quants/hf/hub/models--mlx-community--Qwen3.5-9B-MLX-8bit/snapshots/84f7c2deea248d8df56240f88102def51c7ed5d6",
+    "origin": "isolated pinned benchmark download",
+    "logical_bytes": 10453446077,
+    "preparation_seconds": 101.67563616699772
+  },
+  "qwen3.8-27b-6bit": {
+    "repo": "lmstudio-community/Qwen3.8-27B-MLX-6bit",
+    "revision": "05f38c1f39e2f39619653616fe8e96a5d676358e",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen-quants/hf/hub/models--lmstudio-community--Qwen3.8-27B-MLX-6bit/snapshots/05f38c1f39e2f39619653616fe8e96a5d676358e",
+    "origin": "isolated pinned benchmark download",
+    "logical_bytes": 22804840143,
+    "preparation_seconds": 208.17345550000027
+  },
+  "qwen3.8-27b-3bit": {
+    "repo": "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+    "revision": "5fc234d9e6080b8388a11286380e801b7c9f535c",
+    "path": "/Users/justin/Library/Caches/AudioWhisperBench/2026-10-06-qwen-quants/hf/hub/models--leonsarmiento--Qwen3.8-27B-3bit-mlx/snapshots/5fc234d9e6080b8388a11286380e801b7c9f535c",
+    "origin": "isolated pinned benchmark download",
+    "logical_bytes": 12729689604,
+    "preparation_seconds": 112.78207233300054
+  }
+}
