@@ -1,0 +1,394 @@
+[
+  {
+    "cycle": 1,
+    "page": "record",
+    "state": {
+      "clipboard": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog.",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 55,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 52,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 47,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 500,
+            "Width": 500,
+            "X": 0,
+            "Y": 268
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 230,
+            "Width": 380,
+            "X": 322,
+            "Y": 255
+          },
+          "id": 59,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 54,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 53,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "cycle": 1,
+    "page": "library",
+    "state": {
+      "clipboard": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog.",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 55,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 52,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 1179,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 47,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 500,
+            "Width": 500,
+            "X": 0,
+            "Y": 268
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 230,
+            "Width": 380,
+            "X": 322,
+            "Y": 255
+          },
+          "id": 59,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 54,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 53,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "cycle": 2,
+    "page": "record",
+    "state": {
+      "clipboard": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog.",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 55,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 52,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 47,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 500,
+            "Width": 500,
+            "X": 0,
+            "Y": 268
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 230,
+            "Width": 380,
+            "X": 322,
+            "Y": 255
+          },
+          "id": 59,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 54,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 53,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "cycle": 2,
+    "page": "library",
+    "state": {
+      "clipboard": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog.",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 55,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 52,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 1179,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 47,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 500,
+            "Width": 500,
+            "X": 0,
+            "Y": 268
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 230,
+            "Width": 380,
+            "X": 322,
+            "Y": 255
+          },
+          "id": 59,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 54,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 53,
+          "visible": false
+        }
+      ]
+    }
+  }
+]

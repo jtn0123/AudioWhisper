@@ -1,33 +1,36 @@
 # Current AudioWhisper Rebuild audit
 
-Audited code: `187eacdb55737ba8eb6b57c9bb59f5e0cc23c506`, 2026-10-04.
+Audited code: `f30c081ed0bc324bf29c882052a6033d7028783b`, 2026-10-06.
 
-- [Overall codebase report](grade-report-187eacd.md): **B−**, 18 open improvements across nine categories.
-- [UI/UX report](ui-ux-grade-report-187eacd.md): **B**, four concrete improvements and separately listed acceptance gaps.
-- [English-first model review](model-review-2026-10-04.md): current options, ranked challengers, publisher evidence and a comparison plan.
-- [Measured M5 Pro model comparison](bench/2026-10-05-m5-pro/README.md): nine speech and six cleanup models, local speed/quality/memory charts and semantic acceptance findings.
-- [Qwen3.5 / Qwen3.8 follow-up](bench/2026-10-06-qwen/README.md): 64 English cleanup stress cases on four models; 27B improved results at a memory/latency cost, with confirmed quote and thinking-template integration defects.
-- [Qwen quantized-build comparison](bench/2026-10-06-qwen-quants/README.md): 9B 8-bit and 27B mixed 3-bit/6-bit builds, with same-session 4-bit controls and separate prompt conditions.
-- [Audit reproduction/CI evidence](audit-187eacd/README.md).
-- [Native macOS VM validation](macos-vm-validation.md): completed recorder/paste/full-screen checks and remaining hardware/compatibility limits.
+- [Current codebase grade](grade-report-f30c081.md): **B−**, 20 open improvements.
+- [Current UI/UX grade](ui-ux-grade-report-f30c081.md): **B**, 7 concrete improvements.
+- [Current native VM evidence](ui-ux-audit/2026-10-06-f30c081/README.md): exact
+  installed executable identity, 10 start/cancel cycles, fixture transcription,
+  exactly-once Smart Paste, all five workspace screens and reproduced Library
+  window overflow. Guest synthetic input is distinct from physical acceptance.
+- [Current reproduction/CI evidence](audit-f30c081/README.md).
+- [Qwen3.5/3.8 adopted integration](bench/2026-10-06-qwen-integration/README.md):
+  fixed thinking/quote handling, 128 one-pass edits and packaged offline model
+  switching. Successful completion does not guarantee preserved meaning.
+- [M5 Pro model comparison](bench/2026-10-05-m5-pro/README.md),
+  [Qwen follow-up](bench/2026-10-06-qwen/README.md), and
+  [quantized-build comparison](bench/2026-10-06-qwen-quants/README.md) retain
+  measured speed/memory/quality evidence and benchmark-specific limits.
+- [Earlier native compatibility evidence](macos-vm-validation.md) retains
+  full-screen and consent checks with their original build identities.
 
-Highest priorities in the current codebase report: **B1, B2, I1, D1, C1**.
-English among current Apple Silicon choices: **Parakeet v2**, with **v3 retained
-for multilingual use**. The 2026-10-05 local benchmark retains that recommendation:
-Granite wins warm speed but lost amount polarity and invented words during
-non-speech; Cohere/Qwen ASR did not improve the sampled English tradeoff.
-Keep **Qwen3 4B Instruct 2507** as the balanced optional writing default; every
-tested writer made meaningful mistakes, including outputs accepted by the guard.
-The Qwen follow-up retains that default pending output-handling fixes and broader
-validation. Qwen3.5 9B is a balanced challenger; Qwen3.8 27B is a possible quality
-option. Neither was adopted or added to the installed app by the benchmark.
-The quantized-build follow-up makes mixed 3-bit 27B a lower-memory candidate:
-it matched direct 4-bit acceptance using 18% less MLX allocation. The 8-bit 9B
-gain depended on the prompt; 6-bit 27B did not justify its cost in this sample.
-All six builds passed a basic installed-runtime load/correction smoke check.
-This does not close the thinking-template, sanitizer, or app acceptance gaps.
+Parakeet **v2 remains the English recommendation**, with v3 retained as an
+option. Qwen3.5 **9B 4-bit is now recommended/default for new installations**;
+Qwen3.8 **27B mixed 3-bit is optional**, and three lightweight legacy choices
+remain. Existing explicit preferences are preserved. The host user's selected
+cleanup model is 3.5, but cleanup remains off and shortcut disabled as before.
 
-Specify the report when requesting an item, for example **“187eacd codebase B1”**
-or **“187eacd UI B1.”** Older canonical reports describe historical snapshots and
-retain their original IDs/completion records. This audit did not modify the app,
-its installed build, permissions or model selections.
+Highest code priorities: **B1, B2, B3, B4, C3** — preserve bracketed words,
+preserve meaning, protect long dictation, retain the original, fix Library
+window overflow. Then **I1, E1, C1** for analyzer execution, dependency patch and
+model-install progress/cancellation. See the report's ranked list.
+
+Specify **“f30c081 code B1”** or **“f30c081 UI C1”** for these current items.
+[Prior codebase](grade-report-187eacd.md), [prior UI](ui-ux-grade-report-187eacd.md)
+and canonical historical reports retain their original IDs/completion records.
+This grade changed reports/evidence only, not app behavior or host permissions.
