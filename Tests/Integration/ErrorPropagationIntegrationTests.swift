@@ -200,8 +200,8 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
         // When
         let cleaned = SpeechToTextService.cleanTranscriptionText(nested)
 
-        // Then - All markers removed
-        XCTAssertEqual(cleaned, "Hello world")
+        // Then - Unrecognized nested content preserved
+        XCTAssertEqual(cleaned, nested)
     }
 
     func testCleanTranscriptionTextWithOnlyMarkers() {

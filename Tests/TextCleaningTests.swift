@@ -77,7 +77,7 @@ final class TextCleaningTests: XCTestCase {
     
     func testWhitespaceNormalization() {
         let input = "  Hello    world   with   extra   spaces  "
-        let expected = "Hello world with extra spaces"
+        let expected = "Hello    world   with   extra   spaces"
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)
     }
@@ -102,41 +102,40 @@ final class TextCleaningTests: XCTestCase {
     }
     
     func testNestedMarkersHandling() {
-        // Test that nested brackets/parentheses are properly handled with iterative approach
+        // Ordinary nested content is part of the transcript, not an acoustic marker.
         let input = "Hello [some [nested] content] world (and (nested) parens) text"
-        let expected = "Hello world text"
+        let expected = input
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)
     }
     
     func testEmptyMarkersHandling() {
         let input = "Hello [] world () text"
-        let expected = "Hello world text"
+        let expected = input
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)
     }
     
     func testPreserveValidParenthesesAndBrackets() {
         // Test that we preserve parentheses and brackets that are part of actual content
-        // Note: This is a limitation of the generic approach - it will remove ALL bracketed/parenthetical content
+        // Formulae and arrays must retain their content.
         let input = "The formula is (x + y) and the array is [1, 2, 3]"
-        let expected = "The formula is and the array is"
+        let expected = input
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)
         
-        // This test documents the current behavior - we might want to make this more sophisticated later
     }
     
     func testDeeplyNestedMarkers() {
         let input = "Text [outer [middle [inner] middle] outer] more text"
-        let expected = "Text more text"
+        let expected = input
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)
     }
     
     func testMixedNestedMarkers() {
         let input = "Start [bracket (paren inside bracket) bracket] and (paren [bracket inside paren] paren) end"
-        let expected = "Start and end"
+        let expected = input
         let result = SpeechToTextService.cleanTranscriptionText(input)
         XCTAssertEqual(result, expected)
     }
@@ -149,6 +148,23 @@ final class TextCleaningTests: XCTestCase {
         XCTAssertEqual(result, expected)
     }
     
+    func testPreservesDetailsAndCodeBeforeOptionalCleanup() {
+        for text in [
+            "Send the report (including taxes) to Jordan [the editor].",
+            "let ids = [1, 2, 3]; print(ids[0])",
+            "if ready {\n    print(ids[0])\n}\n\nNext paragraph.",
+            "The literal is \"[music]\" and the lookup is tracks[music]."
+        ] {
+            XCTAssertEqual(SpeechToTextService.cleanTranscriptionText(text), text)
+        }
+    }
+
+    func testNoiseRemovalPreservesLineBreaks() {
+        XCTAssertEqual(
+            SpeechToTextService.cleanTranscriptionText("First line [music]\nSecond line (applause)\n\nThird line"),
+            "First line \nSecond line \n\nThird line")
+    }
+
     func testPerformance() {
         let longText = String(repeating: "Hello [BLANK_AUDIO] world [Music] and (crying) text (applause) ", count: 1000)
 

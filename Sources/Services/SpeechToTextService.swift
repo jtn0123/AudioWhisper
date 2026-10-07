@@ -222,36 +222,26 @@ internal class SpeechToTextService {
         return cleaned
     }
 
-    /// Cleans transcription text by removing common markers and artifacts
+    /// Remove only recognized acoustic annotations. Ordinary bracketed content,
+    /// code punctuation and line structure belong to the user's transcript.
+    private static let acousticMarkers: NSRegularExpression? = {
+        let names = [
+            "blank audio", "no audio", "silence", "empty", "music", "background music",
+            "background noise", "inaudible", "laughter", "laughing", "applause", "coughing",
+            "door closing", "door slamming", "phone ringing", "crying", "sighs", "whispers", "shouting"
+        ].map { $0.replacingOccurrences(of: " ", with: "[ _]+") }.joined(separator: "|")
+        // A quoted literal or an array/function operand is not an acoustic tag.
+        let marker = "(?:\\[(?:\(names))\\]|\\((?:\(names))\\))"
+        return try? NSRegularExpression(
+            pattern: "[ \t]*(?<![\\p{L}\\p{N}_\"'`])" + marker + "(?![\\p{L}\\p{N}_])[ \t]*",
+            options: [.caseInsensitive])
+    }()
+
     static func cleanTranscriptionText(_ text: String) -> String {
-        var cleanedText = text
-
-        // Remove bracketed markers iteratively to handle nested cases
-        var previousLength = 0
-        while cleanedText.count != previousLength {
-            previousLength = cleanedText.count
-            cleanedText = cleanedText.replacingOccurrences(
-                of: "\\[[^\\[\\]]*\\]",
-                with: "",
-                options: .regularExpression
-            )
-        }
-
-        // Remove parenthetical markers iteratively to handle nested cases
-        previousLength = 0
-        while cleanedText.count != previousLength {
-            previousLength = cleanedText.count
-            cleanedText = cleanedText.replacingOccurrences(
-                of: "\\([^\\(\\)]*\\)",
-                with: "",
-                options: .regularExpression
-            )
-        }
-
-        // Clean up whitespace and return
-        return cleanedText
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        guard let markers = acousticMarkers else { return text }
+        let cleaned = markers.stringByReplacingMatches(
+            in: text, range: NSRange(text.startIndex..<text.endIndex, in: text), withTemplate: " ")
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
 }

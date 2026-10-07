@@ -220,7 +220,7 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
     }
 
     func testCleanTranscriptionTextWithParentheses() {
-        let inputWithParens = "Hello (background noise) world (unclear)"
+        let inputWithParens = "Hello (background noise) world (inaudible)"
         let cleaned = SpeechToTextService.cleanTranscriptionText(inputWithParens)
 
         XCTAssertEqual(cleaned, "Hello world")
@@ -232,7 +232,7 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
         let inputNested = "Hello [[nested]] world"
         let cleaned = SpeechToTextService.cleanTranscriptionText(inputNested)
 
-        XCTAssertEqual(cleaned, "Hello world")
+        XCTAssertEqual(cleaned, inputNested)
     }
 
     func testCleanTranscriptionTextPreservesNormalText() {

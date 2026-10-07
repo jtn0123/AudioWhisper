@@ -83,7 +83,7 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
     func testCleanTranscriptionTextRemovesNestedBrackets() {
         let input = "Hello [[nested]] world"
         let result = SpeechToTextService.cleanTranscriptionText(input)
-        XCTAssertEqual(result, "Hello world")
+        XCTAssertEqual(result, input)
     }
 
     func testCleanTranscriptionTextTrimsWhitespace() {
@@ -95,7 +95,7 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
     func testCleanTranscriptionTextNormalizesSpaces() {
         let input = "Hello    world"
         let result = SpeechToTextService.cleanTranscriptionText(input)
-        XCTAssertEqual(result, "Hello world")
+        XCTAssertEqual(result, input)
     }
 
     // MARK: - Parakeet Provider Tests

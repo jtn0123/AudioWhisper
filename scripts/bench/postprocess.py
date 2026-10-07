@@ -12,10 +12,10 @@ def build_helper(root: Path, base: Path) -> Path:
     guard_path = root / "Sources/Services/SemanticCorrectionService.swift"
     cleaner_path = root / "Sources/Services/SpeechToTextService.swift"
     guard = guard_path.read_text().split("    static func maxChangeRatio", 1)[1].rsplit("}", 1)[0]
-    cleaner = cleaner_path.read_text().split("    static func cleanTranscriptionText", 1)[1].rsplit("}", 1)[0]
+    cleaner = cleaner_path.read_text().split("    private static let acousticMarkers", 1)[1].rsplit("}", 1)[0]
     source = (
         "import Foundation\nenum Guard {\n    static func maxChangeRatio" + guard + "}\n"
-        "enum Cleaner {\n    static func cleanTranscriptionText" + cleaner + "}\n"
+        "enum Cleaner {\n    private static let acousticMarkers" + cleaner + "}\n"
         """
 while let line = readLine() {
     let input = try JSONSerialization.jsonObject(with: Data(line.utf8)) as! [String: Any]

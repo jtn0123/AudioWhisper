@@ -119,7 +119,7 @@ The service layer has useful boundaries and safe fallbacks: injected speech prov
 
 Layman: The engines work much better, but some of your words can still disappear or be rewritten incorrectly.
 
-#### B1 — Preserve real parentheses, brackets and line structure
+#### ~~B1~~ ✓ done 2026-10-06 — Preserve real parentheses, brackets and line structure
 
 - **Where:** `Sources/Services/SpeechToTextService.swift:229-254`; `Tests/SpeechToTextServiceTests.swift`.
 - **What's wrong:** The raw transcript cleaner deletes every bracketed/parenthesized span, then collapses all whitespace into a single line. Fresh pure-function reproduction: `Send the report (including taxes) to Jordan [the editor].` becomes `Send the report to Jordan .`; `let ids = [1, 2, 3]; print(ids[0])` becomes `let ids = ; print`. Both speech providers call this before optional cleanup, so a writing model cannot restore deleted context.
@@ -128,6 +128,8 @@ Layman: The engines work much better, but some of your words can still disappear
 - **Effort:** S.
 - **Grade lift:** C+ → B−, removing deterministic silent transcript loss.
 - **Simply:** Keep the words in brackets instead of treating them all as noise.
+
+**B1 validation:** 11 expected preservation failures before; 75 focused cleaner/service/integration tests pass after. Recognized acoustic markers still produce no-speech errors. Ordinary nested text, code, quotes and line breaks survive.
 
 #### B2 — Protect meaning and keep cleanup from inventing content
 

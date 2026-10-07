@@ -97,12 +97,12 @@ final class SpeechToTextServiceCoverageTests: IsolatedXCTestCase {
 
     func testCleanRemovesNestedBrackets() {
         let result = SpeechToTextService.cleanTranscriptionText("Start [outer [inner]] end")
-        XCTAssertEqual(result, "Start end")
+        XCTAssertEqual(result, "Start [outer [inner]] end")
     }
 
     func testCleanCollapsesWhitespace() {
         let result = SpeechToTextService.cleanTranscriptionText("a    b\t\tc")
-        XCTAssertEqual(result, "a b c")
+        XCTAssertEqual(result, "a    b\t\tc")
     }
 
     func testCleanTrimsLeadingTrailingWhitespace() {
