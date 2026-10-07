@@ -66,6 +66,7 @@ extension MLXModelManager {
                 let lineStr = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
                 if lineStr.isEmpty { continue }
                 Task { @MainActor [weak self] in
+                    guard process.isRunning else { return }
                     self?.applyDownloadProgressLine(lineStr, for: repo)
                 }
             }
