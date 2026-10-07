@@ -13,6 +13,7 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
     private var runtime = true
     private var installs = 0
     private var install: (() async throws -> Void)?
+    private var verify: (() async throws -> ModelVerificationResult)?
     private var completion: (@Sendable (Bool) -> Void)?
 
     private func makeSession() -> RebuildSession {
@@ -33,7 +34,10 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
                     self.installs += 1
                     if let install = self.install { try await install() } else { self.installed = true }
                 },
-                verify: { _ in ModelVerificationResult(succeeded: true, message: "Fixture verified") }))
+                verify: { _ in
+                    if let verify = self.verify { return try await verify() }
+                    return ModelVerificationResult(succeeded: true, message: "Fixture verified")
+                }))
         session.openSetup = { self.openedSetup += 1 }
         return session
     }
@@ -133,5 +137,48 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
         let deadline = ContinuousClock.now + .seconds(2)
         while !condition(), ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(1)) }
         XCTAssertTrue(condition(), "Setup action did not publish the required state")
+    }
+}
+
+extension RebuildModelsBehaviorTests {
+    func testVerificationFailureIsVisibleBlocksRecordingAndCanBeRepaired() async throws {
+        permission = .authorized
+        installed = true
+        var succeeded = false
+        verify = { ModelVerificationResult(succeeded: succeeded, message: succeeded ? "Fixture repaired" : "Fixture corrupt") }
+        let session = makeSession()
+        await session.refreshSetup()
+        let view = RebuildModelsView(session: session)
+        try view.inspect().find(button: "Verify model").tap()
+        try await waitFor { session.readiness.modelVerificationFailed }
+        _ = try view.inspect().find(text: "Fixture corrupt")
+        _ = try view.inspect().find(text: "Repair or verify your voice model")
+        XCTAssertFalse(session.readiness.ready)
+        try view.inspect().find(button: "Finish setup").tap()
+        XCTAssertEqual(starts, 0)
+        succeeded = true
+        try view.inspect().find(button: "Verify model").tap()
+        try await waitFor { session.readiness.ready && session.verificationMessage == "Fixture repaired" }
+        _ = try view.inspect().find(text: "Fixture repaired")
+        _ = try view.inspect().find(text: "Ready to record")
+    }
+
+    func testPendingVerificationDisablesModelRemovalAndRecording() async throws {
+        permission = .authorized
+        installed = true
+        var pending: CheckedContinuation<ModelVerificationResult, Never>?
+        verify = { await withCheckedContinuation { pending = $0 } }
+        let session = makeSession()
+        await session.refreshSetup()
+        let view = RebuildModelsView(session: session)
+        try view.inspect().find(button: "Verify model").tap()
+        try await waitFor { pending != nil }
+        XCTAssertTrue(try view.inspect().find(button: "Verifying…").isDisabled())
+        XCTAssertTrue(try view.inspect().find(button: "Remove selected model…").isDisabled())
+        XCTAssertTrue(try view.inspect().find(button: "Check installation").isDisabled())
+        XCTAssertFalse(session.canImportAudio)
+        try XCTUnwrap(pending).resume(returning: ModelVerificationResult(succeeded: true, message: "Fixture verified"))
+        try await waitFor { !session.maintenanceInProgress }
+        XCTAssertTrue(session.readiness.ready)
     }
 }

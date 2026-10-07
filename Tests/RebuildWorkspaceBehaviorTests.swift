@@ -156,6 +156,7 @@ extension RebuildWorkspaceBehaviorTests {
     }
 
     func testNativeMenuCommandsRouteToTheSessionAndDisableImportWhileRecording() {
+        _ = NSApplication.shared
         let session = session()
         var opened = 0
         var imported = 0
