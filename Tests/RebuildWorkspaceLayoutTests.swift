@@ -8,6 +8,9 @@ import XCTest
 final class RebuildWorkspaceLayoutTests: IsolatedXCTestCase {
     func testPopulatedLibraryAndPageTransitionsKeepTheUserWindowSize() async throws {
         try XCTSkipUnless(WindowServer.hasActiveDisplay, "Hosting layout requires a WindowServer")
+        // Each parallel XCTest worker starts without the app's entry point.
+        // Initialize AppKit before creating a native window on older macOS.
+        _ = NSApplication.shared
         let shortcutKey = "KeyboardShortcuts_rebuild.recording"
         let previousShortcut = UserDefaults.standard.object(forKey: shortcutKey)
         defer { UserDefaults.standard.set(previousShortcut, forKey: shortcutKey) }
