@@ -46,6 +46,27 @@ final class CorrectionIntegrityTests: XCTestCase {
         }
     }
 
+    func testLongUnrelatedEditsAreRejectedAtEveryCategoryThreshold() {
+        let original = String(repeating: "alpha ", count: 900)
+        let edited = String(repeating: "bravo ", count: 900)
+        for ratio in [0.6, 0.85] { XCTAssertEqual(merge(original, edited, ratio: ratio), original) }
+    }
+
+    func testLongSmallCorrectionSurvivesAndTruncationDoesNot() {
+        let original = String(repeating: "The release is ready. ", count: 450)
+        let edited = "The release is nearly ready. " + String(original.dropFirst("The release is ready. ".count))
+        XCTAssertEqual(merge(original, edited), edited.trimmingCharacters(in: .whitespacesAndNewlines))
+        XCTAssertEqual(merge(original, String(original.prefix(original.count / 4))), original)
+    }
+
+    func testLargeAdversarialComparisonFailsClosedWithinBudget() {
+        let original = String(repeating: "alpha ", count: 20000)
+        let edited = String(repeating: "bravo ", count: 20000)
+        let start = Date()
+        XCTAssertEqual(merge(original, edited), original)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 3, "Guard must not run an unbounded quadratic comparison")
+    }
+
     private func merge(_ original: String, _ edited: String, ratio: Double = 0.6) -> String {
         SemanticCorrectionService.safeMerge(original: original, corrected: edited, maxChangeRatio: ratio)
     }

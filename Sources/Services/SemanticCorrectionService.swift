@@ -207,20 +207,16 @@ internal final class SemanticCorrectionService {
         }
     }
 
-    /// Hard ceiling above which we skip the O(m*n) Levenshtein computation.
+    /// Threshold for switching to the bounded content comparison.
     /// At ~4k chars the DP runs in well under a second; above that, a 30+ minute
-    /// transcript can stall the correction pipeline for many seconds. Load-bearing.
+    /// transcript uses a bounded changed-span/token comparison instead.
     static let safeMergeLengthCap = 4000
 
     static func safeMerge(original: String, corrected: String, maxChangeRatio: Double) -> String {
         guard !corrected.isEmpty, CorrectionIntegrity.allows(original: original, corrected: corrected) else { return original }
-        // H20: For long inputs, fall back to a cheap length-ratio heuristic so
-        // we don't run an O(m*n) edit-distance DP on tens of thousands of chars.
         if max(original.count, corrected.count) > safeMergeLengthCap {
-            let denom = max(original.count, corrected.count)
-            guard denom > 0 else { return original }
-            let lengthDelta = Double(abs(original.count - corrected.count)) / Double(denom)
-            if lengthDelta > maxChangeRatio { return original }
+            guard let ratio = CorrectionContentComparison.ratio(original: original, corrected: corrected),
+                ratio <= maxChangeRatio else { return original }
             return corrected.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         let ratio = normalizedEditDistance(a: original, b: corrected)

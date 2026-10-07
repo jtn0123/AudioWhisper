@@ -143,7 +143,7 @@ Layman: The engines work much better, but some of your words can still disappear
 
 **B2 validation:** 10 failing assertions before; 67 focused guard/service/session tests pass after. The app now prepends an integrity instruction to every profile, checks literal flags/code/identifiers, names, numbers and polarity, rejects invented email structure, and visibly reports rejected cleanup. These conservative checks can retain a useful edit unnecessarily and are not proof of semantic equivalence; B4 supplies comparison/recovery.
 
-#### B3 — Compare content for long corrections
+#### ~~B3~~ ✓ done 2026-10-06 — Compare content for long corrections
 
 - **Where:** `Sources/Services/SemanticCorrectionService.swift:208-226`.
 - **What's wrong:** For >4,000 characters, the safety guard compares only length. Fresh exact-function reproduction: 3,600 characters of `alpha ` changed to equally long `bravo ` is rejected, but 5,400 characters of the same unrelated rewrite is accepted. This is a current guard defect, not an observed model generation.
@@ -152,6 +152,8 @@ Layman: The engines work much better, but some of your words can still disappear
 - **Effort:** M.
 - **Grade lift:** C+ → B−; together with B1/B2, toward B.
 - **Simply:** Long transcripts need the same protection as short ones.
+
+**B3 validation:** Three content-preservation assertions failed before; all 48 focused guard/service tests pass after. Long corrections now compare a bounded changed character span or token edit distance, and retain the original when the size/operation budget is inconclusive. Same-length unrelated rewrites fail, small long edits pass, and a 120k-character adversarial input stays within the test budget.
 
 #### B4 — Retain the original so cleanup can be undone
 
