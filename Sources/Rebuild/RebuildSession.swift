@@ -45,6 +45,7 @@ struct RebuildSessionServices {
     var interruptionSource: NSObject?
     var startError: () -> String? = { nil }
     var startAsync: ((UUID) async -> Bool)?
+    var saveResult: ((TranscriptionResult, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void)?
 
     static func live(
         recorder: AudioEngineRecorder,
@@ -71,24 +72,36 @@ struct RebuildSessionServices {
             },
             copy: copy ?? PasteManager.copyToClipboard,
             save: { text, config, duration in
-                let count = UsageMetricsStore.estimatedWordCount(for: text)
-                usage.recordSession(duration: duration, wordCount: count, characterCount: text.count)
-                guard AppDefaults.transcriptionHistoryEnabled else { return }
-                try await history.saveTranscription(
-                    TranscriptionRecord(
-                        text: text, provider: config.provider, duration: duration,
-                        modelUsed: config.provider == .local
-                            ? config.whisperModel?.rawValue : config.parakeetModel?.rawValue,
-                        wordCount: count, characterCount: text.count, sourceAppBundleId: config.sourceAppBundleId
-                    ))
+                try await persist(
+                    TranscriptionResult(text: text, correctionOutcome: nil), config: config,
+                    duration: duration, history: history, usage: usage)
             },
             interruptionSource: recorder,
             startError: { recorder.lastStartError },
             startAsync: { id in
                 PermissionManager.shared.checkPermissionState()
                 return await recorder.startRecordingAsync(sessionID: id)
+            },
+            saveResult: { result, config, duration in
+                try await persist(result, config: config, duration: duration, history: history, usage: usage)
             }
         )
+    }
+
+    private static func persist(
+        _ result: TranscriptionResult, config: TranscriptionPipelineConfig, duration: TimeInterval?,
+        history: DataManagerProtocol, usage: UsageMetricsStore
+    ) async throws {
+        let count = UsageMetricsStore.estimatedWordCount(for: result.text)
+        usage.recordSession(duration: duration, wordCount: count, characterCount: result.text.count)
+        guard AppDefaults.transcriptionHistoryEnabled else { return }
+        try await history.saveTranscription(
+            TranscriptionRecord(
+                text: result.text, provider: config.provider, duration: duration,
+                modelUsed: config.provider == .local
+                    ? config.whisperModel?.rawValue : config.parakeetModel?.rawValue,
+                wordCount: count, characterCount: result.text.count, sourceAppBundleId: config.sourceAppBundleId,
+                originalText: result.originalText == result.text ? nil : result.originalText))
     }
 }
 
@@ -100,6 +113,7 @@ final class RebuildSession {
     private(set) var phase: RebuildPhase = .idle
     var readiness = RebuildReadiness()
     var transcript = ""
+    private(set) var originalTranscript: String?
     var notice: String?
     var setupError: String?
     private(set) var isInstalling = false
@@ -303,6 +317,7 @@ final class RebuildSession {
                         ])
                 }
                 transcript = result.text
+                originalTranscript = result.originalText
                 services.copy(result.text)
                 if case .rejected = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup could not safely preserve your words."
@@ -310,7 +325,13 @@ final class RebuildSession {
                 if case .failed = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup was unavailable."
                 }
-                do { try await services.save(result.text, config, duration) } catch {
+                do {
+                    if let saveResult = services.saveResult {
+                        try await saveResult(result, config, duration)
+                    } else {
+                        try await services.save(result.text, config, duration)
+                    }
+                } catch {
                     notice = "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
                 }
                 guard !Task.isCancelled, sessionID == id else { return }
@@ -488,4 +509,17 @@ extension RebuildSession {
         await refreshSetup()
     }
 
+}
+
+extension RebuildSession {
+    var canUseOriginal: Bool {
+        !phase.isBusy && originalTranscript != nil && originalTranscript != transcript
+    }
+
+    func useOriginalTranscript() {
+        guard canUseOriginal, let originalTranscript else { return }
+        transcript = originalTranscript
+        services.copy(originalTranscript)
+        notice = "Original copied. Paste manually with Command V."
+    }
 }

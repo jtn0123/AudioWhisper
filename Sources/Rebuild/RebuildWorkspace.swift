@@ -238,7 +238,17 @@ struct RebuildRecordView: View {
                                 .caption
                             ).foregroundStyle(.secondary)
                             Spacer()
+                            if session.canUseOriginal {
+                                Button("Use original", action: session.useOriginalTranscript)
+                                    .help("Restore and copy your words before writing cleanup")
+                            }
                             Button("Copy text") { PasteManager.copyToClipboard(session.transcript) }
+                        }
+                        if let original = session.originalTranscript, original != session.transcript {
+                            DisclosureGroup("Compare with original") {
+                                Text(original).font(.system(size: 15)).textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+                            }.disabled(session.phase.isBusy)
                         }
                     }
                 }

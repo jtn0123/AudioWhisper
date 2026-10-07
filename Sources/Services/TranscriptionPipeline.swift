@@ -14,6 +14,13 @@ internal struct TranscriptionResult {
     /// Outcome of the semantic-correction stage. `nil` when correction was
     /// disabled via `TranscriptionPipelineConfig.applySemanticCorrection`.
     let correctionOutcome: CorrectionOutcome?
+    let originalText: String
+
+    init(text: String, correctionOutcome: CorrectionOutcome?, originalText: String? = nil) {
+        self.text = text
+        self.correctionOutcome = correctionOutcome
+        self.originalText = originalText ?? text
+    }
 }
 
 /// Orchestrates the full transcription flow: validate audio → transcribe →
@@ -94,7 +101,7 @@ internal class TranscriptionPipeline {
         let outcomeText = outcome.text
         let trimmed = outcomeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalText = trimmed.isEmpty ? rawText : outcomeText
-        return TranscriptionResult(text: finalText, correctionOutcome: outcome)
+        return TranscriptionResult(text: finalText, correctionOutcome: outcome, originalText: rawText)
     }
 
     /// Convenience method that transcribes without semantic correction.

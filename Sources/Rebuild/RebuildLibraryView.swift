@@ -65,6 +65,13 @@ struct RebuildLibraryView: View {
                                         Text("\(record.wordCount) words · \(record.provider)")
                                     }.font(.caption).foregroundStyle(.secondary)
                                     Text(record.text).font(.system(size: 14)).textSelection(.enabled)
+                                    if let original = record.originalText, original != record.text {
+                                        DisclosureGroup("Original transcript") {
+                                            Text(original).font(.system(size: 14)).textSelection(.enabled)
+                                                .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+                                            Button("Copy original") { PasteManager.copyToClipboard(original) }
+                                        }
+                                    }
                                     HStack {
                                         Button("Copy") { PasteManager.copyToClipboard(record.text) }
                                             .accessibilityLabel(

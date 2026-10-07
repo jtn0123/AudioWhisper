@@ -155,7 +155,7 @@ Layman: The engines work much better, but some of your words can still disappear
 
 **B3 validation:** Three content-preservation assertions failed before; all 48 focused guard/service tests pass after. Long corrections now compare a bounded changed character span or token edit distance, and retain the original when the size/operation budget is inconclusive. Same-length unrelated rewrites fail, small long edits pass, and a 120k-character adversarial input stays within the test budget.
 
-#### B4 — Retain the original so cleanup can be undone
+#### ~~B4~~ ✓ done 2026-10-06 — Retain the original so cleanup can be undone
 
 - **Where:** `Sources/Services/TranscriptionPipeline.swift:9-16`, `:71-97`; `Sources/Rebuild/RebuildSession.swift:305-311`; `Sources/Models/TranscriptionRecord.swift:11`.
 - **What's wrong:** The pipeline returns only final text on successful cleanup; session, clipboard and history then keep only that final text. Temporary audio is removed after success. An original recognized version cannot be recovered or compared if the model altered its meaning.
@@ -164,6 +164,8 @@ Layman: The engines work much better, but some of your words can still disappear
 - **Effort:** M.
 - **Grade lift:** C+ → B−; complements B1-B3 by making editing reversible.
 - **Simply:** Give you an Undo button for AI wording changes.
+
+**B4 validation:** Five original-propagation/recovery assertions failed before wiring the pipeline and live history path. All 68 focused pipeline/session/delivery/model checks pass after, including restore without another automatic delivery, one saved record/usage event, history-off privacy and a real SQLite reopen retaining both versions. A disposable SQLite created with the f30c081 model migrated through the new model in module AudioWhisper: the existing UUID/text remained, its original field was nil, and a new pair survived reopening. The workspace offers Compare with original/Use original; Library exposes Original transcript/Copy original. Native visual acceptance is recorded with the final five-fix package.
 
 ## C — Frontend Quality — B
 

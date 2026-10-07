@@ -66,7 +66,7 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 2. Successful cleanup replaces the only transcript exposed to the workspace; there is no compare/restore-original workflow. Actual production edits still sometimes omit meaning according to `.Codex/bench/2026-10-06-qwen-integration/README.md`.
 3. Correction downloads now reach 6.0/12.7 GB, but Writing offers only generic install feedback. App-specific mappings also expose identifiers and stale running-app choices.
 
-#### UI C1 — Let users compare and restore the original transcript
+#### ~~UI C1~~ ✓ done 2026-10-06 — Let users compare and restore the original transcript
 
 - **Where:** `Sources/Services/TranscriptionPipeline.swift:9-16`, `Sources/Services/SemanticCorrectionService.swift:12-25`, `Sources/Rebuild/RebuildSession.swift:296-310`, `Sources/Rebuild/RebuildWorkspace.swift:221-242`; `.Codex/bench/2026-10-06-qwen-integration/README.md`.
 - **Evidence:** The result exposes final text plus a correction outcome whose successful value contains only corrected text. Session assigns `result.text`, copies/saves it, and the workspace displays one editor with Copy. Original text is surfaced only on correction failure, despite recorded successful edits with unwanted omissions/formatting.
@@ -77,6 +77,8 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 - **Difficulty:** M
 - **Fix:** Carry raw text and applied profile/model alongside the final text; offer Original/Cleaned comparison and Use original/Copy original actions. Keep auto-delivery configurable and ensure restore does not produce an unexpected second paste. Add meaningful pipeline/session recovery tests.
 - **Grade lift:** B → B+, by restoring user control over uncertain edits; model-fidelity improvements remain separately necessary.
+
+**UI C1 validation:** Original/final propagation, restore/copy without a second delivery, history-off privacy, disk round-trip and legacy schema migration pass. Native compare/copy visuals are checked with the final package; these recovery controls complement the semantic guards and do not prove all model wording is correct.
 
 #### UI C2 — Show correction-install progress and allow cancellation
 

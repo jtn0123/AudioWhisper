@@ -94,6 +94,39 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         XCTAssertTrue(session.notice?.contains("original transcript") == true)
     }
 
+    func testSuccessfulCleanupRetainsOriginalAndCanBeRestoredWithoutAnotherDelivery() async throws {
+        try XCTSkipUnless(Arch.isAppleSilicon)
+        AppDefaults.semanticCorrectionMode = .localMLX
+        makeSession()
+        var deliveries = 0
+        session.didDeliver = { deliveries += 1 }
+        try await record()
+        try await waitFor { self.session.phase == .completed }
+        XCTAssertEqual(session.transcript, "Hello world.")
+        XCTAssertEqual(session.originalTranscript, "hello world")
+        let records = try await history.fetchAllRecords()
+        XCTAssertEqual(records.first?.originalText, "hello world")
+        session.useOriginalTranscript()
+        XCTAssertEqual(session.transcript, "hello world")
+        XCTAssertEqual(clipboard.string(forType: .string), "hello world")
+        XCTAssertEqual(deliveries, 1, "Restoring must not trigger another automatic delivery")
+        XCTAssertEqual(usage.snapshot.totalSessions, 1)
+        let restoredRecords = try await history.fetchAllRecords()
+        XCTAssertEqual(restoredRecords.count, 1)
+    }
+
+    func testHistoryOffRetainsOriginalOnlyInCurrentSession() async throws {
+        try XCTSkipUnless(Arch.isAppleSilicon)
+        AppDefaults.semanticCorrectionMode = .localMLX
+        AppDefaults.transcriptionHistoryEnabled = false
+        makeSession()
+        try await record()
+        try await waitFor { self.session.phase == .completed }
+        XCTAssertEqual(session.originalTranscript, "hello world")
+        let records = try await history.fetchAllRecords()
+        XCTAssertTrue(records.isEmpty)
+    }
+
     func testRealHistoryFailurePreservesClipboardAndDeliveredUsage() async throws {
         history.modelContainer = nil
         makeSession()

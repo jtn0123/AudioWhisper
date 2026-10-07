@@ -1,8 +1,29 @@
+import SwiftData
 import XCTest
 @testable import AudioWhisper
 
 final class TranscriptionRecordTests: XCTestCase {
     
+    @MainActor
+    func testBothTranscriptVersionsSurviveAStoreReopen() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("history.sqlite")
+        do {
+            let container = try ModelContainer(for: TranscriptionRecord.self, configurations: ModelConfiguration(url: url))
+            container.mainContext.insert(TranscriptionRecord(
+                text: "Hello world.", provider: .local, originalText: "hello world"))
+            container.mainContext.insert(TranscriptionRecord(text: "Unchanged", provider: .local))
+            try container.mainContext.save()
+        }
+        let reopened = try ModelContainer(for: TranscriptionRecord.self, configurations: ModelConfiguration(url: url))
+        let records = try reopened.mainContext.fetch(FetchDescriptor<TranscriptionRecord>())
+        XCTAssertEqual(records.count, 2)
+        XCTAssertEqual(records.first { $0.text == "Hello world." }?.originalText, "hello world")
+        XCTAssertNil(records.first { $0.text == "Unchanged" }?.originalText)
+    }
+
     func testTranscriptionRecordInitialization() {
         // Test basic initialization
         let record = TranscriptionRecord(
