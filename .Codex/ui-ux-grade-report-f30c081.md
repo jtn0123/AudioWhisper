@@ -128,7 +128,7 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 2. The recorder has a bounded 380×230-point layout and whole-window visible-frame placement coverage (`RebuildWorkspace.swift:275`; `Tests/RebuildRecorderLayoutTests.swift`). Fresh desktop acceptance records that frame size across ten cycles and renders visible controls; earlier native full-screen evidence distinguishes normal preferences from the permitted recording HUD.
 3. Fresh populated Library navigation twice grows the native window from 870×620 to 870×1179 points on a 1024×768 display, clipping its lower content. Empty/off-library, no-search-results, disabled model and failure/retry states have explicit implementations, but this confirmed populated-state failure lowers the category. Multiple displays, longer-content stress and native Sonoma checks remain additional acceptance gaps.
 
-#### UI E1 — Keep populated Library within the user's window
+#### ~~UI E1~~ ✓ done 2026-10-06 — Keep populated Library within the user's window
 
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:23-88`, `Sources/Rebuild/RebuildWorkspace.swift:35-46`, `Sources/Rebuild/RebuildApp.swift:109-120`, `Sources/Managers/Windows/StandardWindow.swift:18-31`; `.Codex/ui-ux-audit/2026-10-06-f30c081/library-sizing.json`, `library-overflow-1.png`, `library-overflow-2.png`.
 - **Evidence:** Twice, the root runner reset Record to 870×620 points and selected the observed Library sidebar action. Native probes then measured the same window at 870×1179 points, beyond the guest's 768-point display/681-point usable height; both screenshots visibly clip the window below the display. The enlarged frame persisted across navigation until resized. There is no explicit page-change frame mutation. The outer Library VStack and unconfigured NSHostingController sizing provide a likely content-to-window sizing path; that exact mechanism is an inference pending focused hosting verification.
@@ -139,6 +139,8 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 - **Difficulty:** M
 - **Fix:** Give the workspace a deliberate window-owned hosting-size policy and the Library a finite scroll viewport. Verify which intrinsic/minimum/preferred sizing contribution causes growth rather than merely clamping a symptom. Add native hosting regression coverage for every page at 870×620 with empty, loading and populated Library states, and repeat the two guest repro cycles.
 - **Grade lift:** C+ → B, by repairing a confirmed native layout failure; broader display/accessibility checks remain.
+
+**UI E1 validation:** Default hosting propagated a 1153-point content minimum and grew the native test window to 870×1185. Turning off content-driven sizing keeps the native window at 870×620 through populated/empty Library and every workspace page. The final package repeats the original guest reproduction with actual native bounds and screenshots.
 
 ## F — Frontend Code & Design System Health — B+
 

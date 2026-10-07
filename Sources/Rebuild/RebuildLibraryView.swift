@@ -3,6 +3,12 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct RebuildLibraryView: View {
+    let history: DataManagerProtocol
+
+    init(history: DataManagerProtocol = DataManager.shared) {
+        self.history = history
+    }
+
     private struct LoadRequest: Hashable {
         let search: String
         let enabled: Bool
@@ -94,7 +100,7 @@ struct RebuildLibraryView: View {
             }
         }.padding(36)
             .task(id: LoadRequest(
-                search: search, enabled: historyEnabled, revision: DataManager.shared.historyRevision.value)
+                search: search, enabled: historyEnabled, revision: history.historyRevision.value)
             ) {
                 do {
                     try await Task.sleep(for: .milliseconds(200))
@@ -105,7 +111,7 @@ struct RebuildLibraryView: View {
                 Button("Clear library", role: .destructive) {
                     Task {
                         do {
-                            try await DataManager.shared.deleteAllRecords()
+                            try await history.deleteAllRecords()
                             await load(reset: true)
                         } catch { self.error = error.localizedDescription }
                     }
@@ -116,7 +122,7 @@ struct RebuildLibraryView: View {
                     Task {
                         guard let record = pendingDelete else { return }
                         do {
-                            try await DataManager.shared.deleteRecord(record)
+                            try await history.deleteRecord(record)
                             await load(reset: true)
                         } catch { self.error = error.localizedDescription }
                         pendingDelete = nil
@@ -133,11 +139,11 @@ struct RebuildLibraryView: View {
         loading = true
         defer { loading = false }
         let query = search
-        let revision = DataManager.shared.historyRevision.value
+        let revision = history.historyRevision.value
         do {
-            let page = try await DataManager.shared.fetchRecords(
+            let page = try await history.fetchRecords(
                 limit: 50, offset: reset ? 0 : records.count, search: query)
-            guard !Task.isCancelled, query == search, revision == DataManager.shared.historyRevision.value else { return }
+            guard !Task.isCancelled, query == search, revision == history.historyRevision.value else { return }
             records = reset ? page : records + page
             hasMore = page.count == 50
             error = nil
@@ -159,7 +165,7 @@ struct RebuildLibraryView: View {
             defer { try? handle.close() }
             var writeError: Error?
             var first = true
-            try await DataManager.shared.forEachRecordPage(pageSize: 500) { page in
+            try await history.forEachRecordPage(pageSize: 500) { page in
                 guard writeError == nil else { return }
                 let text = page.map { record in
                     let separator = first ? "" : "\n\n---\n\n"

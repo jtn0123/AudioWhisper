@@ -198,7 +198,7 @@ tracked under B4 and UI C1 rather than counted twice here.
 - **Grade lift:** B → B+ for profile clarity, alongside C1.
 - **Simply:** Show “Mail” and notice an app you just opened.
 
-#### C3 — Keep populated Library from resizing the window off screen
+#### ~~C3~~ ✓ done 2026-10-06 — Keep populated Library from resizing the window off screen
 
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:23-88`; `Sources/Rebuild/RebuildWorkspace.swift:46`; `Sources/Rebuild/RebuildApp.swift:109-121`.
 - **What's wrong:** Twice in the current native guest, selecting Library after resetting Record to 870×620 changed the native window to 870×1,179 on a 1024×768-point screen. Bottom content and sidebar status moved below the display. No page-change frame mutation exists. The unbounded Library layout propagating fitting size through the default hosting controller is a source-supported mechanism inference; the off-screen growth itself is reproduced.
@@ -207,6 +207,8 @@ tracked under B4 and UI C1 rather than counted twice here.
 - **Effort:** M.
 - **Grade lift:** B → B+, by fixing a confirmed native layout failure; C1/C2 remain.
 - **Simply:** Opening history should not stretch the app below your screen.
+
+**C3 validation:** A native hosting regression with 55 long transcripts reproduced a 870×1185 window and 1153-point content minimum under the default sizing policy. The workspace now disables content-driven hosting sizing and retains the native window's explicit minimum and user-selected bounds. All 8 layout/library tests pass after: five page transitions, populated/empty Library and the recorder. Library receives a real injected SwiftData store for layout coverage. Final packaged VM measurements are recorded separately.
 
 ## D — Testing & Reliability — B
 

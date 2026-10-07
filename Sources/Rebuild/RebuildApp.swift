@@ -113,8 +113,8 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         window.title = "AudioWhisper Rebuild"
         window.titlebarAppearsTransparent = true
         window.minSize = NSSize(width: 870, height: 620)
-        window.contentViewController = NSHostingController(
-            rootView: RebuildRootView(
+        window.contentViewController = RebuildWorkspaceHosting.controller(
+            for: RebuildRootView(
                 session: session, navigation: navigation, recorder: recorder,
                 importAudio: { [weak self] in self?.chooseAudio() }
             ))

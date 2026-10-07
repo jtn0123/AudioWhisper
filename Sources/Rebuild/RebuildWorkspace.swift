@@ -13,11 +13,23 @@ enum RebuildTheme {
     static let ink = Color(red: 0.12, green: 0.14, blue: 0.14)
 }
 
+@MainActor
+enum RebuildWorkspaceHosting {
+    static func controller(for view: RebuildRootView) -> NSHostingController<RebuildRootView> {
+        let controller = NSHostingController(rootView: view)
+        // The native resizable window owns its bounds. A page's fitting size
+        // must not become the window's minimum or stretch it below the screen.
+        controller.sizingOptions = []
+        return controller
+    }
+}
+
 struct RebuildRootView: View {
     @Bindable var session: RebuildSession
     @Bindable var navigation: RebuildNavigation
     @ObservedObject var recorder: AudioEngineRecorder
     let importAudio: () -> Void
+    var history: DataManagerProtocol = DataManager.shared
     @AppStorage("rebuild.appearance", store: AppDefaults.defaults) private var appearance = "system"
 
     var body: some View {
@@ -38,7 +50,7 @@ struct RebuildRootView: View {
                         RebuildRecordView(
                             session: session, recorder: recorder, importAudio: importAudio,
                             configureShortcut: { navigation.selection = .preferences })
-                    case .library: RebuildLibraryView()
+                    case .library: RebuildLibraryView(history: history)
                     case .models: RebuildModelsView(session: session)
                     case .writing: RebuildWritingView(session: session)
                     case .preferences: RebuildPreferencesView()
