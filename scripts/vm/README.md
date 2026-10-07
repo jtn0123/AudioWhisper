@@ -5,14 +5,15 @@ document and `Tests/Resources/speech_sample.wav`. They never operate the host
 desktop. Results are synthetic guest input and virtual audio, not physical
 keyboard/microphone acceptance.
 
-## OS matrix
+## OS scope
 
 | OS | Role | Current evidence |
 |---|---|---|
 | Tahoe 26 | Primary desktop QA guest | 26.6.2 (25G83): recording, cancel, transcription, native Smart Paste and full-screen window isolation pass |
-| Sonoma 14 | Minimum supported compatibility target | Not provisioned in this pass; the app's minimum stays 14 |
 | macOS 15 | Existing CI runner | Separate from native desktop acceptance |
 | Host 27.2 beta | Optional environment comparison | Not the primary reliability baseline |
+
+Native acceptance is scoped to macOS 26/27. Older-OS and broader compatibility work from audit D1 is excluded by user direction. Existing CI host versions remain build/test infrastructure.
 
 ## Prepared guest
 

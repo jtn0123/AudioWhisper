@@ -14,13 +14,13 @@ The existing CoreAudio and model engines are reusable infrastructure, not the ne
 - Transcription: Whisper on Intel/Apple Silicon; Parakeet on Apple Silicon; selected-model installation, progress, verification, deletion, retry and offline readiness.
 - Delivery: clipboard, captured-target Smart Paste, visible correction fallback, no stale session delivery.
 - Files: explicit file picker/drop, supported audio validation, cancel and retry.
-- Writing: optional local correction, model choice/install, editable profiles, per-app mappings and prompt overrides.
+- Writing cleanup: optional local grammar repair, model choice/install/verify/remove, measured download progress/cancel and original comparison/recovery.
 - Library: opt-in local history, search, paging, copy, export, delete, retention, usage totals.
 - Preferences: shortcut, startup, appearance, overlay styles/intensity, privacy, diagnostics.
 
 ## Storage and isolation
 
-`com.audiowhisper.rebuild` uses separate preferences, history, categories, runtime and Whisper assets. App-managed files live in Application Support; shared Hugging Face weights remain in the unprotected cache. Startup never scans Documents/Desktop/Downloads and does not migrate old files implicitly. Existing data can be imported through explicit user selection later.
+`com.audiowhisper.rebuild` uses separate preferences, history, runtime and Whisper assets. App-managed files live in Application Support; shared Hugging Face weights remain in the unprotected cache. Startup never scans Documents/Desktop/Downloads and does not migrate old files implicitly. Existing data can be imported through explicit user selection later.
 
 ## Verification boundaries
 
@@ -37,10 +37,10 @@ untagged reasoning continuation and Qwen3.5's think-then-retry overhead. The
 output sanitizer preserves content quotation marks. See the
 [production integration evidence](../.Codex/bench/2026-10-06-qwen-integration/README.md).
 
-`make build-dev` packages a host-only debug app with the same Python resources,
+`make build-dev` signs with the persistent local identity and packages a host-only debug app with the same Python resources,
 dependency localizations and complete signing checks as the release app. It reuses
 SwiftPM's debug cache. `make run` (or `make run-dev`) installs that bundle beside
-the original app and launches it. `make build` still produces the universal
+the original app using the validated, staged installer with rollback backup, then launches it. `make build` still produces the universal
 arm64/x86_64 release bundle; debug packaging cannot be combined with notarization.
 
 For live development testing, run `bash scripts/build.sh --debug --local-signing`
