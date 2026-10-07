@@ -14,7 +14,8 @@ def build_helper(root: Path, base: Path) -> Path:
     guard = guard_path.read_text().split("    static func maxChangeRatio", 1)[1].rsplit("}", 1)[0]
     cleaner = cleaner_path.read_text().split("    private static let acousticMarkers", 1)[1].rsplit("}", 1)[0]
     source = (
-        "import Foundation\nenum Guard {\n    static func maxChangeRatio" + guard + "}\n"
+        "import Foundation\n" + (root / "Sources/Services/CorrectionIntegrity.swift").read_text()
+        + "\nenum Guard {\n    static func maxChangeRatio" + guard + "}\n"
         "enum Cleaner {\n    private static let acousticMarkers" + cleaner + "}\n"
         """
 while let line = readLine() {
@@ -43,7 +44,7 @@ while let line = readLine() {
     subprocess.run(["xcrun", "swiftc", "-O", str(source_path), "-o", str(binary)], check=True)
     (base / "production-text-source.json").write_text(json.dumps({
         str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in [guard_path, cleaner_path]
+        for path in [guard_path, cleaner_path, root / "Sources/Services/CorrectionIntegrity.swift"]
     }, indent=2) + "\n")
     return binary
 

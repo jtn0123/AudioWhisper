@@ -304,6 +304,9 @@ final class RebuildSession {
                 }
                 transcript = result.text
                 services.copy(result.text)
+                if case .rejected = result.correctionOutcome {
+                    notice = "Copied the original transcript. Writing cleanup could not safely preserve your words."
+                }
                 if case .failed = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup was unavailable."
                 }

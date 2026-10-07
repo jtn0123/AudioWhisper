@@ -131,7 +131,7 @@ Layman: The engines work much better, but some of your words can still disappear
 
 **B1 validation:** 11 expected preservation failures before; 75 focused cleaner/service/integration tests pass after. Recognized acoustic markers still produce no-speech errors. Ordinary nested text, code, quotes and line breaks survive.
 
-#### B2 — Protect meaning and keep cleanup from inventing content
+#### ~~B2~~ ✓ done 2026-10-06 — Protect meaning and keep cleanup from inventing content
 
 - **Where:** `Sources/Services/SemanticCorrectionService.swift:118-129`, `:199-226`; `Sources/Models/CategoryDefinition.swift:79-162`; `.Codex/bench/2026-10-06-qwen-integration/results/qwen3.5-9b-production.delivered.jsonl:57`, `:63`; corresponding Qwen3.8 file `:57`.
 - **What's wrong:** Edit-distance acceptance is not semantic protection. In the actual saved production run, 9B dropped `Do not replace -v with -d.` from the grep sentence and the guard accepted it; it also added `Best regards, [Your Name]` to an email that had no sign-off. The 27B model changed `Please let Siobhan know...` into an email directly addressed to Siobhan. These outputs passed the real Swift guard. A fresh pure guard reproduction also accepts `Do not delete the backup.` → `Delete the backup.`; that constructed example is a safeguard demonstration, not a claim either model generated it.
@@ -140,6 +140,8 @@ Layman: The engines work much better, but some of your words can still disappear
 - **Effort:** M.
 - **Grade lift:** C+ → B−; combined with deterministic cleaner/long-input guard fixes, toward B.
 - **Simply:** Better grammar must not change what you meant.
+
+**B2 validation:** 10 failing assertions before; 67 focused guard/service/session tests pass after. The app now prepends an integrity instruction to every profile, checks literal flags/code/identifiers, names, numbers and polarity, rejects invented email structure, and visibly reports rejected cleanup. These conservative checks can retain a useful edit unnecessarily and are not proof of semantic equivalence; B4 supplies comparison/recovery.
 
 #### B3 — Compare content for long corrections
 

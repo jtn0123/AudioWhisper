@@ -14,13 +14,15 @@ internal enum CorrectionOutcome {
     case applied(String)
     /// Correction was disabled by user settings; original text is returned unchanged.
     case skipped(String)
+    /// A safety check rejected the edit; keep the original visibly.
+    case rejected(String)
     /// Correction was attempted but failed; the original text is returned as a fallback.
     case failed(Error, fallback: String)
 
     /// Convenience: the text to use in the UI, regardless of outcome.
     var text: String {
         switch self {
-        case .applied(let value), .skipped(let value): return value
+        case .applied(let value), .skipped(let value), .rejected(let value): return value
         case .failed(_, fallback: let value): return value
         }
     }
@@ -90,8 +92,7 @@ internal final class SemanticCorrectionService {
             // Allow local MLX correction regardless of STT provider
             logger.info("Running local MLX correction")
             do {
-                let corrected = try await correctLocallyWithMLXThrowing(text: text, category: category, modelRepo: modelRepo)
-                return .applied(corrected)
+                return try await correctLocallyWithMLXThrowing(text: text, category: category, modelRepo: modelRepo)
             } catch {
                 logger.error("MLX correction failed: \(error.localizedDescription)")
                 return .failed(error, fallback: text)
@@ -105,8 +106,8 @@ internal final class SemanticCorrectionService {
     /// not a failure — there's nothing to recover from).
     private func correctLocallyWithMLXThrowing(
         text: String, category: CategoryDefinition, modelRepo: String
-    ) async throws -> String {
-        guard Arch.isAppleSilicon else { return text }
+    ) async throws -> CorrectionOutcome {
+        guard Arch.isAppleSilicon else { return .applied(text) }
         // B1: honour `AppDefaults.semanticCorrectionModelRepo` unconditionally.
         // This used to fall back to Llama-3.2-1B whenever the key was unset,
         // while the Dashboard displayed and badged Qwen3-1.7B as RECOMMENDED —
@@ -114,7 +115,7 @@ internal final class SemanticCorrectionService {
         // Existing installs are pinned to the legacy model by
         // `AppSetupHelper.migrateSemanticCorrectionModelDefault()`.
         let pyURL = try await preparePython()
-        let prompt = loadPrompt(for: category)
+        let prompt = CorrectionIntegrity.instruction + "\n\n" + loadPrompt(for: category)
         let output = try await mlxService.correct(text: text, modelRepo: modelRepo, pythonPath: pyURL.path, systemPrompt: prompt)
         let merged = Self.safeMerge(
             original: text,
@@ -126,7 +127,8 @@ internal final class SemanticCorrectionService {
         } else {
             logger.info("MLX correction applied changes")
         }
-        return merged
+        if output.trimmingCharacters(in: .whitespacesAndNewlines) != text && merged == text { return .rejected(text) }
+        return .applied(merged)
     }
 
     // MARK: - Prompt file helpers
@@ -211,7 +213,7 @@ internal final class SemanticCorrectionService {
     static let safeMergeLengthCap = 4000
 
     static func safeMerge(original: String, corrected: String, maxChangeRatio: Double) -> String {
-        guard !corrected.isEmpty else { return original }
+        guard !corrected.isEmpty, CorrectionIntegrity.allows(original: original, corrected: corrected) else { return original }
         // H20: For long inputs, fall back to a cheap length-ratio heuristic so
         // we don't run an O(m*n) edit-distance DP on tens of thousands of chars.
         if max(original.count, corrected.count) > safeMergeLengthCap {

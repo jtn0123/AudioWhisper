@@ -9,10 +9,14 @@ from pathlib import Path
 def production_prompts(root: Path) -> dict[str, str]:
     source = (root / "Sources/Models/CategoryDefinition.swift").read_text()
     matches = re.findall(r'static let (\w+)Prompt = """\n(.*?)\n\s*"""', source, re.S)
+    integrity_source = (root / "Sources/Services/CorrectionIntegrity.swift").read_text()
+    integrity_match = re.search(r'static let instruction = """\n(.*?)\n\s*"""', integrity_source, re.S)
+    assert integrity_match is not None
+    integrity = textwrap.dedent(integrity_match[1])
     prompts = {}
     for category, body in matches:
         body = textwrap.dedent(body).replace("\\\n", "").replace("\\\\", "\\").replace('\\"', '"')
-        prompts[category] = body
+        prompts[category] = integrity + "\n\n" + body
     assert set(prompts) == {"terminal", "coding", "chat", "writing", "email", "general"}
     return prompts
 
