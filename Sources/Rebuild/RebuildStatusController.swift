@@ -6,43 +6,26 @@ import KeyboardShortcuts
 @MainActor
 final class RebuildStatusController: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let session: RebuildSession
-    private let openWorkspace: () -> Void
-    private let chooseAudio: () -> Void
-    private let recordItem = NSMenuItem(title: "Record", action: nil, keyEquivalent: "")
+    private let contents: RebuildStatusMenu
 
     init(session: RebuildSession, openWorkspace: @escaping () -> Void, chooseAudio: @escaping () -> Void) {
-        self.session = session
-        self.openWorkspace = openWorkspace
-        self.chooseAudio = chooseAudio
+        self.contents = RebuildStatusMenu(session: session, openWorkspace: openWorkspace, chooseAudio: chooseAudio)
         super.init()
         item.button?.image = NSImage(
             systemSymbolName: "waveform.circle", accessibilityDescription: "AudioWhisper Rebuild")
         item.button?.toolTip = "AudioWhisper Rebuild"
-        let menu = NSMenu()
-        menu.autoenablesItems = false
-        menu.delegate = self
-        recordItem.action = #selector(record)
-        recordItem.target = self
-        menu.addItem(recordItem)
-        menu.addItem(action("Open AudioWhisper Rebuild", selector: #selector(open)))
-        menu.addItem(action("Transcribe audio file…", selector: #selector(importFile)))
-        menu.addItem(.separator())
-        menu.addItem(action("Quit Rebuild", selector: #selector(quit)))
-        item.menu = menu
+        contents.menu.delegate = self
+        item.menu = contents.menu
     }
 
     func menuWillOpen(_ menu: NSMenu) {
         ActivationPolicyController.shared.statusMenuWillOpen()
-        recordItem.setShortcut(for: AppDefaults.defaults.bool(forKey: "rebuild.shortcutEnabled") ? .rebuildRecording : nil)
+        contents.recordItem.setShortcut(
+            for: AppDefaults.defaults.bool(forKey: "rebuild.shortcutEnabled") ? .rebuildRecording : nil)
         // AppKit handles the menu equivalent while tracking. Pausing Carbon
         // avoids buffering a second invocation until the menu closes.
         KeyboardShortcuts.disable(.rebuildRecording)
-        recordItem.title = session.recordingActionTitle
-        recordItem.isEnabled = session.canToggleRecording
-        recordItem.toolTip = session.recordingBlockedReason
-        menu.items[2].isEnabled = session.canImportAudio
-        menu.items[2].toolTip = session.fileBlockedReason
+        contents.refresh()
     }
 
     func menuDidClose(_ menu: NSMenu) {
@@ -51,14 +34,4 @@ final class RebuildStatusController: NSObject, NSMenuDelegate {
         }
     }
 
-    private func action(_ title: String, selector: Selector) -> NSMenuItem {
-        let result = NSMenuItem(title: title, action: selector, keyEquivalent: "")
-        result.target = self
-        return result
-    }
-
-    @objc private func record() { session.toggleRecording() }
-    @objc private func open() { openWorkspace() }
-    @objc private func importFile() { chooseAudio() }
-    @objc private func quit() { NSApp.terminate(nil) }
 }

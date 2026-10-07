@@ -100,7 +100,7 @@ struct RebuildSessionServices {
 @MainActor
 @Observable
 final class RebuildSession {
-    let writingInstaller = RebuildWritingInstaller()
+    let writingInstaller: RebuildWritingInstaller
     private(set) var phase: RebuildPhase = .idle
     var readiness = RebuildReadiness()
     var transcript = ""
@@ -169,10 +169,11 @@ final class RebuildSession {
 
     init(
         services: RebuildSessionServices, setup: RebuildSetupServices? = nil,
-        verificationDefaults: UserDefaults? = nil
+        verificationDefaults: UserDefaults? = nil, writingInstaller: RebuildWritingInstaller? = nil
     ) {
         self.services = services
         self.setup = setup ?? .live
+        self.writingInstaller = writingInstaller ?? RebuildWritingInstaller()
         self.verificationStore = RebuildModelVerificationStore(defaults: verificationDefaults ?? AppDefaults.defaults)
         if let source = services.interruptionSource {
             interruptionObserver = NotificationCenter.default.addObserver(

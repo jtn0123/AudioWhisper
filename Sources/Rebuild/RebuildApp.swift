@@ -71,34 +71,23 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !AppEnvironment.isRunningTests else { return }
-        AppDefaults.defaults.register(defaults: [
-            AppDefaults.Key.transcriptionProvider.rawValue: Arch.isAppleSilicon ? "parakeet" : "local",
-            AppDefaults.Key.immediateRecording.rawValue: false,
-            AppDefaults.Key.enableSmartPaste.rawValue: false,
-            AppDefaults.Key.pressAndHoldEnabled.rawValue: false,
-            AppDefaults.Key.startAtLogin.rawValue: false,
-            AppDefaults.Key.playCompletionSound.rawValue: true
-        ])
-        AppSetupHelper.migrateSemanticCorrectionModelDefault()
-        do { try DataManager.shared.initialize() } catch {
-            session.notice = "The local library could not open: \(error.localizedDescription)"
-        }
-        session.openSetup = { [weak self] in
-            self?.navigation.selection = .models
-            self?.showWorkspace()
-        }
-        session.showRecorder = { [weak self] in self?.showOverlay() }
-        session.closeRecorder = { [weak self] in self?.overlay?.orderOut(nil) }
-        statusController = RebuildStatusController(
-            session: session,
-            openWorkspace: { [weak self] in self?.showWorkspace() },
-            chooseAudio: { [weak self] in self?.chooseAudio() })
-        configureShortcuts()
+        RebuildStartup.configure(
+            session: session, navigation: navigation,
+            effects: .init(initializeHistory: { try DataManager.shared.initialize() },
+            migrateSettings: AppSetupHelper.migrateSemanticCorrectionModelDefault,
+            installMenu: {
+                self.statusController = RebuildStatusController(
+                    session: self.session,
+                    openWorkspace: { [weak self] in self?.showWorkspace() },
+                    chooseAudio: { [weak self] in self?.chooseAudio() })
+            },
+            configureShortcuts: configureShortcuts,
+            showWorkspace: { [weak self] in self?.showWorkspace() },
+            showRecorder: { [weak self] in self?.showOverlay() },
+            closeRecorder: { [weak self] in self?.overlay?.orderOut(nil) }))
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.configureShortcuts() } }
-        Task { await session.refreshSetup() }
-        showWorkspace()
     }
 
     func showWorkspace() {

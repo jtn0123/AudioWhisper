@@ -21,6 +21,7 @@ struct RebuildWritingStatus: Equatable {
 
 struct RebuildWritingView: View {
     let session: RebuildSession
+    var isModelCached: @MainActor (String) -> Bool = { MLXModelManager.shared.isModelCachedOnDisk(repo: $0) }
     @AppDefault(\.semanticCorrectionMode) private var mode
     @AppDefault(\.semanticCorrectionModelRepo) private var model
     @State private var installing = false
@@ -29,7 +30,7 @@ struct RebuildWritingView: View {
     @State private var verifying = false
 
     var body: some View {
-        let installed = MLXModelManager.shared.isModelCachedOnDisk(repo: model)
+        let installed = isModelCached(model)
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if !Arch.isAppleSilicon {
@@ -49,7 +50,7 @@ struct RebuildWritingView: View {
         .disabled(session.phase.isBusy)
         .onChange(of: model) { _, selected in
             status = nil
-            if !MLXModelManager.shared.isModelCachedOnDisk(repo: selected) { mode = .off }
+            if !isModelCached(selected) { mode = .off }
         }
         .confirmationDialog("Remove these shared correction weights?", isPresented: $confirmModelDelete) {
             Button("Remove model", role: .destructive) {

@@ -31,6 +31,9 @@ struct RebuildRootView: View {
     @ObservedObject var recorder: AudioEngineRecorder
     let importAudio: () -> Void
     var history: DataManagerProtocol = DataManager.shared
+    var readShortcut: @MainActor () -> String? = {
+        KeyboardShortcuts.getShortcut(for: .rebuildRecording)?.description
+    }
     @AppStorage("rebuild.appearance", store: AppDefaults.defaults) private var appearance = "system"
 
     var body: some View {
@@ -76,7 +79,7 @@ struct RebuildRootView: View {
         case .record:
             RebuildRecordView(
                 session: session, recorder: recorder, importAudio: importAudio,
-                configureShortcut: { navigation.selection = .preferences })
+                configureShortcut: { navigation.selection = .preferences }, readShortcut: readShortcut)
         case .library: RebuildLibraryView(history: history)
         case .models: RebuildModelsView(session: session)
         case .writing: RebuildWritingView(session: session)
@@ -215,9 +218,25 @@ struct RebuildRecordView: View {
     @ObservedObject var recorder: AudioEngineRecorder
     let importAudio: () -> Void
     var configureShortcut: () -> Void = {}
+    private let readShortcut: @MainActor () -> String?
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
-    @State private var shortcut = KeyboardShortcuts.getShortcut(for: .rebuildRecording)?.description
+    @State private var shortcut: String?
     @State private var dropTargeted = false
+
+    init(
+        session: RebuildSession, recorder: AudioEngineRecorder, importAudio: @escaping () -> Void,
+        configureShortcut: @escaping () -> Void = {},
+        readShortcut: @escaping @MainActor () -> String? = {
+            KeyboardShortcuts.getShortcut(for: .rebuildRecording)?.description
+        }
+    ) {
+        self.session = session
+        self.recorder = recorder
+        self.importAudio = importAudio
+        self.configureShortcut = configureShortcut
+        self.readShortcut = readShortcut
+        self._shortcut = State(initialValue: readShortcut())
+    }
 
     var body: some View {
         ScrollView {
@@ -232,7 +251,7 @@ struct RebuildRecordView: View {
         }
         .overlay { if dropTargeted { dropOverlay } }
         .onReceive(NotificationCenter.default.publisher(for: .rebuildSettingsChanged)) { _ in
-            shortcut = KeyboardShortcuts.getShortcut(for: .rebuildRecording)?.description
+            shortcut = readShortcut()
         }
         .dropDestination(for: URL.self) { urls, _ in
             guard urls.count == 1, let url = urls.first, session.canImportAudio else { return false }

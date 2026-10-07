@@ -7,6 +7,12 @@ struct RebuildLibraryView: View {
 
     init(history: DataManagerProtocol = DataManager.shared) {
         self.history = history
+        self._library = State(initialValue: RebuildLibraryState(history: history))
+    }
+
+    init(state: RebuildLibraryState) {
+        self.history = state.history
+        self._library = State(initialValue: state)
     }
 
     private struct LoadRequest: Hashable {
@@ -15,12 +21,7 @@ struct RebuildLibraryView: View {
         let revision: UInt64
     }
     @AppDefault(\.transcriptionHistoryEnabled) private var historyEnabled
-    @State private var records: [TranscriptionRecord] = []
-    @State private var search = ""
-    @State private var error: String?
-    @State private var loading = false
-    @State private var loaded = false
-    @State private var hasMore = false
+    @State private var library: RebuildLibraryState
     @State private var pendingDelete: TranscriptionRecord?
     @State private var confirmDelete = false
     @State private var confirmClear = false
@@ -39,9 +40,9 @@ struct RebuildLibraryView: View {
                 if let exportStatus {
                     RebuildCallout(tone: exportStatus.hasPrefix("Export cancelled") ? .info : .success, message: exportStatus)
                 }
-                if let error {
+                if let error = library.error {
                     RebuildCallout(tone: .error, message: error) {
-                        Button("Try again") { Task { await load(reset: true) } }.disabled(loading)
+                        Button("Try again") { Task { await load(reset: true) } }.disabled(library.loading)
                     }
                 }
                 content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -49,7 +50,7 @@ struct RebuildLibraryView: View {
         }
         .padding(.horizontal, 28).padding(.vertical, 16)
         .task(id: LoadRequest(
-            search: search, enabled: historyEnabled, revision: history.historyRevision.value)
+            search: library.search, enabled: historyEnabled, revision: history.historyRevision.value)
         ) {
             do {
                 try await Task.sleep(for: .milliseconds(200))
@@ -62,7 +63,7 @@ struct RebuildLibraryView: View {
                     do {
                         try await history.deleteAllRecords()
                         await load(reset: true)
-                    } catch { self.error = error.localizedDescription }
+                    } catch { self.library.error = error.localizedDescription }
                 }
             }
         }
@@ -73,7 +74,7 @@ struct RebuildLibraryView: View {
                     do {
                         try await history.deleteRecord(record)
                         await load(reset: true)
-                    } catch { self.error = error.localizedDescription }
+                    } catch { self.library.error = error.localizedDescription }
                     pendingDelete = nil
                 }
             }
@@ -95,16 +96,16 @@ struct RebuildLibraryView: View {
 
     private var toolbar: some View {
         HStack(spacing: 10) {
-            TextField("Search transcripts", text: $search, prompt: Text("Search transcripts"))
+            TextField("Search transcripts", text: $library.search, prompt: Text("Search transcripts"))
                 .textFieldStyle(.roundedBorder).frame(maxWidth: 340)
                 .accessibilityLabel("Search transcripts")
-            if loading && loaded { ProgressView().controlSize(.small) }
+            if library.loading && library.loaded { ProgressView().controlSize(.small) }
             Spacer(minLength: 8)
-            if loaded && !records.isEmpty {
+            if library.loaded && !library.records.isEmpty {
                 Text(countText).font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText).lineLimit(1)
             }
             Button(exporting ? "Exporting…" : "Export…") { chooseExport() }
-                .disabled(loading || exporting)
+                .disabled(library.loading || exporting)
                 .help("Save every transcript to a plain text file")
             Menu {
                 Button("Clear library…", role: .destructive) { confirmClear = true }
@@ -112,17 +113,17 @@ struct RebuildLibraryView: View {
                 Image(systemName: "ellipsis.circle")
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-            .disabled(loading || exporting)
+            .disabled(library.loading || exporting)
             .help("More library actions")
             .accessibilityLabel("More library actions")
         }
     }
 
     private var countText: String {
-        let count = hasMore ? "\(records.count)+" : "\(records.count)"
-        let trimmed = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty { return records.count == 1 ? "1 match" : "\(count) matches" }
-        return records.count == 1 ? "1 transcript" : "\(count) transcripts"
+        let count = library.hasMore ? "\(library.records.count)+" : "\(library.records.count)"
+        let trimmed = library.search.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return library.records.count == 1 ? "1 match" : "\(count) matches" }
+        return library.records.count == 1 ? "1 transcript" : "\(count) transcripts"
     }
 
     private var exportProgress: some View {
@@ -135,11 +136,11 @@ struct RebuildLibraryView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if !loaded && records.isEmpty && error == nil {
+        if !library.loaded && library.records.isEmpty && library.error == nil {
             ProgressView("Loading your library…").controlSize(.small)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if records.isEmpty && !loading {
-            if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        } else if library.records.isEmpty && !library.loading {
+            if library.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 ContentUnavailableView(
                     "Room for your next idea", systemImage: "text.book.closed",
                     description: Text("Saved transcripts appear here after your next recording."))
@@ -149,20 +150,29 @@ struct RebuildLibraryView: View {
                 } description: {
                     Text("Try another search, or clear it to see your saved transcripts.")
                 } actions: {
-                    Button("Clear search") { search = "" }
+                    Button("Clear search") { library.search = "" }
                 }
             }
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
-                    ForEach(records) { record in
-                        RebuildLibraryRow(record: record, deleteDisabled: exporting) {
+                    ForEach(library.records) { record in
+                        RebuildLibraryRow(
+                            record: record, deleteDisabled: exporting,
+                            expanded: Binding(
+                                get: { library.expanded.contains(record.id) },
+                                set: { if $0 { library.expanded.insert(record.id) } else { library.expanded.remove(record.id) } }),
+                            showOriginal: Binding(
+                                get: { library.showingOriginal.contains(record.id) },
+                                set: {
+                                    if $0 { library.showingOriginal.insert(record.id) } else { library.showingOriginal.remove(record.id) }
+                                })) {
                             pendingDelete = record
                             confirmDelete = true
                         }
                     }
-                    if hasMore {
-                        Button("Load more") { Task { await load(reset: false) } }.disabled(loading)
+                    if library.hasMore {
+                        Button("Load more") { Task { await load(reset: false) } }.disabled(library.loading)
                             .frame(maxWidth: .infinity)
                     }
                 }.padding(.bottom, 8)
@@ -179,26 +189,7 @@ struct RebuildLibraryView: View {
     // MARK: Loading and export
 
     private func load(reset: Bool) async {
-        guard historyEnabled else {
-            records = []
-            return
-        }
-        loading = true
-        defer { loading = false }
-        let query = search
-        let revision = history.historyRevision.value
-        do {
-            let page = try await history.fetchRecords(
-                limit: 50, offset: reset ? 0 : records.count, search: query)
-            guard !Task.isCancelled, query == search, revision == history.historyRevision.value else { return }
-            records = reset ? page : records + page
-            hasMore = page.count == 50
-            error = nil
-            loaded = true
-        } catch {
-            self.error = error.localizedDescription
-            loaded = true
-        }
+        await library.load(reset: reset, enabled: historyEnabled)
     }
 
     private func chooseExport() {
@@ -208,13 +199,13 @@ struct RebuildLibraryView: View {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             guard let container = history.sharedModelContainer else {
-                error = "Your local library is unavailable. Try reopening the app."
+                library.error = "Your local library is unavailable. Try reopening the app."
                 return
             }
             exporting = true
             exportedCount = 0
             exportStatus = nil
-            error = nil
+            library.error = nil
             exportTask = Task { @MainActor in
                 let scoped = url.startAccessingSecurityScopedResource()
                 defer {
@@ -229,7 +220,7 @@ struct RebuildLibraryView: View {
                     exportStatus = "Exported \(count) transcripts."
                 } catch is CancellationError {
                     exportStatus = "Export cancelled. Your existing file was kept."
-                } catch { self.error = error.localizedDescription }
+                } catch { self.library.error = error.localizedDescription }
             }
         }
     }
@@ -240,9 +231,9 @@ struct RebuildLibraryView: View {
 private struct RebuildLibraryRow: View {
     let record: TranscriptionRecord
     let deleteDisabled: Bool
+    @Binding var expanded: Bool
+    @Binding var showOriginal: Bool
     let onDelete: () -> Void
-    @State private var expanded = false
-    @State private var showOriginal = false
 
     private var dateText: String { record.date.formatted(date: .abbreviated, time: .shortened) }
     private var original: String? { record.originalText.flatMap { $0 == record.text ? nil : $0 } }

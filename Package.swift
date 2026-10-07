@@ -17,7 +17,10 @@ let package = Package(
         // import sites are unchanged; only the URL and version move. The old
         // pin was `.upToNextMinor(from: "0.15.0")`, which capped us at 0.15.x
         // and silently skipped 0.16, 0.17, 0.18 and 1.0.
-        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.1.0")
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.1.0"),
+        // Test-only semantic assertions on actual SwiftUI controls. No native
+        // Accessibility tree or permission grant is needed by these fixtures.
+        .package(url: "https://github.com/nalexn/ViewInspector", exact: "0.10.5")
     ],
     targets: [
         .executableTarget(
@@ -41,7 +44,10 @@ let package = Package(
         ),
         .testTarget(
             name: "AudioWhisperTests",
-            dependencies: ["AudioWhisper"],
+            dependencies: [
+                "AudioWhisper",
+                .product(name: "ViewInspector", package: "ViewInspector")
+            ],
             path: "Tests",
             exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "test_rpc.py", "test_verify_scripts.py", "test_coverage_artifacts.py", "test_analyze_gate.py", "test_install_rebuild.py", "test_coverage_gate.py", "test_parakeet.py", "__pycache__", "__Snapshots__"],
             resources: [
