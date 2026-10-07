@@ -189,7 +189,8 @@ final class MLXModelManagerCacheTests: XCTestCase {
         await manager.downloadParakeetModel()
 
         XCTAssertEqual(manager.isDownloading[repo], false)
-        XCTAssertEqual(manager.downloadProgress[repo], "Error: Could not prepare Python environment")
+        XCTAssertEqual(manager.downloadProgress[repo]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       "Error: Failed to create venv: no interpreter found")
         manager.downloadProgress.removeValue(forKey: repo)
     }
 
@@ -254,7 +255,8 @@ final class MLXModelManagerCacheTests: XCTestCase {
         await manager.downloadModel(repo)
 
         XCTAssertEqual(manager.isDownloading[repo], false)
-        XCTAssertEqual(manager.downloadProgress[repo], "Error: Could not prepare Python environment")
+        XCTAssertEqual(manager.downloadProgress[repo]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       "Error: Failed to create venv: no interpreter found")
         manager.downloadProgress.removeValue(forKey: repo)
     }
 
