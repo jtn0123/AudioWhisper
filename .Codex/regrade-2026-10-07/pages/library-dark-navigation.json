@@ -1,0 +1,164 @@
+[
+  {
+    "AXAttributedDescription": "Record",
+    "AXDescription": "Record",
+    "AXHelp": "Record (\u23181)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Export\u2026",
+    "AXDescription": "Export\u2026",
+    "AXHelp": "Save every transcript to a plain text file",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Library",
+    "AXDescription": "Library",
+    "AXHelp": "Library (\u23182)",
+    "focused": true,
+    "selected": true
+  },
+  {
+    "AXAttributedDescription": "Models & setup",
+    "AXDescription": "Models & setup",
+    "AXHelp": "Models & setup (\u23183)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Writing cleanup",
+    "AXDescription": "Writing cleanup",
+    "AXHelp": "Writing cleanup (\u23184)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Preferences",
+    "AXDescription": "Preferences",
+    "AXHelp": "Preferences (\u23185)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Status: Ready to record",
+    "AXDescription": "Status: Ready to record",
+    "AXHelp": "Opens Models & setup",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 3:07\u202fPM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 3:07\u202fPM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 3:07\u202fPM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 3:07\u202fPM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 2:59\u202fPM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 2:59\u202fPM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 2:59\u202fPM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 2:59\u202fPM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 8:14\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 8:14\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 8:14\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 8:14\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 8:01\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 8:01\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 8:01\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 8:01\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 7:42\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 7:42\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 7:42\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 7:42\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 7:41\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 7:41\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 7:41\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 7:41\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 7:31\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 7:31\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 7:31\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 7:31\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 7:00\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 7:00\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 7:00\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 7:00\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 6:53\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 6:53\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 6:53\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 6:53\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Copy transcript from Oct 7, 2026 at 6:50\u202fAM",
+    "AXDescription": "Copy transcript from Oct 7, 2026 at 6:50\u202fAM",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Show original transcript",
+    "AXDescription": "Show original transcript",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Delete transcript from Oct 7, 2026 at 6:50\u202fAM",
+    "AXDescription": "Delete transcript from Oct 7, 2026 at 6:50\u202fAM",
+    "focused": false
+  },
+  {},
+  {},
+  {},
+  {},
+  {
+    "focused": false
+  },
+  {
+    "AXHelp": "this button also has an action to zoom the window",
+    "focused": false
+  },
+  {
+    "focused": false
+  }
+]

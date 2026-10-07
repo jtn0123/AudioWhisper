@@ -1,0 +1,60 @@
+{
+  "source_commit": "224473efc775d0547cac2a467379736baf354e98",
+  "installed_source_commit": "a9a0feddf1639bd6594d0fcb6a7d304770796065",
+  "installed_binary_sha256": "58e531e1bc1e19dcadac4aa34af0330363897bcb34691dc85444b4f5f3e6b218",
+  "swift": {
+    "command": "make test",
+    "exit": 0,
+    "discovered_cases": 2979,
+    "limits": "Opt-in hardware, real-model and snapshot tests can skip"
+  },
+  "python": {
+    "cases": 121,
+    "exit": 0
+  },
+  "acceptance_utility": {
+    "cases": 6,
+    "exit": 0
+  },
+  "mypy": {
+    "version": "1.20.0",
+    "sources": 11,
+    "exit": 0
+  },
+  "swiftlint": {
+    "version": "0.65.0",
+    "command": "scripts/lint.sh --strict with pinned tool first on PATH",
+    "files": 424,
+    "violations": 0,
+    "exit": 0
+  },
+  "ci": {
+    "run_id": 37643160057,
+    "source_commit": "224473efc775d0547cac2a467379736baf354e98",
+    "conclusion": "success",
+    "source_coverage_percent": 40.8,
+    "covered_lines": 15038,
+    "executable_lines": 36862,
+    "source_files": 189,
+    "coverage_floor": 40,
+    "sonar": "skipped on branch push"
+  },
+  "runtime": {
+    "os": "26.6.2 (25G83)",
+    "pages_captured": 10,
+    "start_cancel_cycles": 10,
+    "stop_transcribe_exactly_once_paste": "passed",
+    "signature": "strict valid",
+    "host_permission_requests": 0
+  },
+  "finding_reproductions": [
+    "B1 import duration null for2.67075secondfixture",
+    "I1 missingtools exit0"
+  ],
+  "pr": "https://github.com/jtn0123/AudioWhisper/pull/40",
+  "limits": [
+    "Synthetic guest input and virtual microphone",
+    "Physical modifier/disconnect/sleep and completeVoiceOver unaccepted",
+    "No notarized publicrelease acceptance"
+  ]
+}

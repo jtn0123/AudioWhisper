@@ -1,48 +1,19 @@
 # Current AudioWhisper Rebuild audit
 
-Audited code: `f30c081ed0bc324bf29c882052a6033d7028783b`, 2026-10-06.
+Fresh regrade: **2026-10-07**, source `224473efc775d0547cac2a467379736baf354e98`, after opening [PR #40](https://github.com/jtn0123/AudioWhisper/pull/40) against this fork's `master`.
 
-- [Current codebase grade](grade-report-f30c081.md): **B−** historical audit baseline; remaining code items A2/E2/F1.
-- [Current UI/UX grade](ui-ux-grade-report-f30c081.md): **B** historical audit baseline; UI B1/D1 completed in the October 7 polish batch; no fresh regrade.
-- [Current native VM evidence](ui-ux-audit/2026-10-06-f30c081/README.md): exact
-  installed executable identity, 10 start/cancel cycles, fixture transcription,
-  exactly-once Smart Paste, all five workspace screens and reproduced Library
-  window overflow. Guest synthetic input is distinct from physical acceptance.
-- [Current reproduction/CI evidence](audit-f30c081/README.md).
-- [Qwen3.5/3.8 adopted integration](bench/2026-10-06-qwen-integration/README.md):
-  fixed thinking/quote handling, 128 one-pass edits and packaged offline model
-  switching. Successful completion does not guarantee preserved meaning.
-- [M5 Pro model comparison](bench/2026-10-05-m5-pro/README.md),
-  [Qwen follow-up](bench/2026-10-06-qwen/README.md), and
-  [quantized-build comparison](bench/2026-10-06-qwen-quants/README.md) retain
-  measured speed/memory/quality evidence and benchmark-specific limits.
-- [Earlier native compatibility evidence](macos-vm-validation.md) retains
-  full-screen and consent checks with their original build identities.
+- [Current codebase report](grade-report-224473e.md): **B+ overall**, 11 ranked items with evidence and short plain-language explanations.
+- [Fresh native/verification evidence](regrade-2026-10-07/README.md): full local suite, exact-head CI/coverage, ten light/dark page captures, ten recording/cancellation cycles, fixture Stop/transcription and exactly-once Smart Paste.
+- Frontend quality within this codebase audit is **B+**. This is not a separate nine-dimension UI/UX audit; the historical [f30c081 UI report](ui-ux-grade-report-f30c081.md) retains its scope/IDs.
+- [Complete visual/contrast evidence](opus-visuals-2026-10-07/README.md) and [fullscreen/shortcut/install/export evidence](ui-polish-2026-10-07/README.md) retain source provenance and acceptance limits.
+- [Prior canonical report](baseline-pre-pr-2026-10-07/grade-report.md) and [previous audit pointer](baseline-pre-pr-2026-10-07/current-audit.md) are preserved. Old IDs do not refer to the new report.
 
-Parakeet **v2 remains the English recommendation**, with v3 retained as an
-option. Qwen3.5 **9B 4-bit is now recommended/default for new installations**;
-Qwen3.8 **27B mixed 3-bit is optional**, and three lightweight legacy choices
-remain. Existing explicit preferences are preserved. The host user's selected
-cleanup model is 3.5, but cleanup remains off and shortcut disabled as before.
+Top five: **B1** imported duration, **C1** microphone picker refresh, **D2** real offered-model fixtures, **G1** background history maintenance, **A1** retire the dormant shell.
 
-**Completed:** B1-B4/C3, then I1/E1/C1/G1/I2/G2/A1/D2/H1. H2 was corrected
-with the setup docs. App profiles, mappings and editable category prompts are
-removed at the user's request; cleanup now uses one conservative grammar policy.
-See [the streamlined next-ten fixes](fixes-next10-2026-10-06/README.md) for signed
-package, model, regression and macOS 26 VM evidence. Code D1 is excluded by user
-direction; the native test scope is macOS 26/27. The existing macOS 15 CI runner
-remains build/test infrastructure.
+Fresh import reproduced B1: a 2.67075-second public fixture saved correct text with a NULL duration. Missing-tool checks reproduced I1. Other findings are labeled source risks, hardening work or acceptance gaps; they are not all asserted runtime bugs. This regrade did not execute its newly listed fixes.
 
-The current remaining code items are **A2** (legacy app assembly), **E2** (public
-release enforcement) and **F1** (uv pin monitoring). UI **B1** (English voice choice guidance) and UI **D1** (timer readability)
-were completed in the [October 7 native polish batch](ui-polish-2026-10-07/README.md).
-Actual English model choices, the high-contrast live timer, keyboard navigation,
-shortcut assignment, recording, full-screen placement and native paste were checked
-in the macOS 26 VM. These UI IDs are separate from code D1. No automatic regrade
-is claimed.
+Parakeet **v2 remains the English recommendation**, with v3 retained. Qwen3.5 **9B 4-bit** remains the new-install writing recommendation and Qwen3.8 **27B mixed 3-bit** is optional. Existing model, shortcut and cleanup choices were not changed by this audit. App profiles stay removed.
 
-Specify **“f30c081 code B1”** or **“f30c081 UI C1”** for these current items.
-[Prior codebase](grade-report-187eacd.md), [prior UI](ui-ux-grade-report-187eacd.md)
-and canonical historical reports retain their original IDs/completion records.
-The initial grade changed reports only; subsequent fixes are tracked separately.
-Existing model/shortcut preferences and the persistent signing identity are retained.
+Native acceptance remains macOS **26/27**. Hosted CI OS versions are build/test infrastructure. The host and QA guest package share SHA-256 `58e531e1bc1e19dcadac4aa34af0330363897bcb34691dc85444b4f5f3e6b218`; current tests needed no new host permissions. Physical hold keys, hardware interruptions and full VoiceOver acceptance remain open. Developer signing is not notarized public-release proof. Live PR checks are on PR #40.
+
+Use **224473e code B1** or another new ID for this report's work.
