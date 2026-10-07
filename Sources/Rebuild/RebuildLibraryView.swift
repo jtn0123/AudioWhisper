@@ -24,6 +24,9 @@ struct RebuildLibraryView: View {
     @State private var confirmDelete = false
     @State private var confirmClear = false
     @State private var exporting = false
+    @State private var exportTask: Task<Void, Never>?
+    @State private var exportedCount = 0
+    @State private var exportStatus: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -41,10 +44,18 @@ struct RebuildLibraryView: View {
             } else {
                 HStack {
                     TextField("Search your transcripts", text: $search).textFieldStyle(.roundedBorder)
-                    Button(exporting ? "Exporting…" : "Export…") { Task { await exportLibrary() } }
+                    Button(exporting ? "Exporting…" : "Export…") { chooseExport() }
                         .disabled(loading || exporting)
                     Button("Clear library…", role: .destructive) { confirmClear = true }.disabled(loading || exporting)
                 }
+                if exporting {
+                    HStack {
+                        ProgressView().controlSize(.small)
+                        Text("Exported \(exportedCount) transcripts…").font(.caption)
+                        Button("Cancel export") { exportTask?.cancel() }
+                    }
+                }
+                if let exportStatus { Text(exportStatus).font(.caption).textSelection(.enabled) }
                 if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                 if records.isEmpty && !loading {
                     if search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -87,6 +98,7 @@ struct RebuildLibraryView: View {
                                             pendingDelete = record
                                             confirmDelete = true
                                         }
+                                        .disabled(exporting)
                                         .accessibilityLabel(
                                             "Delete transcript from \(record.date.formatted(date: .abbreviated, time: .shortened))")
                                     }.font(.caption)
@@ -150,38 +162,36 @@ struct RebuildLibraryView: View {
         } catch { self.error = error.localizedDescription }
     }
 
-    private func exportLibrary() async {
+    private func chooseExport() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [UTType.plainText]
         panel.nameFieldStringValue = "AudioWhisper transcripts.txt"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        exporting = true
-        defer { exporting = false }
-        let temporary = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).txt")
-        defer { try? FileManager.default.removeItem(at: temporary) }
-        do {
-            try Data().write(to: temporary)
-            let handle = try FileHandle(forWritingTo: temporary)
-            defer { try? handle.close() }
-            var writeError: Error?
-            var first = true
-            try await history.forEachRecordPage(pageSize: 500) { page in
-                guard writeError == nil else { return }
-                let text = page.map { record in
-                    let separator = first ? "" : "\n\n---\n\n"
-                    first = false
-                    return "\(separator)\(record.date.formatted())\n\(record.text)"
-                }.joined()
-                do { try handle.write(contentsOf: Data(text.utf8)) } catch { writeError = error }
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            guard let container = history.sharedModelContainer else {
+                error = "Your local library is unavailable. Try reopening the app."
+                return
             }
-            if let writeError { throw writeError }
-            try handle.synchronize()
-            if FileManager.default.fileExists(atPath: url.path) {
-                _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
-            } else {
-                try FileManager.default.moveItem(at: temporary, to: url)
-            }
+            exporting = true
+            exportedCount = 0
+            exportStatus = nil
             error = nil
-        } catch { self.error = error.localizedDescription }
+            exportTask = Task { @MainActor in
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer {
+                    if scoped { url.stopAccessingSecurityScopedResource() }
+                    exporting = false
+                    exportTask = nil
+                }
+                do {
+                    let count = try await HistoryExporter.export(container: container, to: url) { count in
+                        await MainActor.run { exportedCount = count }
+                    }
+                    exportStatus = "Exported \(count) transcripts."
+                } catch is CancellationError {
+                    exportStatus = "Export cancelled. Your existing file was kept."
+                } catch { self.error = error.localizedDescription }
+            }
+        }
     }
 }
