@@ -41,7 +41,7 @@ enum RebuildPage: String, CaseIterable, Identifiable {
         case .record: return "Record"
         case .library: return "Library"
         case .models: return "Models & setup"
-        case .writing: return "Writing profiles"
+        case .writing: return "Writing cleanup"
         case .preferences: return "Preferences"
         }
     }

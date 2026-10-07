@@ -129,7 +129,6 @@ internal enum DashboardNavItem: String, CaseIterable, Identifiable {
     case setup = "Setup"
     case dashboard = "Overview"
     case transcripts = "Transcripts"
-    case categories = "Categories"
     case recording = "Input"
     case providers = "Models"
     case visuals = "Visuals"
@@ -143,7 +142,6 @@ internal enum DashboardNavItem: String, CaseIterable, Identifiable {
         case .setup:       return "checklist"
         case .dashboard:   return "square.text.square"
         case .transcripts: return "doc.text"
-        case .categories:  return "folder"
         case .recording:   return "mic.fill"
         case .providers:   return "cpu"
         case .visuals:     return "paintpalette"
@@ -188,7 +186,7 @@ internal struct DashboardView: View {
 
                 // Navigation
                 VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
-                    navSection(items: [.setup, .dashboard, .transcripts, .categories])
+                    navSection(items: [.setup, .dashboard, .transcripts])
                     sectionDivider("Settings")
                     navSection(items: [.recording, .providers, .visuals, .preferences, .permissions])
                 }
@@ -437,7 +435,6 @@ internal struct DashboardView: View {
         case .setup:       RecordingSetupView()
         case .dashboard:   DashboardHomeView(selectedNav: $selectedNav)
         case .transcripts: DashboardTranscriptsView()
-        case .categories:  DashboardCategoriesView()
         case .recording:   DashboardRecordingView()
         case .providers:   DashboardProvidersView()
         case .visuals:     DashboardVisualsView()

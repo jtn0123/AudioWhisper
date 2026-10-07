@@ -14,7 +14,6 @@ enum RebuildStorage {
         whisperDownloadBase.appendingPathComponent("models/argmaxinc/whisperkit-coreml", isDirectory: true)
     }
     static var history: URL { root.appendingPathComponent("history.store") }
-    static var categories: URL { root.appendingPathComponent("categories.json") }
 
     static func prepare() throws {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

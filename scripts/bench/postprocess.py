@@ -11,13 +11,13 @@ import subprocess
 def build_helper(root: Path, base: Path) -> Path:
     guard_path = root / "Sources/Services/SemanticCorrectionService.swift"
     cleaner_path = root / "Sources/Services/SpeechToTextService.swift"
-    guard = guard_path.read_text().split("    static func maxChangeRatio", 1)[1].rsplit("}", 1)[0]
+    guard = guard_path.read_text().split("    static let maxChangeRatio", 1)[1].rsplit("}", 1)[0]
     cleaner = cleaner_path.read_text().split("    private static let acousticMarkers", 1)[1].rsplit("}", 1)[0]
     support_paths = [root / "Sources/Services" / name for name in
                      ["CorrectionIntegrity.swift", "CorrectionContentComparison.swift"]]
     source = (
         "import Foundation\n" + "\n".join(path.read_text() for path in support_paths)
-        + "\nenum Guard {\n    static func maxChangeRatio" + guard + "}\n"
+        + "\nenum Guard {\n    static let maxChangeRatio" + guard + "}\n"
         "enum Cleaner {\n    private static let acousticMarkers" + cleaner + "}\n"
         """
 while let line = readLine() {
@@ -26,7 +26,7 @@ while let line = readLine() {
     var output = input
     if input["kind"] as? String == "writing" {
         let original = input["input"] as! String
-        let ratio = Guard.maxChangeRatio(for: input["category"] as! String)
+        let ratio = Guard.maxChangeRatio
         let delivered = Guard.safeMerge(original: original, corrected: text, maxChangeRatio: ratio)
         output["delivered"] = delivered
         output["guard_rejected"] = text != original && delivered == original

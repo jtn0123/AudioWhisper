@@ -68,7 +68,7 @@ final class SemanticCorrectionServiceCoverageTests: IsolatedXCTestCase {
     func testCorrectWithOutcomePassesBundleId() async {
         AppDefaults.defaults.set("off", forKey: "semanticCorrectionMode")
         let service = SemanticCorrectionService()
-        // With a bundle id the category lookup runs; off-mode still skips.
+        // Destination metadata must not affect whether cleanup is enabled.
         let outcome = await service.correctWithOutcome(
             text: "text",
             providerUsed: .local,

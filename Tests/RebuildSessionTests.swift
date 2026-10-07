@@ -182,7 +182,7 @@ final class RebuildSessionTests: IsolatedXCTestCase {
 
     func testApplicationOwnedStorageNeverUsesPersonalFolders() {
         for url in [
-            RebuildStorage.root, RebuildStorage.history, RebuildStorage.categories, RebuildStorage.whisperModels
+            RebuildStorage.root, RebuildStorage.history, RebuildStorage.whisperModels
         ] {
             XCTAssertTrue(url.path.contains("/Library/Application Support/AudioWhisper Rebuild"))
             XCTAssertFalse(url.path.contains("/Documents/"))
