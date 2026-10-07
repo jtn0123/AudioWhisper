@@ -57,4 +57,43 @@ final class WritingInstallCancellationTests: IsolatedXCTestCase {
         XCTAssertEqual(lines, [String(text.dropLast())])
         XCTAssertEqual(buffer.error, "Connection lost — retry")
     }
+
+    func testPrelaunchCancellationClosesPipesWithoutStartingProcess() async {
+        let manager = MLXModelManager(cacheDirectory: FileManager.default.temporaryDirectory)
+        let output = Pipe()
+        let errors = Pipe()
+        output.fileHandleForReading.readabilityHandler = { _ in }
+        errors.fileHandleForReading.readabilityHandler = { _ in }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/true")
+        let job = Task {
+            try? await Task.sleep(for: .seconds(1))
+            await manager.runDownloadProcess(process, repo: "fixture/cancel", outputPipe: output, errorPipe: errors)
+        }
+        job.cancel()
+        await job.value
+        XCTAssertFalse(process.isRunning)
+        XCTAssertNil(output.fileHandleForReading.readabilityHandler)
+        XCTAssertNil(errors.fileHandleForReading.readabilityHandler)
+        XCTAssertThrowsError(try output.fileHandleForReading.read(upToCount: 1))
+        XCTAssertThrowsError(try errors.fileHandleForReading.read(upToCount: 1))
+    }
+
+    func testInstantProcessFailuresPreserveTheActionableError() async {
+        let manager = MLXModelManager(
+            cacheDirectory: FileManager.default.temporaryDirectory,
+            prepareDownloadPython: { URL(fileURLWithPath: "/usr/bin/python3") },
+            downloadProcessFactory: { _, _ in
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+                process.arguments = ["-c", "import json,sys; "
+                    + "print(json.dumps({'status':'error','message':'Connection lost: retry'}),flush=True); sys.exit(1)"]
+                return process
+            })
+        for _ in 0..<20 {
+            await manager.downloadModel("fixture/error")
+            XCTAssertEqual(manager.downloadProgress["fixture/error"], "Error: Connection lost: retry")
+        }
+    }
+
 }

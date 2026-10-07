@@ -204,12 +204,6 @@ extension MLXModelManager {
         _ process: Process, repo: String, outputPipe: Pipe, errorPipe: Pipe,
         progressBuffer: DownloadOutputBuffer? = nil
     ) async {
-        guard !Task.isCancelled, !cancelledDownloads.contains(repo) else {
-            isDownloading[repo] = false
-            downloadProgress[repo] = "Cancelled. Partial files are kept for retry."
-            return
-        }
-        activeDownloads[repo] = process
         defer {
             activeDownloads.removeValue(forKey: repo)
             outputPipe.fileHandleForReading.readabilityHandler = nil
@@ -217,6 +211,12 @@ extension MLXModelManager {
             try? outputPipe.fileHandleForReading.close()
             try? errorPipe.fileHandleForReading.close()
         }
+        guard !Task.isCancelled, !cancelledDownloads.contains(repo) else {
+            isDownloading[repo] = false
+            downloadProgress[repo] = "Cancelled. Partial files are kept for retry."
+            return
+        }
+        activeDownloads[repo] = process
         let exitStatus: Int32
         do {
             logger.info("Launching download process for \(repo)")

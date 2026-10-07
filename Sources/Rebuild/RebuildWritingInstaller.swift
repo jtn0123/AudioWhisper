@@ -10,7 +10,7 @@ final class RebuildWritingInstaller {
     private(set) var status: String?
     private(set) var cancelling = false
 
-    init(manager: MLXModelManager = .shared) { self.manager = manager }
+    init(manager: MLXModelManager? = nil) { self.manager = manager ?? .shared }
     var isRunning: Bool { repo != nil }
     var progress: String? { repo.flatMap { manager.downloadProgress[$0] } }
     var fraction: Double? { repo.flatMap { manager.downloadFraction[$0] } }
