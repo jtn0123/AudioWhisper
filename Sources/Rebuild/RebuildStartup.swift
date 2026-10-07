@@ -30,9 +30,10 @@ enum RebuildStartup {
         do { try effects.initializeHistory() } catch {
             session.notice = "The local library could not open: \(error.localizedDescription)"
         }
+        let showWorkspace = effects.showWorkspace
         session.openSetup = {
             navigation.selection = .models
-            effects.showWorkspace()
+            showWorkspace()
         }
         session.showRecorder = effects.showRecorder
         session.closeRecorder = effects.closeRecorder

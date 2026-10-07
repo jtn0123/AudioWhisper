@@ -75,13 +75,14 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             session: session, navigation: navigation,
             effects: .init(initializeHistory: { try DataManager.shared.initialize() },
             migrateSettings: AppSetupHelper.migrateSemanticCorrectionModelDefault,
-            installMenu: {
+            installMenu: { [weak self] in
+                guard let self else { return }
                 self.statusController = RebuildStatusController(
                     session: self.session,
                     openWorkspace: { [weak self] in self?.showWorkspace() },
                     chooseAudio: { [weak self] in self?.chooseAudio() })
             },
-            configureShortcuts: configureShortcuts,
+            configureShortcuts: { [weak self] in self?.configureShortcuts() },
             showWorkspace: { [weak self] in self?.showWorkspace() },
             showRecorder: { [weak self] in self?.showOverlay() },
             closeRecorder: { [weak self] in self?.overlay?.orderOut(nil) }))
