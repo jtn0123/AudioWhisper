@@ -363,10 +363,6 @@ private actor TestActorStore {
     func count() -> Int {
         items.count
     }
-
-    func getAll() -> [String] {
-        items
-    }
 }
 
 private actor UUIDCollector {

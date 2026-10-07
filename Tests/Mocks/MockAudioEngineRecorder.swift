@@ -119,19 +119,6 @@ final class MockAudioEngineRecorder: ObservableObject, AudioRecording {
         startRecordingResult = true
     }
 
-    func simulateAudioLevel(_ level: Float) {
-        audioLevel = level
-    }
-
-    func simulateWaveformData(_ samples: [Float]) {
-        waveformSamples = samples
-    }
-
-    func simulateFrequencyBands(_ bands: [Float]) {
-        guard bands.count == 8 else { return }
-        frequencyBands = bands
-    }
-
     private func clearVisualizationData() {
         audioLevel = 0.0
         waveformSamples = []

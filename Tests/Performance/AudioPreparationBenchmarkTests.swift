@@ -1,5 +1,4 @@
-import AVFoundation
-import Darwin
+import AVFAudio
 import XCTest
 @testable import AudioWhisper
 @testable import WhisperKit

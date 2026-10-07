@@ -258,34 +258,4 @@ final class MockDataManager: DataManagerProtocol {
         fetchAllRecordsQuietlyCallCount = 0
         cleanupExpiredRecordsQuietlyCallCount = 0
     }
-
-    func addRecord(_ record: TranscriptionRecord) {
-        recordsToReturn.append(record)
-    }
-
-    func addRecords(_ records: [TranscriptionRecord]) {
-        recordsToReturn.append(contentsOf: records)
-    }
-
-    func setHistoryEnabled(_ enabled: Bool) {
-        isHistoryEnabled = enabled
-    }
-
-    /// Create a test record with default values
-    static func makeTestRecord(
-        text: String = "Test transcription",
-        duration: TimeInterval? = 5.0,
-        provider: TranscriptionProvider = .local,
-        sourceAppBundleId: String? = "com.apple.Notes",
-        sourceAppName: String? = "Notes"
-    ) -> TranscriptionRecord {
-        TranscriptionRecord(
-            text: text,
-            provider: provider,
-            duration: duration,
-            sourceAppBundleId: sourceAppBundleId,
-            sourceAppName: sourceAppName,
-            sourceAppIconData: nil
-        )
-    }
 }

@@ -1,5 +1,4 @@
 import XCTest
-import SwiftUI
 import SwiftData
 @testable import AudioWhisper
 
@@ -42,11 +41,6 @@ final class TranscriptionHistoryViewTests: XCTestCase {
         modelContext.insert(record)
         try? modelContext.save()
         return record
-    }
-    
-    private func createTestView() -> some View {
-        TranscriptionHistoryView()
-            .modelContainer(modelContainer)
     }
     
     // MARK: - TranscriptionRecordRow Tests

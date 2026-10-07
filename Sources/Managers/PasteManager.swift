@@ -4,27 +4,6 @@ import Carbon
 import Observation
 import os.log
 
-// Helper class to safely capture observer in closure
-// Uses a lock to ensure thread-safe access to the mutable observer property
-// @unchecked is required because we have mutable state but we ensure thread safety via NSLock
-private final class ObserverBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _observer: NSObjectProtocol?
-
-    var observer: NSObjectProtocol? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _observer
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _observer = newValue
-        }
-    }
-}
-
 /// Thread-safe flag to ensure continuation is resumed exactly once.
 /// Used to prevent double-resume when timeout and completion race.
 internal final class ResumedFlag: @unchecked Sendable {
@@ -270,52 +249,4 @@ internal class PasteManager {
         }()
         NotificationCenter.default.post(name: name, object: object)
     }
-
-    // MARK: - App Activation Handling
-
-    private func waitForApplicationActivation(_ target: NSRunningApplication, completion: @escaping () -> Void) {
-        // If already active, execute completion immediately
-        if target.isActive {
-            completion()
-            return
-        }
-
-        let observerBox = ObserverBox()
-        // Use ResumedFlag to guarantee completion is called exactly once,
-        // even if the timeout and activation notification race each other
-        let completedFlag = ResumedFlag()
-
-        // NSWorkspace posts activation notifications on its own notification
-        // center, not NotificationCenter.default — observe the correct one.
-        let workspaceCenter = NSWorkspace.shared.notificationCenter
-
-        // Helper to clean up the observer and call completion exactly once
-        let cleanupAndComplete = { [observerBox] in
-            if let observer = observerBox.observer {
-                workspaceCenter.removeObserver(observer)
-                observerBox.observer = nil
-            }
-            if completedFlag.tryResume() {
-                completion()
-            }
-        }
-
-        // Set up timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            cleanupAndComplete()
-        }
-
-        // Observe app activation
-        observerBox.observer = workspaceCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-               activatedApp.processIdentifier == target.processIdentifier {
-                cleanupAndComplete()
-            }
-        }
-    }
-
 }

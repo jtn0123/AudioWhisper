@@ -28,10 +28,6 @@ final class SmartPasteIntegrationTests: IsolatedXCTestCase {
 
     // MARK: - Helper Methods
 
-    private func waitForAsyncOperation() async {
-        try? await Task.sleep(for: .milliseconds(100))
-    }
-
     /// Creates a unique named pasteboard to avoid race conditions with parallel tests
     private func createTestPasteboard() -> NSPasteboard {
         let name = NSPasteboard.Name("SmartPasteTest-\(UUID().uuidString)")

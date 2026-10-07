@@ -6,7 +6,6 @@ import XCTest
 @MainActor
 final class MockPermissionManagerForRecording {
     var microphonePermissionState: PermissionState = .granted
-    var accessibilityPermissionState: PermissionState = .granted
     var showEducationalModal = false
     var showRecoveryModal = false
     var requestPermissionWithEducationCalled = false

@@ -1,4 +1,3 @@
-import XCTest
 import AppKit
 @testable import AudioWhisper
 
@@ -21,14 +20,4 @@ final class PasteManagerTests: IsolatedXCTestCase {
         NSPasteboard.general.clearContents()
         super.tearDown()
     }
-
-    // MARK: - Helpers
-
-    private func makeManager(permissionGranted: Bool) -> PasteManager {
-        let manager = PasteManager(
-            accessibilityManager: AccessibilityPermissionManager(permissionCheck: { permissionGranted })
-        )
-        return manager
-    }
-
 }

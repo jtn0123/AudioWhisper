@@ -1,5 +1,4 @@
 import Foundation
-import XCTest
 @testable import AudioWhisper
 
 // Test doubles for ModelManagerTests.
@@ -9,29 +8,8 @@ import XCTest
 // here leaves that file as tests only, and makes it obvious when a double grows
 // logic of its own — which is how a mock quietly becomes the thing under test.
 
-// MARK: - Thread-Safe Helper
-actor ActorBox<T> {
-    private var _value: T
-    
-    init(_ value: T) {
-        self._value = value
-    }
-    
-    var value: T {
-        return _value
-    }
-    
-    func setValue(_ value: T) {
-        self._value = value
-    }
-    
-    func append(_ element: T.Element) where T: RangeReplaceableCollection {
-        self._value.append(element)
-    }
-}
-
 // MARK: - Mock FileManager
-class MockFileManager: FileManagerProtocol {
+class MockFileManager {
     var mockFiles: Set<String> = []
     var mockDirectories: Set<String> = []
     var mockFileAttributes: [String: [FileAttributeKey: Any]] = [:]
@@ -73,22 +51,6 @@ class MockFileManager: FileManagerProtocol {
         }
         throw NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "File not found"])
     }
-}
-
-// MARK: - FileManager Protocol
-protocol FileManagerProtocol {
-    func urls(for directory: FileManager.SearchPathDirectory, in domainMask: FileManager.SearchPathDomainMask) -> [URL]
-    func fileExists(atPath path: String) -> Bool
-    func createDirectory(at url: URL,
-                         withIntermediateDirectories createIntermediates: Bool,
-                         attributes: [FileAttributeKey: Any]?) throws
-    func removeItem(at url: URL) throws
-    func attributesOfItem(atPath path: String) throws -> [FileAttributeKey: Any]
-}
-
-// MARK: - FileManager Extension
-extension FileManager: FileManagerProtocol {
-    // No need to implement - FileManager already has this method
 }
 
 // MARK: - Mock ModelManager

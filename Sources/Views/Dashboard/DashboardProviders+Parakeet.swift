@@ -229,17 +229,6 @@ internal extension DashboardProvidersView {
         }
     }
 
-    private func venvPythonPath() -> String {
-        let appSupport = try? FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
-        return base ?? ""
-    }
-
     /// Audit item C4: the ~70 lines of Process/Pipe/timeout plumbing that used
     /// to live here now sit in `ModelVerificationService`, which the MLX verify
     /// path shares. This is the view's share of the work: set the busy flags,

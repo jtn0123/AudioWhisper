@@ -116,7 +116,7 @@ struct RebuildWritingView: View {
             Divider()
             installRow(installed: installed)
             if installer.isRunning { progress }
-            if let status = installer.status { RebuildCallout(tone: Self.tone(for: status), message: status) }
+            if let status = installer.status(for: model) { RebuildCallout(tone: Self.tone(for: status), message: status) }
             if let status { RebuildCallout(tone: status.tone, message: status.message) }
         }.rebuildCard()
     }

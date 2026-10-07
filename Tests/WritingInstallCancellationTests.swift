@@ -38,9 +38,12 @@ final class WritingInstallCancellationTests: IsolatedXCTestCase {
         XCTAssertFalse(session.maintenanceInProgress)
         XCTAssertFalse(installer.isRunning)
         XCTAssertTrue(installer.status?.hasPrefix("Cancelled") == true)
+        XCTAssertEqual(installer.status(for: "fixture/model"), installer.status)
+        XCTAssertNil(installer.status(for: "fixture/other-model"), "A terminal result belongs only to its installed model")
         XCTAssertEqual(try String(contentsOf: partial, encoding: .utf8), "partial")
         // Retry must create a fresh process rather than retain a cancelled operation.
         installer.start("fixture/model", session: session)
+        XCTAssertNil(installer.status(for: "fixture/model"), "A retry clears the previous terminal result")
         for _ in 0..<200 where manager.activeDownloads["fixture/model"] == nil {
             try await Task.sleep(for: .milliseconds(10))
         }

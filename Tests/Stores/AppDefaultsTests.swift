@@ -9,7 +9,6 @@ final class AppDefaultsTests: IsolatedXCTestCase {
     // UserDefaults instance.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-    private var testDefaults: UserDefaults!
     private var originalDefaults: [String: Any] = [:]
 
     override func setUp() {
