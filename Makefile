@@ -25,14 +25,13 @@ build:
 
 # Build and launch the separate AudioWhisper Rebuild app
 build-dev:
-	$(SCRIPTS)/build.sh --debug
+	$(SCRIPTS)/build.sh --debug --local-signing
 
 run: run-dev
 
 run-dev: build-dev
 	@echo "Installing the rebuild beside the original app..."
-	@ditto AudioWhisper.app "/Applications/AudioWhisper Rebuild.app"
-	@open "/Applications/AudioWhisper Rebuild.app"
+	@python3 $(SCRIPTS)/install-rebuild.py AudioWhisper.app
 
 # Build and notarize the app
 build-notarize:
