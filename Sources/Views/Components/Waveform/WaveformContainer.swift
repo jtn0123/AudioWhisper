@@ -22,6 +22,9 @@ struct WaveformContainer: View {
     /// Production callers should leave this at the default (`true`).
     let processingAnimated: Bool
     let completedAudioDuration: TimeInterval?
+    /// Hosts that draw their own status and timer (the rebuild HUD) hide the
+    /// built-in floating row so the state is not shown twice.
+    let showsStatusRow: Bool
     let onTap: () -> Void
 
     init(
@@ -31,6 +34,7 @@ struct WaveformContainer: View {
         frequencyBands: [Float],
         processingAnimated: Bool = true,
         completedAudioDuration: TimeInterval? = nil,
+        showsStatusRow: Bool = true,
         onTap: @escaping () -> Void
     ) {
         self.status = status
@@ -39,6 +43,7 @@ struct WaveformContainer: View {
         self.frequencyBands = frequencyBands
         self.processingAnimated = processingAnimated
         self.completedAudioDuration = completedAudioDuration
+        self.showsStatusRow = showsStatusRow
         self.onTap = onTap
     }
 
@@ -117,7 +122,7 @@ struct WaveformContainer: View {
                 }
 
                 // Status row — floats, no chrome
-                statusRow
+                if showsStatusRow { statusRow }
             }
         }
         .buttonStyle(.plain)

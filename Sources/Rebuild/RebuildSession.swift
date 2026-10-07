@@ -513,6 +513,10 @@ extension RebuildSession {
 }
 
 extension RebuildSession {
+    /// When the active recording began, for elapsed-time display. `phase` is
+    /// observed, so views re-read this whenever recording starts or stops.
+    var recordingStartedAt: Date? { phase == .recording ? startedAt : nil }
+
     var canUseOriginal: Bool {
         !phase.isBusy && originalTranscript != nil && originalTranscript != transcript
     }

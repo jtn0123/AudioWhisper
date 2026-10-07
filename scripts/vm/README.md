@@ -59,6 +59,7 @@ swiftc scripts/vm/probe.swift -o "$AW_QA_ROOT/share/probe-v2"
 cp "$AW_QA_ROOT/share/probe-v2" "$AW_QA_ROOT/share/probe"
 swiftc scripts/vm/input.swift -o "$AW_QA_ROOT/share/input"
 swiftc scripts/vm/audio-route.swift -o "$AW_QA_ROOT/share/audio-route"
+swiftc scripts/vm/inspect-workspace.swift -o "$AW_QA_ROOT/share/inspect-workspace"
 ```
 
 Start the prepared guest in a separate terminal. The share is read-only and
@@ -91,6 +92,12 @@ Replace the guest app only after quitting it, using `tart exec` to run guest
 fresh share subdirectory for each package to avoid stale shared-file caches.
 No host permission changes, TCC database edits or security disabling are needed.
 Gatekeeper assessments remained enabled during this run.
+
+`inspect-workspace` reads the running workspace's native accessibility button
+labels, selected state and focus in the retained guest. It refuses the host.
+Use it through `tart exec`; SwiftUI attributed labels can be missing from
+System Events' basic `name`/`description` properties even when direct AX
+attributes contain the correct label. It does not change focus or settings.
 
 ## Repeatable runs
 

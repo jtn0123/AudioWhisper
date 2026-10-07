@@ -10,6 +10,8 @@ final class RebuildWritingInstaller {
     private(set) var status: String?
     private(set) var cancelling = false
 
+    static let installedMessage = "Installed. You can enable cleanup now."
+
     init(manager: MLXModelManager? = nil) { self.manager = manager ?? .shared }
     var isRunning: Bool { repo != nil }
     var progress: String? { repo.flatMap { manager.downloadProgress[$0] } }
@@ -31,7 +33,7 @@ final class RebuildWritingInstaller {
             await manager.downloadModel(selected)
             status = manager.downloadProgress[selected]
                 ?? (manager.isModelCachedOnDisk(repo: selected)
-                    ? "Installed. You can enable cleanup now." : "Installation did not finish. Please retry.")
+                    ? Self.installedMessage : "Installation did not finish. Please retry.")
         }
     }
 
