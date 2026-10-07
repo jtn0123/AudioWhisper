@@ -15,11 +15,17 @@ internal struct TranscriptionResult {
     /// disabled via `TranscriptionPipelineConfig.applySemanticCorrection`.
     let correctionOutcome: CorrectionOutcome?
     let originalText: String
+    /// Validated file length, used when no live capture duration exists.
+    let audioDuration: TimeInterval?
 
-    init(text: String, correctionOutcome: CorrectionOutcome?, originalText: String? = nil) {
+    init(
+        text: String, correctionOutcome: CorrectionOutcome?, originalText: String? = nil,
+        audioDuration: TimeInterval? = nil
+    ) {
         self.text = text
         self.correctionOutcome = correctionOutcome
         self.originalText = originalText ?? text
+        self.audioDuration = audioDuration.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
     }
 }
 
@@ -65,8 +71,10 @@ internal class TranscriptionPipeline {
         try Task.checkCancellation()
         // Step 1: Validate audio file
         let validationResult = await AudioValidator.validateAudioFile(at: audioURL)
+        let audioDuration: TimeInterval
         switch validationResult {
-        case .valid:
+        case .valid(let info):
+            audioDuration = info.duration
             logger.debug("Audio validation passed")
         case .invalid(let error):
             logger.error("Audio validation failed: \(error.localizedDescription)")
@@ -81,7 +89,7 @@ internal class TranscriptionPipeline {
         try Task.checkCancellation()
         // Step 3: Apply semantic correction if enabled
         guard config.applySemanticCorrection else {
-            return TranscriptionResult(text: rawText, correctionOutcome: nil)
+            return TranscriptionResult(text: rawText, correctionOutcome: nil, audioDuration: audioDuration)
         }
 
         let outcome = await correctionService.correctWithOutcome(
@@ -101,7 +109,8 @@ internal class TranscriptionPipeline {
         let outcomeText = outcome.text
         let trimmed = outcomeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalText = trimmed.isEmpty ? rawText : outcomeText
-        return TranscriptionResult(text: finalText, correctionOutcome: outcome, originalText: rawText)
+        return TranscriptionResult(
+            text: finalText, correctionOutcome: outcome, originalText: rawText, audioDuration: audioDuration)
     }
 
     /// Convenience method that transcribes without semantic correction.

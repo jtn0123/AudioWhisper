@@ -310,6 +310,10 @@ final class RebuildSession {
                 }
                 transcript = result.text
                 originalTranscript = result.originalText
+                // Live captures keep their measured elapsed time. Imports and
+                // imported retries use the file metadata already validated by
+                // the pipeline, without opening the audio a second time.
+                let deliveredDuration = duration ?? result.audioDuration
                 services.copy(result.text)
                 if case .rejected = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup could not safely preserve your words."
@@ -319,9 +323,9 @@ final class RebuildSession {
                 }
                 do {
                     if let saveResult = services.saveResult {
-                        try await saveResult(result, config, duration)
+                        try await saveResult(result, config, deliveredDuration)
                     } else {
-                        try await services.save(result.text, config, duration)
+                        try await services.save(result.text, config, deliveredDuration)
                     }
                 } catch {
                     notice = "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
@@ -355,6 +359,9 @@ final class RebuildSession {
         }
     }
 
+}
+
+extension RebuildSession {
     func cancel() {
         discardRetry()
         sessionID = nil
@@ -365,9 +372,6 @@ final class RebuildSession {
         notice = nil
         closeRecorder()
     }
-}
-
-extension RebuildSession {
     var recordingActionTitle: String {
         if phase == .starting { return "Connecting microphone…" }
         if phase == .recording { return "Finish recording" }

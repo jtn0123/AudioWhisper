@@ -64,10 +64,38 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         XCTAssertEqual(record.modelUsed, WhisperModel.base.rawValue)
         XCTAssertEqual(record.sourceAppBundleId, captured?.sourceAppBundleId)
         XCTAssertNotNil(record.duration)
+        XCTAssertNotEqual(record.duration, 1, "Keep captured elapsed time rather than the validator fixture duration")
         XCTAssertEqual(record.wordCount, 2)
         XCTAssertEqual(usage.snapshot.totalSessions, 1)
         XCTAssertEqual(usage.snapshot.totalWords, 2)
         XCTAssertFalse(FileManager.default.fileExists(atPath: audio.path))
+    }
+
+    func testImportCarriesValidatedDurationIntoHistoryAndUsage() async throws {
+        makeSession()
+        session.importAudio(audio)
+        try await waitFor { self.session.phase == .completed }
+        let records = try await history.fetchAllRecords()
+        // AudioValidator's test fixture reports one second; native acceptance
+        // separately checks the actual speech_sample.wav duration.
+        XCTAssertEqual(try XCTUnwrap(records.first?.duration), 1, accuracy: 0.001)
+        XCTAssertEqual(usage.snapshot.totalDuration, 1, accuracy: 0.001)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: audio.path))
+    }
+
+    func testRetriedImportCarriesDurationAndPreservesTheUserFile() async throws {
+        speech.result = .failure(SpeechToTextError.transcriptionFailed("Fixture failure"))
+        makeSession()
+        session.importAudio(audio)
+        try await waitFor { self.session.phase == .failed }
+        speech.result = .success("retried import")
+        session.retry()
+        try await waitFor { self.session.phase == .completed }
+        let records = try await history.fetchAllRecords()
+        XCTAssertEqual(try XCTUnwrap(records.first?.duration), 1, accuracy: 0.001)
+        XCTAssertEqual(usage.snapshot.totalDuration, 1, accuracy: 0.001)
+        XCTAssertEqual(records.count, 1)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: audio.path))
     }
 
     func testLiveAssemblyDeliversCorrectedText() async throws {
