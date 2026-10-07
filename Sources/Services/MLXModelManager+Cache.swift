@@ -96,7 +96,7 @@ extension MLXModelManager {
         } catch {
             logger.error("Failed to prepare Python environment: \(error.localizedDescription)")
             await MainActor.run {
-                downloadProgress[repo] = "Error: Could not prepare Python environment"
+                downloadProgress[repo] = "Error: \(error.localizedDescription)"
                 isDownloading[repo] = false
             }
             return
