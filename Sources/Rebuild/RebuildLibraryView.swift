@@ -3,15 +3,11 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct RebuildLibraryView: View {
-    let history: DataManagerProtocol
-
     init(history: DataManagerProtocol = DataManager.shared) {
-        self.history = history
         self._library = State(initialValue: RebuildLibraryState(history: history))
     }
 
     init(state: RebuildLibraryState) {
-        self.history = state.history
         self._library = State(initialValue: state)
     }
 
@@ -22,13 +18,6 @@ struct RebuildLibraryView: View {
     }
     @AppDefault(\.transcriptionHistoryEnabled) private var historyEnabled
     @State private var library: RebuildLibraryState
-    @State private var pendingDelete: TranscriptionRecord?
-    @State private var confirmDelete = false
-    @State private var confirmClear = false
-    @State private var exporting = false
-    @State private var exportTask: Task<Void, Never>?
-    @State private var exportedCount = 0
-    @State private var exportStatus: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -36,8 +25,8 @@ struct RebuildLibraryView: View {
                 historyOff
             } else {
                 toolbar
-                if exporting { exportProgress }
-                if let exportStatus {
+                if library.exporting { exportProgress }
+                if let exportStatus = library.exportStatus {
                     RebuildCallout(tone: exportStatus.hasPrefix("Export cancelled") ? .info : .success, message: exportStatus)
                 }
                 if let error = library.error {
@@ -50,33 +39,21 @@ struct RebuildLibraryView: View {
         }
         .padding(.horizontal, 28).padding(.vertical, 16)
         .task(id: LoadRequest(
-            search: library.search, enabled: historyEnabled, revision: history.historyRevision.value)
+            search: library.search, enabled: historyEnabled, revision: library.history.historyRevision.value)
         ) {
             do {
                 try await Task.sleep(for: .milliseconds(200))
                 await load(reset: true)
             } catch {}
         }
-        .confirmationDialog("Delete every saved transcript permanently?", isPresented: $confirmClear) {
+        .confirmationDialog("Delete every saved transcript permanently?", isPresented: $library.confirmClear) {
             Button("Clear library", role: .destructive) {
-                Task {
-                    do {
-                        try await history.deleteAllRecords()
-                        await load(reset: true)
-                    } catch { self.library.error = error.localizedDescription }
-                }
+                Task { await library.clear() }
             }
         }
-        .confirmationDialog("Delete this transcript permanently?", isPresented: $confirmDelete) {
+        .confirmationDialog("Delete this transcript permanently?", isPresented: $library.confirmDelete) {
             Button("Delete transcript", role: .destructive) {
-                Task {
-                    guard let record = pendingDelete else { return }
-                    do {
-                        try await history.deleteRecord(record)
-                        await load(reset: true)
-                    } catch { self.library.error = error.localizedDescription }
-                    pendingDelete = nil
-                }
+                Task { await library.deletePending() }
             }
         }
     }
@@ -104,16 +81,16 @@ struct RebuildLibraryView: View {
             if library.loaded && !library.records.isEmpty {
                 Text(countText).font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText).lineLimit(1)
             }
-            Button(exporting ? "Exporting…" : "Export…") { chooseExport() }
-                .disabled(library.loading || exporting)
+            Button(library.exporting ? "Exporting…" : "Export…") { chooseExport() }
+                .disabled(library.loading || library.exporting)
                 .help("Save every transcript to a plain text file")
             Menu {
-                Button("Clear library…", role: .destructive) { confirmClear = true }
+                Button("Clear library…", role: .destructive) { library.confirmClear = true }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-            .disabled(library.loading || exporting)
+            .disabled(library.loading || library.exporting)
             .help("More library actions")
             .accessibilityLabel("More library actions")
         }
@@ -129,9 +106,9 @@ struct RebuildLibraryView: View {
     private var exportProgress: some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
-            Text("Exported \(exportedCount) transcripts…").font(.system(size: 12)).monospacedDigit()
+            Text("Exported \(library.exportedCount) transcripts…").font(.system(size: 12)).monospacedDigit()
             Spacer()
-            Button("Cancel export") { exportTask?.cancel() }
+            Button("Cancel export") { library.cancelExport() }
         }.rebuildCard(padding: 10)
     }
 
@@ -158,7 +135,7 @@ struct RebuildLibraryView: View {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(library.records) { record in
                         RebuildLibraryRow(
-                            record: record, deleteDisabled: exporting,
+                            record: record, deleteDisabled: library.exporting,
                             expanded: Binding(
                                 get: { library.expanded.contains(record.id) },
                                 set: { if $0 { library.expanded.insert(record.id) } else { library.expanded.remove(record.id) } }),
@@ -167,8 +144,8 @@ struct RebuildLibraryView: View {
                                 set: {
                                     if $0 { library.showingOriginal.insert(record.id) } else { library.showingOriginal.remove(record.id) }
                                 })) {
-                            pendingDelete = record
-                            confirmDelete = true
+                            library.pendingDelete = record
+                            library.confirmDelete = true
                         }
                     }
                     if library.hasMore {
@@ -198,30 +175,7 @@ struct RebuildLibraryView: View {
         panel.nameFieldStringValue = "AudioWhisper transcripts.txt"
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            guard let container = history.sharedModelContainer else {
-                library.error = "Your local library is unavailable. Try reopening the app."
-                return
-            }
-            exporting = true
-            exportedCount = 0
-            exportStatus = nil
-            library.error = nil
-            exportTask = Task { @MainActor in
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer {
-                    if scoped { url.stopAccessingSecurityScopedResource() }
-                    exporting = false
-                    exportTask = nil
-                }
-                do {
-                    let count = try await HistoryExporter.export(container: container, to: url) { count in
-                        await MainActor.run { exportedCount = count }
-                    }
-                    exportStatus = "Exported \(count) transcripts."
-                } catch is CancellationError {
-                    exportStatus = "Export cancelled. Your existing file was kept."
-                } catch { self.library.error = error.localizedDescription }
-            }
+            library.startExport(to: url)
         }
     }
 }

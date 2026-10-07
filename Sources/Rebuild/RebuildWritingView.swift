@@ -24,10 +24,24 @@ struct RebuildWritingView: View {
     var isModelCached: @MainActor (String) -> Bool = { MLXModelManager.shared.isModelCachedOnDisk(repo: $0) }
     @AppDefault(\.semanticCorrectionMode) private var mode
     @AppDefault(\.semanticCorrectionModelRepo) private var model
-    @State private var installing = false
-    @State private var status: RebuildWritingStatus?
-    @State private var confirmModelDelete = false
-    @State private var verifying = false
+    @State private var maintenance: RebuildWritingMaintenance
+    private var installing: Bool { maintenance.action == .removing }
+    private var verifying: Bool { maintenance.action == .verifying }
+    private var status: RebuildWritingStatus? {
+        get { maintenance.status }
+        nonmutating set { maintenance.status = newValue }
+    }
+
+    @MainActor
+    init(
+        session: RebuildSession,
+        isModelCached: @escaping @MainActor (String) -> Bool = { MLXModelManager.shared.isModelCachedOnDisk(repo: $0) },
+        maintenance: RebuildWritingMaintenance? = nil
+    ) {
+        self.session = session
+        self.isModelCached = isModelCached
+        _maintenance = State(initialValue: maintenance ?? RebuildWritingMaintenance())
+    }
 
     var body: some View {
         let installed = isModelCached(model)
@@ -52,23 +66,11 @@ struct RebuildWritingView: View {
             status = nil
             if !isModelCached(selected) { mode = .off }
         }
-        .confirmationDialog("Remove these shared correction weights?", isPresented: $confirmModelDelete) {
+        .confirmationDialog("Remove these shared correction weights?", isPresented: Binding(
+            get: { maintenance.confirmRemoval }, set: { maintenance.confirmRemoval = $0 })) {
             Button("Remove model", role: .destructive) {
                 let selected = model
-                Task {
-                    guard !session.phase.isBusy, !session.isInstalling,
-                        !session.maintenanceInProgress
-                    else { return }
-                    installing = true
-                    session.maintenanceInProgress = true
-                    defer {
-                        installing = false
-                        session.maintenanceInProgress = false
-                    }
-                    mode = .off
-                    await MLXModelManager.shared.deleteModel(selected)
-                    status = .removal(stillOnDisk: MLXModelManager.shared.isModelCachedOnDisk(repo: selected))
-                }
+                Task { await maintenance.remove(selected, session: session) }
             }
         }
     }
@@ -133,9 +135,12 @@ struct RebuildWritingView: View {
                 tone: installed ? .success : .info, busy: installer.isRunning || verifying)
             Spacer()
             if installed {
-                Button(verifying ? "Verifying…" : "Verify correction model") { Task { await verifyModel() } }
+                Button(verifying ? "Verifying…" : "Verify correction model") {
+                    let selected = model
+                    Task { await maintenance.verify(selected, session: session) }
+                }
                     .disabled(actionsBlocked)
-                Button("Remove…", role: .destructive) { confirmModelDelete = true }
+                Button("Remove…", role: .destructive) { maintenance.confirmRemoval = true }
                     .disabled(actionsBlocked)
                     .accessibilityLabel("Remove correction model")
             } else if !installer.isRunning {
@@ -184,22 +189,4 @@ struct RebuildWritingView: View {
         return entry.displayName + recommendation
     }
 
-    private func verifyModel() async {
-        guard !session.phase.isBusy, !session.isInstalling, !session.maintenanceInProgress else { return }
-        verifying = true
-        session.maintenanceInProgress = true
-        status = nil
-        let selected = model
-        defer {
-            verifying = false
-            session.maintenanceInProgress = false
-        }
-        do {
-            let python = try await UvBootstrap.ensureVenv()
-            let result = try await ModelVerificationService.verify(
-                scriptName: "verify_mlx", arguments: [selected] + ModelPins.scriptArguments(for: selected),
-                pythonPath: python.path, successFallback: "Correction model is ready")
-            status = .verification(result)
-        } catch { status = .failure(error) }
-    }
 }

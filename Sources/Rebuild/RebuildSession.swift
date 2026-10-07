@@ -362,6 +362,8 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    var captureIdentity: UUID? { sessionID }
+
     func cancel() {
         discardRetry()
         sessionID = nil

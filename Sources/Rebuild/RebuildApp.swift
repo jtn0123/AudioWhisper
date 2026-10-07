@@ -65,7 +65,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
     private var workspace: NSWindow?
     private var workspaceDelegate: StandardWindowDelegate?
     private var overlay: NSWindow?
-    private var holdOwnsSession = false
+    private lazy var holdRecorder = RebuildHoldRecorder(session: session)
     private var holdMonitor: PressAndHoldKeyMonitor?
     private var settingsObserver: NSObjectProtocol?
 
@@ -96,15 +96,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             StandardWindow.present(workspace)
             return
         }
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1080, height: 760),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false
-        )
-        window.title = "AudioWhisper Rebuild"
-        window.titlebarAppearsTransparent = true
-        window.minSize = NSSize(width: 870, height: 620)
-        window.contentViewController = RebuildWorkspaceHosting.controller(
-            for: RebuildRootView(
+        let window = RebuildWindowFactory.workspace(root: RebuildRootView(
                 session: session, navigation: navigation, recorder: recorder,
                 importAudio: { [weak self] in self?.chooseAudio() }
             ))
@@ -117,14 +109,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
 
     private func showOverlay() {
         if overlay == nil {
-            let window = ChromelessWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 380, height: 230),
-                styleMask: [.borderless], backing: .buffered, defer: false
-            )
-            RecordingWindowStyle.configure(window)
-            window.contentViewController = NSHostingController(
-                rootView: RebuildRecorderView(session: session, recorder: recorder))
-            overlay = window
+            overlay = RebuildWindowFactory.recorder(session: session, recorder: recorder)
         }
         guard let overlay else { return }
         RecordingWindowStyle.moveToActiveScreen(overlay)
@@ -148,7 +133,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
     private func configureShortcuts() {
         KeyboardShortcuts.removeAllHandlers()
         KeyboardShortcuts.disable(.rebuildRecording)
-        holdOwnsSession = false
+        holdRecorder.reset()
         holdMonitor?.stop()
         holdMonitor = nil
         if AppDefaults.defaults.bool(forKey: "rebuild.shortcutEnabled"), WindowServer.canRegisterGlobalHotkeys {
@@ -161,22 +146,12 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             configuration: config,
             keyDownHandler: { [weak self] in
                 Task { @MainActor in
-                    guard let self else { return }
-                    if config.mode == .hold {
-                        guard !self.session.phase.isBusy else { return }
-                        self.session.toggleRecording()
-                        self.holdOwnsSession = self.session.phase == .starting || self.session.phase == .recording
-                    } else {
-                        self.session.toggleRecording()
-                    }
+                    self?.holdRecorder.keyDown(mode: config.mode)
                 }
             },
             keyUpHandler: { [weak self] in
                 Task { @MainActor in
-                    guard let self, config.mode == .hold, self.holdOwnsSession else { return }
-                    self.holdOwnsSession = false
-                    if self.session.phase == .starting { self.session.cancel() }
-                    if self.session.phase == .recording { self.session.finishRecording() }
+                    self?.holdRecorder.keyUp(mode: config.mode)
                 }
             }
         )
