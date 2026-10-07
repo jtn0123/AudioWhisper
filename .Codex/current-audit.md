@@ -2,8 +2,8 @@
 
 Audited code: `f30c081ed0bc324bf29c882052a6033d7028783b`, 2026-10-06.
 
-- [Current codebase grade](grade-report-f30c081.md): **B−**, 20 open improvements.
-- [Current UI/UX grade](ui-ux-grade-report-f30c081.md): **B**, 7 concrete improvements.
+- [Current codebase grade](grade-report-f30c081.md): **B−** audit baseline, 15 remaining improvements.
+- [Current UI/UX grade](ui-ux-grade-report-f30c081.md): **B** audit baseline, 5 remaining improvements.
 - [Current native VM evidence](ui-ux-audit/2026-10-06-f30c081/README.md): exact
   installed executable identity, 10 start/cancel cycles, fixture transcription,
   exactly-once Smart Paste, all five workspace screens and reproduced Library
@@ -25,12 +25,17 @@ Qwen3.8 **27B mixed 3-bit is optional**, and three lightweight legacy choices
 remain. Existing explicit preferences are preserved. The host user's selected
 cleanup model is 3.5, but cleanup remains off and shortcut disabled as before.
 
-Highest code priorities: **B1, B2, B3, B4, C3** — preserve bracketed words,
-preserve meaning, protect long dictation, retain the original, fix Library
-window overflow. Then **I1, E1, C1** for analyzer execution, dependency patch and
-model-install progress/cancellation. See the report's ranked list.
+**Completed:** B1-B4 and C3 (also UI C1/E1). Bracketed text survives, writing
+has stronger integrity and bounded long-content checks, original text is
+recoverable, and Library stays inside the user's window. See
+[fixes and new validation](fixes-next5-2026-10-06/README.md).
+
+Next code priorities: **I1, E1, C1, D1, G1** — analyzer execution, dependency
+patch, model-install progress/cancellation, native compatibility acceptance,
+and responsive Library export. See the report's remaining ranked list.
 
 Specify **“f30c081 code B1”** or **“f30c081 UI C1”** for these current items.
 [Prior codebase](grade-report-187eacd.md), [prior UI](ui-ux-grade-report-187eacd.md)
 and canonical historical reports retain their original IDs/completion records.
-This grade changed reports/evidence only, not app behavior or host permissions.
+The initial grade changed reports only; subsequent fixes are tracked separately.
+Existing model/shortcut preferences and the persistent signing identity are retained.

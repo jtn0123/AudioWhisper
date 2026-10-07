@@ -1,0 +1,35 @@
+{
+  "code_head": "391f3dea8526b63afb6fa0bc70e0f6eecae68ec2",
+  "swift_suite": {
+    "name": "TestResults",
+    "errors": "0",
+    "tests": "3073",
+    "failures": "0",
+    "time": "494.0956498520004"
+  },
+  "swift_limit": "3,073 discovered cases; opt-in real engines remain gated, not an assertion that every case ran; native hosting fixture runs on an interactive desktop and is skipped on hosted GitHub runners.",
+  "python_main_cases": 109,
+  "python_automation_cases": 6,
+  "benchmark_scoring_cases": 10,
+  "legacy_migration": {
+    "module": "AudioWhisper",
+    "baseline": "f30c081",
+    "legacy_uuid_and_text_retained": true,
+    "legacy_original_nil": true,
+    "new_pair_reopened": true
+  },
+  "production": {
+    "qwen3.5-9b-production.delivered": {
+      "cases": 64,
+      "guard_retained_original": 6,
+      "changed_delivered": 36,
+      "reasoning_retries": 0
+    },
+    "qwen3.8-27b-3bit-production.delivered": {
+      "cases": 64,
+      "guard_retained_original": 6,
+      "changed_delivered": 35,
+      "reasoning_retries": 0
+    }
+  }
+}

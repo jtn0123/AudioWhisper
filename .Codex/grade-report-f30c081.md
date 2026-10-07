@@ -10,20 +10,24 @@ app and historical reports are separate. IDs belong to **f30c081 codebase**;
 use “code B1” when referring to this report. This audit changes reports/evidence,
 not application behavior, model preferences or host permissions.
 
+**Remediation, 2026-10-06:** B1-B4 and C3 are complete; 15 items remain.
+[Fixes and new evidence](fixes-next5-2026-10-06/README.md) describe the subsequent
+code changes. Letter grades below remain the audit baseline, not an automatic regrade.
+
 ## Summary
 
 | ID | Category | Grade | Open items | Simply |
 |---|---|---|---:|---|
 | A | Architecture & Design | B | 2 | Clear session ownership, with hidden configuration and dormant app flows |
-| B | Backend Quality | C+ | 4 | Engines work; some words can still be removed or rewritten incorrectly |
-| C | Frontend Quality | B | 3 | Clear interface; Library resizing, installs and app mappings need work |
+| B | Backend Quality | C+ | 0 | Engines work; some words can still be removed or rewritten incorrectly |
+| C | Frontend Quality | B | 2 | Clear interface; Library resizing, installs and app mappings need work |
 | D | Testing & Reliability | B | 2 | Strong regressions and real VM checks; hardware/minimum-OS gaps remain |
 | E | Security | B− | 2 | Local processing and pinned setup; one vulnerable dependency and a weak release gate |
 | F | Dependencies & Tech Currency | B | 1 | Current, locked model runtime; a known advisory and manual tool monitoring remain |
 | G | Performance & Scalability | B | 2 | Fast short edits and bounded memory; export/cold scheduling need work |
 | H | Documentation & Onboarding | B− | 2 | Useful evidence, mixed with incorrect default and development instructions |
 | I | Developer Experience & Tooling | B | 2 | Good automation; analyzer errors and installed-app replacement are insufficiently guarded |
-| **Overall** | | **B−** | **20** | A much better preview, still short of dependable transcript preservation |
+| **Overall** | | **B−** | **15** | A much better preview, still short of dependable transcript preservation |
 
 The overall grade is judgment weighted toward delivered words, reliability and
 security, not a numerical average. UI/UX is separately **B** in the
@@ -34,11 +38,11 @@ user experience are distinct assessments.
 
 | Rank | Item | Plain meaning | Impact | Effort |
 |---:|---|---|---|---|
-| 1 | B1 | Stop deleting real words in brackets and parentheses | Major | S |
-| 2 | B2 | Better grammar must preserve instructions, recipients and meaning | Major | M |
-| 3 | B3 | Give long transcripts a real content check | Major | M |
-| 4 | B4 / UI C1 | Keep the original and let users undo AI edits | Moderate | M |
-| 5 | C3 / UI E1 | Keep populated Library inside the screen | Moderate | M |
+| 1 | ~~B1~~ ✓ | Stop deleting real words in brackets and parentheses | Major | S |
+| 2 | ~~B2~~ ✓ | Better grammar must preserve instructions, recipients and meaning | Major | M |
+| 3 | ~~B3~~ ✓ | Give long transcripts a real content check | Major | M |
+| 4 | ~~B4 / UI C1~~ ✓ | Keep the original and let users undo AI edits | Moderate | M |
+| 5 | ~~C3 / UI E1~~ ✓ | Keep populated Library inside the screen | Moderate | M |
 | 6 | I1 | Fail CI when analysis cannot actually run | Major | S |
 | 7 | E1 | Patch the confirmed vulnerable dependency; no app exploit established | Moderate | S |
 | 8 | C1 / UI C2 | Show progress and real cancellation during big model installs | Moderate | M |
@@ -165,7 +169,7 @@ Layman: The engines work much better, but some of your words can still disappear
 - **Grade lift:** C+ → B−; complements B1-B3 by making editing reversible.
 - **Simply:** Give you an Undo button for AI wording changes.
 
-**B4 validation:** Five original-propagation/recovery assertions failed before wiring the pipeline and live history path. All 68 focused pipeline/session/delivery/model checks pass after, including restore without another automatic delivery, one saved record/usage event, history-off privacy and a real SQLite reopen retaining both versions. A disposable SQLite created with the f30c081 model migrated through the new model in module AudioWhisper: the existing UUID/text remained, its original field was nil, and a new pair survived reopening. The workspace offers Compare with original/Use original; Library exposes Original transcript/Copy original. Native visual acceptance is recorded with the final five-fix package.
+**B4 validation:** Five original-propagation/recovery assertions failed before wiring the pipeline and live history path. All 68 focused pipeline/session/delivery/model checks pass after, including restore without another automatic delivery, one saved record/usage event, history-off privacy and a real SQLite reopen retaining both versions. A disposable SQLite created with the f30c081 model migrated through the new model in module AudioWhisper: the existing UUID/text remained, its original field was nil, and a new pair survived reopening. The workspace offers Compare with original/Use original; Library exposes Original transcript/Copy original. Native Library Original transcript/Copy original were exercised on the final package; restoring the current session is covered by live pipeline/session integration with fixture services.
 
 ## C — Frontend Quality — B
 
@@ -208,7 +212,7 @@ tracked under B4 and UI C1 rather than counted twice here.
 - **Grade lift:** B → B+, by fixing a confirmed native layout failure; C1/C2 remain.
 - **Simply:** Opening history should not stretch the app below your screen.
 
-**C3 validation:** A native hosting regression with 55 long transcripts reproduced a 870×1185 window and 1153-point content minimum under the default sizing policy. The workspace now disables content-driven hosting sizing and retains the native window's explicit minimum and user-selected bounds. All 8 layout/library tests pass after: five page transitions, populated/empty Library and the recorder. Library receives a real injected SwiftData store for layout coverage. Final packaged VM measurements are recorded separately.
+**C3 validation:** A native hosting regression with 55 long transcripts reproduced a 870×1185 window and 1153-point content minimum under the default sizing policy. The workspace now disables content-driven hosting sizing and retains the native window's explicit minimum and user-selected bounds. All 8 layout/library tests pass after: five page transitions, populated/empty Library and the recorder. Library receives a real injected SwiftData store for layout coverage. Final packaged VM measurements repeat the two original Library repro attempts at 870×620, all five pages, a 55-long-record fixture and a genuine no-results search; each retains contained 870×620 bounds. See the new evidence report.
 
 ## D — Testing & Reliability — B
 
@@ -344,7 +348,7 @@ Writing shows friendly names, the recommendation, speed/memory and separate
 download size. The representative-benchmark gap is retired after the Oct5
 speech corpus and Oct6 production cleanup suite. Thinking-template and quote
 sanitizer defects are fixed and have actual packaged inference evidence.
-Meaning preservation, original recovery, native compatibility and the analyzer
+Broader semantic correctness, native compatibility and the analyzer
 gate remain open. The newly verified dependency advisory explains the lower
 security/dependency assessment; no newly demonstrated app exploit is claimed.
 Historical reports retain their original IDs and completion records.

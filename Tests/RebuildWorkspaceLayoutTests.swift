@@ -7,6 +7,11 @@ import XCTest
 @MainActor
 final class RebuildWorkspaceLayoutTests: IsolatedXCTestCase {
     func testPopulatedLibraryAndPageTransitionsKeepTheUserWindowSize() async throws {
+        // Hosted runners can report a display without an interactive window
+        // server (see WindowServer's probe caveat). Exercise this desktop
+        // fixture locally; packaged VM acceptance supplies separate native evidence.
+        try XCTSkipIf(ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == "true",
+                      "Native workspace hosting requires an interactive macOS desktop")
         try XCTSkipUnless(WindowServer.hasActiveDisplay, "Hosting layout requires a WindowServer")
         // Each parallel XCTest worker starts without the app's entry point.
         // Initialize AppKit before creating a native window on older macOS.

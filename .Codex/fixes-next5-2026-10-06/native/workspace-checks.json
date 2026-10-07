@@ -1,0 +1,707 @@
+[
+  {
+    "check": "existing-library-1",
+    "state": {
+      "clipboard": "",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 51,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 48,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 46,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 50,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 49,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "existing-library-2",
+    "state": {
+      "clipboard": "",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 51,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 48,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 46,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 50,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 49,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "55-long-records-and-original-pairs",
+    "state": {
+      "clipboard": "",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "page-record",
+    "header": "RECORD",
+    "state": {
+      "clipboard": "raw qa transcript 0",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "page-library",
+    "header": "LIBRARY",
+    "state": {
+      "clipboard": "raw qa transcript 0",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "page-models",
+    "header": "MODELS & SETUP",
+    "state": {
+      "clipboard": "raw qa transcript 0",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "page-writing",
+    "header": "WRITING PROFILES",
+    "state": {
+      "clipboard": "raw qa transcript 0",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "page-preferences",
+    "header": "PREFERENCES",
+    "state": {
+      "clipboard": "raw qa transcript 0",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "page-library",
+    "header": "LIBRARY",
+    "state": {
+      "clipboard": "raw qa transcript 0",
+      "frontmost": "com.audiowhisper.rebuild",
+      "modifierFlags": 0,
+      "screens": [
+        {
+          "frame": [
+            0,
+            0,
+            1024,
+            768
+          ],
+          "scale": 2,
+          "visible": [
+            0,
+            57,
+            1024,
+            681
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 62,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 620,
+            "Width": 870,
+            "X": 77,
+            "Y": 30
+          },
+          "id": 58,
+          "visible": true
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 63,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 61,
+          "visible": false
+        },
+        {
+          "bounds": {
+            "Height": 30,
+            "Width": 1024,
+            "X": 0,
+            "Y": 0
+          },
+          "id": 60,
+          "visible": false
+        }
+      ]
+    }
+  },
+  {
+    "check": "native-no-results-search",
+    "text_entered": "qa-no-matches-next5",
+    "visible_title": "No matching transcripts",
+    "screenshot": "library-no-results-verified.png"
+  }
+]

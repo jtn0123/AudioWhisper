@@ -9,7 +9,11 @@
 
 IDs belong to **f30c081 UI**; use “UI E1” for this report.
 The [codebase report](grade-report-f30c081.md) has a separate ID namespace.
-This pass changed audit documentation/evidence only.
+This original pass changed audit documentation/evidence only.
+
+**Remediation, 2026-10-06:** UI C1 and UI E1 are complete; five items remain.
+[Subsequent fixes and native evidence](fixes-next5-2026-10-06/README.md) are
+separate from the baseline letter grades below.
 
 ## Summary
 
@@ -17,16 +21,16 @@ This pass changed audit documentation/evidence only.
 |---|---|---|---:|---|
 | A | Visual Design & Theme Cohesion | B+ | 0 | Distinctive, consistent, restrained native utility design |
 | B | Layout, Information Architecture & Navigation | B+ | 1 | Cleanup choices now explained; voice choices could be equally clear |
-| C | Interaction Design & Workflow Quality | B | 3 | Good controls/recovery; corrected text needs an escape hatch and installs need progress |
+| C | Interaction Design & Workflow Quality | B | 2 | Good controls/recovery; corrected text needs an escape hatch and installs need progress |
 | D | Accessibility & Inclusive UX | B-, provisional | 1 | Useful labels and keyboard actions; faint recording timer and no full VoiceOver proof |
-| E | Responsive & Cross-State Experience | C+ | 1 | Populated Library makes the native window taller than its display |
+| E | Responsive & Cross-State Experience | C+ | 0 | Populated Library makes the native window taller than its display |
 | F | Frontend Code & Design System Health | B+ | 0 | Shared view primitives, small purpose-specific views and observable state |
 | G | UI Performance & Asset Efficiency | B, provisional | 1 | Bounded rows and stopped timers; large exports still share the UI actor |
 | H | Data Linkages & State Reliability | B+ | 0 | Readiness/retry/invalidation have real coverage; semantic trust remains a separate weakness |
 | I | Polish, Delight & Product Feel | B+ | 0 | Considered copy/model guidance; unfinished details are concentrated in optional workflows |
-| **Overall** | | **B** | **7** | Good native core workflow, with confirmed Library layout and cleanup-control gaps |
+| **Overall** | | **B** | **5** | Good native core workflow, with confirmed Library layout and cleanup-control gaps |
 
-**Top five:** UI C1 → UI E1 → UI C2 → UI G1 → UI C3.
+**Remaining priorities:** UI C2 → UI G1 → UI C3 → UI B1 → UI D1.
 
 ## Evidence limits
 
@@ -78,7 +82,7 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 - **Fix:** Carry raw text and applied profile/model alongside the final text; offer Original/Cleaned comparison and Use original/Copy original actions. Keep auto-delivery configurable and ensure restore does not produce an unexpected second paste. Add meaningful pipeline/session recovery tests.
 - **Grade lift:** B → B+, by restoring user control over uncertain edits; model-fidelity improvements remain separately necessary.
 
-**UI C1 validation:** Original/final propagation, restore/copy without a second delivery, history-off privacy, disk round-trip and legacy schema migration pass. Native compare/copy visuals are checked with the final package; these recovery controls complement the semantic guards and do not prove all model wording is correct.
+**UI C1 validation:** Original/final propagation, restore/copy without a second delivery, history-off privacy, disk round-trip and legacy schema migration pass. Native Library compare/copy visuals are checked with the final package; these recovery controls complement the semantic guards and do not prove all model wording is correct.
 
 #### UI C2 — Show correction-install progress and allow cancellation
 
