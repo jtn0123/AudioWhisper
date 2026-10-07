@@ -128,7 +128,10 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
             // an empty/placeholder error here would indicate a broken path.
             XCTAssertFalse(
                 error.localizedDescription.isEmpty,
-                "Unexpected error type \(type(of: error)) should be descriptive"
+                // SourceKit's IDE inspection crashes on type(of:) inside
+                // this XCTest autoclosure on the CI toolchain. Keep the
+                // assertion while using an ordinary diagnostic message.
+                "Unexpected error should be descriptive"
             )
         }
 
