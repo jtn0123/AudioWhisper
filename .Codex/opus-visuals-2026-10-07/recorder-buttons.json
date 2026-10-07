@@ -1,0 +1,45 @@
+[
+  {
+    "AXAttributedDescription": "Stop recording",
+    "AXDescription": "Stop recording",
+    "enabled": true,
+    "focused": true,
+    "position": [
+      334,
+      267
+    ],
+    "size": [
+      356,
+      118
+    ]
+  },
+  {
+    "AXAttributedDescription": "Cancel",
+    "AXDescription": "Cancel",
+    "AXHelp": "Discard this recording. Nothing is copied or saved.",
+    "enabled": true,
+    "focused": false,
+    "position": [
+      340,
+      435
+    ],
+    "size": [
+      112,
+      32
+    ]
+  },
+  {
+    "AXAttributedDescription": "Stop & transcribe",
+    "AXDescription": "Stop & transcribe",
+    "enabled": true,
+    "focused": false,
+    "position": [
+      516,
+      435
+    ],
+    "size": [
+      168,
+      32
+    ]
+  }
+]

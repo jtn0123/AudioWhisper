@@ -1,0 +1,47 @@
+{
+  "focused_swift_tests": 194,
+  "focused_exit_code": 0,
+  "filter": "Rebuild|Waveform",
+  "swiftlint_version": "0.65.0",
+  "swiftlint_strict_exit_code": 0,
+  "signed_debug_build": true,
+  "native_vm_os": "macOS 26.6.2 (25G83)",
+  "prior_full_ci": {
+    "commit": "79afea7",
+    "status": "success",
+    "url": "https://github.com/jtn0123/AudioWhisper/actions/runs/37592947152"
+  },
+  "current_source_ci": {
+    "commit": "a9a0fed",
+    "status": "in_progress",
+    "url": "https://github.com/jtn0123/AudioWhisper/actions/runs/37641726077"
+  },
+  "limits": [
+    "Synthetic guest input and virtual microphone with public fixture audio",
+    "No physical host recording or full VoiceOver certification",
+    "Development signing; no public release or notarization"
+  ],
+  "final_binary_sha256": "58e531e1bc1e19dcadac4aa34af0330363897bcb34691dc85444b4f5f3e6b218",
+  "native_recording_acceptance": {
+    "status": "passed",
+    "cycles": 10,
+    "stop": "actual native button center click",
+    "readiness": "enabled AX controls",
+    "initial_coordinate_click_miss_retained": true
+  },
+  "host_preservation": {
+    "source_commit": "a9a0feddf1639bd6594d0fcb6a7d304770796065",
+    "installed_app": "/Applications/AudioWhisper Rebuild.app",
+    "binary_sha256": "58e531e1bc1e19dcadac4aa34af0330363897bcb34691dc85444b4f5f3e6b218",
+    "strict_signature_valid": true,
+    "signing_requirement_unchanged": true,
+    "protected_preferences_unchanged": true,
+    "protected_preference_count": 14,
+    "history_unchanged": true,
+    "history_count": 0,
+    "history_integrity": "ok",
+    "running_process_count": 1,
+    "host_os": "27.2",
+    "consent_reset": false
+  }
+}

@@ -1,0 +1,61 @@
+[
+  {
+    "AXAttributedDescription": "Record",
+    "AXDescription": "Record",
+    "AXHelp": "Record (\u23181)",
+    "focused": true,
+    "selected": true
+  },
+  {
+    "AXAttributedDescription": "Library",
+    "AXDescription": "Library",
+    "AXHelp": "Library (\u23182)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Models & setup",
+    "AXDescription": "Models & setup",
+    "AXHelp": "Models & setup (\u23183)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Writing cleanup",
+    "AXDescription": "Writing cleanup",
+    "AXHelp": "Writing cleanup (\u23184)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Preferences",
+    "AXDescription": "Preferences",
+    "AXHelp": "Preferences (\u23185)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Status: Ready to record",
+    "AXDescription": "Status: Ready to record",
+    "AXHelp": "Opens Models & setup",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Start recording",
+    "AXDescription": "Start recording",
+    "AXHelp": "Start recording",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Transcribe a file\u2026",
+    "AXDescription": "Transcribe a file\u2026",
+    "AXHelp": "Choose one audio file to transcribe",
+    "focused": false
+  },
+  {
+    "focused": false
+  },
+  {
+    "AXHelp": "this button also has an action to zoom the window",
+    "focused": false
+  },
+  {
+    "focused": false
+  }
+]

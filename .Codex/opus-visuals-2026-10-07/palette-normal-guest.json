@@ -1,0 +1,322 @@
+[
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.074509803921568626,
+      0.43529411764705883,
+      0.51764705882352946,
+      1
+    ],
+    "token" : "accent"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.074509803921568626,
+      0.43529411764705883,
+      0.51764705882352946,
+      1
+    ],
+    "token" : "accentText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.95294117647058818,
+      0.96078431372549022,
+      0.96862745098039216,
+      1
+    ],
+    "token" : "canvas"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      1,
+      1,
+      1,
+      1
+    ],
+    "token" : "surface"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.35294117647058826,
+      0.396078431372549,
+      0.44313725490196076,
+      1
+    ],
+    "token" : "secondaryText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.81176470588235294,
+      0.21176470588235294,
+      0.17647058823529413,
+      1
+    ],
+    "token" : "recording"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.7686274509803922,
+      0.20784313725490197,
+      0.17254901960784313,
+      1
+    ],
+    "token" : "recordingText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAqua",
+    "rgba" : [
+      0.86274509803921573,
+      0.88235294117647056,
+      0.90588235294117647,
+      1
+    ],
+    "token" : "border"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.10980392156862745,
+      0.49803921568627452,
+      0.58823529411764708,
+      1
+    ],
+    "token" : "accent"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.42352941176470588,
+      0.76470588235294112,
+      0.83529411764705885,
+      1
+    ],
+    "token" : "accentText"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.082352941176470587,
+      0.094117647058823528,
+      0.10980392156862745,
+      1
+    ],
+    "token" : "canvas"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.11372549019607843,
+      0.12941176470588237,
+      0.15294117647058825,
+      1
+    ],
+    "token" : "surface"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.63137254901960782,
+      0.66666666666666663,
+      0.70980392156862748,
+      1
+    ],
+    "token" : "secondaryText"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.81176470588235294,
+      0.21176470588235294,
+      0.17647058823529413,
+      1
+    ],
+    "token" : "recording"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      1,
+      0.41960784313725491,
+      0.38039215686274508,
+      1
+    ],
+    "token" : "recordingText"
+  },
+  {
+    "appearance" : "NSAppearanceNameDarkAqua",
+    "rgba" : [
+      0.17254901960784313,
+      0.19607843137254902,
+      0.22745098039215686,
+      1
+    ],
+    "token" : "border"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.074509803921568626,
+      0.43529411764705883,
+      0.51764705882352946,
+      1
+    ],
+    "token" : "accent"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.074509803921568626,
+      0.43529411764705883,
+      0.51764705882352946,
+      1
+    ],
+    "token" : "accentText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.95294117647058818,
+      0.96078431372549022,
+      0.96862745098039216,
+      1
+    ],
+    "token" : "canvas"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      1,
+      1,
+      1,
+      1
+    ],
+    "token" : "surface"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.35294117647058826,
+      0.396078431372549,
+      0.44313725490196076,
+      1
+    ],
+    "token" : "secondaryText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.81176470588235294,
+      0.21176470588235294,
+      0.17647058823529413,
+      1
+    ],
+    "token" : "recording"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.7686274509803922,
+      0.20784313725490197,
+      0.17254901960784313,
+      1
+    ],
+    "token" : "recordingText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityAqua",
+    "rgba" : [
+      0.86274509803921573,
+      0.88235294117647056,
+      0.90588235294117647,
+      1
+    ],
+    "token" : "border"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.10980392156862745,
+      0.49803921568627452,
+      0.58823529411764708,
+      1
+    ],
+    "token" : "accent"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.42352941176470588,
+      0.76470588235294112,
+      0.83529411764705885,
+      1
+    ],
+    "token" : "accentText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.082352941176470587,
+      0.094117647058823528,
+      0.10980392156862745,
+      1
+    ],
+    "token" : "canvas"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.11372549019607843,
+      0.12941176470588237,
+      0.15294117647058825,
+      1
+    ],
+    "token" : "surface"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.63137254901960782,
+      0.66666666666666663,
+      0.70980392156862748,
+      1
+    ],
+    "token" : "secondaryText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.81176470588235294,
+      0.21176470588235294,
+      0.17647058823529413,
+      1
+    ],
+    "token" : "recording"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      1,
+      0.41960784313725491,
+      0.38039215686274508,
+      1
+    ],
+    "token" : "recordingText"
+  },
+  {
+    "appearance" : "NSAppearanceNameAccessibilityDarkAqua",
+    "rgba" : [
+      0.17254901960784313,
+      0.19607843137254902,
+      0.22745098039215686,
+      1
+    ],
+    "token" : "border"
+  }
+]
