@@ -40,6 +40,13 @@ internal actor DiskMutationSerializer<Key: Hashable & Sendable> {
         inFlight[key] = nil
         try result.get()
     }
+
+    /// Cancel the owned operation and wait until its resources have closed.
+    func cancel(key: Key) async {
+        guard let task = inFlight[key] else { return }
+        task.cancel()
+        _ = await task.result
+    }
 }
 
 /// Best-effort SHA-256 integrity check for cached model files.

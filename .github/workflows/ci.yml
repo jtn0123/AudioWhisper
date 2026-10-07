@@ -328,14 +328,9 @@ jobs:
           # verify_mlx.py (the Settings "Verify" buttons) against fake model
           # libraries: offline hit, pinned download on a miss, and each error.
           set -e
-          .mypy-venv/bin/pip install --quiet --disable-pip-version-check "coverage==${COVERAGE_VERSION}"
-          .mypy-venv/bin/python -m coverage run --source=Sources Tests/test_correction_sanitize.py
-          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_hub.py
-          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_rpc.py
-          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_verify_scripts.py
-          .mypy-venv/bin/python -m coverage run --append --source=Sources Tests/test_parakeet.py
+          .mypy-venv/bin/pip install --quiet --disable-pip-version-check "coverage==${COVERAGE_VERSION}" "tqdm==4.67.1"
+          .mypy-venv/bin/python -m coverage run --source=Sources -m unittest discover -s Tests -p 'test_*.py'
           .mypy-venv/bin/python -m coverage xml -o coverage-python.xml
-          python3 Tests/test_coverage_artifacts.py
           python3 -m unittest scripts/test_unattended_acceptance.py
           python3 scripts/coverage-artifact.py create python coverage-python.xml \
             --commit "$(git rev-parse HEAD)" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"

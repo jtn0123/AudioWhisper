@@ -52,9 +52,14 @@ class FakeHub:
         return os.path.join(self.root, "models--" + repo.replace("/", "--"))
 
     def snapshot_download(
-        self, repo: str, revision: Optional[str] = None, local_files_only: bool = False
+        self, repo: str, revision: Optional[str] = None, local_files_only: bool = False,
+        tqdm_class: Any = None
     ) -> str:
         self.calls.append({"repo": repo, "revision": revision, "local_files_only": local_files_only})
+        if tqdm_class is not None:
+            progress = tqdm_class(total=100, unit="B", disable=False)
+            progress.update(50)
+            progress.close()
         storage = self.storage(repo)
         if local_files_only:
             ref = os.path.join(storage, "refs", revision or "main")
@@ -278,7 +283,9 @@ class TestDownloadModelScript(HubTestCase):
         code, events = self.run_main(["download_model.py", "org/model", PINNED])
 
         self.assertEqual(code, 0)
-        self.assertEqual([e["status"] for e in events], ["downloading", "complete"])
+        self.assertEqual(events[0]["status"], "downloading")
+        self.assertEqual(events[-1]["status"], "complete")
+        self.assertTrue(any(e.get("total") == 100 for e in events))
         self.assertEqual(self.read_ref("org/model"), PINNED)
 
     def test_empty_revision_argument_means_unpinned(self) -> None:

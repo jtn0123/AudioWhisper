@@ -110,6 +110,7 @@ struct RebuildSessionServices {
 @MainActor
 @Observable
 final class RebuildSession {
+    let writingInstaller = RebuildWritingInstaller()
     private(set) var phase: RebuildPhase = .idle
     var readiness = RebuildReadiness()
     var transcript = ""

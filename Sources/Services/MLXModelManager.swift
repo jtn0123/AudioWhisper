@@ -30,6 +30,11 @@ internal final class MLXModelManager {
     var modelSizes: [String: Int64] = [:]
     var isDownloading: [String: Bool] = [:]
     var downloadProgress: [String: String] = [:]
+    var downloadFraction: [String: Double] = [:]
+    var activeDownloads: [String: Process] = [:]
+    var cancelledDownloads: Set<String> = []
+    let prepareDownloadPython: () async throws -> URL
+    let downloadProcessFactory: ((String, String) -> Process?)?
     var totalCacheSize: Int64 = 0
 
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLXModelManager")
@@ -124,8 +129,14 @@ internal final class MLXModelManager {
     /// Unlike `shared`, it does not scan the cache in the background — a scan
     /// finishing mid-test could re-add a model the test had just deleted. Call
     /// `refreshModelList()`.
-    init(cacheDirectory: URL) {
+    init(
+        cacheDirectory: URL,
+        prepareDownloadPython: @escaping () async throws -> URL = { try await UvBootstrap.ensureVenv() },
+        downloadProcessFactory: ((String, String) -> Process?)? = nil
+    ) {
         self.cacheDirectory = cacheDirectory
+        self.prepareDownloadPython = prepareDownloadPython
+        self.downloadProcessFactory = downloadProcessFactory
     }
 
     func refreshModelList() async {

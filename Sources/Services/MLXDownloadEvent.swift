@@ -18,6 +18,7 @@ import Foundation
 internal enum MLXDownloadEvent: Equatable {
     /// Progress to display verbatim.
     case progress(String)
+    case measured(String, Double)
     /// The script reported a failure. The process is expected to exit non-zero
     /// too; this carries the human-readable reason.
     case failure(String)
@@ -53,6 +54,10 @@ internal enum MLXDownloadEvent: Equatable {
         case "complete":
             return .complete
         case "downloading":
+            if let completed = object["completed"]?.doubleValue,
+               let total = object["total"]?.doubleValue, total > 0, completed >= 0 {
+                return .measured(message, min(completed / total, 1))
+            }
             return .progress(message.isEmpty ? "Downloading model files..." : message)
         default:
             // A JSON object carrying a message but an unknown/absent status is
@@ -66,9 +71,14 @@ internal enum MLXDownloadEvent: Equatable {
     /// what is displayed.
     var displayText: String? {
         switch self {
-        case .progress(let message): return message
+        case .progress(let message), .measured(let message, _): return message
         case .failure(let message): return "Error: \(message)"
         case .complete, .unstructured: return nil
         }
+    }
+
+    var fraction: Double? {
+        if case .measured(_, let fraction) = self { return fraction }
+        return nil
     }
 }

@@ -24,7 +24,7 @@ struct RebuildWritingView: View {
                         ForEach(MLXModelManager.recommendedModels) {
                             Text(modelLabel($0)).tag($0.repo)
                         }
-                    }.disabled(installing || verifying || !Arch.isAppleSilicon)
+                    }.disabled(installing || verifying || session.writingInstaller.isRunning || !Arch.isAppleSilicon)
                     if let selected = MLXModelManager.recommendedModels.first(where: { $0.repo == model }) {
                         Text(selected.description)
                             .font(.caption).foregroundStyle(.secondary)
@@ -44,39 +44,37 @@ struct RebuildWritingView: View {
                         )
                         .font(.caption).foregroundStyle(.secondary)
                         Spacer()
-                        Button(installing ? "Installing…" : "Install correction model") {
-                            Task {
-                                guard !session.phase.isBusy, !session.isInstalling,
-                                    !session.maintenanceInProgress
-                                else { return }
-                                installing = true
-                                session.maintenanceInProgress = true
-                                defer {
-                                    installing = false
-                                    session.maintenanceInProgress = false
-                                }
-                                status = nil
-                                let selected = model
-                                do {
-                                    _ = try await UvBootstrap.ensureVenv()
-                                    await MLXModelManager.shared.downloadModel(selected)
-                                    status =
-                                        MLXModelManager.shared.isModelCachedOnDisk(repo: selected)
-                                        ? "Installed. You can enable cleanup now."
-                                        : "Installation did not complete. Check your connection and retry."
-                                } catch { status = error.localizedDescription }
-                                installing = false
+                        Button("Install correction model") {
+                            session.writingInstaller.start(model, session: session)
+                        }.disabled(installing || verifying || session.writingInstaller.isRunning || !Arch.isAppleSilicon)
+
+                    }
+                    if session.writingInstaller.isRunning {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let fraction = session.writingInstaller.fraction {
+                                ProgressView(value: fraction)
+                            } else { ProgressView().controlSize(.small) }
+                            HStack {
+                                Text(session.writingInstaller.progress ?? "Preparing download…")
+                                    .font(.caption).textSelection(.enabled)
+                                Spacer()
+                                Button(session.writingInstaller.cancelling ? "Cancelling…" : "Cancel install") {
+                                    Task { await session.writingInstaller.cancel() }
+                                }.disabled(session.writingInstaller.cancelling)
                             }
-                        }.disabled(installing || verifying || !Arch.isAppleSilicon)
+                        }
+                    }
+                    if let status = session.writingInstaller.status {
+                        Text(status).font(.caption).textSelection(.enabled)
                     }
                     if MLXModelManager.shared.isModelCachedOnDisk(repo: model) {
                         HStack {
                             Button(verifying ? "Verifying…" : "Verify correction model") {
                                 Task { await verifyModel() }
                             }
-                            .disabled(installing || verifying)
+                            .disabled(installing || verifying || session.writingInstaller.isRunning)
                             Button("Remove correction model", role: .destructive) { confirmModelDelete = true }
-                                .disabled(installing || verifying)
+                                .disabled(installing || verifying || session.writingInstaller.isRunning)
                         }
                     }
                     if !Arch.isAppleSilicon {

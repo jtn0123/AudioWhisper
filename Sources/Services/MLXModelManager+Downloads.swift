@@ -1,10 +1,15 @@
 import Foundation
+import Darwin
 import os.log
 
 // MARK: - Model Downloads & Integrity
 
 extension MLXModelManager {
     func downloadModel(_ repo: String) async {
+        guard !Task.isCancelled else {
+            downloadProgress[repo] = "Cancelled. Partial files are kept for retry."
+            return
+        }
         // Serialize per-repo: if another caller is already downloading the
         // same repo, await that task instead of starting a duplicate one.
         // The body never throws — the serializer's error channel is unused
@@ -19,18 +24,27 @@ extension MLXModelManager {
     }
 
     private func performDownloadModel(_ repo: String) async {
+        guard !Task.isCancelled else {
+            downloadProgress[repo] = "Cancelled. Partial files are kept for retry."
+            return
+        }
         logger.info("Starting MLX model download for: \(repo)")
+        cancelledDownloads.remove(repo)
+        downloadFraction.removeValue(forKey: repo)
+        isDownloading[repo] = true
+        downloadProgress[repo] = "Preparing local Python runtime…"
+        defer { isDownloading[repo] = false }
         // Ensure managed Python via uv
         let pythonPath: String
         do {
-            let resolvedPython = try await UvBootstrap.ensureVenv(userPython: nil) { msg in
-                self.logger.info("uv: \(msg)")
-            }
+            let resolvedPython = try await prepareDownloadPython()
+            try Task.checkCancellation()
             pythonPath = resolvedPython.path
         } catch {
             logger.error("Failed to prepare Python environment: \(error.localizedDescription)")
             await MainActor.run {
-                downloadProgress[repo] = "Error: Could not prepare Python environment"
+                downloadProgress[repo] = Task.isCancelled ? "Cancelled. Partial files are kept for retry."
+                    : "Error: \(error.localizedDescription)"
                 isDownloading[repo] = false
             }
             return
@@ -54,16 +68,14 @@ extension MLXModelManager {
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorPipe
+        let progressBuffer = DownloadOutputBuffer()
 
         outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             guard let self = self else { return }
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            guard let output = String(data: data, encoding: .utf8) else { return }
-            self.logger.info("Python stdout: \(output)")
-            // Process each line separately as JSON might come in multiple lines
-            for line in output.split(separator: "\n") {
-                let lineStr = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
+            for line in progressBuffer.append(data) {
+                let lineStr = line.trimmingCharacters(in: .whitespacesAndNewlines)
                 if lineStr.isEmpty { continue }
                 Task { @MainActor [weak self] in
                     guard process.isRunning else { return }
@@ -80,7 +92,8 @@ extension MLXModelManager {
             self.handleDownloadStderr(errorOutput, for: repo)
         }
 
-        await runDownloadProcess(process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe)
+        await runDownloadProcess(
+            process, repo: repo, outputPipe: outputPipe, errorPipe: errorPipe, progressBuffer: progressBuffer)
     }
 
     /// Parses one stdout line from the download script and updates UI progress.
@@ -115,6 +128,7 @@ extension MLXModelManager {
             downloadProgress[repo] = text
             logger.info("Download progress for \(repo): \(text)")
         }
+        if let fraction = event.fraction { downloadFraction[repo] = fraction }
         return event
     }
 
@@ -155,6 +169,7 @@ extension MLXModelManager {
     /// Not `private`: the Parakeet download in `MLXModelManager+Cache.swift`
     /// uses it too, and `private` is file-scoped.
     func makeDownloadProcess(pythonPath: String, repo: String) -> Process? {
+        if let downloadProcessFactory { return downloadProcessFactory(pythonPath, repo) }
         guard let script = ResourceLocator.pythonScriptURL(named: "download_model") else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: pythonPath)
@@ -185,7 +200,23 @@ extension MLXModelManager {
     ///
     /// Not `private`: the Parakeet download in `MLXModelManager+Cache.swift`
     /// runs through it too.
-    func runDownloadProcess(_ process: Process, repo: String, outputPipe: Pipe, errorPipe: Pipe) async {
+    func runDownloadProcess(
+        _ process: Process, repo: String, outputPipe: Pipe, errorPipe: Pipe,
+        progressBuffer: DownloadOutputBuffer? = nil
+    ) async {
+        guard !Task.isCancelled, !cancelledDownloads.contains(repo) else {
+            isDownloading[repo] = false
+            downloadProgress[repo] = "Cancelled. Partial files are kept for retry."
+            return
+        }
+        activeDownloads[repo] = process
+        defer {
+            activeDownloads.removeValue(forKey: repo)
+            outputPipe.fileHandleForReading.readabilityHandler = nil
+            errorPipe.fileHandleForReading.readabilityHandler = nil
+            try? outputPipe.fileHandleForReading.close()
+            try? errorPipe.fileHandleForReading.close()
+        }
         let exitStatus: Int32
         do {
             logger.info("Launching download process for \(repo)")
@@ -210,15 +241,39 @@ extension MLXModelManager {
         errorPipe.fileHandleForReading.readabilityHandler = nil
         isDownloading[repo] = false
 
+        if cancelledDownloads.contains(repo) || Task.isCancelled {
+            downloadProgress[repo] = "Cancelled. Partial files are kept for retry."
+            downloadFraction.removeValue(forKey: repo)
+            return
+        }
+
         guard exitStatus == 0 else {
-            downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
+            if let message = progressBuffer?.error {
+                downloadProgress[repo] = "Error: \(message)"
+            } else if downloadProgress[repo]?.hasPrefix("Error:") != true {
+                downloadProgress[repo] = "Error: Download failed (exit code: \(exitStatus))"
+            }
             logger.error("Failed to download model: \(repo) with exit code: \(exitStatus)")
             return
         }
         downloadProgress.removeValue(forKey: repo)
+        downloadFraction.removeValue(forKey: repo)
         recordIntegrity(for: repo)
         await refreshModelList()
         logger.info("Successfully downloaded model: \(repo)")
+    }
+
+    func cancelDownload(_ repo: String) async {
+        cancelledDownloads.insert(repo)
+        downloadProgress[repo] = "Cancelling…"
+        let process = activeDownloads[repo]
+        if let process, process.isRunning { process.terminate() }
+        let escalation = Task {
+            do { try await Task.sleep(for: .seconds(2)) } catch { return }
+            if let process, process.isRunning { kill(process.processIdentifier, SIGKILL) }
+        }
+        await downloadSerializer.cancel(key: repo)
+        escalation.cancel()
     }
 
     /// Starts `process` and suspends until it exits, without parking a thread

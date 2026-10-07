@@ -22,7 +22,7 @@ Two rules, and why each exists:
 from __future__ import annotations
 
 import os
-from typing import Optional
+from typing import Any, Optional
 
 
 def cached_snapshot_path(repo: str) -> str:
@@ -36,7 +36,7 @@ def cached_snapshot_path(repo: str) -> str:
     return str(snapshot_download(repo, local_files_only=True))
 
 
-def download_snapshot(repo: str, revision: Optional[str] = None) -> str:
+def download_snapshot(repo: str, revision: Optional[str] = None, tqdm_class: Any = None) -> str:
     """Download `repo` at `revision` (latest if None) and return its directory.
 
     When a revision is given, `refs/main` is pointed at it so that offline
@@ -44,7 +44,10 @@ def download_snapshot(repo: str, revision: Optional[str] = None) -> str:
     """
     from huggingface_hub import snapshot_download
 
-    path = str(snapshot_download(repo, revision=revision))
+    if tqdm_class is None:
+        path = str(snapshot_download(repo, revision=revision))
+    else:
+        path = str(snapshot_download(repo, revision=revision, tqdm_class=tqdm_class))
     if revision:
         point_main_at(path)
     return path
