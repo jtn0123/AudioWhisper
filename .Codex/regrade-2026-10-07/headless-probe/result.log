@@ -1,0 +1,9 @@
+Build complete! (2.91 sec)
+Test Case '-[AudioWhisperTests.RebuildModelsHeadlessProbeTests testBlockedSetupControlRoutesToSetupWithoutRequestingConsent]' started.
+/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Tests/RebuildModelsHeadlessProbeTests.swift:54: error: -[AudioWhisperTests.RebuildModelsHeadlessProbeTests testBlockedSetupControlRoutesToSetupWithoutRequestingConsent] : XCTUnwrap failed: expected non-nil value of type "NSAccessibility" - The real Models control must be present in the offscreen accessibility tree
+Test Case '-[AudioWhisperTests.RebuildModelsHeadlessProbeTests testBlockedSetupControlRoutesToSetupWithoutRequestingConsent]' failed (1.730 seconds).
+	 Executed 1 test, with 1 failure (0 unexpected) in 1.730 (1.731) seconds
+	 Executed 1 test, with 1 failure (0 unexpected) in 1.730 (1.731) seconds
+	 Executed 1 test, with 1 failure (0 unexpected) in 1.730 (1.731) seconds
+HEADLESS_ROOT_CHILDREN []
+HEADLESS_AX AXGroup nil nil

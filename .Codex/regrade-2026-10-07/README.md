@@ -2,9 +2,9 @@
 
 After [PR #40](https://github.com/jtn0123/AudioWhisper/pull/40) was opened, the
 current app was sampled across nine codebase categories.
-[Report and ranked items](../grade-report-224473e.md): **B+ overall**.
+[Report and ranked items](../grade-report-b64f707.md): **B overall** after the PR coverage result; Testing **C+**.
 
-Code: `224473efc775d0547cac2a467379736baf354e98`. The signed installed package
+Code: `b64f7071688a705d380e6ace5fb2382c92205f5c`; app sources unchanged from `224473e`. The signed installed package
 was built from `a9a0fed`; the intervening commit adds evidence/docs only.
 Both host and guest binary SHA-256:
 `58e531e1bc1e19dcadac4aa34af0330363897bcb34691dc85444b4f5f3e6b218`.
@@ -16,6 +16,9 @@ Both host and guest binary SHA-256:
   pinned strict lint and typing passed. Optional hardware/model/snapshot cases
   can skip. Exact-head [hosted CI](https://github.com/jtn0123/AudioWhisper/actions/runs/37643160057)
   passed with 40.80% Sources-only coverage. The PR's checks are separate.
+- [Exact-head PR CI](b64-pr-ci.json) and [CodeQL](b64-pr-codeql.json) on `b64f707` completed successfully: tests, lint, analyzer and universal packaged smoke. [Checks](b64-pr-checks.json) retain the separate failing Sonar result. Later audit-only commits leave source/tests unchanged; inspect the live PR for their checks.
+- [PR Sonar gate](sonar-pr40-status.json) / [measures](sonar-pr40-measures.json): **45.7% new-code coverage against 80%**, sole gate failure on `b64f707`. Ratings A, duplication 0%, hotspots reviewed 100%. Overall 40.80% measures a different code population. PR remains blocked.
+- [Headless Models behavioral probe](headless-probe/README.md): failed to expose a real button; only an AX group with no children. Fake services, isolated preferences and no real permission/capture/download. Preserved failed feasibility evidence, not a passing regression fixture or a universal headless limitation.
 - [Ten native page captures](pages/capture-report.json): macOS 26.6.2,
   light/dark for all five screens, 870×620-point bounds contained on the
   1024×768-point guest display, with selected/focused AX navigation dumps.
@@ -60,7 +63,7 @@ and USB passthrough to the host were disabled.
 
 Physical hold keys, unplugging/input changes, sleep recovery and a complete
 VoiceOver pass remain unaccepted. Synthetic guest events do not establish
-physical host behavior. Existing same-source fullscreen, install cancellation,
+physical host behavior. Host live recording was not accepted; read-only command-line readiness was false and native GUI inspection timed out, so no new host consent-defect inference is made. Existing same-source fullscreen, install cancellation,
 Library export and high-contrast evidence remains in the earlier UI packages
 and was not all repeated here. No release was published, PR merged, host consent
 reset or app profile restored.
