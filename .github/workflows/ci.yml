@@ -530,77 +530,18 @@ jobs:
           xcodebuild -scheme AudioWhisper -destination 'platform=macOS' \
             build-for-testing 2>&1 | tee xcodebuild.log | tail -5
 
-      - name: Analyze (single pass)
-        run: |
-          # ONE analyze run, saved to a file that the summary and the gate below
-          # both read. This used to invoke `swiftlint analyze` three times —
-          # twice here, once in the gate — and each pass over 355 files takes
-          # ~10 minutes. The job took 28.5 minutes when it passed and was killed
-          # by its own 30-minute timeout when it did not. The gate step was the
-          # one cancelled, so the job reported "cancelled" rather than anything
-          # that pointed at the real cause.
-          swiftlint analyze --compiler-log-path xcodebuild.log \
-            --reporter github-actions-logging 2>/dev/null | tee analyze.txt || true
-          echo "--- summary ---"
-          grep -oE '\((unused_declaration|unused_import)\)' analyze.txt | sort | uniq -c || true
+      - name: Analyze and gate (single pass)
+        run: python3 scripts/analyze-gate.py xcodebuild.log --baseline 30
 
-      - name: Gate on unused_import
-        run: |
-          # unused_import IS enforced. The backlog was triaged by removing each
-          # flagged import and rebuilding — the compiler, not the analyzer, is
-          # the oracle. 95 were genuinely unused and removed; 20 were false
-          # positives (umbrella imports like Cocoa, modules needed only for @objc
-          # or a type in a signature, and `@testable import AudioWhisper`) and
-          # carry an inline swiftlint:disable:next with that justification.
-          # The rule now reports 0, so any new finding is real.
-          # Reads the single analyze pass above; does not re-run it.
-          count=$(grep -c '(unused_import)' analyze.txt || true)
-          if [ "${count:-0}" -ne 0 ]; then
-            # analyze.txt holds the reporter's raw "::warning file=...,line=..."
-            # lines. GitHub turns those into annotations and hides the file path
-            # from the log, so the first time this gate fired it said only that
-            # ONE import was unused, with no way to tell which. Neutralise the
-            # "::" prefix so the paths actually print.
-            echo "offending imports:"
-            grep '(unused_import)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
-          fi
-          if [ "${count:-0}" -ne 0 ]; then
-            echo "::error::$count unused import(s). Remove them, or if the compiler"
-            echo "::error::genuinely needs one, add swiftlint:disable:next with a reason."
-            exit 1
-          fi
-          echo "unused_import: 0"
-
-      - name: Ratchet on unused_declaration
-        run: |
-          # NOT gated at zero, and probably never should be — much of what
-          # remains is structural rather than defective: protocol requirements
-          # reached only through the protocol, SwiftUI declarations required by
-          # position rather than by call, Tests/Mocks members that exist purely
-          # to satisfy a conformance.
-          #
-          # A RATCHET instead: the count may fall, never rise. That catches
-          # genuinely dead code as it appears — which is the actual risk — without
-          # demanding a triage pass nobody has time for.
-          #
-          # BASELINE is only valid for the pinned SWIFTLINT_VERSION. The same
-          # tree reports 144 findings on 0.63.2 and 46 on 0.65.0, so bump the
-          # two together or this gate becomes noise. (The note that used to live
-          # here claimed 215 with 87 in Tests/Mocks — stale on both counts.)
-          #
-          # Raising BASELINE should be a deliberate, explained act. Lowering it
-          # is always fine. (46 → 30 after the two dead-code passes.)
-          BASELINE=30
-          count=$(grep -c '(unused_declaration)' analyze.txt || true)
-          echo "unused_declaration: $count (baseline $BASELINE)"
-          if [ "${count:-0}" -gt "$BASELINE" ]; then
-            echo "::error::unused_declaration rose from $BASELINE to $count. Findings:"
-            grep '(unused_declaration)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
-            exit 1
-          fi
-          if [ "${count:-0}" -lt "$BASELINE" ]; then
-            echo "::notice::unused_declaration fell to $count — lower BASELINE to lock it in."
-          fi
+      - name: Retain analyzer report and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-${{ github.sha }}
+          path: |
+            analyze.json
+            analyze.stderr.txt
+          if-no-files-found: warn
 
   sonarcloud:
     name: SonarCloud Scan
