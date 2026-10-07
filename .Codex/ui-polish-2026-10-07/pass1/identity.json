@@ -1,0 +1,52 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "sha": "7e84aba147e9674776e43c74a46fa8f25a5bf552e095cdaad4ec85b272ff80d3  /Applications/AudioWhisper.app/Contents/MacOS/AudioWhisper",
+  "frames": [
+    {
+      "page": "record",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      }
+    },
+    {
+      "page": "library",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      }
+    },
+    {
+      "page": "models",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      }
+    },
+    {
+      "page": "writing",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      }
+    },
+    {
+      "page": "preferences",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      }
+    }
+  ],
+  "source": "uncommitted first Opus preview"
+}

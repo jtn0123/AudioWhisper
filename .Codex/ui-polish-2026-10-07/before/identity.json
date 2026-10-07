@@ -1,0 +1,79 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "sha": "80523ce273952a61b5722b887991e28e23d02db4c1d6d6dc0b6dda2759dac7c5  /Applications/AudioWhisper.app/Contents/MacOS/AudioWhisper",
+  "state": {
+    "clipboard": "",
+    "frontmost": "com.audiowhisper.rebuild",
+    "modifierFlags": 0,
+    "screens": [
+      {
+        "frame": [
+          0,
+          0,
+          1024,
+          768
+        ],
+        "scale": 2,
+        "visible": [
+          0,
+          57,
+          1024,
+          681
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 23,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 21,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 19,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 18,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 620,
+          "Width": 870,
+          "X": 77,
+          "Y": 30
+        },
+        "id": 10,
+        "visible": true
+      }
+    ]
+  },
+  "source": "b54a8524f5dfd96219fcdf6a07020d04689e31a5"
+}

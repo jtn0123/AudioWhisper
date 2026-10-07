@@ -1,0 +1,14 @@
+{
+  "source": "45632e5",
+  "version": "0.65.0",
+  "scope": [
+    "Sources/App/RecordingDiagnostics.swift",
+    "Sources/Rebuild/RebuildSession.swift",
+    "Sources/Rebuild/RebuildWritingView.swift"
+  ],
+  "rule": "unused_import",
+  "indexed_files": 3,
+  "violations": 0,
+  "exit_code": 0,
+  "full_final_CI": "pending; scoped follow-up is not a full final analyzer pass"
+}

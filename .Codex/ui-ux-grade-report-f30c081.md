@@ -12,8 +12,9 @@ The [codebase report](grade-report-f30c081.md) has a separate ID namespace.
 This original pass changed audit documentation/evidence only.
 
 **Remediation:** UI C1/E1/C2/G1 are complete. UI C3 is removed with the
-app-profile feature at the user's direction. Remaining UI items: **UI B1, UI D1**
-(voice-model guidance and timer emphasis). Code D1 is a different compatibility
+app-profile feature at the user's direction. **October 7 follow-up:** UI B1 and UI D1 were completed in the
+[native polish batch](ui-polish-2026-10-07/README.md), including actual VM evidence.
+The grades and finding descriptions below remain the historical audit baseline. Code D1 is a different compatibility
 item excluded by the user. [First fixes](fixes-next5-2026-10-06/README.md) and
 [next-ten evidence](fixes-next10-2026-10-06/README.md) remain separate from the
 baseline letter grades and dimension counts below.
@@ -33,7 +34,7 @@ baseline letter grades and dimension counts below.
 | I | Polish, Delight & Product Feel | B+ | 0 | Considered copy/model guidance; unfinished details are concentrated in optional workflows |
 | **Overall** | | **B** | **5** | Good native core workflow, with confirmed Library layout and cleanup-control gaps |
 
-**Remaining priorities:** UI B1 → UI D1.
+**Historical priorities:** UI B1 and UI D1, completed October 7; see the linked polish evidence.
 
 ## Evidence limits
 

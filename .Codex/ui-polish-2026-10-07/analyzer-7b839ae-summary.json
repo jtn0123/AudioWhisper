@@ -1,0 +1,11 @@
+{
+  "source": "7b839ae",
+  "version": "0.65.0",
+  "completed": "Done analyzing! Found 25 violations, 24 serious in 424 files.",
+  "unused_declaration": 24,
+  "unchanged_baseline": 30,
+  "unused_import": 1,
+  "residual_import": "Foundation in Sources/App/RecordingDiagnostics.swift, left after removing the obsolete snapshot helper; removed in final follow-up",
+  "new_obsolete_declaration": "RebuildPhase.title, unused after the UI redesign; removed in final follow-up",
+  "result": "full analysis completed; gate correctly failed for remaining import"
+}

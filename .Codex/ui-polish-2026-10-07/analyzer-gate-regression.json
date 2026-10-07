@@ -1,0 +1,16 @@
+{
+  "fixture": "complete valid report with 30 baseline declarations; real SwiftLint exit-2 semantics",
+  "results": {
+    "before": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Done analyzing! Found 30 violations, 30 serious in 2 files.\n::error::Analyzer exited with 2"
+    },
+    "after": {
+      "exit_code": 0,
+      "stdout": "unused_import: 0; unused_declaration: 30 (baseline 30)",
+      "stderr": "Done analyzing! Found 30 violations, 30 serious in 2 files."
+    }
+  },
+  "upstream": "https://github.com/realm/SwiftLint/blob/0.65.0/Source/SwiftLintFramework/LintOrAnalyzeCommand.swift"
+}

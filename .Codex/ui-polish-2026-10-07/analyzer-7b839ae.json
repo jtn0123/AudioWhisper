@@ -1,0 +1,227 @@
+[
+  {
+    "character" : 17,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/App/AudioWhisperEntryPoint.swift",
+    "line" : 6,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 1,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/App/RecordingDiagnostics.swift",
+    "line" : 1,
+    "reason" : "All imported modules should be required to make the file compile",
+    "rule_id" : "unused_import",
+    "severity" : "Warning",
+    "type" : "Unused Import"
+  },
+  {
+    "character" : 13,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Managers/MLRPCProtocol.swift",
+    "line" : 102,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Managers/MLRPCProtocol.swift",
+    "line" : 131,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Managers/MicrophoneVolumeManager.swift",
+    "line" : 11,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Managers/Windows/DashboardWindowManager.swift",
+    "line" : 9,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Stores/DataManager.swift",
+    "line" : 67,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Stores/DataManager.swift",
+    "line" : 76,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Stores/DataManager.swift",
+    "line" : 89,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Stores/DataManager.swift",
+    "line" : 90,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Stores/DataManager.swift",
+    "line" : 107,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Stores/DataManager.swift",
+    "line" : 111,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Models/ModelEntry.swift",
+    "line" : 8,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 16,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Utilities/VersionInfo.swift",
+    "line" : 5,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 16,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Utilities/VersionInfo.swift",
+    "line" : 8,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Rebuild/RebuildSession.swift",
+    "line" : 8,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 43,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Views/ContentView.swift",
+    "line" : 16,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Views/Dashboard/DashboardProvidersView.swift",
+    "line" : 72,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 8,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 11,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 14,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 17,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 9,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 20,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 34,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  },
+  {
+    "character" : 10,
+    "file" : "/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Services/Audio/AudioRecording.swift",
+    "line" : 37,
+    "reason" : "Declarations should be referenced at least once within all files linted",
+    "rule_id" : "unused_declaration",
+    "severity" : "Error",
+    "type" : "Unused Declaration"
+  }
+]

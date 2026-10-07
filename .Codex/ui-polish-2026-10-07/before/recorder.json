@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "bounds": {
+    "Height": 230,
+    "Width": 380,
+    "X": 322,
+    "Y": 255
+  },
+  "cancel_kept_clipboard": true,
+  "cancel_kept_destination": true
+}

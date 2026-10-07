@@ -3,7 +3,7 @@
 Audited code: `f30c081ed0bc324bf29c882052a6033d7028783b`, 2026-10-06.
 
 - [Current codebase grade](grade-report-f30c081.md): **B−** historical audit baseline; remaining code items A2/E2/F1.
-- [Current UI/UX grade](ui-ux-grade-report-f30c081.md): **B** historical audit baseline; remaining UI items B1/D1.
+- [Current UI/UX grade](ui-ux-grade-report-f30c081.md): **B** historical audit baseline; UI B1/D1 completed in the October 7 polish batch; no fresh regrade.
 - [Current native VM evidence](ui-ux-audit/2026-10-06-f30c081/README.md): exact
   installed executable identity, 10 start/cancel cycles, fixture transcription,
   exactly-once Smart Paste, all five workspace screens and reproduced Library
@@ -34,9 +34,12 @@ direction; the native test scope is macOS 26/27. The existing macOS 15 CI runner
 remains build/test infrastructure.
 
 The current remaining code items are **A2** (legacy app assembly), **E2** (public
-release enforcement) and **F1** (uv pin monitoring). UI **B1** (English voice
-choice guidance) and UI **D1** (timer readability) remain. These UI IDs are
-separate from code D1. No automatic regrade is claimed.
+release enforcement) and **F1** (uv pin monitoring). UI **B1** (English voice choice guidance) and UI **D1** (timer readability)
+were completed in the [October 7 native polish batch](ui-polish-2026-10-07/README.md).
+Actual English model choices, the high-contrast live timer, keyboard navigation,
+shortcut assignment, recording, full-screen placement and native paste were checked
+in the macOS 26 VM. These UI IDs are separate from code D1. No automatic regrade
+is claimed.
 
 Specify **“f30c081 code B1”** or **“f30c081 UI C1”** for these current items.
 [Prior codebase](grade-report-187eacd.md), [prior UI](ui-ux-grade-report-187eacd.md)

@@ -1,0 +1,23 @@
+{
+  "source": "7b839ae",
+  "status": "passed",
+  "advanced_expands": true,
+  "window_bounds": [
+    870,
+    620
+  ],
+  "copied_diagnostics_fields": [
+    "build",
+    "bundleIdentifier",
+    "launchContext",
+    "microphonePermission",
+    "nextStep",
+    "provider",
+    "readyToRecord",
+    "recordingShortcut",
+    "selectedVoiceModel",
+    "selectedVoiceModelInstalled",
+    "smartPastePermission"
+  ],
+  "transcript_and_history_absent": true
+}

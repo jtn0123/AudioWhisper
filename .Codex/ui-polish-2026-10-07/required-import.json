@@ -1,0 +1,7 @@
+{
+  "file": "Sources/Rebuild/RebuildWritingView.swift",
+  "old_report_source": "38d16de",
+  "flagged_module": "AppKit",
+  "resolved_by": "AppKit was already removed by UI refinement in b3dc14f. SwiftUI is the sole necessary import in the current file.",
+  "compiler_probe_without_SwiftUI": "Fails with unknown State and missing View types; expected exit 1. No rule suppression retained."
+}
