@@ -83,7 +83,7 @@ struct RebuildRootView: View {
         case .library: RebuildLibraryView(history: history)
         case .models: RebuildModelsView(session: session)
         case .writing: RebuildWritingView(session: session)
-        case .preferences: RebuildPreferencesView()
+        case .preferences: RebuildPreferencesView(session: session)
         }
     }
 }

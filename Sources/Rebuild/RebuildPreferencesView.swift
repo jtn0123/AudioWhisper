@@ -1,4 +1,3 @@
-import AVFoundation
 import KeyboardShortcuts
 import ServiceManagement
 import SwiftUI
@@ -19,9 +18,16 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.startAtLogin) private var login
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
     @AppStorage("rebuild.appearance", store: AppDefaults.defaults) private var appearance = "system"
-    @State private var microphones: [AVCaptureDevice] = []
+    @State private var inputs: RebuildMicrophoneInputs
     @State private var message: String?
     @State private var accessibilityAllowed = AccessibilityPermissionManager().checkPermission()
+    var session: RebuildSession?
+
+    @MainActor
+    init(session: RebuildSession? = nil, inputs: RebuildMicrophoneInputs? = nil) {
+        self.session = session
+        _inputs = State(initialValue: inputs ?? RebuildMicrophoneInputs())
+    }
 
     var body: some View {
         ScrollView {
@@ -42,14 +48,12 @@ struct RebuildPreferencesView: View {
         }
         .task {
             refreshAccessibility()
-            guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
-            microphones =
-                AVCaptureDevice.DiscoverySession(deviceTypes: [.microphone], mediaType: .audio, position: .unspecified)
-                .devices
+            inputs.startObserving()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshAccessibility()
         }
+        .onChange(of: session?.readiness.microphoneGranted) { _, _ in inputs.refresh() }
         .onChange(of: shortcutEnabled) { _, _ in settingsChanged() }
         .onChange(of: holdEnabled) { _, _ in settingsChanged() }
         .onChange(of: holdKey) { _, _ in settingsChanged() }
@@ -115,9 +119,16 @@ struct RebuildPreferencesView: View {
             RebuildFormRow(label: "Input") {
                 Picker("Microphone", selection: $microphone) {
                     Text("System default").tag("")
-                    ForEach(microphones, id: \.uniqueID) { Text($0.localizedName).tag($0.uniqueID) }
+                    ForEach(inputs.devices) { Text($0.name).tag($0.id) }
+                    if !microphone.isEmpty && !inputs.devices.contains(where: { $0.id == microphone }) {
+                        Text("Saved microphone · unavailable").tag(microphone).disabled(true)
+                    }
                 }
                 .labelsHidden().frame(maxWidth: 320)
+                if !microphone.isEmpty && !inputs.devices.contains(where: { $0.id == microphone }) {
+                    Text("Reconnect your saved microphone or choose another input.")
+                        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+                }
                 Toggle("Boost microphone input while recording", isOn: $boost)
             }
             RebuildFormRow(label: "Sound") {
@@ -202,6 +213,7 @@ struct RebuildPreferencesView: View {
     private func settingsChanged() { NotificationCenter.default.post(name: .rebuildSettingsChanged, object: nil) }
 
     private func refreshAccessibility() {
+        inputs.refresh()
         let allowed = AccessibilityPermissionManager().checkPermission()
         guard allowed != accessibilityAllowed else { return }
         accessibilityAllowed = allowed
