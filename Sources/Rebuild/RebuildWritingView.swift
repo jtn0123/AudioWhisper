@@ -116,8 +116,11 @@ struct RebuildWritingView: View {
             Divider()
             installRow(installed: installed)
             if installer.isRunning { progress }
-            if let status = installer.status(for: model) { RebuildCallout(tone: Self.tone(for: status), message: status) }
-            if let status { RebuildCallout(tone: status.tone, message: status.message) }
+            if let status {
+                RebuildCallout(tone: status.tone, message: status.message)
+            } else if let message = installer.status(for: model) {
+                RebuildCallout(tone: Self.tone(for: message), message: message)
+            }
         }.rebuildCard()
     }
 
@@ -135,7 +138,10 @@ struct RebuildWritingView: View {
                     .disabled(actionsBlocked)
                     .accessibilityLabel("Remove correction model")
             } else if !installer.isRunning {
-                Button("Install correction model") { installer.start(model, session: session) }
+                Button("Install correction model") {
+                    status = nil
+                    installer.start(model, session: session)
+                }
                     .buttonStyle(.borderedProminent)
                     .disabled(actionsBlocked || !Arch.isAppleSilicon)
             }

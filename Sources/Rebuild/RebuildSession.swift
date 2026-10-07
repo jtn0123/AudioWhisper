@@ -5,16 +5,6 @@ enum RebuildPhase: Equatable {
     case idle, starting, recording, transcribing, completed, failed
 
     var isBusy: Bool { self == .starting || self == .recording || self == .transcribing }
-    var title: String {
-        switch self {
-        case .idle: return "Your words, made useful."
-        case .starting: return "Connecting your microphone."
-        case .recording: return "Listening."
-        case .transcribing: return "Turning speech into text."
-        case .completed: return "Copied to your clipboard."
-        case .failed: return "Let’s try that again."
-        }
-    }
 }
 
 struct RebuildReadiness: Equatable {

@@ -1,5 +1,3 @@
-import Foundation
-
 /// Read-only support output. No transcript, credentials, or history is included.
 internal struct RecordingDiagnosticReport: Codable {
     let build: String
