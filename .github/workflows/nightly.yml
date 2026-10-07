@@ -21,7 +21,7 @@ on:
 
 jobs:
   parakeet-e2e:
-    name: Local engines end-to-end (Parakeet, Whisper, MLX)
+    name: Local engines (Parakeet v2/v3, Whisper, lightweight MLX)
     runs-on: macos-15
     # Generous: a cold run downloads the model and builds the uv environment.
     timeout-minutes: 90
@@ -97,6 +97,11 @@ jobs:
           set -o pipefail
           swift test --no-parallel -Xswiftc -DTESTING \
             --filter "ParakeetEndToEndTests|LocalEngineFixtureTests" 2>&1 | tee real-engine-tests.log
+
+      # CurrentWritingModelFixtureTests is run with scripts/test-current-models.sh
+      # on a provisioned >=32 GB Apple Silicon Mac. The standard hosted runner
+      # has 7 GB RAM and cannot accept the 13 GB Qwen 3.8 model. Do not count
+      # this smaller scheduled suite as acceptance of the larger writing models.
 
       - name: Preserve real-engine diagnostics
         if: always()
