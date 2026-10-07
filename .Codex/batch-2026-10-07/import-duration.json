@@ -1,0 +1,15 @@
+{
+  "case": "file-import-duration",
+  "vm": "audiowhisper-qa-tahoe",
+  "previous_record_id": 78,
+  "fixture_duration_seconds": 2.67075,
+  "new_record": {
+    "id": 79,
+    "duration": 2.67075,
+    "text": "The quick brown fox jumps over the lazy dog."
+  },
+  "usage_delta_seconds": 2.670749999999998,
+  "fixture_unchanged": true,
+  "signature_valid": true,
+  "result": "passed"
+}

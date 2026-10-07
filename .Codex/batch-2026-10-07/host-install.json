@@ -1,0 +1,16 @@
+{
+  "source_commit": "5c5a13d2271f555a0e6582f61b902dc617fc9d92",
+  "installed_app": "/Applications/AudioWhisper Rebuild.app",
+  "binary_sha256": "f75d1f81665ffe2ae32c22367cd6b4f49d033aacd0a4ed8d032121dc685a3f2a",
+  "strict_signature_valid": true,
+  "signing_requirement_unchanged": true,
+  "protected_preferences_unchanged": true,
+  "protected_preference_count": 19,
+  "history_unchanged": true,
+  "history_count": 0,
+  "history_integrity": "ok",
+  "running_process_count": 1,
+  "host_os": "27.2",
+  "consent_reset": false,
+  "live_host_recording_tested": false
+}

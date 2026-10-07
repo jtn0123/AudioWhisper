@@ -1,0 +1,20 @@
+{
+  "key": "40",
+  "analysisDate": "2026-10-07T21:36:18+0000",
+  "status": {
+    "qualityGateStatus": "OK",
+    "bugs": 0,
+    "vulnerabilities": 0,
+    "codeSmells": 36
+  },
+  "commit": {
+    "sha": "5c5a13d2271f555a0e6582f61b902dc617fc9d92",
+    "author": {
+      "name": "jtn0123",
+      "login": "jtn0123-fUNO2@github",
+      "avatar": "72afe493c2969cb7fcbfc0f7ccc68886"
+    },
+    "date": "2026-10-07T21:25:15+0000",
+    "message": "test: validate preference effects and destructive voice controls"
+  }
+}
