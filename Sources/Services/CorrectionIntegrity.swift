@@ -35,7 +35,11 @@ internal enum CorrectionIntegrity {
             #"(?im)^\s*subject\s*:"#,
             #"(?i)\[(?:your|sender|recipient|name)\b[^\]]*\]"#
         ] {
-            if !matches(pattern, in: corrected).isEmpty && matches(pattern, in: original).isEmpty { return false }
+            for frame in matches(pattern, in: corrected) {
+                let phrase = NSRegularExpression.escapedPattern(for: frame.trimmingCharacters(in: .whitespacesAndNewlines))
+                let existing = "(?i)(?<![\\p{L}\\p{N}_])" + phrase + "(?![\\p{L}\\p{N}_])"
+                if matches(existing, in: original).isEmpty { return false }
+            }
         }
         return true
     }
@@ -43,7 +47,10 @@ internal enum CorrectionIntegrity {
     private static func polarity(_ text: String) -> [Int] {
         let normalized = text.replacingOccurrences(of: "’", with: "'")
         return [
-            #"(?i)\b(?:not|no|never|cannot|unable|neither|nor)\b|\b[\p{L}]+n't\b"#,
+            [
+                #"(?i)\b(?:not|no|never|cannot|unable|neither|nor|dont|doesnt|didnt|isnt|arent|wasnt|werent|"#,
+                #"havent|hasnt|hadnt|wont|wouldnt|shouldnt|couldnt|mustnt|cant)\b|\b[\p{L}]+n't\b"#
+            ].joined(),
             #"(?i)\b(?:negative|minus)\b"#,
             #"(?i)\b(?:positive|plus)\b"#,
             #"(?i)\b(?:unless|without)\b"#

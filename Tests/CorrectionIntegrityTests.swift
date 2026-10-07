@@ -36,6 +36,12 @@ final class CorrectionIntegrityTests: XCTestCase {
     func testAcceptsHarmlessGrammarAndExistingEmailStructure() {
         for (original, edited) in [
             ("hello how are you doing today", "Hello, how are you doing today?"),
+            ("she dont have the files yet", "She doesn't have the files yet."),
+            ("i would of called sooner but i didnt have your number",
+             "I would have called sooner, but I didn't have your number."),
+            ("no thanks i dont want to join this time", "No thanks, I don't want to join this time."),
+            ("hi sarah um please sand the attach meant by friday best regards morgan",
+             "Hi Sarah,\n\nPlease send the attachment by Friday.\n\nBest regards,\nMorgan"),
             ("I can't approve Thursday.", "I cannot approve Thursday."),
             ("The balance is negative 125.", "The balance is negative 125."),
             ("Refund $1250.50 to Jordan.", "Refund $1,250.50 to Jordan."),
