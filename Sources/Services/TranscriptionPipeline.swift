@@ -127,9 +127,10 @@ internal class TranscriptionPipeline {
             guard let model = config.whisperModel else {
                 throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
             }
-            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .local, model: model)
+            return try await speechService.transcribeValidated(
+                audioURL: audioURL, provider: .local, model: model, pipelineConfig: config)
         case .parakeet:
-            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .parakeet)
+            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .parakeet, pipelineConfig: config)
         }
     }
 

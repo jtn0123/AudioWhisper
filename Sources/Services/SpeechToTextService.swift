@@ -39,6 +39,7 @@ internal class SpeechToTextService {
     // likewise process-wide.
     private let localWhisperService: LocalWhisperTranscribing
     private let parakeetService: ParakeetTranscribing
+    private let preparePython: () async throws -> URL
 
     /// Audit item A5. These were `private let ... = .shared` with no way to
     /// substitute them, so nothing in `transcribeValidated` — provider routing,
@@ -48,10 +49,12 @@ internal class SpeechToTextService {
     /// can reach the routing logic.
     init(
         localWhisperService: LocalWhisperTranscribing = LocalWhisperService.shared,
-        parakeetService: ParakeetTranscribing = ParakeetService.shared
+        parakeetService: ParakeetTranscribing = ParakeetService.shared,
+        preparePython: @escaping () async throws -> URL = { try await UvBootstrap.ensureVenv() }
     ) {
         self.localWhisperService = localWhisperService
         self.parakeetService = parakeetService
+        self.preparePython = preparePython
     }
 
     /// Runs `AudioValidator` on `url` and surfaces any failure as
@@ -95,7 +98,8 @@ internal class SpeechToTextService {
     func transcribeValidated(
         audioURL: URL,
         provider: TranscriptionProvider,
-        model: WhisperModel? = nil
+        model: WhisperModel? = nil,
+        pipelineConfig: TranscriptionPipelineConfig? = nil
     ) async throws -> String {
         switch provider {
         case .local:
@@ -104,7 +108,7 @@ internal class SpeechToTextService {
             }
             return try await transcribeWithLocal(audioURL: audioURL, model: model)
         case .parakeet:
-            return try await transcribeWithParakeet(audioURL: audioURL)
+            return try await transcribeWithParakeet(audioURL: audioURL, config: pipelineConfig)
         }
     }
 
@@ -154,16 +158,16 @@ internal class SpeechToTextService {
     /// Returns the provider's raw output; semantic correction is applied by
     /// `TranscriptionPipeline` (see audit item B1). The warmup remains here so
     /// the MLX daemon can spin up in parallel with the transcription itself.
-    private func transcribeWithParakeet(audioURL: URL) async throws -> String {
+    private func transcribeWithParakeet(audioURL: URL, config: TranscriptionPipelineConfig?) async throws -> String {
         guard Arch.isAppleSilicon else {
             throw SpeechToTextError.transcriptionFailed("Parakeet requires an Apple Silicon Mac.")
         }
-        let options = TranscriptionProgress.pipelineConfig
+        let options = config
         let semanticCorrectionMode = options?.correctionMode ?? AppDefaults.semanticCorrectionMode
         let parakeetModel = options?.parakeetModel ?? AppDefaults.selectedParakeetModel
-        let shouldWarmup = semanticCorrectionMode != .off
+        let shouldWarmup = (options?.applySemanticCorrection ?? true) && semanticCorrectionMode != .off
         // Ensure managed Python environment with uv
-        let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
+        let pyURL = try await preparePython()
         let pythonPath = pyURL.path
         do {
             if shouldWarmup {

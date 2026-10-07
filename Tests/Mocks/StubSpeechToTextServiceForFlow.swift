@@ -29,7 +29,8 @@ final class StubSpeechToTextServiceForFlow: SpeechToTextService, @unchecked Send
     override func transcribeValidated(
         audioURL: URL,
         provider: TranscriptionProvider,
-        model: WhisperModel? = nil
+        model: WhisperModel? = nil,
+        pipelineConfig: TranscriptionPipelineConfig? = nil
     ) async throws -> String {
         callCount += 1
         lastAudioURL = audioURL
