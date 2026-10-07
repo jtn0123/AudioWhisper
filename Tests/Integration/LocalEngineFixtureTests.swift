@@ -87,7 +87,12 @@ final class LocalEngineFixtureTests: XCTestCase {
         let samePython = try await UvBootstrap.ensureVenv()
         print("REAL_RUNTIME refreshed=\(refreshed) warm=\(warmStart.duration(to: .now))")
         XCTAssertEqual(python, samePython)
-        let service = MLXCorrectionService()
+        // Own the worker for this fixture. Leaving the shared daemon idle keeps
+        // Foundation's serial AsyncBytes reader occupied and prevents the next
+        // fixture's independently owned daemon from receiving its responses.
+        let daemon = MLDaemonManager()
+        addTeardownBlock { await daemon.shutdown() }
+        let service = MLXCorrectionService(daemon: daemon)
         let original = "Their going to the store tomorow."
         let correctionStart = ContinuousClock.now
         let corrected = try await service.correct(
