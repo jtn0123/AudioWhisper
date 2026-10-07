@@ -1,0 +1,47 @@
+{
+  "implementation_commit": "b54a8524f5dfd96219fcdf6a07020d04689e31a5",
+  "swift_full_suite": {
+    "discovered": 2971,
+    "skipped": 44,
+    "failures": 0,
+    "seconds": 76.386,
+    "tested_implementation": "fdfcaa69f748051b2dbe31a60c0882e97b44c37e"
+  },
+  "final_busy_status_focused_swift": {
+    "tests": 11,
+    "failures": 0
+  },
+  "python_unit_tests": {
+    "tests": 120,
+    "failures": 0
+  },
+  "unattended_harness_tests": {
+    "tests": 6,
+    "failures": 0
+  },
+  "swiftlint": {
+    "version": "0.65.1",
+    "result": "passed",
+    "ci_pin": "0.65.0"
+  },
+  "mypy": {
+    "version": "1.20.0",
+    "source_files": 11,
+    "result": "passed"
+  },
+  "uv_lock_check": "passed",
+  "coverage_baseline": {
+    "ci_run": 37583653445,
+    "ci_job": 112668777486,
+    "covered": 14870,
+    "lines": 36657,
+    "files": 190,
+    "percent": 40.57,
+    "new_floor": 40
+  },
+  "limits": [
+    "Optional real-engine Swift tests remain gated; actual models are separately verified through the packaged daemon.",
+    "CI SonarCloud job is skipped when its configured credential is unavailable.",
+    "Native input is synthetic guest keyboard and virtual audio; host hardware and public notarization are not established."
+  ]
+}

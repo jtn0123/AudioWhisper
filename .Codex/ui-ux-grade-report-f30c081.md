@@ -11,9 +11,12 @@ IDs belong to **f30c081 UI**; use “UI E1” for this report.
 The [codebase report](grade-report-f30c081.md) has a separate ID namespace.
 This original pass changed audit documentation/evidence only.
 
-**Remediation, 2026-10-06:** UI C1 and UI E1 are complete; five items remain.
-[Subsequent fixes and native evidence](fixes-next5-2026-10-06/README.md) are
-separate from the baseline letter grades below.
+**Remediation:** UI C1/E1/C2/G1 are complete. UI C3 is removed with the
+app-profile feature at the user's direction. Remaining UI items: **UI B1, UI D1**
+(voice-model guidance and timer emphasis). Code D1 is a different compatibility
+item excluded by the user. [First fixes](fixes-next5-2026-10-06/README.md) and
+[next-ten evidence](fixes-next10-2026-10-06/README.md) remain separate from the
+baseline letter grades and dimension counts below.
 
 ## Summary
 
@@ -30,7 +33,7 @@ separate from the baseline letter grades below.
 | I | Polish, Delight & Product Feel | B+ | 0 | Considered copy/model guidance; unfinished details are concentrated in optional workflows |
 | **Overall** | | **B** | **5** | Good native core workflow, with confirmed Library layout and cleanup-control gaps |
 
-**Remaining priorities:** UI C2 → UI G1 → UI C3 → UI B1 → UI D1.
+**Remaining priorities:** UI B1 → UI D1.
 
 ## Evidence limits
 
@@ -84,7 +87,7 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 
 **UI C1 validation:** Original/final propagation, restore/copy without a second delivery, history-off privacy, disk round-trip and legacy schema migration pass. Native Library compare/copy visuals are checked with the final package; these recovery controls complement the semantic guards and do not prove all model wording is correct.
 
-#### UI C2 — Show correction-install progress and allow cancellation
+#### ~~UI C2~~ ✓ completed — Show correction-install progress and allow cancellation
 
 - **Where:** `Sources/Rebuild/RebuildWritingView.swift:54-77`, `:92`, `Sources/Services/MLXModelManager+Downloads.swift:21-82`, `:105-117`, `Sources/Rebuild/RebuildSession.swift:365-382`.
 - **Evidence:** Writing changes a button to “Installing…” and sets maintenance state, but never reads the existing `downloadProgress[repo]`. It exposes neither stages/bytes nor cancellation. Failures collapse into “Check your connection and retry” even though the model manager stores specific failure information. Maintenance blocks recording/import until completion.
@@ -96,7 +99,7 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 - **Fix:** Display the structured stage/progress already available, propagate actionable errors, and add owned process/task cancellation that actually releases maintenance after subprocess termination. Preserve resumable partial downloads and test cancel/retry on a tiny disposable fixture.
 - **Grade lift:** B → B+, by making optional setup understandable and recoverable.
 
-#### UI C3 — Use friendly app mappings and refresh running apps
+#### ~~UI C3~~ removed by user direction — Use friendly app mappings and refresh running apps
 
 - **Where:** `Sources/Rebuild/RebuildWritingView.swift:118-151`, `Sources/Managers/AppCategoryManager.swift:74`.
 - **Evidence:** The assignment picker resolves running-app names, but persisted mapping rows and Reset accessibility labels use raw bundle IDs. The running-app list is populated only by `.task`; no launch/termination observer or explicit Refresh action exists.
@@ -158,7 +161,7 @@ The fresh HUD screenshot confirms the faint timer on a bright desktop document. 
 2. Timer/waveform animation work is scoped to visible/active states (`WaveformSubviews.swift:48`, `:86-90`; `FrameTimer.swift`), and current model guidance exposes physical-Mac memory costs instead of hiding them.
 3. Paging alone does not isolate synchronous export work from the UI actor. Fresh frame/startup/export timings are not established by the model benchmark.
 
-#### UI G1 — Keep large Library export responsive
+#### ~~UI G1~~ ✓ completed — Keep large Library export responsive
 
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:140-170`, `Sources/Stores/DataManager+Fetching.swift:42-65`, `Sources/Stores/DataManager.swift:114`.
 - **Evidence:** Export invokes a main-actor paging loop that does not suspend between fetch/format/write iterations, then synchronizes/replaces the output file. The `async` method label does not move this work off the UI actor. No stall duration was measured here.

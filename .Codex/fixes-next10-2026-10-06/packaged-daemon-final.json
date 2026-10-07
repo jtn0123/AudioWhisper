@@ -1,0 +1,59 @@
+{
+  "binary_sha256": "80523ce273952a61b5722b887991e28e23d02db4c1d6d6dc0b6dda2759dac7c5",
+  "runtime_versions": {
+    "fsspec": "2026.6.0",
+    "mlx": "0.32.0",
+    "mlx-lm": "0.31.3",
+    "huggingface-hub": "1.9.1",
+    "parakeet-mlx": "0.5.2"
+  },
+  "offline": true,
+  "requests": [
+    {
+      "method": "ping",
+      "repo": null,
+      "seconds": 0.016565041994908825,
+      "result": {
+        "pong": true
+      }
+    },
+    {
+      "method": "transcribe",
+      "repo": "mlx-community/parakeet-tdt-0.6b-v2",
+      "seconds": 1.2658048329903977,
+      "result": {
+        "success": true,
+        "text": "The quick brown fox jumps over the lazy dog."
+      }
+    },
+    {
+      "method": "correct",
+      "repo": "mlx-community/Qwen3.5-9B-4bit",
+      "seconds": 2.856735249995836,
+      "result": {
+        "success": true,
+        "text": "She doesn't want to cancel the order."
+      }
+    },
+    {
+      "method": "correct",
+      "repo": "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+      "seconds": 6.773571500001708,
+      "result": {
+        "success": true,
+        "text": "She doesn't want to cancel the order."
+      }
+    },
+    {
+      "method": "correct",
+      "repo": "mlx-community/Qwen3.5-9B-4bit",
+      "seconds": 2.002209917001892,
+      "result": {
+        "success": true,
+        "text": "She doesn't want to cancel the order."
+      }
+    }
+  ],
+  "status": "passed",
+  "signature_valid_after_inference": true
+}

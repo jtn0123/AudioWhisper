@@ -1,0 +1,14 @@
+{
+  "qwen3.5-9b-production.delivered": {
+    "completed": 64,
+    "single_generation": 64,
+    "guard_rejected": 3,
+    "median_seconds": 0.6065653334953822
+  },
+  "qwen3.8-27b-3bit-production.delivered": {
+    "completed": 64,
+    "single_generation": 64,
+    "guard_rejected": 4,
+    "median_seconds": 1.6624837715062313
+  }
+}

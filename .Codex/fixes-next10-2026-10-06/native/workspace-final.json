@@ -1,0 +1,107 @@
+{
+  "status": "passed",
+  "implementation_commit": "b54a8524f5dfd96219fcdf6a07020d04689e31a5",
+  "binary_sha256": "80523ce273952a61b5722b887991e28e23d02db4c1d6d6dc0b6dda2759dac7c5",
+  "setup_sidebar": "WRITING CLEANUP, On your Mac, Audio\nWhisper, PRIVATE DICTATION, Model setup in progress\u2026, Private by default.\nNo cloud transcription.",
+  "cancellation_status": "Sound like yourself., Optional local grammar and punctuation cleanup. The original transcript survives if cleanup fails., LOCAL WRITING CLEANUP, Correction model, Stronger grammar results; about 1.6s per short edit and 13 GB model memory on M5 Pro, Download: 12.7 GB. Memory estimates exclude your other apps., Install the selected model to enable cleanup, Cancelled. Partial files are kept for retry.",
+  "writing_state": {
+    "clipboard": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog.",
+    "frontmost": "com.audiowhisper.rebuild",
+    "modifierFlags": 0,
+    "screens": [
+      {
+        "frame": [
+          0,
+          0,
+          1024,
+          768
+        ],
+        "scale": 2,
+        "visible": [
+          0,
+          57,
+          1024,
+          681
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 95,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 94,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 93,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 92,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 500,
+          "Width": 500,
+          "X": 0,
+          "Y": 268
+        },
+        "id": 89,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 230,
+          "Width": 380,
+          "X": 322,
+          "Y": 255
+        },
+        "id": 86,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 620,
+          "Width": 870,
+          "X": 77,
+          "Y": 30
+        },
+        "id": 84,
+        "visible": true
+      }
+    ]
+  },
+  "checks": {
+    "busy_sidebar_does_not_claim_ready": true,
+    "cancel_returns_to_retry_state": true,
+    "writing_cleanup_without_profiles": true,
+    "exact_packaged_executable": true
+  }
+}

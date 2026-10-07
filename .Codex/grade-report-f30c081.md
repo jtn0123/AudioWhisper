@@ -10,9 +10,13 @@ app and historical reports are separate. IDs belong to **f30c081 codebase**;
 use “code B1” when referring to this report. This audit changes reports/evidence,
 not application behavior, model preferences or host permissions.
 
-**Remediation, 2026-10-06:** B1-B4 and C3 are complete; 15 items remain.
-[Fixes and new evidence](fixes-next5-2026-10-06/README.md) describe the subsequent
-code changes. Letter grades below remain the audit baseline, not an automatic regrade.
+**Remediation:** B1-B4/C3 and I1/E1/C1/G1/I2/G2/A1/D2/H1 are complete.
+H2 was also corrected while updating setup instructions. C2 was removed with the
+entire app-profile feature at the user's direction; code D1 is excluded and native
+acceptance targets macOS 26/27. Remaining code items: **A2, E2, F1**.
+[First five fixes](fixes-next5-2026-10-06/README.md) and
+[the streamlined next ten](fixes-next10-2026-10-06/README.md) retain the evidence.
+Letter grades and dimension counts below remain the audit baseline, not an automatic regrade.
 
 ## Summary
 
@@ -43,11 +47,11 @@ user experience are distinct assessments.
 | 3 | ~~B3~~ ✓ | Give long transcripts a real content check | Major | M |
 | 4 | ~~B4 / UI C1~~ ✓ | Keep the original and let users undo AI edits | Moderate | M |
 | 5 | ~~C3 / UI E1~~ ✓ | Keep populated Library inside the screen | Moderate | M |
-| 6 | I1 | Fail CI when analysis cannot actually run | Major | S |
-| 7 | E1 | Patch the confirmed vulnerable dependency; no app exploit established | Moderate | S |
-| 8 | C1 / UI C2 | Show progress and real cancellation during big model installs | Moderate | M |
-| 9 | D1 | Complete minimum-macOS, physical-input and accessibility acceptance | Moderate | M |
-| 10 | G1 | Export a big Library without blocking the UI | Moderate | M |
+| 6 | ~~I1~~ ✓ | Fail CI when analysis cannot actually run | Major | S |
+| 7 | ~~E1~~ ✓ | Patch the confirmed vulnerable dependency; no app exploit established | Moderate | S |
+| 8 | ~~C1 / UI C2~~ ✓ | Show progress and real cancellation during big model installs | Moderate | M |
+| 9 | D1 (excluded) | Complete minimum-macOS, physical-input and accessibility acceptance | Moderate | M |
+| 10 | ~~G1~~ ✓ | Export a big Library without blocking the UI | Moderate | M |
 
 ## Evidence and limits
 
@@ -97,7 +101,7 @@ user experience are distinct assessments.
 
 The rebuild's main-actor session owns recording/import jobs (`Sources/Rebuild/RebuildSession.swift:95`), captures immutable per-session settings (`:280`), and fences late results by session ID (`:297`, `:313`). Side effects are injectable via `RebuildSessionServices` and setup via `RebuildSetupServices`. Typed RPC, provider injection and a sole transcription pipeline are healthy boundaries. Remaining architectural weaknesses are implicit model configuration propagation and two complete UI/application paths compiled into one target.
 
-#### A1 — Pass captured provider settings explicitly
+#### ~~A1~~ ✓ completed — Pass captured provider settings explicitly
 
 - **Where:** `Sources/Services/TranscriptionPipeline.swift:117-125`; `Sources/Services/SpeechToTextService.swift:161-176`; `Sources/Rebuild/RebuildSession.swift:65-68`.
 - **What's wrong:** The pipeline accepts a config containing Parakeet model and correction settings, but its speech call passes only the provider. Speech reads `TranscriptionProgress.pipelineConfig` task-local or mutable defaults instead. Current live rebuild callers correctly supply the task-local, so no wrong-model UI event is claimed; direct pipeline callers can violate the supplied config.
@@ -182,7 +186,7 @@ search and committed history revisions keep state bounded and current
 shortcut recorder and readable Qwen cost guidance. Compare/restore-original is
 tracked under B4 and UI C1 rather than counted twice here.
 
-#### C1 — Connect correction-install progress and cancellation
+#### ~~C1~~ ✓ completed — Connect correction-install progress and cancellation
 
 - **Where:** `Sources/Rebuild/RebuildWritingView.swift:54-77`, `:92`; `Sources/Services/MLXModelManager+Downloads.swift:21-82`, `:105-117`; `Sources/Rebuild/RebuildSession.swift:365-382`.
 - **What's wrong:** Writing displays only “Installing…” for 6.0/12.7 GB downloads, without reading available structured progress or offering cancellation. Generic retry copy hides actionable model-manager errors. Maintenance blocks recording/import while the install runs. This is source-confirmed behavior; no slow-network duration is claimed.
@@ -192,7 +196,7 @@ tracked under B4 and UI C1 rather than counted twice here.
 - **Grade lift:** B → B+ for setup feedback, alongside C2 and continued native acceptance.
 - **Simply:** Show the download moving and let you stop it.
 
-#### C2 — Name mapped apps clearly and refresh app choices
+#### ~~C2~~ removed by user direction — Name mapped apps clearly and refresh app choices
 
 - **Where:** `Sources/Rebuild/RebuildWritingView.swift:118-151`; `Sources/Managers/AppCategoryManager.swift:74`.
 - **What's wrong:** Stored profile rows and Reset accessibility labels use raw bundle IDs. The app picker snapshots running apps on view creation, without observing launch/termination or exposing Refresh. Populated mappings were not exercised in this fresh VM pass.
@@ -218,7 +222,7 @@ tracked under B4 and UI C1 rather than counted twice here.
 
 The 3,060 discovered Swift cases and 109 main Python cases include meaningful permission coalescing, stale setup, cancellation, failed history delivery and quote/template regressions (`Tests/RebuildSetupTests.swift:42`, `Tests/RebuildDeliveryIntegrationTests.swift:96`, `Tests/test_correction_sanitize.py:131`). The old audit's “only one speech sentence / no representative benchmark” finding is substantially resolved by the Oct5 fixed 48-natural-clip corpus plus noise/silence/long-form checks and Oct6 128 production cleanup edits (`.Codex/bench/2026-10-05-m5-pro/README.md:33`, `.Codex/bench/2026-10-06-qwen-integration/README.md:35`). Main CI still skips real engines unless `RUN_E2E=1`; the latest nightly is green for default-branch `f3adb17`, not current rebuild HEAD. Native Tahoe guest acceptance and current model settings evidence exist, while important physical/minimum-OS scenarios remain explicitly incomplete.
 
-#### D1 — Close the supported native compatibility matrix [FE]
+#### D1 excluded by user direction — Close the supported native compatibility matrix [FE]
 
 - **Where:** `scripts/vm/README.md:10`, `.Codex/macos-vm-validation.md:85`, `docs/rebuild.md:86`.
 - **What's wrong:** Evidence gap, not a reproduced failure: Sonoma 14 minimum support, physical hold keys/microphone changes and sleep, multiple displays/Spaces, and VoiceOver do not have completed native acceptance. The fresh current-build Tahoe recording/paste run and Qwen settings do not prove these cases.
@@ -227,7 +231,7 @@ The 3,060 discovered Swift cases and 109 main Python cases include meaningful pe
 - **Effort:** M
 - **Grade lift:** B → B+, by closing product compatibility uncertainty.
 
-#### D2 — Ratchet coverage near its demonstrated baseline [both]
+#### ~~D2~~ ✓ completed — Ratchet coverage near its demonstrated baseline [both]
 
 - **Where:** `.github/workflows/ci.yml:158`, `scripts/coverage-gate.py`.
 - **What's wrong:** Exact-head CI reports source-only Swift coverage of **38.34% (14,775 / 38,535 lines, 192 files)** while the enforced floor remains 27%. The gate can lose more than eleven percentage points before failing. This is not dependency-inflated coverage and not proof every uncovered line is critical.
@@ -240,7 +244,7 @@ The 3,060 discovered Swift cases and 109 main Python cases include meaningful pe
 
 Controls are substantial: local/offline inference, pinned shipped Qwen/Parakeet revisions, frozen Python setup, checksum-verified uv, private transcript-bearing stderr, and immutability/signature regressions (`Sources/ml/loader.py:57`, `Sources/Services/UvBootstrap.swift:189`, `Sources/Managers/MLDaemonManager+Process.swift:79`, `scripts/prepare-uv.sh:22`). Representative-file TOFU is honestly bounded and is not full weight authentication (`Sources/Utilities/DiskMutationSerializer.swift:100`, `docs/adr/0006-model-integrity.md:52`). A newly reviewed high-severity fsspec advisory applies to the CURRENT locked version; normal app reachability was not established. Public release signing requirements also remain optional in the upload command.
 
-#### E1 — Remove the known vulnerable fsspec version
+#### ~~E1~~ ✓ completed — Remove the known vulnerable fsspec version
 
 - **Where:** `Sources/Resources/uv.lock:155`, `Sources/Resources/pyproject.toml:6`, `Sources/ml/loader.py:57`.
 - **What's wrong:** Current rebuild locks fsspec **2025.7.0**, inside the affected range `>=0.9.0,<2026.6.0` of [GHSA-27vj-qcqg-25rc / CVE-2026-104851](https://github.com/advisories/GHSA-27vj-qcqg-25rc). Malicious reference/Kerchunk JSON can execute Python in the dependency. The app has no direct fsspec, `ReferenceFileSystem`, reference-protocol or xarray call in Sources; local model paths are used. This confirms vulnerable shipped code, **not a demonstrated recording or model exploit**.
@@ -277,7 +281,7 @@ Audio memory behavior is deliberate: WhisperKit uses incremental loading (`Sourc
 
 Layman: Short edits are fast; cold startup and big library exports still need work.
 
-#### G1 — Keep large Library exports off the UI actor
+#### ~~G1~~ ✓ completed — Keep large Library exports off the UI actor
 
 - **Where:** `Sources/Rebuild/RebuildLibraryView.swift:140-170`; `Sources/Stores/DataManager+Fetching.swift:42-65`; `Sources/Stores/DataManager.swift:114`.
 - **What's wrong:** The export fetch loop runs on the main actor with no suspension between pages. Formatting, writes, synchronize and replacement execute there too. Pages bound memory but do not let the UI respond. The blocking work is source-confirmed; a fresh large-library freeze duration was not measured.
@@ -287,7 +291,7 @@ Layman: Short edits are fast; cold startup and big library exports still need wo
 - **Grade lift:** B → B+, keeping large exports responsive while preserving paging.
 - **Simply:** Export history without freezing the window.
 
-#### G2 — Schedule cold writing-model warmup around the sequential worker
+#### ~~G2~~ ✓ completed — Schedule cold writing-model warmup around the sequential worker
 
 - **Where:** `Sources/Services/SpeechToTextService.swift:169-185`; `Sources/Managers/MLDaemonManager.swift:94-98`; `Sources/ml/rpc.py:103-117`.
 - **What's wrong:** Swift launches warmup concurrently, but Parakeet and correction warmup share a Python worker that dispatches one request at a time. Warmup can queue before recognition; the raw result also explicitly waits for warmup. This is not parallel model execution. No new numeric cold-start penalty is claimed.
@@ -301,7 +305,7 @@ Layman: Short edits are fast; cold startup and big library exports still need wo
 
 Rebuild notes, six ADRs, reproducible benchmark artifacts and the VM guide give useful architecture and evidence boundaries. The new Qwen troubleshooting paragraph is accurate (`README.md:168`) but contradicts the untouched cleanup setup paragraph and older developer launch advice (`README.md:81`, `CONTRIBUTING.md:84`). These are concrete wrong instructions, not a lack of prose.
 
-#### H1 — Reconcile setup and development instructions
+#### ~~H1~~ ✓ completed — Reconcile setup and development instructions
 
 - **Where:** `README.md:81`, `README.md:123`, `README.md:138`, `CONTRIBUTING.md:60`, `CONTRIBUTING.md:84`, `CONTRIBUTING.md:298`.
 - **What's wrong:** README still sends correction selection to Models & setup and calls Qwen3 1.7B the default; the active location is Writing profiles with Qwen3.5 9B recommended. CONTRIBUTING says Swift 5.9, bare `swift run`, repeated permissions “normal,” and lists removed Alamofire/HotKey/API-key components. These conflict with current build requirements and persistent signed development packaging.
@@ -310,7 +314,7 @@ Rebuild notes, six ADRs, reproducible benchmark artifacts and the VM guide give 
 - **Effort:** S
 - **Grade lift:** B− → B, by making the main entry instructions dependable.
 
-#### H2 — State setup network needs precisely
+#### ~~H2~~ ✓ completed — State setup network needs precisely
 
 - **Where:** `README.md:128`, `CONTRIBUTING.md:54`, `Sources/Services/UvBootstrap.swift:178`, `Sources/Services/UvBootstrap.swift:189`.
 - **What's wrong:** “Network access only to download models” omits first-time Python/runtime and PyPI package downloads. Offline transcription itself is supported; the setup promise is incomplete.
@@ -323,7 +327,7 @@ Rebuild notes, six ADRs, reproducible benchmark artifacts and the VM guide give 
 
 Strict SwiftLint/mypy, independent CI jobs, fail-closed coverage artifacts, Xcode environment recovery and packaged resource checks are effective (`.github/workflows/ci.yml:214`, `scripts/lib/xcode-env.sh`, `scripts/build.sh:466`). Exact-head CI completed, but a green analyzer job is weaker than it appears because its tool failures are swallowed. Build output protection does not cover the actual installed destination replaced by `make run`.
 
-#### I1 — Make analyzer execution errors fail CI
+#### ~~I1~~ ✓ completed — Make analyzer execution errors fail CI
 
 - **Where:** `.github/workflows/ci.yml:542`, `.github/workflows/ci.yml:557`, `.github/workflows/ci.yml:594`.
 - **What's wrong:** Analyzer stderr is discarded, and `| tee analyze.txt || true` masks tool failure. The follow-up gates interpret an empty report as zero findings. Fresh read-only reproduction with a nonexistent compiler log returned exit 1 and zero stdout; this exact CI structure converts that failure into apparent success. No claim is made that the current successful run actually failed analysis.
@@ -332,7 +336,7 @@ Strict SwiftLint/mypy, independent CI jobs, fail-closed coverage artifacts, Xcod
 - **Effort:** S
 - **Grade lift:** B → B+, by making this green signal meaningful.
 
-#### I2 — Protect the installed app during replacement
+#### ~~I2~~ ✓ completed — Protect the installed app during replacement
 
 - **Where:** `Makefile:34`, `scripts/build.sh:158`.
 - **What's wrong:** Build packaging guards its output path, but `make run-dev` immediately dittos into `/Applications/AudioWhisper Rebuild.app` without ensuring that destination is stopped. A live process can retain old code while signed resources beneath it are replaced. Permission churn from this exact case was not reproduced.
