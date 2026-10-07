@@ -96,3 +96,36 @@ final class RebuildWritingBehaviorTests: IsolatedXCTestCase {
         XCTAssertTrue(condition())
     }
 }
+
+extension RebuildWritingBehaviorTests {
+    func testInstallerProgressAndCancellationUseTheRealControlsWithoutDownloadingWeights() async throws {
+        try XCTSkipUnless(Arch.isAppleSilicon, "Writing installation requires Apple Silicon")
+        var pending: CheckedContinuation<URL, Never>?
+        let cache = FileManager.default.temporaryDirectory.appendingPathComponent("ui-progress-\(UUID())")
+        let manager = MLXModelManager(cacheDirectory: cache, prepareDownloadPython: {
+            await withCheckedContinuation { pending = $0 }
+        })
+        let installer = RebuildWritingInstaller(manager: manager)
+        let session = RebuildSession(services: RebuildSessionServices(
+            start: { _ in false }, stop: { nil }, cancel: {},
+            transcribe: { _, _, _ in TranscriptionResult(text: "unused", correctionOutcome: nil) },
+            copy: { _ in }, save: { _, _, _ in }), writingInstaller: installer)
+        let view = RebuildWritingView(session: session, isModelCached: { _ in false })
+        try view.inspect().find(button: "Install correction model").tap()
+        try await waitFor { pending != nil }
+        XCTAssertNil(try view.inspect().find(ViewType.ProgressView.self).fractionCompleted())
+        let repo = AppDefaults.semanticCorrectionModelRepo
+        manager.downloadFraction[repo] = 0.42
+        manager.downloadProgress[repo] = "Fixture download progress"
+        XCTAssertEqual(try view.inspect().find(ViewType.ProgressView.self).fractionCompleted(), 0.42)
+        _ = try view.inspect().find(text: "Fixture download progress")
+        try view.inspect().find(button: "Cancel install").tap()
+        try await waitFor { installer.cancelling }
+        XCTAssertTrue(try view.inspect().find(button: "Cancelling…").isDisabled())
+        try XCTUnwrap(pending).resume(returning: URL(fileURLWithPath: "/unused-fixture-python"))
+        try await waitFor { !installer.isRunning }
+        XCTAssertFalse(session.maintenanceInProgress)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cache.path))
+        _ = try view.inspect().find(button: "Install correction model")
+    }
+}

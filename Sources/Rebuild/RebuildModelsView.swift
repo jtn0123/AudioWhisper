@@ -11,9 +11,7 @@ struct RebuildModelsView: View {
     @AppDefault(\.transcriptionProvider) private var provider
     @AppDefault(\.selectedWhisperModel) private var whisper
     @AppDefault(\.selectedParakeetModel) private var parakeet
-    @State private var verification: String?
     private var verifying: Bool { session.isVerifyingVoiceModel }
-    @State private var deletionRequested = false
 
     var body: some View {
         ScrollView {
@@ -28,31 +26,20 @@ struct RebuildModelsView: View {
         .task { await session.refreshSetup() }
         .onChange(of: provider) { _, _ in
             session.selectionChanged()
-            verification = nil
+            session.modelRemovalError = nil
         }
         .onChange(of: whisper) { _, _ in
             session.selectionChanged()
-            verification = nil
+            session.modelRemovalError = nil
         }
         .onChange(of: parakeet) { _, _ in
             session.selectionChanged()
-            verification = nil
+            session.modelRemovalError = nil
         }
-        .confirmationDialog("Remove this voice model? You can download it again.", isPresented: $deletionRequested) {
+        .onDisappear { session.modelDeletionRequested = false }
+        .confirmationDialog("Remove this voice model? You can download it again.", isPresented: $session.modelDeletionRequested) {
             Button("Remove model", role: .destructive) {
-                Task {
-                    guard !session.phase.isBusy, !session.maintenanceInProgress else { return }
-                    session.maintenanceInProgress = true
-                    defer { session.maintenanceInProgress = false }
-                    do {
-                        if provider == .local {
-                            try await ModelManager.shared.deleteModel(whisper)
-                        } else {
-                            await MLXModelManager.shared.deleteModel(parakeet.rawValue)
-                        }
-                        await session.refreshSetup()
-                    } catch { verification = error.localizedDescription }
-                }
+                Task { await session.removeVoiceModel() }
             }
         }
     }
@@ -154,7 +141,7 @@ struct RebuildModelsView: View {
                     }
                     .disabled(session.maintenanceInProgress || session.isInstalling || session.phase.isBusy)
                     .help("Load the model and transcribe a short sample to confirm it works")
-                    Button("Remove selected model…", role: .destructive) { deletionRequested = true }
+                    Button("Remove selected model…", role: .destructive) { session.modelDeletionRequested = true }
                         .disabled(modelActionsBlocked)
                     Spacer()
                 }
@@ -194,7 +181,7 @@ struct RebuildModelsView: View {
                     .disabled(session.phase.isBusy || session.maintenanceInProgress)
             }
         }
-        if let verification { RebuildCallout(tone: .error, message: verification) }
+        if let error = session.modelRemovalError { RebuildCallout(tone: .error, message: error) }
         if let message = session.verificationMessage {
             RebuildCallout(tone: session.readiness.modelVerificationFailed ? .error : .success, message: message)
         }

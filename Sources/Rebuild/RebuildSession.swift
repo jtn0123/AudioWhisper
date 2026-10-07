@@ -109,6 +109,8 @@ final class RebuildSession {
     var setupError: String?
     private(set) var isInstalling = false
     var maintenanceInProgress = false
+    var modelDeletionRequested = false
+    var modelRemovalError: String?
     private(set) var isRequestingMicrophone = false
     private(set) var isVerifyingVoiceModel = false
     private(set) var verificationMessage: String?
@@ -362,6 +364,17 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    func removeVoiceModel() async {
+        guard !phase.isBusy, !isInstalling, !maintenanceInProgress else { return }
+        maintenanceInProgress = true
+        modelRemovalError = nil
+        defer { maintenanceInProgress = false }
+        do {
+            try await setup.remove(setup.selection())
+            await refreshSetup()
+        } catch { modelRemovalError = error.localizedDescription }
+    }
+
     var captureIdentity: UUID? { sessionID }
 
     func cancel() {

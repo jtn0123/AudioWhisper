@@ -1,5 +1,4 @@
 import KeyboardShortcuts
-import ServiceManagement
 import SwiftUI
 
 struct RebuildPreferencesView: View {
@@ -19,14 +18,22 @@ struct RebuildPreferencesView: View {
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
     @AppStorage("rebuild.appearance", store: AppDefaults.defaults) private var appearance = "system"
     @State private var inputs: RebuildMicrophoneInputs
-    @State private var message: String?
-    @State private var accessibilityAllowed = AccessibilityPermissionManager().checkPermission()
+    @State private var state: RebuildPreferencesState
+    private var message: String? {
+        get { state.message }
+        nonmutating set { state.message = newValue }
+    }
+    private var accessibilityAllowed: Bool { state.accessibilityAllowed }
     var session: RebuildSession?
 
     @MainActor
-    init(session: RebuildSession? = nil, inputs: RebuildMicrophoneInputs? = nil) {
+    init(
+        session: RebuildSession? = nil, inputs: RebuildMicrophoneInputs? = nil,
+        state: RebuildPreferencesState? = nil
+    ) {
         self.session = session
         _inputs = State(initialValue: inputs ?? RebuildMicrophoneInputs())
+        _state = State(initialValue: state ?? RebuildPreferencesState())
     }
 
     var body: some View {
@@ -37,7 +44,7 @@ struct RebuildPreferencesView: View {
                 deliverySection
                 librarySection
                 appearanceSection
-                RebuildAdvancedSection(message: $message)
+                RebuildAdvancedSection(state: state)
                 if let message {
                     RebuildCallout(tone: .info, message: message) {
                         Button("Dismiss") { self.message = nil }.buttonStyle(.rebuildLink)
@@ -60,16 +67,16 @@ struct RebuildPreferencesView: View {
         .onChange(of: holdMode) { _, _ in settingsChanged() }
         .onChange(of: login) { _, enabled in
             do {
-                if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                try state.effects.changeLogin(enabled)
                 message = nil
             } catch {
                 message = "Login setting could not be updated: \(error.localizedDescription)"
-                login = SMAppService.mainApp.status == .enabled
+                login = state.effects.loginEnabled()
             }
         }
         .onChange(of: retention) { _, _ in
             Task {
-                do { try await DataManager.shared.cleanupExpiredRecords() } catch {
+                do { try await state.effects.cleanupRetention() } catch {
                     message = "Retention cleanup failed: \(error.localizedDescription)"
                 }
             }
@@ -152,12 +159,7 @@ struct RebuildPreferencesView: View {
                         tone: accessibilityAllowed ? .success : (smartPaste || holdEnabled ? .warning : .info))
                     Spacer(minLength: 8)
                     Button("Check access", action: refreshAccessibility)
-                    Button("Open System Settings") {
-                        if let url = URL(
-                            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    }
+                    Button("Open System Settings", action: state.effects.openAccessSettings)
                     .accessibilityLabel("Open Accessibility settings")
                 }
                 Text("Needed for Smart Paste and hold-to-record. Nothing is requested automatically.")
@@ -214,9 +216,7 @@ struct RebuildPreferencesView: View {
 
     private func refreshAccessibility() {
         inputs.refresh()
-        let allowed = AccessibilityPermissionManager().checkPermission()
-        guard allowed != accessibilityAllowed else { return }
-        accessibilityAllowed = allowed
+        guard state.refreshAccess() else { return }
         settingsChanged()
     }
 }
@@ -224,15 +224,13 @@ struct RebuildPreferencesView: View {
 /// Collapsed storage, diagnostics and usage-total tools. Results are reported
 /// through the shared Preferences message.
 private struct RebuildAdvancedSection: View {
-    @Binding var message: String?
+    @Bindable var state: RebuildPreferencesState
     @AppDefault(\.transcriptionHistoryEnabled) private var history
     @AppDefault(\.maxModelStorageGB) private var storageLimit
-    @State private var resetUsage = false
-    @State private var showAdvanced = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            DisclosureGroup(isExpanded: $showAdvanced) {
+            DisclosureGroup(isExpanded: $state.showAdvanced) {
                 VStack(alignment: .leading, spacing: 12) {
                     RebuildFormRow(label: "Whisper storage") {
                         Stepper("Limit: \(Int(storageLimit)) GB", value: $storageLimit, in: 2...30, step: 1)
@@ -245,7 +243,7 @@ private struct RebuildAdvancedSection: View {
                     RebuildFormRow(label: "Usage totals") {
                         HStack(spacing: 8) {
                             Button("Recalculate from saved history", action: recalculateUsage).disabled(!history)
-                            Button("Reset…", role: .destructive) { resetUsage = true }
+                            Button("Reset…", role: .destructive) { state.resetUsage = true }
                                 .accessibilityLabel("Reset usage totals")
                         }
                     }
@@ -256,7 +254,7 @@ private struct RebuildAdvancedSection: View {
             } label: {
                 // The macOS disclosure label is not clickable by itself.
                 Button {
-                    showAdvanced.toggle()
+                    state.showAdvanced.toggle()
                 } label: {
                     HStack {
                         Text("Advanced & support").font(.system(size: 13, weight: .semibold))
@@ -267,31 +265,28 @@ private struct RebuildAdvancedSection: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Advanced and support")
-                .accessibilityValue(showAdvanced ? "Expanded" : "Collapsed")
+                .accessibilityValue(state.showAdvanced ? "Expanded" : "Collapsed")
             }
         }
         .rebuildCard()
-        .confirmationDialog("Reset usage totals? Your saved transcripts stay in the library.", isPresented: $resetUsage) {
-            Button("Reset totals", role: .destructive) { UsageMetricsStore.shared.reset() }
+        .confirmationDialog("Reset usage totals? Your saved transcripts stay in the library.", isPresented: $state.resetUsage) {
+            Button("Reset totals", role: .destructive) { state.effects.resetUsage() }
         }
     }
 
     private func copyDiagnostics() {
         Task {
-            let report = await RebuildDiagnostics.snapshot(context: "application")
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            if let data = try? encoder.encode(report), let text = String(data: data, encoding: .utf8) {
-                PasteManager.copyToClipboard(text)
-                message = "Setup diagnostics copied. No transcripts or history are included."
+            if let text = await state.effects.diagnostics() {
+                state.effects.copy(text)
+                state.message = "Setup diagnostics copied. No transcripts or history are included."
             }
         }
     }
 
     private func recalculateUsage() {
         Task {
-            do { try await UsageMetricsStore.shared.rebuildFromHistory() } catch {
-                message = "Usage could not be recalculated: \(error.localizedDescription)"
+            do { try await state.effects.recalculate() } catch {
+                state.message = "Usage could not be recalculated: \(error.localizedDescription)"
             }
         }
     }

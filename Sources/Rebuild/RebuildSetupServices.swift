@@ -30,6 +30,13 @@ struct RebuildSetupServices {
     var install: (RebuildModelSelection) async throws -> Void
     var verify: (RebuildModelSelection) async throws -> ModelVerificationResult
     var assetIdentity: (RebuildModelSelection) async -> String? = { _ in nil }
+    var remove: (RebuildModelSelection) async throws -> Void = { selection in
+        if selection.provider == .local {
+            try await ModelManager.shared.deleteModel(selection.whisper)
+        } else {
+            await MLXModelManager.shared.deleteModel(selection.parakeet.rawValue)
+        }
+    }
 
     static var live: Self {
         Self(

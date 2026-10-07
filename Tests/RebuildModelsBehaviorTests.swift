@@ -14,6 +14,7 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
     private var installs = 0
     private var install: (() async throws -> Void)?
     private var verify: (() async throws -> ModelVerificationResult)?
+    private var removal: (() async throws -> Void)?
     private var completion: (@Sendable (Bool) -> Void)?
 
     private func makeSession() -> RebuildSession {
@@ -37,6 +38,8 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
                 verify: { _ in
                     if let verify = self.verify { return try await verify() }
                     return ModelVerificationResult(succeeded: true, message: "Fixture verified")
+                }, remove: { _ in
+                    if let removal = self.removal { try await removal() } else { self.installed = false }
                 }))
         session.openSetup = { self.openedSetup += 1 }
         return session
@@ -141,6 +144,46 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
 }
 
 extension RebuildModelsBehaviorTests {
+    func testAnExistingLightweightParakeetSelectionRemainsVisibleAndSetupChecksDoNotClaimReady() throws {
+        let session = makeSession()
+        AppDefaults.transcriptionProvider = .parakeet
+        AppDefaults.selectedParakeetModel = .tdtCtc110mEnglish
+        let view = RebuildModelsView(session: session)
+        _ = try view.inspect().find(text: "110M English")
+        _ = try view.inspect().find(text: "Checking installation…")
+        XCTAssertFalse(session.readiness.ready)
+        session.maintenanceInProgress = true
+        _ = try view.inspect().find(text: "Model setup in progress…")
+        XCTAssertTrue(try view.inspect().find(button: "Updating voice model…").isDisabled())
+    }
+
+    func testRemovingVoiceModelRequiresConfirmationAndReportsFailuresWithoutClaimingReady() async throws {
+        permission = .authorized
+        installed = true
+        let session = makeSession()
+        await session.refreshSetup()
+        let view = RebuildModelsView(session: session)
+        try view.inspect().find(button: "Remove selected model…").tap()
+        XCTAssertTrue(session.modelDeletionRequested)
+        XCTAssertTrue(installed)
+        removal = {
+            throw NSError(domain: "fixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Fixture removal failed"])
+        }
+        try view.inspect().scrollView().confirmationDialog().actions().find(button: "Remove model").tap()
+        try await waitFor { session.modelRemovalError != nil }
+        _ = try view.inspect().find(text: "Fixture removal failed")
+        XCTAssertTrue(installed)
+        XCTAssertFalse(session.maintenanceInProgress)
+        removal = nil
+        await session.removeVoiceModel()
+        XCTAssertFalse(installed)
+        XCTAssertFalse(session.readiness.ready)
+        XCTAssertNil(session.modelRemovalError)
+        _ = try view.inspect().find(button: "Install voice model")
+        try view.inspect().scrollView().callOnDisappear()
+        XCTAssertFalse(session.modelDeletionRequested)
+    }
+
     func testVerificationFailureIsVisibleBlocksRecordingAndCanBeRepaired() async throws {
         permission = .authorized
         installed = true
