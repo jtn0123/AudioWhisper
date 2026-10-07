@@ -66,6 +66,8 @@ struct RebuildRootView: View {
         }
     }
 
+    private var setupBusy: Bool { session.isInstalling || session.maintenanceInProgress }
+
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 28) {
             VStack(alignment: .leading, spacing: 8) {
@@ -94,9 +96,9 @@ struct RebuildRootView: View {
             Spacer()
             VStack(alignment: .leading, spacing: 9) {
                 HStack(spacing: 7) {
-                    Circle().fill(session.readiness.ready ? Color.green.opacity(0.8) : Color.orange).frame(
+                    Circle().fill(session.readiness.ready && !setupBusy ? Color.green.opacity(0.8) : Color.orange).frame(
                         width: 6, height: 6)
-                    Text(session.readiness.nextStep).font(.system(size: 11))
+                    Text(setupBusy ? "Model setup in progress…" : session.readiness.nextStep).font(.system(size: 11))
                 }
                 Text("Private by default.\nNo cloud transcription.").font(.system(size: 11)).foregroundStyle(
                     .white.opacity(0.5)
