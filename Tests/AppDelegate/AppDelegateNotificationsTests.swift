@@ -61,12 +61,13 @@ final class AppDelegateNotificationsTests: XCTestCase {
 
     // MARK: - Notification Response Tests
 
-    func testWelcomeCompletedNotificationShowsDashboard() {
+    func testWelcomeCompletedNotificationSelectsRecordingSetup() {
         appDelegate.setupNotificationObservers()
 
-        // The welcomeCompleted handler must not mutate the status item.
+        let previousRequest = RecordingSetupState.shared.navigationRequest
         XCTAssertNil(appDelegate.statusItem)
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
+        XCTAssertEqual(RecordingSetupState.shared.navigationRequest, previousRequest + 1)
         XCTAssertNil(appDelegate.statusItem)
     }
 

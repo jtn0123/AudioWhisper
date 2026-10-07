@@ -36,7 +36,7 @@ extension AppDefaults {
         get {
             guard let rawValue = defaults.string(forKey: Key.selectedParakeetModel.rawValue),
                   let model = ParakeetModel(rawValue: rawValue) else {
-                return .v3Multilingual
+                return .v2English
             }
             return model
         }
@@ -63,11 +63,10 @@ extension AppDefaults {
     /// The correction model used when the user has not chosen one. This is the
     /// single source of truth — the Dashboard badges it RECOMMENDED and the
     /// correction pipeline runs it. Keep those in agreement (audit item B1).
-    /// Chosen by measurement, not release date — see `.claude/bench/`. Best
-    /// correction quality of seven candidates AND 1.8× faster than the previous
-    /// default despite being larger, because it is a non-thinking Instruct
-    /// variant and skips the think-then-retry round trip.
-    static let defaultSemanticCorrectionModelRepo = "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+    /// Qwen3.5 9B 4-bit balances editing quality, latency and memory in the
+    /// 2026-10-06 M5 Pro benchmark. Qwen3.8 is an optional larger editor.
+    /// Existing choices and installed prior defaults remain preserved.
+    static let defaultSemanticCorrectionModelRepo = "mlx-community/Qwen3.5-9B-4bit"
 
     /// Defaults this app has shipped before, newest first.
     ///
@@ -76,10 +75,12 @@ extension AppDefaults {
     /// of these they already have on disk, rather than being silently switched
     /// to a new default and made to download it. Do not read this anywhere else.
     ///
+    /// - `Qwen3-4B-Instruct-2507-4bit` — default before the Qwen3.5 upgrade.
     /// - `Qwen3-1.7B-4bit` — default between the B1 fix and the A4 benchmark.
     /// - `Llama-3.2-1B-Instruct-4bit` — the pre-2.0 implicit default, which the
     ///   correction call sites hardcoded while the UI advertised something else.
     static let priorSemanticCorrectionModelRepos = [
+        "mlx-community/Qwen3-4B-Instruct-2507-4bit",
         "mlx-community/Qwen3-1.7B-4bit",
         "mlx-community/Llama-3.2-1B-Instruct-4bit"
     ]

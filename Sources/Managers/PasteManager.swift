@@ -4,27 +4,6 @@ import Carbon
 import Observation
 import os.log
 
-// Helper class to safely capture observer in closure
-// Uses a lock to ensure thread-safe access to the mutable observer property
-// @unchecked is required because we have mutable state but we ensure thread safety via NSLock
-private final class ObserverBox: @unchecked Sendable {
-    private let lock = NSLock()
-    private var _observer: NSObjectProtocol?
-
-    var observer: NSObjectProtocol? {
-        get {
-            lock.lock()
-            defer { lock.unlock() }
-            return _observer
-        }
-        set {
-            lock.lock()
-            defer { lock.unlock() }
-            _observer = newValue
-        }
-    }
-}
-
 /// Thread-safe flag to ensure continuation is resumed exactly once.
 /// Used to prevent double-resume when timeout and completion race.
 internal final class ResumedFlag: @unchecked Sendable {
@@ -68,9 +47,17 @@ internal enum PasteError: LocalizedError {
 internal class PasteManager {
 
     private let accessibilityManager: AccessibilityPermissionManager
+    private let foregroundPID: () -> pid_t?
+    private let pasteEvent: (() throws -> Void)?
 
-    init(accessibilityManager: AccessibilityPermissionManager = AccessibilityPermissionManager()) {
+    init(
+        accessibilityManager: AccessibilityPermissionManager = AccessibilityPermissionManager(),
+        foregroundPID: @escaping () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier },
+        pasteEvent: (() throws -> Void)? = nil
+    ) {
         self.accessibilityManager = accessibilityManager
+        self.foregroundPID = foregroundPID
+        self.pasteEvent = pasteEvent
     }
 
     // MARK: - Clipboard Operations
@@ -89,7 +76,10 @@ internal class PasteManager {
     /// Performs paste with completion handler for proper coordination.
     /// Includes a timeout to prevent indefinite hangs if the completion is never called.
     @MainActor
-    func pasteWithCompletionHandler() async {
+    func pasteWithCompletionHandler(
+        expectedTargetPID: pid_t? = nil,
+        isSessionValid: @escaping () -> Bool = { true }
+    ) async {
         Logger.paste.debug("pasteWithCompletionHandler called")
 
         // Use a thread-safe flag to ensure continuation is resumed exactly once
@@ -106,7 +96,7 @@ internal class PasteManager {
                 }
             }
 
-            pasteWithUserInteraction { result in
+            pasteWithUserInteraction(expectedTargetPID: expectedTargetPID, isSessionValid: isSessionValid) { result in
                 timeoutTask.cancel()
                 switch result {
                 case .success:
@@ -123,7 +113,11 @@ internal class PasteManager {
 
     /// Performs paste with immediate user interaction context
     /// This should work better than automatic pasting
-    func pasteWithUserInteraction(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
+    func pasteWithUserInteraction(
+        expectedTargetPID: pid_t? = nil,
+        isSessionValid: @escaping () -> Bool = { true },
+        completion: ((Result<Void, PasteError>) -> Void)? = nil
+    ) {
         Logger.paste.debug("pasteWithUserInteraction called")
         // Check permission first - if denied, fail gracefully
         // Text is already in clipboard so user can paste manually
@@ -139,15 +133,19 @@ internal class PasteManager {
 
         // Permission is available - proceed with paste
         Logger.paste.debug("pasteWithUserInteraction: calling performCGEventPaste")
-        performCGEventPaste(completion: completion)
+        performCGEventPaste(expectedTargetPID: expectedTargetPID, isSessionValid: isSessionValid, completion: completion)
     }
 
     // MARK: - CGEvent Paste
 
-    private func performCGEventPaste(completion: ((Result<Void, PasteError>) -> Void)? = nil) {
+    private func performCGEventPaste(
+        expectedTargetPID: pid_t?,
+        isSessionValid: () -> Bool,
+        completion: ((Result<Void, PasteError>) -> Void)? = nil
+    ) {
         Logger.paste.debug("performCGEventPaste called")
         // CRITICAL: Prevent any paste operations during tests
-        if AppEnvironment.isRunningTests {
+        if AppEnvironment.isRunningTests && pasteEvent == nil {
             Logger.paste.debug("performCGEventPaste: skipping in test environment")
             handlePasteResult(.failure(PasteError.accessibilityPermissionDenied))
             completion?(.failure(PasteError.accessibilityPermissionDenied))
@@ -168,7 +166,14 @@ internal class PasteManager {
         // Permission is verified - proceed with paste operation
         Logger.paste.debug("performCGEventPaste: calling simulateCmdVPaste")
         do {
-            try simulateCmdVPaste()
+            guard let expectedTargetPID, isSessionValid(), foregroundPID() == expectedTargetPID else {
+                throw PasteError.targetAppNotAvailable
+            }
+            if let pasteEvent {
+                try pasteEvent()
+            } else {
+                try simulateCmdVPaste(expectedTargetPID: expectedTargetPID, isSessionValid: isSessionValid)
+            }
             // Paste operation completed successfully
             Logger.paste.debug("performCGEventPaste: simulateCmdVPaste succeeded")
             handlePasteResult(.success(()))
@@ -188,7 +193,7 @@ internal class PasteManager {
 
     // Removed - using AccessibilityPermissionManager instead
 
-    private func simulateCmdVPaste() throws {
+    private func simulateCmdVPaste(expectedTargetPID: pid_t, isSessionValid: () -> Bool) throws {
         // CRITICAL: Prevent any paste operations during tests
         if AppEnvironment.isRunningTests {
             throw PasteError.accessibilityPermissionDenied
@@ -226,6 +231,9 @@ internal class PasteManager {
         keyVDown.flags = cmdFlag
         keyVUp.flags = cmdFlag
 
+        guard isSessionValid(), foregroundPID() == expectedTargetPID else {
+            throw PasteError.targetAppNotAvailable
+        }
         // Post the key events to the system
         // This simulates pressing and releasing ⌘V
         keyVDown.post(tap: .cgSessionEventTap)
@@ -241,52 +249,4 @@ internal class PasteManager {
         }()
         NotificationCenter.default.post(name: name, object: object)
     }
-
-    // MARK: - App Activation Handling
-
-    private func waitForApplicationActivation(_ target: NSRunningApplication, completion: @escaping () -> Void) {
-        // If already active, execute completion immediately
-        if target.isActive {
-            completion()
-            return
-        }
-
-        let observerBox = ObserverBox()
-        // Use ResumedFlag to guarantee completion is called exactly once,
-        // even if the timeout and activation notification race each other
-        let completedFlag = ResumedFlag()
-
-        // NSWorkspace posts activation notifications on its own notification
-        // center, not NotificationCenter.default — observe the correct one.
-        let workspaceCenter = NSWorkspace.shared.notificationCenter
-
-        // Helper to clean up the observer and call completion exactly once
-        let cleanupAndComplete = { [observerBox] in
-            if let observer = observerBox.observer {
-                workspaceCenter.removeObserver(observer)
-                observerBox.observer = nil
-            }
-            if completedFlag.tryResume() {
-                completion()
-            }
-        }
-
-        // Set up timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            cleanupAndComplete()
-        }
-
-        // Observe app activation
-        observerBox.observer = workspaceCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification,
-            object: nil,
-            queue: .main
-        ) { notification in
-            if let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-               activatedApp.processIdentifier == target.processIdentifier {
-                cleanupAndComplete()
-            }
-        }
-    }
-
 }

@@ -30,7 +30,8 @@ private final class StubSpeechToTextService: SpeechToTextService, @unchecked Sen
     override func transcribeValidated(
         audioURL: URL,
         provider: TranscriptionProvider,
-        model: WhisperModel? = nil
+        model: WhisperModel? = nil,
+        pipelineConfig: TranscriptionPipelineConfig? = nil
     ) async throws -> String {
         transcribeRawCallCount += 1
         usedValidatedEntryPoint = true

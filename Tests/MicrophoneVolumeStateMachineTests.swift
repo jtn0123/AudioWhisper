@@ -18,6 +18,8 @@ private final class FakeVolumeController: AudioDeviceVolumeControlling, @uncheck
 
     private(set) var setVolumeCalls: [Float32] = []
     private(set) var getVolumeCallCount = 0
+    private(set) var readDeviceIDs: [AudioDeviceID] = []
+    private(set) var writtenDeviceIDs: [AudioDeviceID] = []
 
     func defaultInputDeviceID() async throws -> AudioDeviceID {
         if failDeviceLookup { throw VolumeError.deviceNotFound }
@@ -30,6 +32,7 @@ private final class FakeVolumeController: AudioDeviceVolumeControlling, @uncheck
 
     func inputVolume(deviceID: AudioDeviceID) async throws -> Float32 {
         getVolumeCallCount += 1
+        readDeviceIDs.append(deviceID)
         if failGetVolume { throw VolumeError.getVolumeFailed }
         return currentVolume
     }
@@ -38,6 +41,7 @@ private final class FakeVolumeController: AudioDeviceVolumeControlling, @uncheck
     func setInputVolume(deviceID: AudioDeviceID, volume: Float32) async throws -> Bool {
         if failSetVolume { throw VolumeError.setVolumeFailed }
         setVolumeCalls.append(volume)
+        writtenDeviceIDs.append(deviceID)
         if setVolumeReturnsFalse { return false }
         currentVolume = volume
         return true
@@ -75,6 +79,15 @@ final class MicrophoneVolumeStateMachineTests: XCTestCase {
 
         XCTAssertTrue(ok)
         XCTAssertEqual(hal.setVolumeCalls, [1.0])
+    }
+
+    func testBoostAndRestoreUseCapturedSelectedDeviceRatherThanDefault() async {
+        let ok = await manager.boostMicrophoneVolume(deviceID: 99)
+        XCTAssertTrue(ok)
+        XCTAssertEqual(hal.readDeviceIDs, [99])
+        hal.deviceID = 777
+        await manager.restoreMicrophoneVolume()
+        XCTAssertEqual(hal.writtenDeviceIDs, [99, 99], "Changing the system default must not change restoration")
     }
 
     /// Boosting twice must not overwrite the remembered original with the

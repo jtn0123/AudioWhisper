@@ -1,0 +1,19 @@
+{
+  "sampleIntervalSeconds": 0.1,
+  "durationSeconds": 60,
+  "rootPID": 47813,
+  "method": "ps RSS sampling; observed maxima, not an OS peak-RSS guarantee; only the app and its descendants",
+  "peakProcesses": {
+    "47813": {
+      "parent": 1,
+      "rssBytes": 178585600,
+      "name": "AudioWhisper"
+    },
+    "52311": {
+      "parent": 47813,
+      "rssBytes": 1558396928,
+      "name": "python3"
+    }
+  },
+  "observedPeakTotalBytes": 1736884224
+}

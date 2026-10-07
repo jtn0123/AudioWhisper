@@ -1,0 +1,12 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "selection_after_relaunch": "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+  "signed_bundle_verified": true,
+  "writing_ui_screenshots": [
+    "writing-page.png",
+    "model-options.png",
+    "qwen38-selected.png",
+    "qwen38-relaunched.png"
+  ],
+  "scope": "Actual guest native model picker and persistence. Model inference tested on physical host; no new guest permission grants."
+}

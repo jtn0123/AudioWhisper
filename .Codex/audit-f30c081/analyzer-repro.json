@@ -1,0 +1,7 @@
+{
+  "tool_version": "0.65.1",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Error: Could not read compiler log at path: '/tmp/aw-grade-f30c081-missing-compiler-log'\n",
+  "scope": "Missing-log reproduction only; not a claim remote analyzer failed."
+}

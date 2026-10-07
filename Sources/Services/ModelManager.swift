@@ -95,18 +95,24 @@ internal class ModelManager {
         }
     }
 
-    nonisolated func downloadModel(_ model: WhisperModel) async throws {
+    nonisolated func downloadModel(
+        _ model: WhisperModel,
+        availableStorage: (@Sendable () async throws -> Int64)? = nil
+    ) async throws {
         // Serialize per-model: two callers asking for the same model share
         // one download task. Callers asking for different models proceed in
         // parallel. The MainActor-state flag below still throws
         // ModelError.alreadyDownloading for the original racy semantics that
         // tests expect.
         try await ModelManager.shared.downloadSerializer.run(key: model) {
-            try await ModelManager.shared.performDownloadModel(model)
+            try await ModelManager.shared.performDownloadModel(model, availableStorage: availableStorage)
         }
     }
 
-    nonisolated private func performDownloadModel(_ model: WhisperModel) async throws {
+    nonisolated private func performDownloadModel(
+        _ model: WhisperModel,
+        availableStorage: (@Sendable () async throws -> Int64)?
+    ) async throws {
         // Check if already downloading and mark as downloading
         let alreadyDownloading = await MainActor.run {
             if ModelManager.shared.downloadingModels.contains(model) {
@@ -121,38 +127,43 @@ internal class ModelManager {
             throw ModelError.alreadyDownloading
         }
 
-        // Check storage limits
-        let requiredSpace = model.estimatedSize
-        let currentModelsSize = await getTotalModelsSize()
-        let maxStorageGB = AppDefaults.maxModelStorageGB
-        let maxStorageBytes = Int64(maxStorageGB * 1024 * 1024 * 1024)
-
-        if currentModelsSize + requiredSpace > maxStorageBytes {
-            await MainActor.run {
-                ModelManager.shared.downloadingModels.remove(model)
-                ModelManager.shared.downloadStages.removeValue(forKey: model)
-            }
-            throw ModelError.storageLimitExceeded
-        }
-
-        // Check available disk space
-        let availableSpace = try await getAvailableStorageSpace()
-        if availableSpace < requiredSpace + (100 * 1024 * 1024) { // Add 100MB buffer
-            await MainActor.run {
-                ModelManager.shared.downloadingModels.remove(model)
-                ModelManager.shared.downloadStages.removeValue(forKey: model)
-            }
-            throw ModelError.insufficientStorage
-        }
-
         do {
+            // Check storage limits
+            let requiredSpace = model.estimatedSize
+            let currentModelsSize = await getTotalModelsSize()
+            let maxStorageGB = AppDefaults.maxModelStorageGB
+            let maxStorageBytes = Int64(maxStorageGB * 1024 * 1024 * 1024)
+
+            if currentModelsSize + requiredSpace > maxStorageBytes {
+                await MainActor.run {
+                    ModelManager.shared.downloadingModels.remove(model)
+                    ModelManager.shared.downloadStages.removeValue(forKey: model)
+                }
+                throw ModelError.storageLimitExceeded
+            }
+
+            // Check available disk space
+            let availableSpace: Int64
+            if let availableStorage {
+                availableSpace = try await availableStorage()
+            } else {
+                availableSpace = try await getAvailableStorageSpace()
+            }
+            if availableSpace < requiredSpace + (100 * 1024 * 1024) { // Add 100MB buffer
+                await MainActor.run {
+                    ModelManager.shared.downloadingModels.remove(model)
+                    ModelManager.shared.downloadStages.removeValue(forKey: model)
+                }
+                throw ModelError.insufficientStorage
+            }
+
             // Update stage to downloading
             await MainActor.run {
                 ModelManager.shared.downloadStages[model] = .downloading
                 ModelManager.shared.downloadEstimates[model] = estimateDownloadTime(for: model)
             }
 
-            let config = WhisperKitConfig(model: model.whisperKitModelName)
+            let config = WhisperKitConfig(model: model.whisperKitModelName, downloadBase: RebuildStorage.whisperDownloadBase)
 
             // Update stage to processing
             await MainActor.run {
@@ -186,7 +197,9 @@ internal class ModelManager {
             // Clear the ready stage after a moment
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(2))
-                ModelManager.shared.downloadStages.removeValue(forKey: model)
+                if ModelManager.shared.downloadStages[model] == .ready {
+                    ModelManager.shared.downloadStages.removeValue(forKey: model)
+                }
             }
 
             // Send system notification
@@ -199,12 +212,6 @@ internal class ModelManager {
                 ModelManager.shared.downloadProgress.removeValue(forKey: model)
                 ModelManager.shared.downloadStages[model] = .failed(error.localizedDescription)
                 ModelManager.shared.downloadEstimates.removeValue(forKey: model)
-            }
-
-            // Clear the error stage after a moment
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(5))
-                ModelManager.shared.downloadStages.removeValue(forKey: model)
             }
 
             throw error

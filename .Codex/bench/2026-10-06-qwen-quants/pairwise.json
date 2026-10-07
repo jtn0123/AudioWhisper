@@ -1,0 +1,127 @@
+{
+  "qwen3.5-9b-8bit/direct": {
+    "control": "qwen3.5-9b/direct",
+    "improved_cases": [
+      "qwen-29",
+      "writing-5"
+    ],
+    "regressed_cases": [
+      "qwen-28",
+      "writing-15",
+      "writing-25"
+    ],
+    "failed_in_both": [
+      "qwen-2",
+      "qwen-27",
+      "qwen-34",
+      "qwen-35",
+      "writing-11",
+      "writing-27"
+    ],
+    "changed_delivered_outputs": 21,
+    "median_task_time_ratio": 1.5805686762327826,
+    "identical_short_task_time_ratio": 1.3427654078216569,
+    "peak_mlx_allocation_ratio": 1.7496927218102512
+  },
+  "qwen3.5-9b-8bit/strict": {
+    "control": "qwen3.5-9b/strict",
+    "improved_cases": [
+      "qwen-29",
+      "qwen-35",
+      "writing-5"
+    ],
+    "regressed_cases": [
+      "qwen-17"
+    ],
+    "failed_in_both": [
+      "qwen-2",
+      "qwen-27",
+      "qwen-34",
+      "writing-11",
+      "writing-2",
+      "writing-27"
+    ],
+    "changed_delivered_outputs": 21,
+    "median_task_time_ratio": 1.4394105475473593,
+    "identical_short_task_time_ratio": 1.4992447030423746,
+    "peak_mlx_allocation_ratio": 1.7496927218102512
+  },
+  "qwen3.8-27b-3bit/direct": {
+    "control": "qwen3.8-27b/direct",
+    "improved_cases": [
+      "qwen-20"
+    ],
+    "regressed_cases": [
+      "writing-25"
+    ],
+    "failed_in_both": [
+      "qwen-27",
+      "qwen-29",
+      "writing-11",
+      "writing-15",
+      "writing-27"
+    ],
+    "changed_delivered_outputs": 21,
+    "median_task_time_ratio": 1.1359948251721423,
+    "identical_short_task_time_ratio": 0.969331734016371,
+    "peak_mlx_allocation_ratio": 0.8154132477116879
+  },
+  "qwen3.8-27b-3bit/strict": {
+    "control": "qwen3.8-27b/strict",
+    "improved_cases": [
+      "qwen-17",
+      "qwen-20",
+      "qwen-34"
+    ],
+    "regressed_cases": [
+      "writing-16"
+    ],
+    "failed_in_both": [
+      "writing-15"
+    ],
+    "changed_delivered_outputs": 14,
+    "median_task_time_ratio": 0.994630325862792,
+    "identical_short_task_time_ratio": 0.9033049470567092,
+    "peak_mlx_allocation_ratio": 0.8154132477116879
+  },
+  "qwen3.8-27b-6bit/direct": {
+    "control": "qwen3.8-27b/direct",
+    "improved_cases": [],
+    "regressed_cases": [
+      "qwen-17",
+      "qwen-31",
+      "qwen-35",
+      "writing-6"
+    ],
+    "failed_in_both": [
+      "qwen-20",
+      "qwen-27",
+      "qwen-29",
+      "writing-11",
+      "writing-15",
+      "writing-27"
+    ],
+    "changed_delivered_outputs": 15,
+    "median_task_time_ratio": 1.2676886972144104,
+    "identical_short_task_time_ratio": 1.231558158775901,
+    "peak_mlx_allocation_ratio": 1.4140874786772244
+  },
+  "qwen3.8-27b-6bit/strict": {
+    "control": "qwen3.8-27b/strict",
+    "improved_cases": [
+      "qwen-20"
+    ],
+    "regressed_cases": [
+      "qwen-35"
+    ],
+    "failed_in_both": [
+      "qwen-17",
+      "qwen-34",
+      "writing-15"
+    ],
+    "changed_delivered_outputs": 11,
+    "median_task_time_ratio": 1.2907063645616828,
+    "identical_short_task_time_ratio": 1.3447601736816357,
+    "peak_mlx_allocation_ratio": 1.4140874786772244
+  }
+}

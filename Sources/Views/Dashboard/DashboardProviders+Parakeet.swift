@@ -186,7 +186,10 @@ internal extension DashboardProvidersView {
         }
         .padding(DashboardTheme.Spacing.md)
         .onChange(of: selectedParakeetModel) { _, _ in
-            Task { await mlxModelManager.ensureParakeetModel() }
+            Task {
+                await mlxModelManager.ensureParakeetModel()
+                await RecordingSetupState.shared.refresh()
+            }
         }
     }
 
@@ -198,7 +201,7 @@ internal extension DashboardProvidersView {
         showSetupSheet = true
         Task {
             do {
-                _ = try await UvBootstrap.ensureVenv(userPython: nil) { msg in
+                _ = try await UvBootstrap.ensureVenv(userPython: nil, forceRefresh: true) { msg in
                     Task { @MainActor in
                         setupLogs += (setupLogs.isEmpty ? "" : "\n") + msg
                     }
@@ -208,6 +211,7 @@ internal extension DashboardProvidersView {
                     setupStatus = "✓ Environment ready"
                     envReady = true
                 }
+                await RecordingSetupState.shared.refresh()
                 try? await Task.sleep(for: .milliseconds(600))
                 await MainActor.run {
                     showSetupSheet = false
@@ -223,17 +227,6 @@ internal extension DashboardProvidersView {
                 }
             }
         }
-    }
-
-    private func venvPythonPath() -> String {
-        let appSupport = try? FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let base = appSupport?.appendingPathComponent("AudioWhisper/python_project/.venv/bin/python3").path
-        return base ?? ""
     }
 
     /// Audit item C4: the ~70 lines of Process/Pipe/timeout plumbing that used
@@ -263,7 +256,10 @@ internal extension DashboardProvidersView {
                     parakeetVerifyMessage = result.message
                     if result.succeeded {
                         hasSetupParakeet = true
-                        Task { await mlxModelManager.refreshModelList() }
+                        Task {
+                            await mlxModelManager.refreshModelList()
+                            await RecordingSetupState.shared.refresh()
+                        }
                     }
                 }
             } catch {

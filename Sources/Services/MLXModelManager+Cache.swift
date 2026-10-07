@@ -26,7 +26,7 @@ extension MLXModelManager {
         // Fallback to in-memory check after refresh
         await refreshModelList()
         if downloadedModels.contains(repo) { return }
-        await downloadParakeetModel()
+        await downloadParakeetModel(repo: repo)
     }
 
     /// Direct filesystem check for model cache - avoids race conditions with async refreshModelList
@@ -34,32 +34,7 @@ extension MLXModelManager {
         guard let refsMain = integrityFileURL(for: repo) else { return false }
         let cacheDir = refsMain.deletingLastPathComponent().deletingLastPathComponent()
 
-        var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: cacheDir.path, isDirectory: &isDir), isDir.boolValue else {
-            return false
-        }
-
-        // Check for refs/main to confirm download completed. The file holds a
-        // Hugging Face commit hash; require it to be pure hex.
-        let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let rev = rawRev, !rev.isEmpty,
-              rev.allSatisfy({ $0.isHexDigit }) else {
-            return false
-        }
-
-        // Resolve the snapshot directory by matching `rev` against the actual
-        // directory listing rather than interpolating it into a path. `snap`
-        // is therefore built only from a name returned by the filesystem.
-        let snapshotsDir = cacheDir.appendingPathComponent("snapshots")
-        let snapshotEntries = (try? FileManager.default.contentsOfDirectory(atPath: snapshotsDir.path)) ?? []
-        guard let matchedSnapshot = snapshotEntries.first(where: { $0 == rev }) else {
-            return false
-        }
-        let snap = snapshotsDir.appendingPathComponent(matchedSnapshot)
-        guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else {
-            return false
-        }
+        guard HuggingFaceCache.completeSnapshot(in: cacheDir) else { return false }
 
         // Best-effort integrity verification. TOFU on first hit; failures
         // are logged at the call site that triggers a re-download.
@@ -81,8 +56,7 @@ extension MLXModelManager {
     /// UI for seconds on each cache check.
     nonisolated func integrityFileURL(for repo: String) -> URL? {
         let escaped = repo.replacingOccurrences(of: "/", with: "--")
-        let cacheDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/huggingface/hub/models--\(escaped)")
+        let cacheDir = cacheDirectory.appendingPathComponent("models--\(escaped)")
         return cacheDir.appendingPathComponent("refs/main")
     }
 
@@ -99,8 +73,8 @@ extension MLXModelManager {
         }
     }
 
-    func downloadParakeetModel() async {
-        let repo = Self.parakeetRepo
+    func downloadParakeetModel(repo: String? = nil) async {
+        let repo = repo ?? Self.parakeetRepo
         do {
             try await downloadSerializer.run(key: repo) { [weak self] in
                 await self?.performDownloadParakeetModel(repo: repo)
@@ -122,7 +96,7 @@ extension MLXModelManager {
         } catch {
             logger.error("Failed to prepare Python environment: \(error.localizedDescription)")
             await MainActor.run {
-                downloadProgress[repo] = "Error: Could not prepare Python environment"
+                downloadProgress[repo] = "Error: \(error.localizedDescription)"
                 isDownloading[repo] = false
             }
             return

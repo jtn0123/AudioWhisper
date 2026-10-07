@@ -137,6 +137,21 @@ final class AppSetupHelperCoverageTests: IsolatedXCTestCase {
 /// RECOMMENDED. Users on the implicit default saw one model and ran another.
 final class SemanticCorrectionModelDefaultTests: XCTestCase {
 
+    func testBalancedQwenIsDefaultAndPreviousDefaultRemainsMigratable() {
+        XCTAssertEqual(AppDefaults.defaultSemanticCorrectionModelRepo, "mlx-community/Qwen3.5-9B-4bit")
+        XCTAssertEqual(
+            AppDefaults.priorSemanticCorrectionModelRepos.first,
+            "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+        )
+        XCTAssertEqual(
+            AppSetupHelper.priorDefaultToPin(
+                hasExplicitChoice: false,
+                downloadedPriorDefaults: ["mlx-community/Qwen3-4B-Instruct-2507-4bit"]
+            ),
+            "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+        )
+    }
+
     /// The bug in one assertion: the value the correction pipeline resolves must
     /// be the value the UI recommends.
     func testRecommendedModelMatchesTheModelCorrectionActuallyUses() {

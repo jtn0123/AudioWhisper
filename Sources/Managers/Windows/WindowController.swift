@@ -33,13 +33,9 @@ internal class WindowController {
     }
 
     func toggleRecordWindow(_ window: NSWindow? = nil, completion: (() -> Void)? = nil) {
-        // Don't show recorder window during first-run welcome experience
-        let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
-        if !hasCompletedWelcome {
-            completion?()
-            return
-        }
-
+        // Recording entry points enforce microphone/model readiness. The
+        // window must remain available even if the optional welcome is open,
+        // so an active recorder always has its controls and Stop observer.
         // In test environment, exit early
         if isTestEnvironment {
             completion?()
@@ -125,10 +121,9 @@ internal class WindowController {
         }
     }
 
-    private func storePreviousApp() {
-        let workspace = NSWorkspace.shared
+    func storePreviousApp(frontmostApp: NSRunningApplication? = NSWorkspace.shared.frontmostApplication) {
         Logger.paste.debug("storePreviousApp called")
-        if let frontmostApp = workspace.frontmostApplication,
+        if let frontmostApp,
            frontmostApp.bundleIdentifier != Bundle.main.bundleIdentifier {
             previousApp = frontmostApp
             WindowController.storedTargetApp = frontmostApp
@@ -140,6 +135,8 @@ internal class WindowController {
                 object: frontmostApp
             )
         } else {
+            previousApp = nil
+            WindowController.storedTargetApp = nil
             Logger.paste.debug("storePreviousApp: no suitable frontmost app found")
         }
     }

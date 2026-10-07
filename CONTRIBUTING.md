@@ -1,432 +1,97 @@
-# Contributing to AudioWhisper
+# Contributing to AudioWhisper Rebuild
 
-Thank you for your interest in contributing to AudioWhisper! This guide will help you get started with development, testing, and distribution.
+This is the local-only fork at `jtn0123/AudioWhisper`. Target this repository explicitly when using `gh`; its default branch is `master` and the rebuild work is on `rebuild/native-v2`. Upstream releases and its Homebrew tap are different products.
 
-## Table of Contents
-- [Development Setup](#development-setup)
-- [Requirements](#requirements)
-- [Development Workflow](#development-workflow)
-- [Testing](#testing)
-- [Building for Distribution](#building-for-distribution)
-- [Code Signing](#code-signing)
-- [Architecture Overview](#architecture-overview)
-- [Coding Standards](#coding-standards)
+## Tooling
 
-## Development Setup
+Use a full Xcode 26+ installation with Swift 6.2+ tooling, Git and Python 3.11+ for development utilities. KeyboardShortcuts 3.x requires that toolchain even though this package retains Swift 5 language mode. Native app testing targets macOS 26/27; older-OS acceptance is outside the current scope.
 
-### Prerequisites
+The shell build/test scripts source `scripts/lib/xcode-env.sh` to recover from Command Line Tools being selected. For direct Swift or SwiftLint commands:
 
-- **macOS 14.0 (Sonoma) or later** - Required for latest SwiftUI APIs
-- **Xcode 26.0+ — required, not optional.** Two independent reasons: the
-  `KeyboardShortcuts` 3.x dependency declares `swift-tools-version: 6.2`, which
-  older Xcode cannot resolve ("incompatible tools version"); and the package
-  compiles an asset catalog, which needs `actool` — an Xcode tool that Command
-  Line Tools does not ship. A CLT-only machine cannot build this project.
-- **Git** - For version control
+```sh
+. scripts/lib/xcode-env.sh
+ensure_xcode_toolchain
+```
 
-### Initial Setup
+## Build and launch
 
-1. Clone the repository:
-```bash
+```sh
 git clone https://github.com/jtn0123/AudioWhisper.git
 cd AudioWhisper
+make run
 ```
 
-2. Build the project to verify setup:
-```bash
-make build
-```
+`make run` builds the resource-complete debug bundle, reuses the persistent local signing certificate, validates a staged copy, stops the exact installed rebuild, replaces it and relaunches. It retains the previous signed build for rollback and rejects signing-identity changes. Do not overwrite the running app with `ditto` or run the unbundled Swift executable for native permission testing.
 
-> Prefer `make build` / `make test` over bare `swift build` / `swift test`. The
-> `make` targets source `scripts/lib/xcode-env.sh`, which sets `DEVELOPER_DIR`
-> for the process when `xcode-select -p` points at Command Line Tools — a state
-> CLT updates cause silently. Without that recovery the build fails with
-> `Failed to decode version info for '/usr/bin/actool'`, which names neither the
-> cause nor the fix. To use bare `swift` commands on such a machine, prefix
-> them with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
-
-## Requirements
-
-### System Requirements
-- macOS 14.0+ (Sonoma and later)
-- Apple Silicon (M1/M2/M3) or Intel Mac
-- Microphone access permission
-- Internet connection **only** for the first model download. Transcription
-  itself is fully on-device: this fork removed the cloud providers (see
-  [ADR 0005](docs/adr/0005-local-only-transcription.md)) and makes no network
-  calls to transcribe.
-
-### Development Requirements
-- Swift 5.9+
-- SwiftUI with macOS 14+ APIs
-- No warnings policy - code must compile cleanly
-
-## Development Workflow
-
-### Pre-commit hook (optional, recommended)
-
-Audit item I3. SwiftLint strict, the production-`print()` check, and
-`uv lock --check` are all fast, deterministic, and already enforced by CI — but
-nothing ran them before a push, so a trailing `print()` cost a full round trip to
-a macOS runner to discover. An opt-in hook moves that feedback local:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-It adds no new gates — everything it checks already fails CI. It runs on staged
-files only, skips cleanly when `swiftlint` or `uv` are not installed, and can be
-bypassed for one commit with `git commit --no-verify`.
-
-
-### Day-to-Day Development
-
-For regular development, **always use Swift CLI tools** instead of the build script:
-
-```bash
-# Check for compilation errors and warnings
-swift build
-
-# Run the app directly (no app bundle needed)
-swift run
-
-# Run with verbose output
-swift run --verbose
-```
-
-**Important**: The build scripts in `scripts/` are only for creating distributable releases. During development:
-- Use `swift run` to avoid signing/entitlement issues
-- Permissions are requested on each launch (normal for development)
-- App gets new bundle signature each build
-
-### Running Tests
-
-```bash
-# Run all tests (recommended - uses make)
+```sh
+make build-dev              # signed host debug package only
+make build                  # universal release package
+swift build                 # compilation check after toolchain setup
 make test
+make typecheck
+```
 
-# Run all tests directly, in parallel (matches CI)
+The local certificate remains in the user Keychain. It is development signing, not Developer ID or notarization. Microphone/Accessibility consent should persist across builds using the same complete signature; repeated permission prompts are a bug to investigate, not a normal development loop. Never reset TCC as part of a routine build.
+
+## App setup
+
+**Models & setup** handles microphone consent, local runtime preparation and voice-model install/verify/remove. Parakeet v2 is the English choice; v3 remains available. Whisper uses CoreML.
+
+**Writing cleanup** handles optional local editing. Qwen3.5 9B 4-bit is the new-install recommendation and Qwen3.8 27B mixed 3-bit is optional. Existing explicit model choices survive upgrades. Cleanup has one grammar policy for every app; app mappings, editable profiles and profile prompt overrides have been removed. Compare/Use original lets users recover their words.
+
+Initial preparation downloads Python, locked packages and model weights. Prepared transcription and correction run offline. The app does not upload audio or transcripts and has no cloud provider/API-key setup.
+
+## Tests and checks
+
+```sh
 swift test --parallel
-
-# Run specific test suite
-swift test --filter AudioRecorderTests
-swift test --filter SpeechToTextServiceTests
-swift test --filter DataManagerTests
-
-# Run tests with verbose output
-swift test --parallel --verbose
-
-# Run tests with code coverage (matches CI exactly)
+swift test --filter RebuildDeliveryIntegrationTests
 swift test --parallel --enable-code-coverage
+make typecheck
+swiftlint lint --strict
 ```
 
-**Note**: Tests run in parallel, matching CI (`.github/workflows/ci.yml`).
-This used to require `--no-parallel`: tests read and wrote
-`UserDefaults.standard` directly, so under `--parallel` they observed each
-other's writes and failed nondeterministically. Settings are now isolated
-per process, so parallel is the default.
+Use `IsolatedXCTestCase` and scratch defaults for preference-dependent tests. Create explicit in-memory or disposable on-disk SwiftData containers; never initialize the live history store in tests. Tie regressions to the changed recording/setup/delivery behavior. Optional real-engine tests need installed models and `RUN_E2E=1`; discovered case counts do not mean every hardware test executed.
 
-Keep it that way. Tests that touch `UserDefaults.standard` should subclass
-`IsolatedXCTestCase` (see `Tests/Utilities/IsolatedXCTestCase.swift`) and
-store their settings in a UUID-scoped suite via
-`UserDefaults(suiteName: UUID().uuidString)!`. The base class can be put in
-strict mode (`AUDIOWHISPER_TEST_ISOLATION=strict swift test`) to fail any
-test that leaks state into `.standard` — worth running before adding a test
-that touches settings.
+Python tests use a lightweight test environment with `tqdm==4.67.1`; model libraries are faked unless a test explicitly says otherwise:
 
-### Code Quality Checks
-
-Before committing:
-
-1. Ensure no compiler warnings:
-```bash
-swift build 2>&1 | grep -i warning
+```sh
+python3 -m venv .mypy-venv
+.mypy-venv/bin/pip install mypy==1.20.0 tqdm==4.67.1
+.mypy-venv/bin/python -m unittest discover -s Tests -p 'test_*.py'
 ```
 
-2. Run all tests:
-```bash
-swift test
+Match the `MYPY_VERSION` and `SWIFTLINT_VERSION` pins in `.github/workflows/ci.yml` for exact CI comparisons. CI validates the frozen Python lock, runs Swift/Python tests, measures project-source coverage, packages the app and runs one analyzer pass. Failed indexing or malformed/missing reports must fail analysis. Keep stderr/report artifacts when investigating failures.
+
+For native recording, focus, paste, window and consent testing, use the disposable macOS 26 guest in [the VM guide](scripts/vm/README.md). Guest virtual input/audio is separate from physical host acceptance. Reuse the signer and existing permissions; do not require repeated user interaction for the automated loop.
+
+## Architecture
+
+- `Sources/Rebuild/`: active workspace, session ownership, setup and writing-install state.
+- `Sources/Services/`: transcription pipeline, speech routing, output guards and model services.
+- `Sources/Managers/`: local ML daemon, model/setup/permission orchestration.
+- `Sources/Stores/`: SwiftData history, background export, preferences and usage.
+- `Sources/ml/`: local Python inference, pinned cache access and JSON-RPC.
+- `Sources/Resources/`: frozen `pyproject.toml`/`uv.lock` and packaged tools.
+
+The executable launches `RebuildApp`. Legacy views/controllers still compile for historical regression coverage; do not add new product flows there. Shared engines remain reusable. See [ADRs](docs/adr/) for offline/cache/security boundaries.
+
+## Dependency changes
+
+For Python updates, modify `Sources/Resources/pyproject.toml`, regenerate the frozen lock with `uv lock`, and review the exact package diff. Preserve unrelated ML pins. Verify offline Parakeet and both shipped Qwen models before installing a new runtime. Model revisions are pinned in `ModelPins`; representative-file integrity records detect corruption but are not full weight authentication.
+
+The bundled uv version/checksums are defined in `scripts/prepare-uv.sh`; update them together from the official release and rebuild. Never retain signing keys, credentials or transcript data in the repository.
+
+## Distribution
+
+This fork publishes no releases or Homebrew tap. A local development bundle is not a distributable release. Public distribution requires Developer ID signing, accepted notarization, stapling and Gatekeeper assessment. Do not publish upstream’s tap or an ad-hoc development package.
+
+## Contributions
+
+Use focused commits, meaningful regression evidence and a short PR description explaining the resulting behavior. Run the checks appropriate to the change. Preserve unverified native scenarios explicitly; a green unit-test job is not physical microphone acceptance.
+
+```sh
+gh pr create --repo jtn0123/AudioWhisper --base master
 ```
 
-3. Verify the app runs:
-```bash
-swift run
-```
-
-## Building for Distribution
-
-### When to Use the Build Scripts
-
-Only use the build scripts when creating a release for distribution:
-- Creating app bundles for users
-- Preparing for code signing
-- Building for notarization
-- Creating distributable packages
-
-### Basic Release Build
-
-```bash
-# Create unsigned app bundle
-make build
-```
-
-This creates:
-- Universal binary (Apple Silicon + Intel)
-- Proper app bundle structure
-- App icon from AudioWhisperIcon.png
-- Info.plist with required permissions
-
-### Signed Release Build
-
-```bash
-# With explicit identity
-export CODE_SIGN_IDENTITY="Developer ID Application: Your Name"
-make build
-
-# Auto-detect Developer ID (if available)
-make build
-```
-
-### Notarized Release Build
-
-```bash
-# Set required environment variables
-export CODE_SIGN_IDENTITY="Developer ID Application: Your Name"
-export AUDIO_WHISPER_APPLE_ID='your-apple-id@example.com'
-export AUDIO_WHISPER_APPLE_PASSWORD='app-specific-password'
-export AUDIO_WHISPER_TEAM_ID='your-team-id'
-
-# Build with notarization
-make build-notarize
-```
-
-## Code Signing
-
-### Free Option: Ad-hoc Signing (Local Use Only)
-
-For personal use without a developer account:
-
-```bash
-# Ad-hoc sign after building
-codesign --force --deep --sign - AudioWhisper.app
-```
-
-**Limitations:**
-- Only works on your Mac
-- Other users will see security warnings
-- Cannot be notarized
-
-### Paid Option: Apple Developer Program ($99/year)
-
-#### 1. Join Apple Developer Program
-- Visit [developer.apple.com/programs/](https://developer.apple.com/programs/)
-- Sign up for $99/year membership
-
-#### 2. Create Developer ID Certificate
-
-Via Xcode:
-1. Open Xcode → Settings → Accounts
-2. Click "Manage Certificates"
-3. Click "+" → "Developer ID Application"
-
-Via Apple Developer website:
-1. Sign in to [developer.apple.com/account](https://developer.apple.com/account)
-2. Go to Certificates, IDs & Profiles
-3. Create a "Developer ID Application" certificate
-
-#### 3. Find Your Code Signing Identity
-
-```bash
-# List all valid signing identities
-security find-identity -v -p codesigning
-
-# You'll see something like:
-# "Developer ID Application: Your Name (TEAMID)"
-```
-
-#### 4. Sign Your App
-
-The build script handles signing automatically if identity is available.
-
-#### 5. Verify Code Signature
-
-```bash
-# Check if app is properly signed
-codesign --verify --verbose AudioWhisper.app
-
-# Check signature details
-codesign -dvv AudioWhisper.app
-
-# Check Gatekeeper approval
-spctl -a -v AudioWhisper.app
-```
-
-### Notarization
-
-Notarization is required for distribution outside the Mac App Store:
-
-1. **Create App-Specific Password:**
-   - Go to [appleid.apple.com](https://appleid.apple.com)
-   - Sign in → Security → App-Specific Passwords
-   - Generate password for "AudioWhisper Notarization"
-
-2. **Submit for Notarization:**
-   Use `make build-notarize` or manually:
-   ```bash
-   # Create zip
-   ditto -c -k --keepParent AudioWhisper.app AudioWhisper.zip
-   
-   # Submit
-   xcrun notarytool submit AudioWhisper.zip \
-     --apple-id "your@email.com" \
-     --team-id "TEAMID" \
-     --password "app-specific-password" \
-     --wait
-   
-   # Staple ticket
-   xcrun stapler staple AudioWhisper.app
-   ```
-
-### Distribution Options
-
-1. **Direct Download**: Sign, notarize, and zip
-2. **Homebrew Cask**: Submit to homebrew-cask repository
-3. **Mac App Store**: Requires additional sandboxing (not currently supported)
-
-## Architecture Overview
-
-### Technology Stack
-- **SwiftUI**: Modern UI framework for macOS
-- **AppKit**: Menu bar integration
-- **AVFoundation**: Audio recording
-- **Alamofire**: Network requests and downloads
-- **HotKey**: Global keyboard shortcuts
-- **WhisperKit**: Local transcription with CoreML
-- **Keychain**: Secure API key storage
-
-### Key Components
-- **Menu Bar App**: Persistent menu bar presence
-- **Recording Window**: Chromeless floating window
-- **Settings Window**: Traditional macOS preferences
-- **Audio Pipeline**: Recording → Processing → Transcription
-- **Model Management**: Download and storage of Whisper models
-
-### Project Structure
-```
-AudioWhisper/
-├── Sources/                        # Swift source files
-├── Tests/                          # Unit tests
-├── scripts/                        # Build and automation scripts
-│   ├── build.sh                    # Release build script
-│   ├── generate-icons.sh           # App icon generator
-│   ├── run-tests.sh                # Test runner
-│   └── update-brew-cask.sh         # Homebrew cask updater
-├── Package.swift                   # Swift package manifest
-├── Makefile                        # Build automation
-└── CLAUDE.md                       # AI assistant notes
-```
-
-## Coding Standards
-
-### Swift Style
-- Follow [Swift API Design Guidelines](https://swift.org/documentation/api-design-guidelines/)
-- Use meaningful variable and function names
-- Keep functions focused and small
-- Document complex logic with comments
-
-### SwiftUI Best Practices
-- Use `@StateObject` for view-owned objects
-- Prefer `@EnvironmentObject` for shared state
-- Keep views small and composable
-- Support both light and dark modes
-
-### Error Handling
-- Use Swift's error handling (`do-catch`)
-- Provide meaningful error messages
-- Log errors appropriately
-- Handle edge cases gracefully
-
-### Testing
-- Write unit tests for business logic
-- Test error conditions
-- Mock external dependencies
-- CI gates line coverage over `Sources/` at a ratchet (currently 27%, see
-  `scripts/coverage-gate.py`). The ratchet only goes up — if your change drops
-  it, add tests rather than lowering the number.
-- Two things make local coverage numbers disagree with CI's, so re-measure in
-  CI before touching the threshold:
-  - It counts *our* code only. SwiftPM's own total runs ~25 points higher
-    because it includes dependency sources under `.build/checkouts`.
-  - A local run reads ~0.5pp higher than CI, because several tests skip on
-    environment (cached Parakeet models, an existing WhisperKit storage
-    directory). A dev box with models cached runs a different set than a clean
-    runner does.
-
-### Security
-- Never hardcode API keys
-- Use Keychain for sensitive data
-- Validate all user inputs
-- Follow principle of least privilege
-
-## Common Issues
-
-### Build Warnings
-- **No warnings policy**: Fix all warnings before committing
-- Check deployment target matches Package.swift (macOS 14.0)
-- Ensure all APIs are available on target OS version
-
-### Permission Issues
-- Microphone access required for recording
-- Keychain access for API keys
-- Automation permission for auto-paste feature
-
-### Known System Warnings
-These warnings from Apple's frameworks can be safely ignored:
-- `AddInstanceForFactory: No factory registered...`
-- `LoudnessManager.mm: unknown value: Mac16,13`
-
-## Getting Help
-
-- **Issues**: Report bugs on GitHub Issues
-- **Discussions**: Use GitHub Discussions for questions
-- **Documentation**: Check CLAUDE.md for implementation notes
-- **Swift Forums**: [forums.swift.org](https://forums.swift.org) for Swift questions
-
-## License
-
-By contributing to AudioWhisper, you agree that your contributions will be licensed under the same license as the project.
-
-## Embedded Python Dependencies
-
-AudioWhisper bundles a Python environment (managed via `uv`) for Parakeet and MLX semantic correction. The lockfile is committed at `Sources/Resources/uv.lock` and is the single source of truth for those deps.
-
-To upgrade:
-```bash
-cd Sources/Resources
-uv lock --upgrade        # or `uv lock --upgrade-package <name>` for one package
-git add uv.lock pyproject.toml
-```
-
-Test by running the app and verifying Parakeet/MLX still load successfully. Both `uv.lock` and `pyproject.toml` must always be committed together.
-
-## Refreshing the Bundled `uv` Binary
-
-The app ships a copy of [Astral's `uv`](https://github.com/astral-sh/uv) at
-`Sources/Resources/bin/uv` so first-launch Python bootstrap doesn't depend on
-the user's environment. `scripts/build.sh` captures the binary's SHA-256 at
-build time; `UvBootstrap` verifies that hash once per launch.
-
-To upgrade `uv`:
-
-1. Download the new `uv` release for `aarch64-apple-darwin` from
-   https://github.com/astral-sh/uv/releases.
-2. Verify the download against Astral's published `SHA256SUMS`.
-3. Replace `Sources/Resources/bin/uv` with the new binary; ensure it is
-   executable (`chmod +x`).
-4. Run `make build`. The build script automatically captures the new SHA-256
-   and stamps it into `VersionInfo.swift` for runtime verification.
-5. Commit the new binary along with whatever `Sources/Resources/uv.lock`
-   changes flow from running Python deps against the newer `uv`.
-
-If a user's installed `uv` is newer than the bundled one, AudioWhisper uses
-the bundled copy regardless — verification gates the bundled path only.
+An optional staged-file hook is available through `git config core.hooksPath .githooks`. Use clear Swift/Python names, conservative error handling and scoped changes. New dependencies and broader architecture changes need concrete justification.

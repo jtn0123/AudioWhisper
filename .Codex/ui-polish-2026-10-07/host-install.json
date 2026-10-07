@@ -1,0 +1,15 @@
+{
+  "source": "45632e5",
+  "installed_path": "/Applications/AudioWhisper Rebuild.app",
+  "binary_sha256": "5ecf93e58d60e282afca5461b23b49562af411924be0537449fc8e7fc077e206",
+  "signature_valid": true,
+  "same_designated_requirement": true,
+  "single_running_process": true,
+  "protected_preference_keys_unchanged": 14,
+  "selected_preferences_unchanged": true,
+  "history_count": 0,
+  "history_unchanged": true,
+  "sqlite_quick_check": "ok",
+  "permissions_not_reset": true,
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t27.2\nBuildVersion:\t\t26B5101f"
+}

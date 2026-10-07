@@ -1,0 +1,77 @@
+{
+  "native_original_copy": true,
+  "state": {
+    "clipboard": "raw qa transcript 0",
+    "frontmost": "com.audiowhisper.rebuild",
+    "modifierFlags": 0,
+    "screens": [
+      {
+        "frame": [
+          0,
+          0,
+          1024,
+          768
+        ],
+        "scale": 2,
+        "visible": [
+          0,
+          57,
+          1024,
+          681
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 62,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 620,
+          "Width": 870,
+          "X": 77,
+          "Y": 30
+        },
+        "id": 58,
+        "visible": true
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 63,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 61,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 60,
+        "visible": false
+      }
+    ]
+  }
+}

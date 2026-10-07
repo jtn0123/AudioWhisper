@@ -34,12 +34,17 @@ internal extension AppDelegate {
         menu.addItem(.separator())
 
         // ── Primary actions
-        menu.addItem(makeActionItem(
-            title: "Start Recording",
-            selector: #selector(toggleRecordWindow),
-            keyEquivalent: " ",
-            modifiers: [.command, .shift]
-        ))
+        let isRecording = audioRecorder?.isRecording == true
+        let isBusy = isTranscriptionProcessing && !isRecording
+        let recordingTitle = isRecording ? "Stop Recording" : (isBusy ? "Transcribing…" : "Start Recording")
+        let recordingItem = makeActionItem(
+            title: recordingTitle,
+            selector: #selector(startRecordingFromMenu),
+            keyEquivalent: ""
+        )
+        recordingItem.isEnabled = !isBusy
+        RecordingShortcut.apply(AppDefaults.globalHotkey, to: recordingItem)
+        menu.addItem(recordingItem)
         menu.addItem(makeActionItem(
             title: "Transcribe a File…",
             selector: #selector(transcribeAudioFile),
@@ -100,7 +105,8 @@ internal extension AppDelegate {
 
         let host = NSHostingView(rootView: MenuHeaderView(
             providerRaw: providerRaw,
-            todayWPM: wpm > 0 ? wpm : nil
+            todayWPM: wpm > 0 ? wpm : nil,
+            readiness: RecordingSetupState.shared.requirement
         ))
         host.frame = NSRect(x: 0, y: 0, width: menuWidth, height: 44)
         item.view = host

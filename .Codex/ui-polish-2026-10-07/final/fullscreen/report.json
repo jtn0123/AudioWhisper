@@ -1,0 +1,11 @@
+{
+  "status": "passed",
+  "checks": [
+    "Preferences stayed off fullscreen destination",
+    "Recorder stayed fully within visible display",
+    "Exactly one native Smart Paste into fullscreen TextEdit"
+  ],
+  "limits": [
+    "Synthetic VM events and public audio; no physical hold-key claim"
+  ]
+}

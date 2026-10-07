@@ -1,0 +1,66 @@
+{
+  "build": "b47fe8e",
+  "initialCyclePassed": true,
+  "additionalCycles": [
+    {
+      "cycle": 2,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 3,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 4,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 5,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 6,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 7,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 8,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 9,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 10,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 11,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 12,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 13,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 14,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 15,
+      "result": "start/cancel passed"
+    },
+    {
+      "cycle": 16,
+      "result": "start/cancel passed"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+Window: "AudioWhisper Rebuild", App: AudioWhisper Rebuild.
+0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
+	1 container
+		2 image Description: Waveform In A Filled Circle, ID: waveform.circle.fill
+		3 text PREFERENCES On your Mac Audio
+Whisper REBUILD / NATIVE V2
+		4 button Record
+		5 button Library
+		6 button Models & setup
+		7 button Writing profiles
+		8 button (selected) Preferences
+		9 text Ready to record Private by default.
+No cloud transcription.
+		10 scroll area Secondary Actions: Scroll Up, Scroll Down
+			11 text Make it your own. Optional conveniences stay optional. Recording only requires a microphone and voice model. SHORTCUTS & RECORDING
+			12 checkbox Description: Enable the rebuild’s recording shortcut, Value: 0
+			13 text Keep this off while the original app uses the same shortcut.
+			14 search text field (settable) Recording shortcut, Value: ⇧⌘Space, Placeholder: Record Shortcut
+			15 checkbox Description: Express Mode · record without showing the overlay, Value: 0
+			16 checkbox Description: Record while holding a modifier key, Value: 0
+			17 pop up button Microphone, Value: System default
+			18 checkbox Description: Boost microphone input while recording, Value: 0
+			19 checkbox Description: Play a completion sound, Value: 1
+			20 text DELIVERY & PERMISSIONS
+			21 checkbox Description: Smart Paste · paste into the app I recorded from, Value: 0
+			22 text Text always reaches your clipboard. Smart Paste requires Accessibility and uses only the captured destination. Accessibility not enabled
+			23 button Open Accessibility settings
+			24 text LIBRARY & PRIVACY
+			25 checkbox Description: Save transcripts to my local library, Value: 0
+			26 pop up button Keep transcripts for, Value: 1 Month
+			27 text The rebuild has its own empty library. It does not read or change the original app’s transcripts.
+			28 stepper Whisper storage limit: 5 GB, Value: 5, Secondary Actions: Increment, Decrement
+				29 increment arrow button
+				30 decrement arrow button
+			31 text APPEARANCE & STARTUP
+			32 Appearance
+				33 radio button Description: Follow macOS, Value: 1
+				34 radio button Description: Light, Value: 0
+				35 radio button Description: Dark, Value: 0
+			36 pop up button Recorder visual, Value: Classic
+			37 pop up button Motion intensity, Value: Balanced
+			38 text The recorder respects macOS Reduce Motion. Normal windows stay on desktop Spaces.
+			39 checkbox Description: Open the rebuild at login, Value: 0
+			40 text SUPPORT & USAGE
+			41 button Copy setup diagnostics
+			42 button (disabled) Recalculate usage from saved history
+			43 button Reset usage totals…
+			44 text Build f0cc89a40dd380668c432ec186826772f3cd2b03 · Development preview
+			45 scroll bar (settable, float) 0
+				46 value indicator (settable, float) 0
+				47 increment arrow button
+				48 decrement arrow button
+				49 increment page button
+				50 decrement page button
+	51 close button
+	52 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	53 minimize button
+	54 text AudioWhisper Rebuild
+55 menu bar
+	56 AudioWhisper Rebuild
+	57 Edit
+	58 View
+	59 Window
+	60 Help
+
+The focused UI element is 0 standard window AudioWhisper Rebuild, Secondary Actions: Raise

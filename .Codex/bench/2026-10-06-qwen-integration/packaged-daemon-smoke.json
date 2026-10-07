@@ -1,0 +1,122 @@
+{
+  "scope": "Real packaged JSON-RPC daemon, actual shared offline cache, no template or loader replacements; grammar, content quotes and model replacement 3.5 to 3.8 to 3.5. No microphone or paste test.",
+  "exit": 0,
+  "seconds": 9.615088874998037,
+  "requests": [
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "ping",
+      "params": {}
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "correct",
+      "params": {
+        "repo": "mlx-community/Qwen3.5-9B-4bit",
+        "text": "she dont have the files yet",
+        "prompt": "Clean up grammar and punctuation. Keep the original meaning and quoted text exactly. Output only the corrected text."
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "method": "correct",
+      "params": {
+        "repo": "mlx-community/Qwen3.5-9B-4bit",
+        "text": "The note says \"leave this alone.\"",
+        "prompt": "Clean up grammar and punctuation. Keep the original meaning and quoted text exactly. Output only the corrected text."
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "method": "correct",
+      "params": {
+        "repo": "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+        "text": "she dont have the files yet",
+        "prompt": "Clean up grammar and punctuation. Keep the original meaning and quoted text exactly. Output only the corrected text."
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "method": "correct",
+      "params": {
+        "repo": "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+        "text": "The note says \"leave this alone.\"",
+        "prompt": "Clean up grammar and punctuation. Keep the original meaning and quoted text exactly. Output only the corrected text."
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "method": "correct",
+      "params": {
+        "repo": "mlx-community/Qwen3.5-9B-4bit",
+        "text": "she dont have the files yet",
+        "prompt": "Clean up grammar and punctuation. Keep the original meaning and quoted text exactly. Output only the corrected text."
+      }
+    }
+  ],
+  "responses": [
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "pong": true
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "success": true,
+        "text": "She doesn't have the files yet."
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "success": true,
+        "text": "The note says, \"Leave this alone.\""
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "success": true,
+        "text": "She doesn't have the files yet."
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "success": true,
+        "text": "The note says, \"Leave this alone.\""
+      }
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "result": {
+        "success": true,
+        "text": "She doesn't have the files yet."
+      }
+    }
+  ],
+  "stderr": "",
+  "checks": {
+    "all_requests_succeeded": true,
+    "grammar_correct": true,
+    "content_quote_pair_preserved": true,
+    "model_switch_and_switch_back": true,
+    "signature_after": true,
+    "no_bytecode_writes": true
+  },
+  "quote_note": "9B capitalized the quoted sentence and added a comma; quote tests check content words and balanced closing quotes, not verbatim case preservation."
+}

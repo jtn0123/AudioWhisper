@@ -105,6 +105,20 @@ final class UsageMetricsStoreTests: XCTestCase {
         XCTAssertEqual(store.snapshot.totalSessions, 2)
     }
 
+    func testExplicitRecalculationReplacesExistingTotalsAcrossPages() async throws {
+        store.recordSession(duration: 999, wordCount: 999, characterCount: 999)
+        let manager = TestDataManager()
+        manager.records = (0..<1001).map { _ in
+            TranscriptionRecord(text: "two words", provider: .local, duration: 1, modelUsed: nil,
+                wordCount: 2, characterCount: 9)
+        }
+        try await store.rebuildFromHistory(dataManager: manager)
+        XCTAssertEqual(store.snapshot.totalSessions, 1001)
+        XCTAssertEqual(store.snapshot.totalWords, 2002)
+        XCTAssertEqual(store.snapshot.totalCharacters, 9009)
+        XCTAssertEqual(store.snapshot.totalDuration, 1001)
+    }
+
     func testBootstrapSkipsWhenCountersPresent() async {
         store.recordSession(duration: 5, wordCount: 10, characterCount: 50)
 
@@ -125,6 +139,7 @@ final class UsageMetricsStoreTests: XCTestCase {
 
 @MainActor
 private final class TestDataManager: DataManagerProtocol {
+    let historyRevision = HistoryRevision()
     var isHistoryEnabled: Bool = true
     var retentionPeriod: RetentionPeriod = .oneMonth
     var sharedModelContainer: ModelContainer? { nil }

@@ -21,6 +21,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     private(set) var currentSessionStart: Date?
     private(set) var lastRecordingDuration: TimeInterval?
+    var recordingSessionID: UUID?
+    private(set) var lastStartError: String?
 
     // MARK: - Audio Engine
 
@@ -55,6 +57,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // MARK: - Volume Management
 
     private let volumeManager: MicrophoneVolumeManaging
+    let inputRouting: AudioInputRouting
+    let hardwarePreparation = AudioHardwarePreparation<PreparedAudioEngine>()
+    private var volumeTask: Task<Void, Never>?
+    private var volumeBoostRequested = false
 
     // MARK: - Interruption Observers
     // Registered for the lifetime of a recording session (start → stop/cancel)
@@ -68,13 +74,15 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     override init() {
         self.fftProcessor = FFTProcessor()
         self.volumeManager = MicrophoneVolumeManager.shared
+        self.inputRouting = .live
         self.dateProvider = { Date() }
         super.init()
     }
 
     init(
         volumeManager: MicrophoneVolumeManaging? = nil,
-        dateProvider: @escaping () -> Date = { Date() }
+        dateProvider: @escaping () -> Date = { Date() },
+        inputRouting: AudioInputRouting = .live
     ) {
         // A5: resolved in the body rather than as a default argument.
         // Default-argument expressions are evaluated in the CALLER's
@@ -85,6 +93,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         self.fftProcessor = FFTProcessor()
         self.volumeManager = volumeManager ?? MicrophoneVolumeManager.shared
         self.dateProvider = dateProvider
+        self.inputRouting = inputRouting
         super.init()
     }
 
@@ -107,115 +116,18 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
         audioEngine = nil
         audioFile = nil
-        if AppDefaults.autoBoostMicrophoneVolume {
+        let pendingVolume = volumeTask
+        let boostRequested = volumeBoostRequested
+        if boostRequested || pendingVolume != nil {
             let manager = volumeManager
-            Task { await manager.restoreMicrophoneVolume() }
+            Task {
+                await pendingVolume?.value
+                await manager.restoreMicrophoneVolume()
+            }
         }
     }
 
     // MARK: - AudioRecording Protocol
-
-    func startRecording() -> Bool {
-        // Check permission via PermissionManager (single source of truth)
-        guard PermissionManager.shared.microphonePermissionState == .granted else {
-            return false
-        }
-
-        // Prevent re-entrancy
-        guard audioEngine == nil else {
-            return false
-        }
-
-        // Skip real audio hardware operations in test environment to prevent errors
-        if AppEnvironment.isRunningTests {
-            return false
-        }
-
-        // Boost microphone volume if enabled.
-        // Dispatched AFTER the early-return checks above so the boost only happens
-        // when a real recording session actually begins — otherwise the matching
-        // restore (in stop/cancel) would never fire and the boost would stick.
-        if AppDefaults.autoBoostMicrophoneVolume {
-            Task {
-                await volumeManager.boostMicrophoneVolume()
-            }
-        }
-
-        // Create recording URL
-        let tempPath = FileManager.default.temporaryDirectory
-        let timestamp = dateProvider().timeIntervalSince1970
-        let audioFilename = tempPath.appendingPathComponent("recording_\(timestamp).m4a")
-        recordingURL = audioFilename
-
-        do {
-            // Set up audio engine
-            let engine = AVAudioEngine()
-            let inputNode = engine.inputNode
-            let inputFormat = inputNode.outputFormat(forBus: 0)
-
-            // Map the FFT processor to the device's actual sample rate. The tap runs
-            // at the device rate (often 48 kHz), not the 44.1 kHz default — without
-            // this, frequency bands are mislabeled (Hz→bin mapping uses sampleRate).
-            fftProcessor?.updateSampleRate(Float(inputFormat.sampleRate))
-
-            // Create output file for recording.
-            // The channel count MUST match the input tap buffer's channel count, or
-            // every `audioFile.write(from:)` throws (channel-count mismatch) and the
-            // recording ends up empty on stereo input devices.
-            let outputSettings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: inputFormat.sampleRate,
-                AVNumberOfChannelsKey: Int(inputFormat.channelCount),
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-            ]
-
-            audioFile = try AVAudioFile(
-                forWriting: audioFilename,
-                settings: outputSettings
-            )
-
-            // Install tap for real-time audio access
-            let bufferSize = AVAudioFrameCount(1024)
-            inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
-                self?.processAudioBuffer(buffer)
-            }
-
-            // Start the engine
-            try engine.start()
-
-            audioEngine = engine
-            currentSessionStart = dateProvider()
-            lastRecordingDuration = nil
-            sampleBufferLock.lock()
-            _writeErrorCount = 0  // Reset error count for new session
-            _writeSuccessCount = 0  // Reset success count for new session
-            _framesWritten = 0  // Reset frame counter for new session
-            _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
-            sampleBufferLock.unlock()
-            isRecording = true
-
-            installInterruptionObservers()
-
-            return true
-
-        } catch {
-            Logger.audioEngineRecorder.error("Failed to start engine recording: \(error.localizedDescription)")
-
-            // Clear recordingURL to prevent orphaned file reference
-            recordingURL = nil
-
-            // Restore volume if recording failed
-            if AppDefaults.autoBoostMicrophoneVolume {
-                Task {
-                    await volumeManager.restoreMicrophoneVolume()
-                }
-            }
-
-            // Recheck permissions
-            PermissionManager.shared.checkPermissionState()
-            return false
-        }
-    }
 
     func stopRecording() -> URL? {
         let now = dateProvider()
@@ -236,13 +148,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         stopEngine()
 
         // Restore microphone volume if it was boosted
-        if AppDefaults.autoBoostMicrophoneVolume {
-            Task {
-                await volumeManager.restoreMicrophoneVolume()
-            }
-        }
+        scheduleVolumeRestore()
 
         isRecording = false
+        recordingSessionID = nil
         clearVisualizationData()
 
         // A recording is only usable if real audio frames were captured and at
@@ -265,13 +174,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         stopEngine()
 
         // Restore microphone volume
-        if AppDefaults.autoBoostMicrophoneVolume {
-            Task {
-                await volumeManager.restoreMicrophoneVolume()
-            }
-        }
+        scheduleVolumeRestore()
 
         isRecording = false
+        recordingSessionID = nil
         clearVisualizationData()
         cleanupRecording()
     }
@@ -424,4 +330,141 @@ private extension Logger {
         subsystem: Bundle.main.bundleIdentifier ?? "AudioWhisper",
         category: "AudioEngineRecorder"
     )
+}
+
+extension AudioEngineRecorder {
+    func startRecording() -> Bool {
+        startRecording(sessionID: UUID())
+    }
+
+    func startRecording(sessionID: UUID) -> Bool {
+        guard canStartRecording() else { return false }
+        do {
+            let prepared = try PreparedAudioEngine.make(routing: inputRouting, selectedUID: AppDefaults.selectedMicrophone)
+            return startPreparedEngine(prepared, sessionID: sessionID)
+        } catch {
+            lastStartError = error.localizedDescription
+            return false
+        }
+    }
+
+    func canStartRecording() -> Bool {
+        lastStartError = nil
+        // Check permission via PermissionManager (single source of truth)
+        guard PermissionManager.shared.microphonePermissionState == .granted else {
+            return false
+        }
+
+        // Prevent re-entrancy
+        guard audioEngine == nil, !hardwarePreparation.isInFlight else {
+            lastStartError = AudioPreparationError.busy.localizedDescription
+            return false
+        }
+
+        // Skip real audio hardware operations in test environment to prevent errors
+        if AppEnvironment.isRunningTests {
+            return false
+        }
+        return true
+    }
+
+    func failRecordingStart(_ error: Error) -> Bool {
+        lastStartError = error.localizedDescription
+        return false
+    }
+
+    func startPreparedEngine(_ prepared: PreparedAudioEngine, sessionID: UUID) -> Bool {
+        // Create recording URL
+        let tempPath = FileManager.default.temporaryDirectory
+        let timestamp = dateProvider().timeIntervalSince1970
+        let audioFilename = tempPath.appendingPathComponent("recording_\(timestamp).m4a")
+        recordingURL = audioFilename
+
+        do {
+            let engine = prepared.engine
+            let inputNode = prepared.inputNode
+            let inputFormat = prepared.format
+
+            // Map the FFT processor to the device's actual sample rate. The tap runs
+            // at the device rate (often 48 kHz), not the 44.1 kHz default — without
+            // this, frequency bands are mislabeled (Hz→bin mapping uses sampleRate).
+            fftProcessor?.updateSampleRate(Float(inputFormat.sampleRate))
+
+            // Create output file for recording.
+            // The channel count MUST match the input tap buffer's channel count, or
+            // every `audioFile.write(from:)` throws (channel-count mismatch) and the
+            // recording ends up empty on stereo input devices.
+            let outputSettings: [String: Any] = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: inputFormat.sampleRate,
+                AVNumberOfChannelsKey: Int(inputFormat.channelCount),
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+
+            audioFile = try AVAudioFile(
+                forWriting: audioFilename,
+                settings: outputSettings
+            )
+
+            // Install tap for real-time audio access
+            let bufferSize = AVAudioFrameCount(1024)
+            inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
+                self?.processAudioBuffer(buffer)
+            }
+
+            // Reset diagnostics before the first callback can arrive.
+            sampleBufferLock.lock()
+            _writeErrorCount = 0  // Reset error count for new session
+            _writeSuccessCount = 0  // Reset success count for new session
+            _framesWritten = 0  // Reset frame counter for new session
+            _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
+            sampleBufferLock.unlock()
+            audioEngine = engine
+            try engine.start()
+            currentSessionStart = dateProvider()
+            lastRecordingDuration = nil
+            isRecording = true
+            recordingSessionID = sessionID
+            scheduleVolumeBoost(deviceID: prepared.device, sessionID: sessionID)
+
+            installInterruptionObservers()
+
+            return true
+
+        } catch {
+            Logger.audioEngineRecorder.error("Failed to start engine recording: \(error.localizedDescription)")
+            lastStartError = error.localizedDescription
+
+            // Clear recordingURL to prevent orphaned file reference
+            stopEngine()
+            cleanupRecording()
+
+            // Recheck permissions
+            PermissionManager.shared.checkPermissionState()
+            return false
+        }
+    }
+
+    func scheduleVolumeBoost(deviceID: AudioDeviceID, sessionID: UUID) {
+        guard AppDefaults.autoBoostMicrophoneVolume else { return }
+        volumeBoostRequested = true
+        let pending = volumeTask
+        let manager = volumeManager
+        volumeTask = Task { [weak self] in
+            await pending?.value
+            guard self?.recordingSessionID == sessionID else { return }
+            _ = await manager.boostMicrophoneVolume(deviceID: deviceID)
+        }
+    }
+
+    private func scheduleVolumeRestore() {
+        guard volumeBoostRequested else { return }
+        volumeBoostRequested = false
+        let pending = volumeTask
+        let manager = volumeManager
+        volumeTask = Task {
+            await pending?.value
+            await manager.restoreMicrophoneVolume()
+        }
+    }
 }

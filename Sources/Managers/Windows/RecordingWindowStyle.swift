@@ -11,7 +11,8 @@ import AppKit
 internal enum RecordingWindowStyle {
     static let collectionBehavior: NSWindow.CollectionBehavior = [
         .canJoinAllSpaces,     // every Space
-        .fullScreenAuxiliary,  // including over a full-screen app
+        .fullScreenAuxiliary,  // auxiliary to a full-screen window
+        .canJoinAllApplications, // eligible over another app's full-screen Space
         .ignoresCycle          // ⌘-` skips it
     ]
 
@@ -43,10 +44,10 @@ internal enum RecordingWindowStyle {
     }
 
     /// Where a window with `frame` goes on a screen with `visibleFrame`: where
-    /// it is, if it is already on that screen — so a window the user dragged
-    /// stays put — and centred on it otherwise.
+    /// it is, if it is fully visible — so a window the user dragged stays put —
+    /// and centred on it otherwise. Its controls must clear the Dock and edges.
     static func frameOrigin(for frame: NSRect, on visibleFrame: NSRect) -> NSPoint {
-        if visibleFrame.contains(NSPoint(x: frame.midX, y: frame.midY)) {
+        if visibleFrame.contains(frame) {
             return frame.origin
         }
         return NSPoint(

@@ -27,6 +27,8 @@ private actor WhisperKitCache {
             throw LocalWhisperError.modelNotDownloaded
         }
 
+        evictLeastRecentlyUsedIfNeeded(maxCached: maxCached)
+
         // Create new instance
         progressCallback?("Preparing \(model.displayName) model...")
 
@@ -39,13 +41,13 @@ private actor WhisperKitCache {
         let newInstance: WhisperKit
         do {
             if let localModelPath = getLocalModelPath(for: model) {
-                let config = WhisperKitConfig(modelFolder: localModelPath)
+                let config = WhisperKitConfig(downloadBase: RebuildStorage.whisperDownloadBase, modelFolder: localModelPath)
                 newInstance = try await WhisperKit(config)
             } else {
                 // Fallback to model name (should work if environment variables are respected).
                 // `.whisperKitModelName` is the canonical name WhisperKit expects;
                 // see `WhisperModel.whisperKitModelName`.
-                let config = WhisperKitConfig(model: model.whisperKitModelName)
+                let config = WhisperKitConfig(model: model.whisperKitModelName, downloadBase: RebuildStorage.whisperDownloadBase)
                 newInstance = try await WhisperKit(config)
             }
         } catch {
@@ -62,9 +64,6 @@ private actor WhisperKitCache {
             }
             throw error
         }
-
-        // Remove least recently used models if cache is full
-        evictLeastRecentlyUsedIfNeeded(maxCached: maxCached)
 
         // Cache the new instance
         instances[model] = newInstance
@@ -124,6 +123,14 @@ internal final class LocalWhisperService: Sendable {
     private let maxCachedModels = 3 // Limit cache to prevent excessive memory usage
     private let memoryPressureSource: DispatchSourceMemoryPressure?
 
+    enum MemoryPressureAction { case none, keepMostRecent, clearAll }
+
+    static func cacheAction(for event: DispatchSource.MemoryPressureEvent) -> MemoryPressureAction {
+        if event.contains(.critical) { return .clearAll }
+        if event.contains(.warning) { return .keepMostRecent }
+        return .none
+    }
+
     init() {
         // Create memory pressure source inline to avoid self reference
         let queue = DispatchQueue(label: "whisperkit.memorypressure")
@@ -135,14 +142,14 @@ internal final class LocalWhisperService: Sendable {
         let cacheRef = cache
 
         source.setEventHandler {
-            let memoryPressure = source.mask
+            let memoryPressure = source.data
 
-            if memoryPressure.contains(.critical) {
+            if Self.cacheAction(for: memoryPressure) == .clearAll {
                 // Critical memory pressure - clear all cached models
                 Task {
                     await cacheRef.clear()
                 }
-            } else if memoryPressure.contains(.warning) {
+            } else if Self.cacheAction(for: memoryPressure) == .keepMostRecent {
                 // Warning level - remove least recently used models aggressively
                 Task {
                     await cacheRef.clearExceptMostRecent()
@@ -182,7 +189,10 @@ internal final class LocalWhisperService: Sendable {
 
         // Transcribe the audio file
         progressCallback?("Processing audio...")
-        let results = try await whisperKit.transcribe(audioPath: audioFileURL.path, decodeOptions: decodingOptions)
+        let results = try await whisperKit.transcribe(
+            audioPath: audioFileURL.path,
+            audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental),
+            decodeOptions: decodingOptions)
 
         // Combine all transcription segments into a single text
         let transcription = results.map { $0.text }.joined(separator: " ")
@@ -213,6 +223,13 @@ internal final class LocalWhisperService: Sendable {
     // Method to clear cached instances if needed (for memory management)
     func clearCache() async {
         await cache.clear()
+    }
+
+    /// Reload the on-disk assets, rather than validating a previously cached
+    /// instance after an installation or repair.
+    func verifyModel(_ model: WhisperModel) async throws {
+        await cache.clear()
+        _ = try await cache.getOrCreate(model: model, maxCached: maxCachedModels, progressCallback: nil)
     }
 
     // Provide helpful duration hints based on model speed

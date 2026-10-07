@@ -53,6 +53,13 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
 
     // MARK: - findValidTargetApp / findFallbackTargetApp
 
+    func testMissingPasteTargetNeverChoosesAnotherRunningApp() {
+        let vm = makeViewModel()
+        WindowController.storedTargetApp = nil
+        vm.targetAppForPaste = nil
+        XCTAssertNil(vm.findValidTargetApp(), "keep the transcript on the clipboard when its destination is unknown")
+    }
+
     func testFindFallbackTargetAppSkipsSelfBundle() {
         let vm = makeViewModel()
         let fallback = vm.findFallbackTargetApp()
@@ -90,9 +97,16 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
     func testFindValidTargetAppUsesTargetAppForPasteWhenNoStored() {
         let vm = makeViewModel()
         WindowController.storedTargetApp = nil
-        vm.targetAppForPaste = NSRunningApplication.current
-        let result = vm.findValidTargetApp()
-        XCTAssertNotNil(result)
+        // The test executable may be represented by its launching application
+        // on a live desktop. Do not assume .current is terminated or is our bundle.
+        guard let target = NSWorkspace.shared.runningApplications.first(where: {
+            !$0.isTerminated && $0.bundleIdentifier != Bundle.main.bundleIdentifier
+        }) else {
+            XCTFail("Expected a live external application")
+            return
+        }
+        vm.targetAppForPaste = target
+        XCTAssertEqual(vm.findValidTargetApp()?.processIdentifier, target.processIdentifier)
     }
 
     func testFindValidTargetAppReturnsNilOrFallbackWhenNothingSet() {
@@ -183,18 +197,33 @@ final class RecordingViewModelPasteCoverageTests: IsolatedXCTestCase {
     func testProgressNotificationUpdatesProgressMessage() async {
         let vm = makeViewModel()
         vm.setupNotificationObservers()
+        vm.isProcessingForFlow = true
         defer { vm.stopNotificationObservers() }
 
         await pollUntil(
             repost: {
                 NotificationCenter.default.post(
                     name: .transcriptionProgress,
-                    object: "Halfway there"
+                    object: "Halfway there",
+                    userInfo: ["sessionID": vm.sessionID]
                 )
             },
             condition: { vm.progressMessage == "Halfway there" }
         )
         XCTAssertEqual(vm.progressMessage, "Halfway there")
+    }
+
+    func testProgressFromOldSessionAndUnownedProgressAreIgnored() {
+        let vm = makeViewModel()
+        vm.isProcessingForFlow = true
+        XCTAssertFalse(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "old",
+                                                       userInfo: ["sessionID": UUID()])))
+        XCTAssertFalse(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "unowned")))
+        XCTAssertTrue(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "current",
+                                                      userInfo: ["sessionID": vm.sessionID])))
+        vm.cancelProcessing()
+        XCTAssertFalse(vm.acceptProgress(Notification(name: .transcriptionProgress, object: "late",
+                                                       userInfo: ["sessionID": vm.sessionID])))
     }
 
     func testRecordingFailedNotificationSetsError() async {

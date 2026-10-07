@@ -56,22 +56,6 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
 
     // MARK: - Helper Methods
 
-    private func createTempAudioFile() -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let audioFile = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).m4a")
-        // Create a minimal valid file
-        FileManager.default.createFile(
-            atPath: audioFile.path,
-            contents: Data([0x00, 0x00, 0x00, 0x1C, 0x66, 0x74, 0x79, 0x70]),
-            attributes: nil
-        )
-        return audioFile
-    }
-
-    private func cleanupTempFile(_ url: URL) {
-        try? FileManager.default.removeItem(at: url)
-    }
-
     private func waitForAsyncOperation() async {
         try? await Task.sleep(for: .milliseconds(100))
     }
@@ -220,7 +204,7 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
     }
 
     func testCleanTranscriptionTextWithParentheses() {
-        let inputWithParens = "Hello (background noise) world (unclear)"
+        let inputWithParens = "Hello (background noise) world (inaudible)"
         let cleaned = SpeechToTextService.cleanTranscriptionText(inputWithParens)
 
         XCTAssertEqual(cleaned, "Hello world")
@@ -232,7 +216,7 @@ final class TranscriptionFlowIntegrationTests: IsolatedXCTestCase {
         let inputNested = "Hello [[nested]] world"
         let cleaned = SpeechToTextService.cleanTranscriptionText(inputNested)
 
-        XCTAssertEqual(cleaned, "Hello world")
+        XCTAssertEqual(cleaned, inputNested)
     }
 
     func testCleanTranscriptionTextPreservesNormalText() {

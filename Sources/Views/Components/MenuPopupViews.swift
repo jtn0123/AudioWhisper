@@ -17,6 +17,7 @@ internal struct MenuHeaderView: View {
     let providerRaw: String
     /// Today's average WPM, formatted ("168") — pass nil to hide.
     let todayWPM: Int?
+    var readiness: RecordingSetupRequirement = .checking
 
     private let coral = Color(red: 0.85, green: 0.45, blue: 0.30)
     private let coralDeep = Color(red: 0.70, green: 0.34, blue: 0.23)
@@ -63,9 +64,11 @@ internal struct MenuHeaderView: View {
 
                 HStack(spacing: 5) {
                     Circle()
-                        .fill(sage)
+                        .fill(readiness.isReady ? sage : coral)
                         .frame(width: 6, height: 6)
                     Text(statusLine)
+                        .lineLimit(1)
+                        .help(readiness.message)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
@@ -77,7 +80,7 @@ internal struct MenuHeaderView: View {
         .padding(.vertical, 9)
     }
 
-    private var statusLine: String {
+    var statusLine: String {
         let prov: String
         switch providerRaw.lowercased() {
         case "openai":   prov = "OpenAI"
@@ -86,6 +89,7 @@ internal struct MenuHeaderView: View {
         case "parakeet": prov = "Parakeet"
         default:         prov = providerRaw.capitalized
         }
+        guard readiness.isReady else { return readiness.message }
         if let wpm = todayWPM, wpm > 0 {
             return "Ready · \(prov) · \(wpm) WPM today"
         }

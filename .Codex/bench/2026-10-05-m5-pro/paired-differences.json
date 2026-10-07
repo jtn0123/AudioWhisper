@@ -1,0 +1,58 @@
+{
+  "parakeet-v3": {
+    "wer_delta_percentage_points": 0.32537960954446854,
+    "paired_clip_bootstrap_95": [
+      -0.5460021496669463,
+      1.1628214593330874
+    ]
+  },
+  "granite-5": {
+    "wer_delta_percentage_points": -0.21691973969631237,
+    "paired_clip_bootstrap_95": [
+      -1.2782875949413506,
+      0.7946678746905765
+    ]
+  },
+  "cohere-8bit": {
+    "wer_delta_percentage_points": 0.43383947939262474,
+    "paired_clip_bootstrap_95": [
+      -0.24069568705418648,
+      1.1957499644398089
+    ]
+  },
+  "qwen3-asr-4bit": {
+    "wer_delta_percentage_points": 1.0845986984815619,
+    "paired_clip_bootstrap_95": [
+      0.0,
+      2.4309765566671646
+    ]
+  },
+  "whisper-tiny": {
+    "wer_delta_percentage_points": 7.158351409978308,
+    "paired_clip_bootstrap_95": [
+      5.148478450786255,
+      9.486198335352004
+    ]
+  },
+  "whisper-base": {
+    "wer_delta_percentage_points": 5.856832971800434,
+    "paired_clip_bootstrap_95": [
+      3.69546582056544,
+      8.403723558388874
+    ]
+  },
+  "whisper-small": {
+    "wer_delta_percentage_points": 3.3622559652928414,
+    "paired_clip_bootstrap_95": [
+      1.8410910834867003,
+      5.142492942689629
+    ]
+  },
+  "whisper-large-v3_turbo": {
+    "wer_delta_percentage_points": 2.7114967462039044,
+    "paired_clip_bootstrap_95": [
+      1.3089730062716673,
+      4.461245877220984
+    ]
+  }
+}

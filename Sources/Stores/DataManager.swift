@@ -66,6 +66,7 @@ internal protocol DataManagerProtocol {
     var isHistoryEnabled: Bool { get }
     var retentionPeriod: RetentionPeriod { get set }
     var sharedModelContainer: ModelContainer? { get }
+    var historyRevision: HistoryRevision { get }
 
     func initialize() throws
     func saveTranscription(_ record: TranscriptionRecord) async throws
@@ -112,6 +113,7 @@ internal protocol DataManagerProtocol {
 
 @MainActor
 internal final class DataManager: DataManagerProtocol {
+    let historyRevision = HistoryRevision()
     nonisolated(unsafe) static let shared: DataManagerProtocol = MainActor.assumeIsolated {
         DataManager()
     }
@@ -160,9 +162,10 @@ internal final class DataManager: DataManagerProtocol {
                 TranscriptionRecord.self
             ])
 
+            try RebuildStorage.prepare()
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
-                isStoredInMemoryOnly: false,
+                url: RebuildStorage.history,
                 allowsSave: true
             )
 
@@ -196,6 +199,7 @@ internal final class DataManager: DataManagerProtocol {
             let context = ModelContext(container)
             context.insert(record)
             try context.save()
+            historyRevision.advance()
 
             Logger.dataManager.info("Saved transcription record with ID: \(record.id)")
 
@@ -247,6 +251,7 @@ internal final class DataManager: DataManagerProtocol {
 
             context.delete(recordToDelete)
             try context.save()
+            historyRevision.advance()
 
             Logger.dataManager.info("Deleted transcription record with ID: \(record.id)")
 
@@ -280,6 +285,7 @@ internal final class DataManager: DataManagerProtocol {
             // in memory purely to throw it away.
             try context.delete(model: TranscriptionRecord.self)
             try context.save()
+            historyRevision.advance()
 
             Logger.dataManager.info("Deleted all transcription records")
 
@@ -304,26 +310,13 @@ internal final class DataManager: DataManagerProtocol {
         }
 
         do {
-            let context = ModelContext(container)
-
-            // Use SwiftData predicate for database-level filtering
-            let predicate = #Predicate<TranscriptionRecord> { record in
-                record.date < cutoffDate
+            let count = try await HistoryMaintenance.deleteExpired(container: container, before: cutoffDate)
+            if count > 0 {
+                historyRevision.advance()
+                Logger.dataManager.info("Cleaned up \(count) expired transcription records")
             }
-
-            let descriptor = FetchDescriptor<TranscriptionRecord>(predicate: predicate)
-            let expiredRecords = try context.fetch(descriptor)
-
-            for record in expiredRecords {
-                context.delete(record)
-            }
-
-            try context.save()
-
-            if !expiredRecords.isEmpty {
-                Logger.dataManager.info("Cleaned up \(expiredRecords.count) expired transcription records")
-            }
-
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             Logger.dataManager.error("Failed to cleanup expired records: \(error.localizedDescription)")
             throw DataManagerError.cleanupFailed(error)

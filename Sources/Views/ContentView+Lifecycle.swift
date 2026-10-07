@@ -23,7 +23,7 @@ internal extension ContentView {
 
         // Transcription progress updates
         notificationCoordinator.observeOnMainActor(.transcriptionProgress) { notification in
-            if let message = notification.object as? String {
+            if viewModel.acceptProgress(notification), let message = notification.object as? String {
                 viewModel.progressMessage = enhanceProgressMessage(message)
             }
         }
@@ -38,10 +38,8 @@ internal extension ContentView {
 
             if audioRecorder.isRecording {
                 stopAndProcess()
-            } else if !isProcessing && permissionManager.microphonePermissionState == .granted && !viewModel.showSuccess {
+            } else if !isProcessing && !viewModel.showSuccess {
                 startRecording()
-            } else if permissionManager.microphonePermissionState != .granted {
-                permissionManager.requestPermissionWithEducation()
             }
 
             // Debounce: prevent rapid repeated space key triggers
@@ -80,7 +78,8 @@ internal extension ContentView {
 
         // Target app stored - update paste target
         notificationCoordinator.observeOnMainActor(.targetAppStored) { notification in
-            if let app = notification.object as? NSRunningApplication {
+            if !viewModel.isProcessing, viewModel.capturedRecordingSettings == nil,
+               let app = notification.object as? NSRunningApplication {
                 viewModel.targetAppForPaste = app
                 if let info = SourceAppInfo.from(app: app) {
                     viewModel.lastSourceAppInfo = info

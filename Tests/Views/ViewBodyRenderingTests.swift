@@ -35,9 +35,9 @@ final class ViewBodyRenderingTests: XCTestCase {
     }
 
     func testSuccessRecapRendersWithAndWithoutAWordCount() {
-        assertLaysOut(SuccessRecapLabel(start: Date().addingTimeInterval(-2.5), wordCount: 12))
-        assertLaysOut(SuccessRecapLabel(start: Date().addingTimeInterval(-2.5), wordCount: 0))
-        assertLaysOut(SuccessRecapLabel(start: nil, wordCount: nil))
+        assertLaysOut(SuccessRecapLabel(duration: 2.5, wordCount: 12))
+        assertLaysOut(SuccessRecapLabel(duration: 2.5, wordCount: 0))
+        assertLaysOut(SuccessRecapLabel(duration: nil, wordCount: nil))
     }
 
     // MARK: - Settings cards

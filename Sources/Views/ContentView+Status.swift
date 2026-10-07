@@ -10,7 +10,9 @@ internal extension ContentView {
             progressMessage: viewModel.progressMessage,
             hasPermission: permissionManager.microphonePermissionState == .granted,
             showSuccess: viewModel.showSuccess,
-            errorMessage: viewModel.showError ? viewModel.errorMessage : nil
+            errorMessage: viewModel.showError ? viewModel.errorMessage : nil,
+            setupMessage: RecordingSetupState.shared.modelRequirement.isReady
+                ? nil : RecordingSetupState.shared.modelRequirement.message
         )
     }
 

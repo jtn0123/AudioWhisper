@@ -157,11 +157,14 @@ extension DashboardProvidersView {
     }
 
     func statusInfo(for provider: TranscriptionProvider) -> (String, Bool) {
-        switch provider {
-        case .local:
-            return downloadedModels.isEmpty ? ("Setup", false) : ("Ready", true)
-        case .parakeet:
-            return envReady ? ("Ready", true) : ("Setup", false)
-        }
+        let requirement = RecordingSetupRequirement.modelRequirement(RecordingSetupInputs(
+            provider: provider, whisperModel: selectedWhisperModel,
+            downloadedWhisperModels: ModelManager.shared.downloadedModels,
+            parakeetModel: selectedParakeetModel,
+            environmentReady: RecordingSetupState.shared.environmentReady,
+            parakeetModelCached: RecordingSetupState.shared.cachedParakeetModel == selectedParakeetModel,
+            supportsParakeet: RecordingSetupState.supportsParakeet
+        ))
+        return (requirement.isReady ? "Installed" : "Setup", requirement.isReady)
     }
 }

@@ -1,0 +1,34 @@
+{
+  "swift": {
+    "schema": 1,
+    "kind": "swift",
+    "report": "sonar-coverage.xml",
+    "commit": "b47fe8e798ab5176afe8606e6327f43c1f11ca46",
+    "run_id": "37219846937",
+    "attempt": "1",
+    "sha256": "64aac6927370252d065f82fc17a377eea9872ccf8dc75d213abf1a28f4494964",
+    "verified": true
+  },
+  "python": {
+    "schema": 1,
+    "kind": "python",
+    "report": "coverage-python.xml",
+    "commit": "b47fe8e798ab5176afe8606e6327f43c1f11ca46",
+    "run_id": "37219846937",
+    "attempt": "1",
+    "sha256": "7c0e64d47f8597dfdd5a7ad3c049f469bc8b5ac35af5550a8e03eac90405b6a2",
+    "verified": true,
+    "sourceRoots": [
+      "."
+    ]
+  },
+  "primarySwiftDiscoveredCases": 3045,
+  "primarySwiftSourceLineCoverage": {
+    "covered": 14598,
+    "total": 38230,
+    "files": 190,
+    "percent": 38.18,
+    "ratchetPercent": 27
+  },
+  "sonarConsumer": "Skipped on rebuild branch; master/PR scope retained"
+}

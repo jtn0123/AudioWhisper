@@ -42,6 +42,35 @@ final class ModelVerificationServiceProcessTests: XCTestCase {
         XCTAssertEqual(result, ModelVerificationResult(succeeded: true, message: "fallback"))
     }
 
+    func testSuccessReassemblesAStreamedJSONMessage() async throws {
+        let python = try fakePython("""
+            printf '{"message": "Model '
+            /bin/sleep 0.05
+            printf 'verified"}\\n'
+            exit 0
+            """)
+
+        let result = try await verify(python: python)
+
+        XCTAssertEqual(result, ModelVerificationResult(succeeded: true, message: "Model verified"))
+    }
+
+    func testFastFailuresAlwaysIncludeTheirStderr() async throws {
+        let python = try fakePython("""
+            printf 'Missing model weights\\n' >&2
+            exit 2
+            """)
+
+        for attempt in 0..<20 {
+            let result = try await verify(python: python)
+            XCTAssertEqual(
+                result,
+                ModelVerificationResult(succeeded: false, message: "Verification failed: Missing model weights"),
+                "Output must be drained before returning from attempt \(attempt)"
+            )
+        }
+    }
+
     func testTheScriptAndArgumentsArePassedAsArgv() async throws {
         let argsFile = tempDir.appendingPathComponent("args.txt")
         let python = try fakePython("""

@@ -1,0 +1,36 @@
+{
+  "source": "b3dc14f",
+  "checks": [
+    {
+      "case": "Parakeet v2 English guidance and v3 option",
+      "status": "passed",
+      "visual": "models-english.png"
+    },
+    {
+      "case": "library native keyboard search no results and clear",
+      "status": "passed"
+    },
+    {
+      "case": "library all-record export through native save panel",
+      "status": "passed",
+      "export_bytes": 27187
+    },
+    {
+      "case": "dark appearance and restore Follow macOS",
+      "status": "passed",
+      "visuals": [
+        "record-dark.png",
+        "writing-dark.png"
+      ]
+    },
+    {
+      "case": "real writing install progress and cancellation with resumable partial download",
+      "status": "passed"
+    },
+    {
+      "case": "Models readiness stays busy during actual correction install",
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}

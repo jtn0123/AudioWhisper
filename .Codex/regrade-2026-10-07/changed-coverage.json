@@ -1,0 +1,573 @@
+{
+  "basis": "Exact-head CI 37643160057 Swift generic coverage intersected with added current Sources lines vs origin/master; coverage absence is not proof of an untested behavior",
+  "source_head": "224473efc775d0547cac2a467379736baf354e98",
+  "changed_executable_lines": 4406,
+  "covered": 1968,
+  "uncovered": 2438,
+  "files": [
+    {
+      "file": "Sources/Rebuild/RebuildWorkspace.swift",
+      "changed_executable_lines": 476,
+      "covered": 58,
+      "uncovered": 418
+    },
+    {
+      "file": "Sources/Rebuild/RebuildLibraryView.swift",
+      "changed_executable_lines": 268,
+      "covered": 3,
+      "uncovered": 265
+    },
+    {
+      "file": "Sources/Rebuild/RebuildPreferencesView.swift",
+      "changed_executable_lines": 242,
+      "covered": 0,
+      "uncovered": 242
+    },
+    {
+      "file": "Sources/Rebuild/RebuildModelsView.swift",
+      "changed_executable_lines": 226,
+      "covered": 8,
+      "uncovered": 218
+    },
+    {
+      "file": "Sources/Rebuild/RebuildApp.swift",
+      "changed_executable_lines": 171,
+      "covered": 0,
+      "uncovered": 171
+    },
+    {
+      "file": "Sources/Rebuild/RebuildWritingView.swift",
+      "changed_executable_lines": 175,
+      "covered": 15,
+      "uncovered": 160
+    },
+    {
+      "file": "Sources/Rebuild/RebuildDesign.swift",
+      "changed_executable_lines": 176,
+      "covered": 18,
+      "uncovered": 158
+    },
+    {
+      "file": "Sources/Views/Dashboard/RecordingSetupView.swift",
+      "changed_executable_lines": 124,
+      "covered": 0,
+      "uncovered": 124
+    },
+    {
+      "file": "Sources/Services/Audio/AudioEngineRecorder.swift",
+      "changed_executable_lines": 142,
+      "covered": 55,
+      "uncovered": 87
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardProviders+LocalWhisper.swift",
+      "changed_executable_lines": 58,
+      "covered": 0,
+      "uncovered": 58
+    },
+    {
+      "file": "Sources/Rebuild/RebuildStatusController.swift",
+      "changed_executable_lines": 48,
+      "covered": 0,
+      "uncovered": 48
+    },
+    {
+      "file": "Sources/Rebuild/RebuildSetupServices.swift",
+      "changed_executable_lines": 65,
+      "covered": 22,
+      "uncovered": 43
+    },
+    {
+      "file": "Sources/Services/Audio/AudioInputRouting.swift",
+      "changed_executable_lines": 63,
+      "covered": 23,
+      "uncovered": 40
+    },
+    {
+      "file": "Sources/Rebuild/RebuildSession.swift",
+      "changed_executable_lines": 419,
+      "covered": 387,
+      "uncovered": 32
+    },
+    {
+      "file": "Sources/ViewModels/RecordingViewModel+Paste.swift",
+      "changed_executable_lines": 51,
+      "covered": 23,
+      "uncovered": 28
+    },
+    {
+      "file": "Sources/Services/Audio/AudioEngineRecorder+Interruptions.swift",
+      "changed_executable_lines": 35,
+      "covered": 9,
+      "uncovered": 26
+    },
+    {
+      "file": "Sources/Stores/RecordingSetupState.swift",
+      "changed_executable_lines": 109,
+      "covered": 83,
+      "uncovered": 26
+    },
+    {
+      "file": "Sources/Services/Audio/AudioEngineRecorder+Startup.swift",
+      "changed_executable_lines": 24,
+      "covered": 0,
+      "uncovered": 24
+    },
+    {
+      "file": "Sources/Rebuild/RebuildDiagnostics.swift",
+      "changed_executable_lines": 22,
+      "covered": 0,
+      "uncovered": 22
+    },
+    {
+      "file": "Sources/Views/Components/Waveform/WaveformContainer.swift",
+      "changed_executable_lines": 27,
+      "covered": 5,
+      "uncovered": 22
+    },
+    {
+      "file": "Sources/App/AudioWhisperEntryPoint.swift",
+      "changed_executable_lines": 21,
+      "covered": 0,
+      "uncovered": 21
+    },
+    {
+      "file": "Sources/Services/ModelManager.swift",
+      "changed_executable_lines": 33,
+      "covered": 15,
+      "uncovered": 18
+    },
+    {
+      "file": "Sources/Services/LocalWhisperService.swift",
+      "changed_executable_lines": 20,
+      "covered": 5,
+      "uncovered": 15
+    },
+    {
+      "file": "Sources/Services/ParakeetService.swift",
+      "changed_executable_lines": 26,
+      "covered": 12,
+      "uncovered": 14
+    },
+    {
+      "file": "Sources/App/AppDelegate+Hotkeys.swift",
+      "changed_executable_lines": 21,
+      "covered": 9,
+      "uncovered": 12
+    },
+    {
+      "file": "Sources/Services/Audio/AudioHardwarePreparation.swift",
+      "changed_executable_lines": 65,
+      "covered": 55,
+      "uncovered": 10
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardProviders+Parakeet.swift",
+      "changed_executable_lines": 10,
+      "covered": 0,
+      "uncovered": 10
+    },
+    {
+      "file": "Sources/Views/ContentView.swift",
+      "changed_executable_lines": 9,
+      "covered": 0,
+      "uncovered": 9
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardProviders+EngineSelector.swift",
+      "changed_executable_lines": 9,
+      "covered": 0,
+      "uncovered": 9
+    },
+    {
+      "file": "Sources/Services/MLXModelManager+Downloads.swift",
+      "changed_executable_lines": 63,
+      "covered": 55,
+      "uncovered": 8
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardView.swift",
+      "changed_executable_lines": 9,
+      "covered": 1,
+      "uncovered": 8
+    },
+    {
+      "file": "Sources/Managers/PasteManager.swift",
+      "changed_executable_lines": 24,
+      "covered": 17,
+      "uncovered": 7
+    },
+    {
+      "file": "Sources/ViewModels/RecordingViewModel.swift",
+      "changed_executable_lines": 38,
+      "covered": 31,
+      "uncovered": 7
+    },
+    {
+      "file": "Sources/Rebuild/RebuildModelVerification.swift",
+      "changed_executable_lines": 37,
+      "covered": 31,
+      "uncovered": 6
+    },
+    {
+      "file": "Sources/Services/CorrectionIntegrity.swift",
+      "changed_executable_lines": 86,
+      "covered": 81,
+      "uncovered": 5
+    },
+    {
+      "file": "Sources/Views/Components/Waveform/WaveformSubviews.swift",
+      "changed_executable_lines": 13,
+      "covered": 8,
+      "uncovered": 5
+    },
+    {
+      "file": "Sources/Services/UvBootstrap+Preparation.swift",
+      "changed_executable_lines": 47,
+      "covered": 43,
+      "uncovered": 4
+    },
+    {
+      "file": "Sources/Services/UvBootstrap.swift",
+      "changed_executable_lines": 59,
+      "covered": 55,
+      "uncovered": 4
+    },
+    {
+      "file": "Sources/Views/Components/MenuPopupViews.swift",
+      "changed_executable_lines": 6,
+      "covered": 2,
+      "uncovered": 4
+    },
+    {
+      "file": "Sources/Views/ContentView+Lifecycle.swift",
+      "changed_executable_lines": 4,
+      "covered": 0,
+      "uncovered": 4
+    },
+    {
+      "file": "Sources/App/AppDelegate+Lifecycle.swift",
+      "changed_executable_lines": 3,
+      "covered": 0,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/App/AppDelegate+Notifications.swift",
+      "changed_executable_lines": 14,
+      "covered": 11,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/Managers/MLDaemonManager.swift",
+      "changed_executable_lines": 42,
+      "covered": 39,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/Managers/Windows/DashboardWindowManager.swift",
+      "changed_executable_lines": 8,
+      "covered": 5,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/Services/SpeechToTextService.swift",
+      "changed_executable_lines": 33,
+      "covered": 30,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/Services/TranscriptionProviding.swift",
+      "changed_executable_lines": 3,
+      "covered": 0,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/Views/ContentView+Status.swift",
+      "changed_executable_lines": 3,
+      "covered": 0,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardProvidersView.swift",
+      "changed_executable_lines": 10,
+      "covered": 7,
+      "uncovered": 3
+    },
+    {
+      "file": "Sources/App/AppStatus.swift",
+      "changed_executable_lines": 12,
+      "covered": 10,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Managers/PermissionManager.swift",
+      "changed_executable_lines": 76,
+      "covered": 74,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Rebuild/RebuildWritingInstaller.swift",
+      "changed_executable_lines": 34,
+      "covered": 32,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Services/RawPCMConverter.swift",
+      "changed_executable_lines": 55,
+      "covered": 53,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Stores/DataManager.swift",
+      "changed_executable_lines": 7,
+      "covered": 5,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Stores/HistoryExporter.swift",
+      "changed_executable_lines": 50,
+      "covered": 48,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/ViewModels/TranscriptionCoordinator.swift",
+      "changed_executable_lines": 22,
+      "covered": 20,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Views/Components/WaveformView.swift",
+      "changed_executable_lines": 2,
+      "covered": 0,
+      "uncovered": 2
+    },
+    {
+      "file": "Sources/Managers/MLDaemonManager+Process.swift",
+      "changed_executable_lines": 33,
+      "covered": 32,
+      "uncovered": 1
+    },
+    {
+      "file": "Sources/Services/HuggingFaceCache.swift",
+      "changed_executable_lines": 60,
+      "covered": 59,
+      "uncovered": 1
+    },
+    {
+      "file": "Sources/Services/SemanticCorrectionService.swift",
+      "changed_executable_lines": 18,
+      "covered": 17,
+      "uncovered": 1
+    },
+    {
+      "file": "Sources/Views/Components/InkRippleView.swift",
+      "changed_executable_lines": 5,
+      "covered": 4,
+      "uncovered": 1
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardCorrection+Verify.swift",
+      "changed_executable_lines": 1,
+      "covered": 0,
+      "uncovered": 1
+    },
+    {
+      "file": "Sources/Views/Dashboard/DashboardProviders+Correction.swift",
+      "changed_executable_lines": 1,
+      "covered": 0,
+      "uncovered": 1
+    },
+    {
+      "file": "Sources/App/AppDelegate+Menu.swift",
+      "changed_executable_lines": 13,
+      "covered": 13,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Managers/MicrophoneVolumeManager.swift",
+      "changed_executable_lines": 11,
+      "covered": 11,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Managers/Windows/RecordingWindowStyle.swift",
+      "changed_executable_lines": 1,
+      "covered": 1,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Managers/Windows/StandardWindow.swift",
+      "changed_executable_lines": 2,
+      "covered": 2,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Managers/Windows/WelcomeWindow.swift",
+      "changed_executable_lines": 1,
+      "covered": 1,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Managers/Windows/WindowController.swift",
+      "changed_executable_lines": 7,
+      "covered": 7,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Models/TranscriptionRecord.swift",
+      "changed_executable_lines": 1,
+      "covered": 1,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Rebuild/RebuildStorage.swift",
+      "changed_executable_lines": 12,
+      "covered": 12,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/Audio/RecordingInterruption.swift",
+      "changed_executable_lines": 5,
+      "covered": 5,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/CorrectionContentComparison.swift",
+      "changed_executable_lines": 44,
+      "covered": 44,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/DownloadOutputBuffer.swift",
+      "changed_executable_lines": 20,
+      "covered": 20,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/MLXDownloadEvent.swift",
+      "changed_executable_lines": 9,
+      "covered": 9,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/MLXModelManager+Cache.swift",
+      "changed_executable_lines": 6,
+      "covered": 6,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/MLXModelManager.swift",
+      "changed_executable_lines": 17,
+      "covered": 17,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/ModelManager+Enhanced.swift",
+      "changed_executable_lines": 3,
+      "covered": 3,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/ModelVerificationService.swift",
+      "changed_executable_lines": 51,
+      "covered": 51,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/TranscriptionModels.swift",
+      "changed_executable_lines": 3,
+      "covered": 3,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/TranscriptionPipeline.swift",
+      "changed_executable_lines": 16,
+      "covered": 16,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Services/WhisperKitStorage.swift",
+      "changed_executable_lines": 21,
+      "covered": 21,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Stores/AppDefaults+Settings.swift",
+      "changed_executable_lines": 1,
+      "covered": 1,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Stores/HistoryRevision.swift",
+      "changed_executable_lines": 2,
+      "covered": 2,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Stores/ProviderSettingsState.swift",
+      "changed_executable_lines": 27,
+      "covered": 27,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Stores/UsageMetricsStore.swift",
+      "changed_executable_lines": 5,
+      "covered": 5,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Utilities/CancellableTaskValue.swift",
+      "changed_executable_lines": 31,
+      "covered": 31,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Utilities/DiskMutationSerializer.swift",
+      "changed_executable_lines": 5,
+      "covered": 5,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Utilities/JSONValue.swift",
+      "changed_executable_lines": 7,
+      "covered": 7,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Utilities/RecordingShortcut.swift",
+      "changed_executable_lines": 19,
+      "covered": 19,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Utilities/TranscriptionProgress.swift",
+      "changed_executable_lines": 7,
+      "covered": 7,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Utilities/WindowCoordinator.swift",
+      "changed_executable_lines": 3,
+      "covered": 3,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/ViewModels/RecordingViewModel+Transcription.swift",
+      "changed_executable_lines": 35,
+      "covered": 35,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Views/Components/RecordingWindowComponents.swift",
+      "changed_executable_lines": 6,
+      "covered": 6,
+      "uncovered": 0
+    },
+    {
+      "file": "Sources/Views/WelcomeView.swift",
+      "changed_executable_lines": 2,
+      "covered": 2,
+      "uncovered": 0
+    }
+  ]
+}

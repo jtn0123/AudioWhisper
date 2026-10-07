@@ -70,7 +70,7 @@ internal enum LocalizedStrings {
             comment: "Error when recording URL path is empty")
 
         static let transcriptionFailed = NSLocalizedString("errors.transcription_failed",
-            value: "Transcription failed: %@\n\nPlease check your internet connection and API key in Settings.",
+            value: "Transcription failed: %@",
             comment: "Error when transcription fails with specific message")
 
         static let localTranscriptionFailed = NSLocalizedString("errors.local_transcription_failed",

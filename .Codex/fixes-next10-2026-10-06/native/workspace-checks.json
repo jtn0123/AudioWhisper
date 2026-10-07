@@ -1,0 +1,111 @@
+{
+  "status": "passed",
+  "implementation_commit": "fdfcaa69f748051b2dbe31a60c0882e97b44c37e",
+  "checks": {
+    "writing_cleanup_has_no_app_profiles": true,
+    "native_measured_file_progress_visible": true,
+    "cancel_install_returned_to_retry_state": true,
+    "download_process_not_running_after_cancel": true,
+    "native_export_record_count": 67,
+    "exported_sections": 67,
+    "public_speech_fixture_present": true
+  },
+  "export_state": {
+    "clipboard": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog.",
+    "frontmost": "com.audiowhisper.rebuild",
+    "modifierFlags": 0,
+    "screens": [
+      {
+        "frame": [
+          0,
+          0,
+          1024,
+          768
+        ],
+        "scale": 2,
+        "visible": [
+          0,
+          57,
+          1024,
+          681
+        ]
+      }
+    ],
+    "windows": [
+      {
+        "bounds": {
+          "Height": 620,
+          "Width": 870,
+          "X": 77,
+          "Y": 30
+        },
+        "id": 46,
+        "visible": true
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 68,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 67,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 66,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 30,
+          "Width": 1024,
+          "X": 0,
+          "Y": 0
+        },
+        "id": 65,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 500,
+          "Width": 500,
+          "X": 0,
+          "Y": 268
+        },
+        "id": 62,
+        "visible": false
+      },
+      {
+        "bounds": {
+          "Height": 230,
+          "Width": 380,
+          "X": 322,
+          "Y": 255
+        },
+        "id": 53,
+        "visible": false
+      }
+    ]
+  },
+  "limits": [
+    "Large export cancellation is tested with a disposable 1001-record SwiftData store; native export used 67 guest fixture records.",
+    "The initial download screenshot exposed a stale Ready label, fixed by 3fef45c."
+  ]
+}

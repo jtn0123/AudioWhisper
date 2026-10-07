@@ -198,6 +198,19 @@ final class StandardWindowTests: XCTestCase {
         XCTAssertTrue(closed)
     }
 
+    func testNormalWindowConfigurationClearsOverlayBehavior() {
+        let window = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: true)
+        window.level = .floating
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications]
+
+        StandardWindow.configure(window, frameAutosaveName: nil)
+
+        XCTAssertEqual(window.level, .normal, "Settings must never inherit the recording overlay's floating level")
+        XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllSpaces))
+        XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllApplications))
+        XCTAssertFalse(window.collectionBehavior.contains(.fullScreenAuxiliary))
+    }
+
     func testOpeningAWindowConfiguresShowsAndWatchesIt() {
         let spy = PresenterSpy()
         spy.install()
@@ -238,6 +251,20 @@ final class StandardWindowTests: XCTestCase {
 
 @MainActor
 final class RecordingWindowStyleTests: XCTestCase {
+    func testRecorderIsAnAuxiliaryPanelThatDoesNotActivateTheWorkspace() {
+        let window: NSWindow = ChromelessWindow(contentRect: NSRect(x: 0, y: 0, width: 380, height: 230),
+                                      styleMask: [.borderless], backing: .buffered, defer: true)
+        XCTAssertTrue(window is NSPanel)
+        XCTAssertTrue(window.styleMask.contains(.nonactivatingPanel))
+        XCTAssertFalse(window.canBecomeMain)
+        XCTAssertTrue(window.canBecomeKey, "Recorder controls must still accept keyboard input")
+    }
+
+    func testRecorderCanJoinOtherApplicationsFullscreenSpaces() {
+        XCTAssertTrue(RecordingWindowStyle.collectionBehavior.contains(.canJoinAllApplications))
+        XCTAssertFalse(RecordingWindowStyle.collectionBehavior.contains(.fullScreenPrimary))
+    }
+
     func testItFloatsOnEverySpaceWithoutJoiningWindowCycling() {
         let window = ChromelessWindow(contentRect: NSRect(origin: .zero, size: LayoutMetrics.RecordingWindow.size),
                                       styleMask: [.borderless], backing: .buffered, defer: true)
@@ -245,7 +272,8 @@ final class RecordingWindowStyleTests: XCTestCase {
         RecordingWindowStyle.configure(window)
 
         XCTAssertEqual(window.level, .floating)
-        XCTAssertEqual(window.collectionBehavior, [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle])
+        XCTAssertEqual(window.collectionBehavior,
+                       [.canJoinAllSpaces, .fullScreenAuxiliary, .canJoinAllApplications, .ignoresCycle])
         XCTAssertFalse(window.collectionBehavior.contains(.fullScreenPrimary),
                        "the overlay must not be able to go full screen itself")
         XCTAssertTrue(window.isExcludedFromWindowsMenu)

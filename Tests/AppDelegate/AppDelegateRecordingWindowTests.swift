@@ -178,8 +178,8 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
     // MARK: - ChromelessWindow Tests
 
     func testChromelessWindowOverridesResponderBehavior() {
-        // ChromelessWindow is borderless; it overrides NSWindow so it can
-        // still become key/main and accept first responder.
+        // The borderless recorder accepts keyboard input while remaining an
+        // auxiliary panel; clicking it must not activate the workspace.
         let window = ChromelessWindow(
             contentRect: NSRect(x: 0, y: 0, width: 100, height: 100),
             styleMask: [.borderless],
@@ -187,7 +187,7 @@ final class AppDelegateRecordingWindowTests: XCTestCase {
             defer: true
         )
         XCTAssertTrue(window.canBecomeKey)
-        XCTAssertTrue(window.canBecomeMain)
+        XCTAssertFalse(window.canBecomeMain)
         XCTAssertTrue(window.acceptsFirstResponder)
     }
 

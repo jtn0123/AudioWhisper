@@ -132,6 +132,9 @@ internal struct DashboardProvidersView: View {
                 onStart: { }
             )
         }
+        .task(id: "\(selectedWhisperModel.rawValue):\(selectedParakeetModel.rawValue)") {
+            await RecordingSetupState.shared.refresh()
+        }
         .onAppear {
             state.loadModelStates(from: modelManager)
             state.checkEnvReady()
@@ -153,14 +156,17 @@ extension DashboardProvidersView {
     static func testableStatusInfo(
         for provider: TranscriptionProvider,
         downloadedModels: [WhisperModel],
-        envReady: Bool
+        envReady: Bool,
+        selectedWhisperModel: WhisperModel = .base,
+        parakeetModelCached: Bool = false
     ) -> (String, Bool) {
-        switch provider {
-        case .local:
-            return downloadedModels.isEmpty ? ("Setup", false) : ("Ready", true)
-        case .parakeet:
-            return envReady ? ("Ready", true) : ("Setup", false)
-        }
+        let requirement = RecordingSetupRequirement.modelRequirement(RecordingSetupInputs(
+            provider: provider, whisperModel: selectedWhisperModel,
+            downloadedWhisperModels: Set(downloadedModels), parakeetModel: AppDefaults.selectedParakeetModel,
+            environmentReady: envReady, parakeetModelCached: parakeetModelCached,
+            supportsParakeet: RecordingSetupState.supportsParakeet
+        ))
+        return (requirement.isReady ? "Installed" : "Setup", requirement.isReady)
     }
 
     /// Returns the engine config for a given provider

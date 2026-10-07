@@ -131,6 +131,8 @@ internal struct WaveformRecordingView: View {
             return "TAP TO RECORD"
         case .permissionRequired:
             return "PERMISSION NEEDED"
+        case .setupRequired:
+            return "FINISH SETUP"
         case .error(let message):
             return message.uppercased()
         }

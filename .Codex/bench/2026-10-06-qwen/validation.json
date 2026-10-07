@@ -1,0 +1,16 @@
+{
+  "source_unchanged": true,
+  "reviewed_full_configurations": 11,
+  "reviewed_edits": 704,
+  "bounded_thinking_diagnostic_edits": 19,
+  "scoring_tests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "python_syntax": "pass",
+  "swift_guard_compilation": "pass",
+  "manual_review_output_hashes": "pass",
+  "local_report_links": "pass",
+  "installed_runtime_smoke_models": 4,
+  "app_launch_recording_paste_tested": false
+}

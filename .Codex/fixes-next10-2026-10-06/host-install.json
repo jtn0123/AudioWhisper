@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "implementation_commit": "b54a8524f5dfd96219fcdf6a07020d04689e31a5",
+  "binary_sha256": "80523ce273952a61b5722b887991e28e23d02db4c1d6d6dc0b6dda2759dac7c5",
+  "persistent_signing_requirement_unchanged": true,
+  "selected_settings_unchanged": true,
+  "history_count_unchanged": true,
+  "history_integrity": "ok",
+  "running_exact_installed_executable": true,
+  "retained_previous_build": "/Applications/.AudioWhisperBackups/20261007T070016Z-a1082784.app",
+  "limits": [
+    "Host microphone and physical hold key were not exercised.",
+    "Private history backup is outside the repository."
+  ],
+  "installed_runtime_fsspec": "2026.6.0"
+}

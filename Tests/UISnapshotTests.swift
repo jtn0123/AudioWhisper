@@ -123,58 +123,6 @@ final class UISnapshotTests: SnapshotTestCase {
         )
     }
 
-    // MARK: - Categories View Snapshots
-
-    func testDashboardCategoriesViewEmptySnapshot() {
-        // Categories view with default state
-        let view = DashboardCategoriesView()
-        assertSnapshot(
-            view,
-            named: "DashboardCategoriesView-default",
-            size: CGSize(width: 750, height: 600),
-            colorScheme: .light
-        )
-    }
-
-    // MARK: - Category Editor Snapshots
-
-    func testCategoryEditorSheetCreateSnapshot() {
-        let view = CategoryEditorSheet(
-            category: nil,
-            onSave: { _ in },
-            onDelete: nil
-        )
-        assertSnapshot(
-            view,
-            named: "CategoryEditorSheet-create",
-            size: CGSize(width: 560, height: 680),
-            colorScheme: .light
-        )
-    }
-
-    func testCategoryEditorSheetEditSnapshot() {
-        let category = CategoryDefinition(
-            id: "test-category",
-            displayName: "Test Category",
-            icon: "star.fill",
-            colorHex: "#FF5500",
-            promptDescription: "A test category for editing",
-            promptTemplate: "Correct the following text:\n{text}",
-            isSystem: false
-        )
-        let view = CategoryEditorSheet(
-            category: category,
-            onSave: { _ in },
-            onDelete: { }
-        )
-        assertSnapshot(
-            view,
-            named: "CategoryEditorSheet-edit",
-            size: CGSize(width: 560, height: 680),
-            colorScheme: .light
-        )
-    }
-
     // MARK: - Dark Mode Snapshots
 
     func testWelcomeViewDarkSnapshot() {

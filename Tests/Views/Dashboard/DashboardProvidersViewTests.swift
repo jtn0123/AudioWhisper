@@ -30,7 +30,7 @@ final class DashboardProvidersViewTests: XCTestCase {
             envReady: false
         )
 
-        XCTAssertEqual(text, "Ready")
+        XCTAssertEqual(text, "Installed")
         XCTAssertTrue(isReady)
     }
 
@@ -45,15 +45,21 @@ final class DashboardProvidersViewTests: XCTestCase {
         XCTAssertFalse(isReady)
     }
 
-    func testStatusBadgeParakeetReadyWithEnv() {
+    func testStatusBadgeParakeetInstalledWithEnvAndModel() {
         let (text, isReady) = DashboardProvidersView.testableStatusInfo(
             for: .parakeet,
             downloadedModels: [],
-            envReady: true
+            envReady: true,
+            parakeetModelCached: true
         )
 
-        XCTAssertEqual(text, "Ready")
+        #if arch(arm64)
+        XCTAssertEqual(text, "Installed")
         XCTAssertTrue(isReady)
+        #else
+        XCTAssertEqual(text, "Setup")
+        XCTAssertFalse(isReady)
+        #endif
     }
 
     func testStatusBadgeParakeetSetupWithoutEnv() {

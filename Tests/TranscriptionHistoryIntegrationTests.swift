@@ -5,12 +5,6 @@ import SwiftData
 
 @MainActor
 final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
-    // Deferred(D1): DataManager reads `transcriptionHistoryEnabled` and
-    // `transcriptionRetentionPeriod` from UserDefaults.standard. Once
-    // DataManager accepts an injected UserDefaults, route writes through a
-    // UUID-scoped suite and re-enable isolation.
-    override var enforcesStandardUserDefaultsIsolation: Bool { false }
-
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
     var dataManager: DataManager!
@@ -26,8 +20,7 @@ final class TranscriptionHistoryIntegrationTests: IsolatedXCTestCase {
         modelContext = ModelContext(modelContainer)
         
         // Set up DataManager with test container
-        dataManager = DataManager.shared as? DataManager
-        try dataManager?.initialize()
+        dataManager = DataManager(modelContainer: modelContainer)
         
         // Ensure history is enabled for tests
         AppDefaults.defaults.set(true, forKey: "transcriptionHistoryEnabled")

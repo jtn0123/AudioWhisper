@@ -1,0 +1,33 @@
+Window: "", App: AudioWhisper Rebuild.
+0 sheet Secondary Actions: Raise
+	1 container
+		2 text Writing profile
+		3 text field (settable) Value: Terminal, Placeholder: Name
+		4 text field (settable) Value: Preserves CLI terms, flags, paths. Fixes: 'suit oh' → 'sudo', 'see dee' → 'cd', Placeholder: Short description
+		5 text Instructions for local cleanup
+		6 scroll area Secondary Actions: Scroll Up, Scroll Down
+			7 text entry area (settable) Description: Cleanup instructions for Terminal profile, Value: Clean up this speech transcription for a terminal/command-line context.
+- Fix typos, grammar, and punctuation while preserving command structure
+- Remove filler words (um, uh, like, you know)
+- Preserve technical terms: CLI, sudo, grep, awk, sed, bash, zsh, tmux, vim, git, ssh, curl, wget, ls, cd, rm, mkdir, echo, apt, brew
+- Preserve app names: Ghostty, iTerm, Kitty, Wezterm, Hyper
+- Preserve flags, paths, syntax, and multi-line elements (e.g., -v, --verbose, ~/Documents, |, >, &&, $VAR, \ for line continuation)
+- Infer and correct common homophones, misrecognitions, or fragments based on context (e.g., 'eye term' -> 'iTerm', 'suit oh' -> 'sudo', 'see dee' -> 'cd', incomplete 'pipe to' -> '|')
+- Handle fragmented sentences by connecting logically without adding content
+- Do not add or invent commands; keep original intent
+Output only the corrected text.
+			8 scroll bar (disabled, settable, float) 0
+		9 button Cancel
+		10 button Save profile
+11 menu bar
+	12 AudioWhisper Rebuild
+	13 Edit
+	14 View
+	15 Window
+	16 Help
+
+Selected text: ```
+Terminal
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

@@ -1,0 +1,45 @@
+Exact source: 5c5a13d2271f555a0e6582f61b902dc617fc9d92
+ProductName:		macOS
+ProductVersion:		27.2
+BuildVersion:		26B5101f
+Test Suite 'Selected tests' started at 2026-10-07 14:27:23.989.
+Test Suite 'AudioWhisperTests.xctest' started at 2026-10-07 14:27:23.990.
+Test Suite 'CurrentWritingModelFixtureTests' started at 2026-10-07 14:27:23.990.
+Test Case '-[AudioWhisperTests.CurrentWritingModelFixtureTests testProductionCleanupWarmReuseAndSwitchingAcrossCurrentQwenModels]' started.
+Test Case '-[AudioWhisperTests.CurrentWritingModelFixtureTests testProductionCleanupWarmReuseAndSwitchingAcrossCurrentQwenModels]' passed (15.972 seconds).
+Test Suite 'CurrentWritingModelFixtureTests' passed at 2026-10-07 14:27:39.962.
+	 Executed 1 test, with 0 failures (0 unexpected) in 15.972 (15.972) seconds
+Test Suite 'LocalEngineFixtureTests' started at 2026-10-07 14:27:39.962.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse]' started.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse]' passed (2.700 seconds).
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperIncrementalLoadingPreservesShortSpeech]' started.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperIncrementalLoadingPreservesShortSpeech]' passed (10.177 seconds).
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperTranscribesSpeechAndReusesWarmModel]' started.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperTranscribesSpeechAndReusesWarmModel]' passed (3.934 seconds).
+Test Suite 'LocalEngineFixtureTests' passed at 2026-10-07 14:27:56.773.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 16.811 (16.811) seconds
+Test Suite 'ParakeetEndToEndTests' started at 2026-10-07 14:27:56.773.
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testExplicitEnglishModelsWarmReuseAndSwitching]' started.
+/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Utilities/CancellableTaskValue.swift:7: error: -[AudioWhisperTests.ParakeetEndToEndTests testExplicitEnglishModelsWarmReuseAndSwitching] : failed: caught error: "timeout"
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testExplicitEnglishModelsWarmReuseAndSwitching]' failed (61.002 seconds).
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testV3TranscribesSpanishWithoutAnEnglishTranslation]' started.
+/Users/justin/.t3/worktrees/AudioWhisper/native-v2/Sources/Utilities/CancellableTaskValue.swift:7: error: -[AudioWhisperTests.ParakeetEndToEndTests testV3TranscribesSpanishWithoutAnEnglishTranslation] : failed: caught error: "timeout"
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testV3TranscribesSpanishWithoutAnEnglishTranslation]' failed (60.139 seconds).
+Test Suite 'ParakeetEndToEndTests' failed at 2026-10-07 14:29:57.915.
+	 Executed 2 tests, with 2 failures (2 unexpected) in 121.141 (121.142) seconds
+Test Suite 'AudioWhisperTests.xctest' failed at 2026-10-07 14:29:57.915.
+	 Executed 6 tests, with 2 failures (2 unexpected) in 153.924 (153.925) seconds
+Test Suite 'Selected tests' failed at 2026-10-07 14:29:57.915.
+	 Executed 6 tests, with 2 failures (2 unexpected) in 153.924 (153.926) seconds
+REAL_CURRENT_CORRECTION run=0 repo=mlx-community/Qwen3.5-9B-4bit pin=8b2b98c00a6b4d291155e4890773ca8f769aee53 elapsed=3.796103916 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=1 repo=mlx-community/Qwen3.5-9B-4bit pin=8b2b98c00a6b4d291155e4890773ca8f769aee53 elapsed=0.586485667 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=2 repo=leonsarmiento/Qwen3.8-27B-3bit-mlx pin=5fc234d9e6080b8388a11286380e801b7c9f535c elapsed=6.501537417 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=3 repo=leonsarmiento/Qwen3.8-27B-3bit-mlx pin=5fc234d9e6080b8388a11286380e801b7c9f535c elapsed=1.291625125 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=4 repo=mlx-community/Qwen3.5-9B-4bit pin=8b2b98c00a6b4d291155e4890773ca8f769aee53 elapsed=2.248549209 seconds output=They're going to the store tomorrow.
+REAL_RUNTIME refreshed=0.870045875 seconds warm=0.001457625 seconds
+REAL_CORRECTION elapsed=1.295993333 seconds output=They are going to the store tomorrow.
+REAL_WHISPER_LOADING_PARITY transcript=The quick brown fox jumps over the lazy dog.
+REAL_WHISPER_AUDIO samples=42732 peak=0.80947876
+REAL_WHISPER run=0 elapsed=0.605545792 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_WHISPER run=1 elapsed=0.06922875 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_WHISPER verification=loaded

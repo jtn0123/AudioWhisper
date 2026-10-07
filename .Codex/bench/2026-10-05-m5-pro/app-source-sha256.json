@@ -1,0 +1,9 @@
+{
+  "Sources/ml/loader.py": "ea5d28cf11b8c0423364cdbe02ed25516761a536d91ec7c4b854be4198383944",
+  "Sources/ml/parakeet.py": "09e0dd751bd7739c10c7b8d92be6fc41436f9742111dbe3f6e860b224027a2cd",
+  "Sources/ml/correction.py": "00ca38f0c3f98a8a508fcda4b7aba396a6d392863b3959ca2aeb34a47d94f707",
+  "Sources/Models/CategoryDefinition.swift": "a3c834954996c4ba2692738f1fec5b8e6c25678e744daae1b3ed0ae37e95b4de",
+  "Sources/Services/SemanticCorrectionService.swift": "87df9f07063a4c2da775b37f3af36ec8840872dfe61f46547067600eabf3b127",
+  "Sources/Services/SpeechToTextService.swift": "9a2f2b2bf8971090f8082c0c56a8fb5e3d921b593c8acfe6efdc93746487fb72",
+  "Sources/Services/LocalWhisperService.swift": "399fc2e230cfb464e2615b6de9681f624439fd910de69cb800cb048910e05421"
+}

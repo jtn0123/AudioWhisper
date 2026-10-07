@@ -1,0 +1,38 @@
+{
+  "status": "failed",
+  "vm": "audiowhisper-qa-tahoe",
+  "checks": [
+    {
+      "case": "start-cancel-1",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-2",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    }
+  ],
+  "limits": [
+    "synthetic guest key events",
+    "virtual microphone and public audio",
+    "not physical host hardware",
+    "not notarized release acceptance"
+  ],
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "signature_verified": true,
+  "binary_sha256": "58e531e1bc1e19dcadac4aa34af0330363897bcb34691dc85444b4f5f3e6b218",
+  "error": "Guest did not reach expected state within 20s"
+}

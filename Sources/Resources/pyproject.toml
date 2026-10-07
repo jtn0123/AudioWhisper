@@ -4,6 +4,8 @@ version = "0.0.0"
 description = "Runtime dependencies for AudioWhisper"
 requires-python = ">=3.11,<3.12"
 dependencies = [
+  # GHSA-27vj-qcqg-25rc: patched ReferenceFileSystem template handling.
+  "fsspec>=2026.6.0, <2027",
   # MLX correction.
   # NOTE: these are EXCLUSIVE upper bounds, so `uv sync` can never pick up a
   # newer minor no matter how long the app runs, and Dependabot does not manage

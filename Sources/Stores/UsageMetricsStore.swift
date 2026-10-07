@@ -7,7 +7,7 @@ private enum UsageMetricsConstants {
     static let maxDailyActivityDays: Int = 90 // Keep 90 days of daily activity
 }
 
-internal struct UsageSnapshot: Equatable {
+internal struct UsageSnapshot: Equatable, Sendable {
     var totalSessions: Int
     var totalDuration: TimeInterval
     var totalWords: Int
@@ -57,6 +57,7 @@ internal final class UsageMetricsStore {
     private(set) var snapshot: UsageSnapshot
 
     private let defaults: UserDefaults
+    private var mutationRevision: UInt64 = 0
 
     private enum Keys {
         static let totalSessions = "usage.totalSessions"
@@ -226,6 +227,21 @@ internal final class UsageMetricsStore {
         persist(.empty)
     }
 
+    /// Recalculate explicitly requested totals without loading the complete library.
+    func rebuildFromHistory(
+        dataManager: DataManagerProtocol = DataManager.shared,
+        progress: @escaping @Sendable (Int) async -> Void = { _ in }
+    ) async throws {
+        let revision = dataManager.historyRevision.value
+        let usageRevision = mutationRevision
+        let scan = try await scanHistory(dataManager: dataManager, mode: .full, progress: progress)
+        try Task.checkCancellation()
+        guard revision == dataManager.historyRevision.value, usageRevision == mutationRevision else {
+            throw HistoryMaintenanceError.libraryChanged
+        }
+        persist(cleanupOldDailyActivityIn(scan.snapshot))
+    }
+
     func bootstrapIfNeeded(dataManager: DataManagerProtocol = DataManager.shared) async {
         // If dailyActivity is empty but we have records, rebuild from records
         let needsDailyActivityBootstrap = snapshot.dailyActivity.isEmpty && dataManager.isHistoryEnabled
@@ -236,89 +252,34 @@ internal final class UsageMetricsStore {
             return
         }
 
-        // Audit item B1/G2: page instead of `fetchAllRecordsQuietly()`. Both
-        // rebuilds are running-total accumulations, so they never need the
-        // whole history resident — which matters because retention can be set
-        // to *forever*, making that fetch grow without bound.
-        var accumulator = needsFullBootstrap
-            ? RebuildAccumulator(mode: .full)
-            : RebuildAccumulator(mode: .dailyActivityOnly(base: snapshot))
-        var sawAnyRecord = false
-
+        let historyRevision = dataManager.historyRevision.value
+        let usageRevision = mutationRevision
+        let mode: UsageHistoryAccumulator.Mode = needsFullBootstrap ? .full : .dailyActivityOnly(base: snapshot)
         do {
-            try await dataManager.forEachRecordPage(pageSize: Self.rebuildPageSize) { page in
-                if !page.isEmpty { sawAnyRecord = true }
-                accumulator.add(page)
-            }
+            let scan = try await scanHistory(dataManager: dataManager, mode: mode)
+            try Task.checkCancellation()
+            guard scan.recordCount > 0, historyRevision == dataManager.historyRevision.value,
+                  usageRevision == mutationRevision else { return }
+            persist(cleanupOldDailyActivityIn(scan.snapshot))
         } catch {
-            // Matches the prior behaviour: `fetchAllRecordsQuietly()` swallowed
-            // fetch failures and returned [], leaving the snapshot untouched.
+            // Bootstrap remains best-effort; explicit recalculation reports errors.
             return
         }
-
-        guard sawAnyRecord else { return }
-        persist(cleanupOldDailyActivityIn(accumulator.finish()))
     }
 
-    /// Page size for the rebuild scan. Large enough that the per-page fetch
-    /// overhead is negligible, small enough that peak memory stays flat.
-    private static let rebuildPageSize = 500
-
-    /// Accumulates a `UsageSnapshot` across paged batches.
-    ///
-    /// Extracted so `rebuild(using:)` and `rebuildDailyActivity(using:)` (which
-    /// still take a full array, and are used by the delete-triggered rebuild)
-    /// share one definition of the arithmetic with the paged bootstrap. A second
-    /// copy of these sums is exactly how live totals and rebuilt totals drift.
-    /// `@MainActor` because it reads `UsageMetricsStore.dateFormatter`, which is
-    /// main-actor isolated. Every caller is already on the main actor.
-    @MainActor
-    private struct RebuildAccumulator {
-        enum Mode {
-            case full
-            case dailyActivityOnly(base: UsageSnapshot)
+    private func scanHistory(
+        dataManager: DataManagerProtocol, mode: UsageHistoryAccumulator.Mode,
+        progress: @escaping @Sendable (Int) async -> Void = { _ in }
+    ) async throws -> UsageHistoryScan {
+        if let container = dataManager.sharedModelContainer {
+            return try await HistoryMaintenance.aggregate(container: container, mode: mode, progress: progress)
         }
-
-        private let mode: Mode
-        private var snapshot: UsageSnapshot
-
-        init(mode: Mode) {
-            self.mode = mode
-            switch mode {
-            case .full:
-                self.snapshot = .empty
-            case .dailyActivityOnly(let base):
-                var carried = base
-                carried.dailyActivity = [:]
-                self.snapshot = carried
-            }
+        var accumulator = UsageHistoryAccumulator(mode: mode)
+        try await dataManager.forEachRecordPage(pageSize: 500) { page in
+            for record in page { accumulator.add(record) }
         }
-
-        mutating func add(_ records: [TranscriptionRecord]) {
-            for record in records {
-                if case .full = mode {
-                    snapshot.totalSessions += 1
-                    if let duration = record.duration {
-                        snapshot.totalDuration += duration
-                    }
-                    snapshot.totalWords += record.wordCount
-                    // Use the stored `characterCount` so a rebuild matches what
-                    // `recordSession` accumulated live (bug #45). `text.count`
-                    // would diverge if the stored count and text ever differ.
-                    snapshot.totalCharacters += record.characterCount
-                }
-                let dateString = UsageMetricsStore.dateFormatter.string(from: record.date)
-                snapshot.dailyActivity[dateString, default: 0] += record.wordCount
-            }
-        }
-
-        func finish() -> UsageSnapshot {
-            var out = snapshot
-            if case .full = mode {
-                out.lastUpdated = Date()
-            }
-            return out
-        }
+        try Task.checkCancellation()
+        return UsageHistoryScan(snapshot: accumulator.finish(), recordCount: accumulator.recordCount)
     }
 
     private func cleanupOldDailyActivityIn(_ snapshot: UsageSnapshot) -> UsageSnapshot {
@@ -342,6 +303,7 @@ internal final class UsageMetricsStore {
     }
 
     private func persist(_ snapshot: UsageSnapshot) {
+        mutationRevision &+= 1
         self.snapshot = snapshot
         defaults.set(snapshot.totalSessions, forKey: Keys.totalSessions)
         defaults.set(snapshot.totalDuration, forKey: Keys.totalDuration)

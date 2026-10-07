@@ -1,0 +1,8 @@
+{
+  "status": "passed",
+  "checks": [
+    "Assigning \u2325\u21e7\u2318T through actual recorder enabled shortcut without starting recording",
+    "New shortcut started recording from TextEdit; cancel preserved clipboard and destination",
+    "Restored original \u2325\u21e7\u2318R through actual shortcut recorder"
+  ]
+}

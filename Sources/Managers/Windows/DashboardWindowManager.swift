@@ -19,6 +19,7 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
     private var dashboardWindow: NSWindow?
     private var windowDelegate: StandardWindowDelegate?
     private let isTestEnvironment: Bool
+    private var initialNavigation: DashboardNavItem = .dashboard
 
     /// Most-recent transcripts, newest first. Read synchronously by the status
     /// menu's "Recent" section; refreshed via `refreshRecentRecordsCache()`.
@@ -72,7 +73,7 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
             return
         }
 
-        let dashboardView = DashboardView()
+        let dashboardView = DashboardView(initialNav: initialNavigation)
             .environment(MLXModelManager.shared)
             .environment(PermissionManager.shared)
 
@@ -101,6 +102,13 @@ internal final class DashboardWindowManager: NSObject, DashboardWindowManaging {
         }
 
         Logger.app.info("Dashboard window created and shown")
+        initialNavigation = .dashboard
+    }
+
+    func showRecordingSetup() {
+        initialNavigation = .setup
+        RecordingSetupState.shared.navigationRequest += 1
+        showDashboardWindow()
     }
 
     func windowWillClose() {

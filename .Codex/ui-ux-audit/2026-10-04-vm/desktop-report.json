@@ -1,0 +1,135 @@
+{
+  "status": "passed",
+  "vm": "audiowhisper-qa-tahoe",
+  "checks": [
+    {
+      "case": "start-cancel-1",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-2",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-3",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-4",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-5",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-6",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-7",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-8",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-9",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "start-cancel-10",
+      "status": "passed",
+      "frame": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "frontmost_after_cancel": "com.apple.TextEdit"
+    },
+    {
+      "case": "record-stop-transcribe-paste",
+      "status": "passed",
+      "transcript": "The quick brown fox jumps over the lazy dog.",
+      "document": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog."
+    }
+  ],
+  "limits": [
+    "synthetic guest key events",
+    "virtual microphone and public audio",
+    "not physical host hardware",
+    "not notarized release acceptance"
+  ],
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "signature_verified": true,
+  "binary_sha256": "3c2ce960bb40caddf3305401dabc332590e84081100b62f5bf0b58eea5d85a7f",
+  "observed_delivery": {
+    "transcript": "The quick brown fox jumps over the lazy dog.",
+    "document": "SMART PASTE TEST: The quick brown fox jumps over the lazy dog."
+  }
+}

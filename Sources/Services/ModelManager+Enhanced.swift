@@ -35,17 +35,14 @@ extension ModelManager {
     }
 
     nonisolated func getAvailableStorageSpace() async throws -> Int64 {
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            throw ModelError.applicationSupportDirectoryNotFound
-        }
-
-        let resourceValues = try documentsPath.resourceValues(forKeys: [.volumeAvailableCapacityKey])
+        try RebuildStorage.prepare()
+        let resourceValues = try RebuildStorage.root.resourceValues(forKeys: [.volumeAvailableCapacityKey])
         return Int64(resourceValues.volumeAvailableCapacity ?? 0)
     }
 
     nonisolated func sendDownloadCompletionNotification(for model: WhisperModel) async {
         // Check if notifications are available (only works in proper app bundles)
-        guard Bundle.main.bundleIdentifier != nil else {
+        guard Bundle.main.bundleURL.pathExtension == "app", Bundle.main.bundleIdentifier != nil else {
             // Running in development/debug mode, skip notifications
             return
         }

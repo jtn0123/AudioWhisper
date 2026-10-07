@@ -111,7 +111,7 @@ final class UvBootstrapCoverageTests: XCTestCase {
         XCTAssertFalse(ready)
     }
 
-    func testIsEnvReadyTrueWhenVenvPythonExists() async throws {
+    func testBareInterpreterWithoutPinnedDependenciesIsNotReady() async throws {
         let proj = try UvBootstrap.projectDir()
         let binDir = proj.appendingPathComponent(".venv/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: binDir, withIntermediateDirectories: true)
@@ -120,7 +120,7 @@ final class UvBootstrapCoverageTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: python3.path)
 
         let ready = await UvBootstrap.isEnvReady()
-        XCTAssertTrue(ready)
+        XCTAssertFalse(ready)
     }
 
     // MARK: - findUv error path
@@ -194,18 +194,6 @@ final class UvBootstrapCoverageTests: XCTestCase {
             XCTAssertEqual(error.domain, "VenvTest")
             XCTAssertEqual(error.code, 7)
         }
-    }
-
-    func testVenvSerializerClaimVerificationIsOneShot() async {
-        let serializer = VenvSerializer()
-        let first = await serializer.claimVerification()
-        let second = await serializer.claimVerification()
-        XCTAssertTrue(first, "First claim should win")
-        XCTAssertFalse(second, "Subsequent claims should lose")
-
-        await serializer.resetVerificationForTesting()
-        let afterReset = await serializer.claimVerification()
-        XCTAssertTrue(afterReset, "Reset should re-enable claiming")
     }
 
     /// Bug #2: two concurrent callers whose ops contain an `await` must NOT

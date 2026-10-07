@@ -1,0 +1,116 @@
+{
+  "os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "binary_sha256": "0b2be3957193ff4d4099eb632ee911894fa6a1bb2fde591f65a32a5ea1cc202d",
+  "captures": [
+    {
+      "page": "record",
+      "appearance": "light",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "library",
+      "appearance": "light",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "models",
+      "appearance": "light",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "writing",
+      "appearance": "light",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "preferences",
+      "appearance": "light",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "record",
+      "appearance": "dark",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "library",
+      "appearance": "dark",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "models",
+      "appearance": "dark",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "writing",
+      "appearance": "dark",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    },
+    {
+      "page": "preferences",
+      "appearance": "dark",
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "contained": true
+    }
+  ]
+}

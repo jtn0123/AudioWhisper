@@ -7,7 +7,6 @@ final class RecordingViewModelTests: XCTestCase {
     private var mockSpeechService: MockSpeechToTextService!
     private var mockSemanticService: MockSemanticCorrectionService!
     private var mockDataManager: MockDataManager!
-    private var mockMetricsStore: MockUsageMetricsStore!
     private var testUserDefaultsSuite: String!
     private var testDefaults: UserDefaults!
 
@@ -16,7 +15,6 @@ final class RecordingViewModelTests: XCTestCase {
         mockSpeechService = MockSpeechToTextService()
         mockSemanticService = MockSemanticCorrectionService()
         mockDataManager = MockDataManager()
-        mockMetricsStore = MockUsageMetricsStore()
 
         testUserDefaultsSuite = "RecordingViewModelTests-\(UUID().uuidString)"
         testDefaults = UserDefaults(suiteName: testUserDefaultsSuite)
@@ -27,7 +25,6 @@ final class RecordingViewModelTests: XCTestCase {
         mockSpeechService?.reset()
         mockSemanticService?.reset()
         mockDataManager?.reset()
-        mockMetricsStore?.resetMock()
         testDefaults?.removePersistentDomain(forName: testUserDefaultsSuite)
         testDefaults = nil
         testUserDefaultsSuite = nil

@@ -41,6 +41,7 @@ internal extension AppDelegate {
         AppSetupHelper.setupApp()
 
         audioRecorder = AudioEngineRecorder()
+        Task { await RecordingSetupState.shared.refresh() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem?.button {
@@ -72,11 +73,6 @@ internal extension AppDelegate {
 
         setupNotificationObservers()
 
-        // Proactively request microphone permission at first launch
-        if PermissionManager.shared.microphonePermissionState.needsRequest {
-            PermissionManager.shared.proceedWithPermissionRequest()
-        }
-
         // First-run users must always see the welcome/onboarding screen — even
         // when the default `.local` model has not been downloaded yet. The
         // first-run check therefore takes precedence over the model-missing
@@ -97,8 +93,8 @@ internal extension AppDelegate {
         if providerRaw == TranscriptionProvider.local.rawValue {
             let model = AppDefaults.selectedWhisperModel
             if !WhisperKitStorage.isModelDownloaded(model) {
-                // Model not downloaded - show dashboard for download
-                DashboardWindowManager.shared.showDashboardWindow()
+                // Keep the missing prerequisite and its action together.
+                DashboardWindowManager.shared.showRecordingSetup()
             }
         }
     }
@@ -147,7 +143,7 @@ internal extension AppDelegate {
         AppSetupHelper.cleanupOldTemporaryFiles()
     }
 
-    /// "Get started" opens the Dashboard through `.welcomeCompleted`.
+    /// "Get started" opens the recording checklist through `.welcomeCompleted`.
     func showWelcome() {
         WelcomeWindow.show()
     }

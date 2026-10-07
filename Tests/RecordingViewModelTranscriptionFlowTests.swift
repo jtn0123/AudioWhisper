@@ -297,6 +297,50 @@ final class RecordingViewModelTranscriptionFlowTests: IsolatedXCTestCase {
 
     // MARK: - Provider routing
 
+    func testCancelledOldFailureCannotFinishNewSession() async {
+        let first = makeAudioFile()
+        let second = makeAudioFile()
+        var continuations: [URL: CheckedContinuation<String, Error>] = [:]
+        stub.handler = { url in
+            try await withCheckedThrowingContinuation { continuations[url] = $0 }
+        }
+        let vm = makeViewModel()
+        vm.transcribeExternalAudioFile(first, hasShownFirstModelUseHint: true,
+                                       setHintShown: {}, presentDashboard: noopDashboard)
+        while continuations[first] == nil { await Task.yield() }
+        let oldTask = vm.processingTask
+        vm.cancelProcessing()
+        vm.transcribeExternalAudioFile(second, hasShownFirstModelUseHint: true,
+                                       setHintShown: {}, presentDashboard: noopDashboard)
+        while continuations[second] == nil { await Task.yield() }
+        continuations[first]?.resume(throwing: SpeechToTextError.noSpeechDetected)
+        await oldTask?.value
+        XCTAssertTrue(vm.isProcessing, "an old failure must not finish the new session")
+        XCTAssertFalse(vm.showError, "an old failure must not show an error in the new session")
+        continuations[second]?.resume(returning: "new transcript")
+        await vm.processingTask?.value
+        XCTAssertTrue(vm.showSuccess)
+    }
+
+    func testCancellationClearsUIWithoutWaitingForProvider() async {
+        let audio = makeAudioFile()
+        var continuation: CheckedContinuation<String, Error>?
+        stub.handler = { _ in
+            try await withCheckedThrowingContinuation { continuation = $0 }
+        }
+        let vm = makeViewModel()
+        vm.transcribeExternalAudioFile(audio, hasShownFirstModelUseHint: true,
+                                       setHintShown: {}, presentDashboard: noopDashboard)
+        while continuation == nil { await Task.yield() }
+        let task = vm.processingTask
+        vm.cancelProcessing()
+        XCTAssertFalse(vm.isProcessing, "Cancel must immediately release the recording controls")
+        XCTAssertNil(vm.transcriptionStartTime)
+        continuation?.resume(returning: "late transcript")
+        await task?.value
+        XCTAssertFalse(vm.showSuccess, "late results must be discarded")
+    }
+
     /// The flow must pass the *configured* provider through to the pipeline,
     /// not a hardcoded one.
     func testConfiguredProviderReachesTheProvider() async {

@@ -1,4 +1,3 @@
-import XCTest
 import SwiftUI
 @testable import AudioWhisper
 

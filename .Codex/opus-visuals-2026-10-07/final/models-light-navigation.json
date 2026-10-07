@@ -1,0 +1,72 @@
+[
+  {
+    "AXAttributedDescription": "Record",
+    "AXDescription": "Record",
+    "AXHelp": "Record (\u23181)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Library",
+    "AXDescription": "Library",
+    "AXHelp": "Library (\u23182)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Models & setup",
+    "AXDescription": "Models & setup",
+    "AXHelp": "Models & setup (\u23183)",
+    "focused": true,
+    "selected": true
+  },
+  {
+    "AXAttributedDescription": "Writing cleanup",
+    "AXDescription": "Writing cleanup",
+    "AXHelp": "Writing cleanup (\u23184)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Preferences",
+    "AXDescription": "Preferences",
+    "AXHelp": "Preferences (\u23185)",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Status: Ready to record",
+    "AXDescription": "Status: Ready to record",
+    "AXHelp": "Opens Models & setup",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Check installation",
+    "AXDescription": "Check installation",
+    "AXHelp": "Re-check the runtime and model files, repairing anything missing",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Verify model",
+    "AXDescription": "Verify model",
+    "AXHelp": "Load the model and transcribe a short sample to confirm it works",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Remove selected model\u2026",
+    "AXDescription": "Remove selected model\u2026",
+    "focused": false
+  },
+  {
+    "AXAttributedDescription": "Start recording",
+    "AXDescription": "Start recording",
+    "AXHelp": "Start recording",
+    "focused": false
+  },
+  {
+    "focused": false
+  },
+  {
+    "AXHelp": "this button also has an action to zoom the window",
+    "focused": false
+  },
+  {
+    "focused": false
+  }
+]

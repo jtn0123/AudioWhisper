@@ -1,0 +1,503 @@
+{
+  "qwen3-4b/direct": {
+    "median_task_seconds": 0.24361524999403628,
+    "identical_short_task_median_seconds": 0.19908912500250153,
+    "first_task_seconds": 2.585223207999661,
+    "first_process_result_seconds": 5.029159833997255,
+    "acceptable": 51,
+    "total": 64,
+    "critical_failures": 6,
+    "app_failures": 0,
+    "legacy_acceptable": 22,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 2,
+    "peak_mlx_bytes": 2815624532,
+    "peak_rss_bytes": 1056030720,
+    "model_bytes": 2278972236,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 1
+      },
+      "coding": {
+        "total": 5,
+        "passes": 2
+      },
+      "email": {
+        "total": 9,
+        "passes": 7
+      },
+      "general": {
+        "total": 30,
+        "passes": 28
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 5
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3-4b/production": {
+    "median_task_seconds": 0.23405429199920036,
+    "identical_short_task_median_seconds": 0.1989370829978725,
+    "first_task_seconds": 0.2013855839977623,
+    "first_process_result_seconds": null,
+    "acceptable": 51,
+    "total": 64,
+    "critical_failures": 6,
+    "app_failures": 0,
+    "legacy_acceptable": 22,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 2,
+    "peak_mlx_bytes": 2815624532,
+    "peak_rss_bytes": 1056030720,
+    "model_bytes": 2278972236,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 1
+      },
+      "coding": {
+        "total": 5,
+        "passes": 2
+      },
+      "email": {
+        "total": 9,
+        "passes": 7
+      },
+      "general": {
+        "total": 30,
+        "passes": 28
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 5
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3-4b/strict": {
+    "median_task_seconds": 0.27013466700009303,
+    "identical_short_task_median_seconds": 0.23335720800241688,
+    "first_task_seconds": 0.24929058300040197,
+    "first_process_result_seconds": null,
+    "acceptable": 57,
+    "total": 64,
+    "critical_failures": 4,
+    "app_failures": 0,
+    "legacy_acceptable": 26,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 2,
+    "peak_mlx_bytes": 2900460800,
+    "peak_rss_bytes": 2647244800,
+    "model_bytes": 2278972236,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 4
+      },
+      "coding": {
+        "total": 5,
+        "passes": 3
+      },
+      "email": {
+        "total": 9,
+        "passes": 9
+      },
+      "general": {
+        "total": 30,
+        "passes": 28
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 5
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.5-4b/direct": {
+    "median_task_seconds": 0.2492622499994468,
+    "identical_short_task_median_seconds": 0.23133199999574572,
+    "first_task_seconds": 1.2060049589999835,
+    "first_process_result_seconds": 2.914794875003281,
+    "acceptable": 54,
+    "total": 64,
+    "critical_failures": 3,
+    "app_failures": 1,
+    "legacy_acceptable": 22,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 4,
+    "peak_mlx_bytes": 3091420990,
+    "peak_rss_bytes": 3032137728,
+    "model_bytes": 3061130647,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 4
+      },
+      "email": {
+        "total": 9,
+        "passes": 7
+      },
+      "general": {
+        "total": 30,
+        "passes": 26
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 4
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.5-4b/production": {
+    "median_task_seconds": 1.7872632910002721,
+    "identical_short_task_median_seconds": 1.782941417004622,
+    "first_task_seconds": 1.8261352499976056,
+    "first_process_result_seconds": null,
+    "acceptable": 55,
+    "total": 64,
+    "critical_failures": 3,
+    "app_failures": 1,
+    "legacy_acceptable": 23,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 64,
+    "guard_rejections": 4,
+    "peak_mlx_bytes": 3091420990,
+    "peak_rss_bytes": 3032137728,
+    "model_bytes": 3061130647,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 5
+      },
+      "email": {
+        "total": 9,
+        "passes": 7
+      },
+      "general": {
+        "total": 30,
+        "passes": 26
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 4
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.5-4b/strict": {
+    "median_task_seconds": 0.29129637500591343,
+    "identical_short_task_median_seconds": 0.23426804200425977,
+    "first_task_seconds": 0.29150029200536665,
+    "first_process_result_seconds": null,
+    "acceptable": 51,
+    "total": 64,
+    "critical_failures": 4,
+    "app_failures": 1,
+    "legacy_acceptable": 21,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 1,
+    "peak_mlx_bytes": 3254933292,
+    "peak_rss_bytes": 3033481216,
+    "model_bytes": 3061130647,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 4
+      },
+      "email": {
+        "total": 9,
+        "passes": 5
+      },
+      "general": {
+        "total": 30,
+        "passes": 25
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 4
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.5-9b/direct": {
+    "median_task_seconds": 0.4593674589996226,
+    "identical_short_task_median_seconds": 0.35914479199709604,
+    "first_task_seconds": 0.45757079200120643,
+    "first_process_result_seconds": 2.6450555409974186,
+    "acceptable": 56,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 0,
+    "legacy_acceptable": 25,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 3,
+    "peak_mlx_bytes": 5694935800,
+    "peak_rss_bytes": 5701320704,
+    "model_bytes": 5977073303,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 4
+      },
+      "email": {
+        "total": 9,
+        "passes": 5
+      },
+      "general": {
+        "total": 30,
+        "passes": 29
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 5
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.5-9b/production": {
+    "median_task_seconds": 2.96295716700115,
+    "identical_short_task_median_seconds": 2.807837415995891,
+    "first_task_seconds": 2.949384875006217,
+    "first_process_result_seconds": null,
+    "acceptable": 53,
+    "total": 64,
+    "critical_failures": 3,
+    "app_failures": 1,
+    "legacy_acceptable": 24,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 64,
+    "guard_rejections": 3,
+    "peak_mlx_bytes": 5694935800,
+    "peak_rss_bytes": 5701320704,
+    "model_bytes": 5977073303,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 5
+      },
+      "email": {
+        "total": 9,
+        "passes": 4
+      },
+      "general": {
+        "total": 30,
+        "passes": 26
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 5
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.5-9b/strict": {
+    "median_task_seconds": 0.4886512090015458,
+    "identical_short_task_median_seconds": 0.3973824999993667,
+    "first_task_seconds": 0.464347250002902,
+    "first_process_result_seconds": null,
+    "acceptable": 55,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 0,
+    "legacy_acceptable": 24,
+    "legacy_total": 28,
+    "grammar_acceptable": 9,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 2,
+    "peak_mlx_bytes": 5797171942,
+    "peak_rss_bytes": 5701419008,
+    "model_bytes": 5977073303,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 4
+      },
+      "email": {
+        "total": 9,
+        "passes": 5
+      },
+      "general": {
+        "total": 30,
+        "passes": 29
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 4
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.8-27b/direct": {
+    "median_task_seconds": 1.5152821669980767,
+    "identical_short_task_median_seconds": 1.3211058750021039,
+    "first_task_seconds": 3.0210606660039048,
+    "first_process_result_seconds": 6.731860624997353,
+    "acceptable": 58,
+    "total": 64,
+    "critical_failures": 1,
+    "app_failures": 1,
+    "legacy_acceptable": 25,
+    "legacy_total": 28,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 4,
+    "peak_mlx_bytes": 16059241632,
+    "peak_rss_bytes": 8845000704,
+    "model_bytes": 16081490933,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 5
+      },
+      "email": {
+        "total": 9,
+        "passes": 5
+      },
+      "general": {
+        "total": 30,
+        "passes": 28
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 7
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  },
+  "qwen3.8-27b/production": {
+    "diagnostic": true,
+    "cases": 19,
+    "guard_rejections": 19,
+    "median_seconds": 8.536803625000175
+  },
+  "qwen3.8-27b/strict": {
+    "median_task_seconds": 1.5630062910058768,
+    "identical_short_task_median_seconds": 1.2688263329982874,
+    "first_task_seconds": 1.7869829589981236,
+    "first_process_result_seconds": null,
+    "acceptable": 60,
+    "total": 64,
+    "critical_failures": 2,
+    "app_failures": 1,
+    "legacy_acceptable": 27,
+    "legacy_total": 28,
+    "grammar_acceptable": 10,
+    "grammar_total": 10,
+    "generation_retries": 0,
+    "guard_rejections": 2,
+    "peak_mlx_bytes": 16161854624,
+    "peak_rss_bytes": 15804710912,
+    "model_bytes": 16081490933,
+    "by_profile": {
+      "chat": {
+        "total": 5,
+        "passes": 5
+      },
+      "coding": {
+        "total": 5,
+        "passes": 5
+      },
+      "email": {
+        "total": 9,
+        "passes": 9
+      },
+      "general": {
+        "total": 30,
+        "passes": 27
+      },
+      "terminal": {
+        "total": 7,
+        "passes": 6
+      },
+      "writing": {
+        "total": 8,
+        "passes": 8
+      }
+    }
+  }
+}

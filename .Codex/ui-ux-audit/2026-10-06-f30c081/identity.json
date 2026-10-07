@@ -1,0 +1,8 @@
+{
+  "source_commit": "f30c081ed0bc324bf29c882052a6033d7028783b",
+  "host_binary_sha256": "e322ec9b139c8f120dbd85f0cfeb704f22f6535bb336670a2be1ae4ef450e2e6",
+  "guest_binary_sha256": "e322ec9b139c8f120dbd85f0cfeb704f22f6535bb336670a2be1ae4ef450e2e6",
+  "identity_match": true,
+  "guest_os": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+  "capture_scope": "Actual native guest; no host audio or clipboard passed through."
+}

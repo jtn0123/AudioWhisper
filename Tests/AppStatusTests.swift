@@ -68,7 +68,7 @@ final class AppStatusTests: XCTestCase {
     
     func testStatusViewModelInitialState() {
         let viewModel = StatusViewModel()
-        XCTAssertEqual(viewModel.currentStatus, .ready)
+        XCTAssertEqual(viewModel.currentStatus, .setupRequired("Checking recording setup"))
     }
     
     func testStatusViewModelUpdateWithError() {

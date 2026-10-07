@@ -12,6 +12,7 @@ import SwiftUI
 ///   • Selected style name + description (italic NY serif)
 ///   • Footer: "Change anything later" + "Get started" CTA
 internal struct WelcomeView: View {
+    @AppDefault(\.globalHotkey) private var shortcut
     @AppDefault(\.waveformStyle) private var waveformStyle
     @State private var isDismissing = false
     @StateObject private var sampler = LivePreviewSampler()
@@ -115,7 +116,7 @@ internal struct WelcomeView: View {
                                 .foregroundStyle(Color.white.opacity(0.45))
                         }
                         Spacer()
-                        Text("⌘⇧Space")
+                        Text(RecordingShortcut.display(shortcut))
                             .font(.system(size: 9, design: .monospaced))
                             .foregroundStyle(Color.white.opacity(0.32))
                             .padding(.horizontal, 5)
@@ -142,7 +143,7 @@ internal struct WelcomeView: View {
             // rather than letting VoiceOver walk its decorative innards.
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Recording window preview")
-            .accessibilityValue("\(selectedStyle.rawValue) style. Press Command Shift Space to record.")
+            .accessibilityValue("\(selectedStyle.rawValue) style. Press \(RecordingShortcut.spoken(shortcut)) to record.")
 
             // Headline
             Text("Hold a key. Speak. Paste.")

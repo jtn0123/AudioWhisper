@@ -90,6 +90,14 @@ internal extension JSONValue {
         return value
     }
 
+    var doubleValue: Double? {
+        switch self {
+        case .int(let value): return Double(value)
+        case .double(let value): return value
+        default: return nil
+        }
+    }
+
     var objectValue: [String: JSONValue]? {
         guard case .object(let value) = self else { return nil }
         return value

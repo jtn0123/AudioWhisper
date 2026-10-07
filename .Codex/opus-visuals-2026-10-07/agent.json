@@ -1,0 +1,17 @@
+{
+  "tool": "local Claude Code CLI",
+  "model": "claude-opus-5-5",
+  "effort": "high",
+  "inference": "Anthropic authenticated cloud service",
+  "runs": [
+    {
+      "subtype": "success",
+      "is_error": false,
+      "duration_ms": 393052,
+      "num_turns": 60
+    }
+  ],
+  "worktree": "rebuild/native-v2",
+  "scope": "Six native SwiftUI design and page files",
+  "root_followup": "Contrast review, native QA, opaque HUD waveform per Opus recommendation, signing, installation and sync"
+}

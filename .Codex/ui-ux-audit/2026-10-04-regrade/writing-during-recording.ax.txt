@@ -1,0 +1,57 @@
+Window: "AudioWhisper Rebuild", App: AudioWhisper Rebuild.
+0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
+	1 container
+		2 image Description: Waveform In A Filled Circle, ID: waveform.circle.fill
+		3 text WRITING PROFILES On your Mac Audio
+Whisper REBUILD / NATIVE V2
+		4 button Record
+		5 button Library
+		6 button Models & setup
+		7 button (selected) Writing profiles
+		8 button Preferences
+		9 text Ready to record Private by default.
+No cloud transcription.
+		10 scroll area
+			11 text Sound like yourself. Optional local cleanup that understands where you’re writing. The original transcript survives if cleanup fails. LOCAL WRITING CLEANUP
+			12 pop up button (disabled) Correction model, Value: Qwen3-4B-Instruct-2507-4bit · 2.3 GB
+			13 checkbox (disabled) Description: Clean up grammar, punctuation and filler words, Value: 0
+			14 text Correction model installed
+			15 button (disabled) Install correction model
+			16 button (disabled) Verify correction model
+			17 button (disabled) Remove correction model
+			18 text WRITING PROFILES Terminal
+			19 image (disabled) Description: Terminal Command Prompt, ID: terminal
+			20 button (disabled) Edit
+			21 text Preserves CLI terms, flags, paths. Fixes: 'suit oh' → 'sudo', 'see dee' → 'cd' Coding
+			22 image (disabled) Description: Curly Braces Pair, ID: curlybraces
+			23 button (disabled) Edit
+			24 text Preserves syntax, naming conventions. Fixes: 'you state' → 'useState', 'a sink' → 'async' Chat
+			25 image (disabled) Description: Conversation, ID: bubble.left.and.bubble.right
+			26 button (disabled) Edit
+			27 text Light corrections, keeps casual tone. Preserves slang, emoji refs, abbreviations Writing
+			28 image (disabled) Description: Plain Text Document, ID: doc.text
+			29 button (disabled) Edit
+			30 text Thorough grammar, formal style. Fixes fragments and homophones Email
+			31 image (disabled) Description: Get Mail, ID: envelope
+			32 button (disabled) Edit
+			33 text Professional tone, preserves greetings/sign-offs. Fixes: 'attach meant' → 'attachment' General
+			34 image (disabled) Description: Grid View, ID: square.grid.2x2
+			35 button (disabled) Edit
+			36 text Balanced cleanup, adapts to context. Fixes common misrecognitions
+			37 button (disabled) New profile
+			38 text APP-AWARE WRITING
+			39 pop up button (disabled) Application, Value: Choose a running app
+			40 pop up button (disabled) Profile, Value: General
+			41 button (disabled) Assign profile
+	42 close button
+	43 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	44 minimize button
+	45 text AudioWhisper Rebuild
+46 menu bar
+	47 AudioWhisper Rebuild
+	48 Edit
+	49 View
+	50 Window
+	51 Help
+
+The focused UI element is 0 standard window AudioWhisper Rebuild, Secondary Actions: Raise

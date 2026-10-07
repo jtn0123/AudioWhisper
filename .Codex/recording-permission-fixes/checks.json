@@ -1,0 +1,116 @@
+{
+  "fullLocalAnalyzer": {
+    "version": "0.65.1",
+    "filesAnalyzed": 431,
+    "counts": {
+      "unused_declaration": 131,
+      "superfluous_disable_command": 1,
+      "unused_import": 7
+    },
+    "source": "4d12ddd"
+  },
+  "changedSourceImportAnalyzer": {
+    "filesAnalyzed": 8,
+    "findings": []
+  },
+  "swiftSuite": {
+    "discovered": 3054,
+    "exitCode": 0,
+    "source": "9617da8"
+  },
+  "focusedStartupSuite": {
+    "cases": 54,
+    "exitCode": 0
+  },
+  "integrationAndStartupSuite": {
+    "cases": 21,
+    "exitCode": 0,
+    "source": "9617da8"
+  },
+  "strictLintExitCode": 0,
+  "xcodeBuildForTestingExitCode": 0,
+  "releaseSlices": {
+    "arm64": 0,
+    "x86_64": 0
+  },
+  "guiBundleSource": "9617da8",
+  "implementationHead": "9617da8",
+  "guiMicrophone": {
+    "source": "ba6ef33 plus temporary route diagnostic",
+    "state": "granted",
+    "changedDebugBuildRetainedConsent": true,
+    "finalUniversalGuiContinuity": "granted, no new prompt during 16 starts"
+  },
+  "guiAccessibility": {
+    "source": "ba6ef33 plus temporary route diagnostic",
+    "state": "granted",
+    "actualGuiCheckAccess": "Accessibility allowed",
+    "staleRebuildRegistrationReset": true,
+    "otherEntriesPreserved": true,
+    "finalUniversalGuiContinuity": "Accessibility allowed"
+  },
+  "universalBundle": {
+    "architectures": [
+      "x86_64",
+      "arm64"
+    ],
+    "strictDeepCodesignExitCode": 0,
+    "stableCertificateRequirement": true,
+    "source": "9617da8"
+  },
+  "nativeAcceptance": {
+    "firstPatch": {
+      "source": "c3646e5",
+      "successfulStartCancelCycles": 3,
+      "failedStart": 4,
+      "errorCode": 1852797029,
+      "uiResponsive": true
+    },
+    "subsequentDiagnosticBuild": {
+      "source": "ba6ef33 plus temporary route diagnostic; route behavior unchanged",
+      "successfulStartCancelCycles": 26,
+      "runInterruptedByNativeControlError": true
+    },
+    "finalUniversal": {
+      "source": "9617da8",
+      "successfulStartCancelCycles": 16,
+      "newPermissionPrompts": 0,
+      "startErrors": 0,
+      "uiHangObserved": false,
+      "liveStopTranscription": "completed",
+      "wordCount": 23,
+      "accuracy": "not scored: speaker fixture and ambient audio were mixed",
+      "librarySavingEnabled": false,
+      "libraryUi": "YOUR LIBRARY IS OFF",
+      "signatureAfterTranscription": "strict/deep valid",
+      "shortcutEditor": "custom Option Shift Command R captured, enabled, shown in recording help",
+      "syntheticExternalShortcut": "did not start recording; awaiting physical key test",
+      "smartPaste": "not verified; workspace-button session copies to clipboard without an external destination",
+      "physicalHold": "pending"
+    }
+  },
+  "ci": {
+    "source": "9617da8",
+    "run": 37229605626,
+    "status": "completed",
+    "earlierSource": "4d12ddd",
+    "earlierRun": 37228126275,
+    "earlierConclusion": "success, SonarCloud skipped",
+    "conclusion": "success, SonarCloud skipped"
+  },
+  "strictLintSource": "9617da8",
+  "testData": {
+    "librarySavingEnabled": false,
+    "usageUnchangedDuringCancelTests": true,
+    "disposableEditorMarkerCleared": false,
+    "privateAudioCommitted": false
+  },
+  "testPreferences": {
+    "recordingShortcut": "Option Shift Command R",
+    "shortcutEnabled": true,
+    "smartPasteEnabled": true,
+    "holdEnabled": false,
+    "librarySavingEnabled": false,
+    "temporaryForPendingPhysicalTest": true
+  }
+}

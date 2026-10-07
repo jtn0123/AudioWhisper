@@ -58,10 +58,7 @@ internal extension AppDelegate {
             return
         }
 
-        if PermissionManager.shared.microphonePermissionState != .granted {
-            showRecordingWindowForProcessing()
-            return
-        }
+        guard prepareForRecording() else { return }
 
         if recorder.startRecording() {
             isHoldRecordingActive = true
@@ -117,6 +114,8 @@ internal extension AppDelegate {
             return
         }
 
+        guard prepareForRecording() else { return }
+
         if AppDefaults.immediateRecording {
             startImmediateRecordingFromHotkey()
         } else {
@@ -141,10 +140,7 @@ internal extension AppDelegate {
             return
         }
 
-        if PermissionManager.shared.microphonePermissionState != .granted {
-            toggleRecordWindow()
-            return
-        }
+        guard prepareForRecording() else { return }
 
         if recorder.startRecording() {
             updateMenuBarIcon(isRecording: true)
@@ -169,5 +165,26 @@ internal extension AppDelegate {
 
     @objc func onRecordingStopped() {
         updateMenuBarIcon(isRecording: false)
+    }
+
+    /// Every recording entry point stops here until both required setup steps
+    /// are complete. Repeated shortcuts bring forward the same setup window.
+    func prepareForRecording(requirement: RecordingSetupRequirement? = nil) -> Bool {
+        if requirement == nil { PermissionManager.shared.checkPermissionState() }
+        let requirement = requirement ?? RecordingSetupState.shared.requirement
+        guard requirement.isReady else {
+            WindowCoordinator.shared.presentRecordingSetup()
+            return false
+        }
+        return true
+    }
+
+    @objc func startRecordingFromMenu() {
+        if let recorder = audioRecorder, recorder.isRecording {
+            stopActiveRecordingFromHotkey()
+            return
+        }
+        guard !isTranscriptionProcessing, prepareForRecording() else { return }
+        startImmediateRecordingFromHotkey()
     }
 }

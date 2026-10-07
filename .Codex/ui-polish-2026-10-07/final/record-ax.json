@@ -1,0 +1,66 @@
+[
+  {
+    "AXAttributedDescription" : "Record",
+    "AXDescription" : "Record",
+    "AXHelp" : "Record (⌘1)",
+    "focused" : true,
+    "selected" : true
+  },
+  {
+    "AXAttributedDescription" : "Library",
+    "AXDescription" : "Library",
+    "AXHelp" : "Library (⌘2)",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Models & setup",
+    "AXDescription" : "Models & setup",
+    "AXHelp" : "Models & setup (⌘3)",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Writing cleanup",
+    "AXDescription" : "Writing cleanup",
+    "AXHelp" : "Writing cleanup (⌘4)",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Preferences",
+    "AXDescription" : "Preferences",
+    "AXHelp" : "Preferences (⌘5)",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Status: Ready to record",
+    "AXDescription" : "Status: Ready to record",
+    "AXHelp" : "Opens Models & setup",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Start recording",
+    "AXDescription" : "Start recording",
+    "AXHelp" : "Start recording",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Transcribe a file…",
+    "AXDescription" : "Transcribe a file…",
+    "AXHelp" : "Choose one audio file to transcribe",
+    "focused" : false
+  },
+  {
+    "AXAttributedDescription" : "Copy text",
+    "AXDescription" : "Copy text",
+    "focused" : false
+  },
+  {
+    "focused" : false
+  },
+  {
+    "AXHelp" : "this button also has an action to zoom the window",
+    "focused" : false
+  },
+  {
+    "focused" : false
+  }
+]

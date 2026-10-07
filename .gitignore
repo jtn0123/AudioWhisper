@@ -124,6 +124,7 @@ notarization.log
 __pycache__
 
 # Generated build files
+AudioWhisper.entitlements
 Sources/Utilities/VersionInfo.swift
 
 # Downloaded uv binary (auto-downloaded during build)
@@ -143,3 +144,5 @@ coverage-python.xml
 .coverage
 .pycov/
 .mypy-venv/
+
+*.xml.manifest.json

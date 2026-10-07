@@ -1,6 +1,5 @@
 import Foundation
 import os.log
-import AudioToolbox
 
 internal enum ParakeetError: Error, LocalizedError, Equatable {
     case pythonNotFound(path: String)
@@ -38,17 +37,27 @@ internal class ParakeetService {
     static let shared = ParakeetService()
 
     private let logger = Logger(subsystem: "com.audiowhisper.app", category: "ParakeetService")
-    private let daemon = MLDaemonManager.shared
+    private let daemon: MLDaemonManager
 
-    func transcribe(audioFileURL: URL, pythonPath _: String? = nil) async throws -> String {
+    init(daemon: MLDaemonManager = .shared) { self.daemon = daemon }
+
+    func transcribe(audioFileURL: URL, pythonPath: String? = nil) async throws -> String {
+        try await transcribe(audioFileURL: audioFileURL, pythonPath: pythonPath, model: safeSelectedParakeetModel)
+    }
+
+    func transcribe(audioFileURL: URL, pythonPath _: String?, model: ParakeetModel) async throws -> String {
         // Step 0: Do not download here; just verify model cache exists
-        guard await isModelCached() else {
+        guard await isModelCached(model: model) else {
             throw ParakeetError.modelNotReady
         }
 
         // Step 1: Process audio with Swift AudioProcessor to create raw PCM data
         let pcmDataURL = try await processAudioToRawPCM(audioFileURL: audioFileURL)
 
+        return try await transcribePreparedPCM(pcmDataURL, repo: model.rawValue)
+    }
+
+    func transcribePreparedPCM(_ pcmDataURL: URL, repo: String) async throws -> String {
         // Step 2: Call Python with the raw PCM data.
         //
         // The daemon runs in a SEPARATE subprocess that keeps reading the PCM
@@ -58,7 +67,6 @@ internal class ParakeetService {
         // daemon call runs in a detached, non-cancellable task whose completion
         // — success, failure, OR timeout — is what triggers deletion.
         let pcmPath = pcmDataURL.path
-        let repo = selectedRepo
         let daemonRef = daemon
         let loggerRef = logger
         let daemonTask = Task.detached(priority: .userInitiated) { () -> String in
@@ -77,20 +85,13 @@ internal class ParakeetService {
             }
         }
 
-        // Await the detached task. If THIS task is cancelled the await throws
-        // CancellationError, but the detached task keeps running and cleans up
-        // the PCM file itself once the daemon is genuinely done with it.
-        return try await withTaskCancellationHandler {
-            try await daemonTask.value
-        } onCancel: {
-            // Do not delete the file here — the detached task still owns it.
-        }
+        return try await cancellableValue(of: daemonTask)
     }
 
     /// Default Parakeet model used when the stored `selectedParakeetModel` value
     /// is missing or doesn't match a known `ParakeetModel` case. Mirrors
     /// `AppDefaults.selectedParakeetModel`.
-    static let defaultModel: ParakeetModel = .v3Multilingual
+    static let defaultModel: ParakeetModel = .v2English
 
     /// Validates the persisted `selectedParakeetModel` against the
     /// `ParakeetModel` enum and falls back to `defaultModel` when the stored
@@ -99,7 +100,7 @@ internal class ParakeetService {
     /// that the app no longer recognises.
     var safeSelectedParakeetModel: ParakeetModel {
         // `AppDefaults.selectedParakeetModel` already validates against the enum and
-        // falls back to `.v3Multilingual` (== `defaultModel`).
+        // falls back to `.v2English` (== `defaultModel`).
         AppDefaults.selectedParakeetModel
     }
 
@@ -109,165 +110,30 @@ internal class ParakeetService {
 
     /// Checks if the model is cached on disk.
     /// This is an async function to avoid blocking the main thread with file I/O operations.
-    private func isModelCached() async -> Bool {
-        let repo = selectedRepo
+    func isModelCached(model: ParakeetModel? = nil) async -> Bool {
+        let repo = model?.rawValue ?? selectedRepo
         // Run file I/O on a background thread to avoid blocking main thread
         return await Task.detached(priority: .userInitiated) {
-            let escaped = repo.replacingOccurrences(of: "/", with: "--")
-            let base = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".cache/huggingface/hub/models--\(escaped)")
-            var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: base.path, isDirectory: &isDir), isDir.boolValue else { return false }
-            let refsMain = base.appendingPathComponent("refs/main")
-
-            // Validate file size before reading to prevent memory issues
-            // The refs/main file should be tiny (just a SHA hash, typically 40-64 bytes)
-            // If it's larger than 1KB, something is wrong - don't read it
-            let maxRefsFileSize: Int64 = 1024
-            guard let fileSize = try? FileManager.default.attributesOfItem(atPath: refsMain.path)[.size] as? Int64,
-                  fileSize <= maxRefsFileSize else {
-                return false
-            }
-
-            // The file holds a Hugging Face commit hash; require pure hex.
-            let rawRev = try? String(contentsOf: refsMain, encoding: .utf8)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            guard let rev = rawRev, !rev.isEmpty,
-                  rev.allSatisfy({ $0.isHexDigit }) else {
-                return false
-            }
-            // Resolve the snapshot directory by matching `rev` against the
-            // actual directory listing rather than interpolating it into a
-            // path: `snap` is built only from a filesystem-returned name.
-            let snapshotsDir = base.appendingPathComponent("snapshots")
-            let snapshotEntries = (try? FileManager.default.contentsOfDirectory(atPath: snapshotsDir.path)) ?? []
-            guard let matchedSnapshot = snapshotEntries.first(where: { $0 == rev }) else { return false }
-            let snap = snapshotsDir.appendingPathComponent(matchedSnapshot)
-            guard FileManager.default.fileExists(atPath: snap.path, isDirectory: &isDir), isDir.boolValue else { return false }
-            // Look for at least one weights file under snapshot or blobs
-            let snapFiles = (try? FileManager.default.contentsOfDirectory(atPath: snap.path)) ?? []
-            let blobsPath = base.appendingPathComponent("blobs").path
-            let blobsFiles = (try? FileManager.default.contentsOfDirectory(atPath: blobsPath)) ?? []
-            let hasWeights = snapFiles.contains { $0.hasSuffix(".safetensors") }
-                || blobsFiles.contains { $0.hasSuffix(".safetensors") }
-            return hasWeights
+            HuggingFaceCache.completeSnapshot(in: HuggingFaceCache.modelDirectory(repo: repo))
         }.value
     }
 
     private func processAudioToRawPCM(audioFileURL: URL) async throws -> URL {
-        // Create temporary file for raw PCM data
-        let tempPCMURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("audio_pcm_\(UUID().uuidString).raw")
-
-        do {
-            // Use AudioProcessor.swift logic directly
-            let samples = try loadAudio(url: audioFileURL, samplingRate: 16000)
-
-            // Guard against empty / near-empty audio: writing a 0-byte .raw
-            // file just hands the daemon nothing to transcribe. 1600 samples
-            // == 0.1s at 16kHz — anything shorter is effectively silence.
-            let minimumSamples = 1600
-            guard samples.count >= minimumSamples else {
-                throw ParakeetError.emptyAudio
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent("audio_pcm_\(UUID()).raw")
+        let conversion = Task.detached(priority: .userInitiated) {
+            try RawPCMConverter.convert(input: audioFileURL, output: output)
+            return output
+        }
+        return try await withTaskCancellationHandler {
+            let result = try await conversion.value
+            do { try Task.checkCancellation() } catch {
+                try? FileManager.default.removeItem(at: result)
+                throw error
             }
-
-            // Write raw float32 data
-            let data = samples.withUnsafeBytes { Data($0) }
-            try data.write(to: tempPCMURL)
-
-            return tempPCMURL
-
-        } catch let error as ParakeetError {
-            // Preserve specific domain errors (e.g. .emptyAudio) intact.
-            throw error
-        } catch {
-            throw ParakeetError.transcriptionFailed("Audio processing failed: \(error.localizedDescription)")
+            return result
+        } onCancel: {
+            conversion.cancel()
         }
-    }
-
-    // Audio processing function from AudioProcessor.swift
-    private func loadAudio(url: URL, samplingRate: Int) throws -> [Float] {
-        var extAudioFile: ExtAudioFileRef?
-
-        // Open the audio file
-        var status = ExtAudioFileOpenURL(url as CFURL, &extAudioFile)
-        guard status == noErr, let extFile = extAudioFile else {
-            throw ParakeetError.transcriptionFailed("Failed to open audio file: \(status)")
-        }
-        defer { ExtAudioFileDispose(extFile) }
-
-        // Get file's original format and length
-        var fileFormat = AudioStreamBasicDescription()
-        var propertySize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        status = ExtAudioFileGetProperty(extFile, kExtAudioFileProperty_FileDataFormat, &propertySize, &fileFormat)
-        guard status == noErr else {
-            throw ParakeetError.transcriptionFailed("Failed to get audio format: \(status)")
-        }
-
-        var fileLengthFrames: Int64 = 0
-        propertySize = UInt32(MemoryLayout<Int64>.size)
-        status = ExtAudioFileGetProperty(extFile, kExtAudioFileProperty_FileLengthFrames, &propertySize, &fileLengthFrames)
-        guard status == noErr else {
-            throw ParakeetError.transcriptionFailed("Failed to get audio length: \(status)")
-        }
-
-        // Define client format: mono, float32, target sample rate, interleaved/packed
-        var clientFormat = AudioStreamBasicDescription(
-            mSampleRate: Float64(samplingRate),
-            mFormatID: kAudioFormatLinearPCM,
-            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
-            mBytesPerPacket: 4,
-            mFramesPerPacket: 1,
-            mBytesPerFrame: 4,
-            mChannelsPerFrame: 1,
-            mBitsPerChannel: 32,
-            mReserved: 0
-        )
-
-        propertySize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        status = ExtAudioFileSetProperty(extFile, kExtAudioFileProperty_ClientDataFormat, propertySize, &clientFormat)
-        guard status == noErr else {
-            throw ParakeetError.transcriptionFailed("Failed to set audio format: \(status)")
-        }
-
-        // Estimate client length for preallocation
-        let fileSampleRate = fileFormat.mSampleRate
-        let duration = Double(fileLengthFrames) / fileSampleRate
-        let estimatedClientFrames = Int(duration * Double(samplingRate) + 0.5)
-        var samples: [Float] = []
-        samples.reserveCapacity(estimatedClientFrames)
-
-        // Read in chunks until EOF
-        let bufferFrameSize = 4096
-        var buffer = [Float](repeating: 0, count: bufferFrameSize)
-
-        while true {
-            var numFrames = UInt32(bufferFrameSize)
-
-            let audioBuffer = buffer.withUnsafeMutableBytes { bytes in
-                AudioBuffer(
-                    mNumberChannels: 1,
-                    mDataByteSize: UInt32(bufferFrameSize * MemoryLayout<Float>.size),
-                    mData: bytes.baseAddress
-                )
-            }
-            var audioBufferList = AudioBufferList(mNumberBuffers: 1, mBuffers: audioBuffer)
-
-            status = ExtAudioFileRead(extFile, &numFrames, &audioBufferList)
-            guard status == noErr else {
-                throw ParakeetError.transcriptionFailed("Failed to read audio data: \(status)")
-            }
-
-            if numFrames == 0 {
-                break  // EOF
-            }
-
-            // Defensive bounds check - ExtAudioFileRead should never return more than requested
-            let framesToCopy = min(Int(numFrames), bufferFrameSize)
-            samples.append(contentsOf: buffer[0..<framesToCopy])
-        }
-
-        return samples
     }
 
     func validateSetup(pythonPath _: String? = nil) async throws {

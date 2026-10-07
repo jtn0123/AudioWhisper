@@ -1,0 +1,12 @@
+{
+  "scripts/bench/qwen_cases.py": "1ab9d7b889b4e8f82715e715f62f957d9e4004e752bb1e8172108f91442054c4",
+  "scripts/bench/qwen_prepare.py": "e130fb79da4908f4aebb94b2d34c858edc7c5bfbad288e50b97c2afbb5972cc7",
+  "scripts/bench/qwen_quant_report.py": "d239d89f192d671608b7b16f7ab0e8f303554da46c59d353b66d055f550c0e92",
+  "scripts/bench/qwen_quant_review.py": "61f566230b0623555ea7e17468e492f0ba5c026b5f4d477f287e4f95f4b265c2",
+  "scripts/bench/qwen_report.py": "ca0803cd281e937742e4080df7f55b304af8436cb8a78389ad9a4bd75fda1d6c",
+  "scripts/bench/qwen_run.py": "16f409218b1c00bfeee3ccf96c6168f169a7a374f2d5d38e87cc5808c78e4cd0",
+  "scripts/bench/qwen_runtime_smoke.py": "1925653c7b9e4ed887a5164ba53bda2ef4f9faa2be674b7a7568a1ee2e9eb716",
+  "scripts/bench/qwen_worker.py": "9d0ea509a0d42e6ea25cc9b73a8e5b0171316e8113b9fe1df97136abd3ee6946",
+  "scripts/bench/postprocess.py": "ea082d8e3caee9fc92b40579754e20a53ca2a0a104f472c42729990196c4c616",
+  "scripts/bench/writing_cases.py": "ec4fa22f7e66c7414806e8d0164cc031a33e60c4ac6559413a6cc9f14b3cece2"
+}

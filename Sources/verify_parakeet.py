@@ -21,8 +21,8 @@ def emit(status: str, message: str) -> None:
 
 def main() -> int:
     os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
-    # Default to v3 multilingual model if not specified
-    repo = sys.argv[1] if len(sys.argv) > 1 else "mlx-community/parakeet-tdt-0.6b-v3"
+    # Default to v2 English; v3 remains available through an explicit repo.
+    repo = sys.argv[1] if len(sys.argv) > 1 else "mlx-community/parakeet-tdt-0.6b-v2"
     revision = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2] else None
     try:
         emit("checking", "Importing parakeet-mlx…")

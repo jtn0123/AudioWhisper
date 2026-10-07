@@ -1,0 +1,64 @@
+{
+  "audited_local_date": "2026-10-04",
+  "code_sha": "187eacdb55737ba8eb6b57c9bb59f5e0cc23c506",
+  "scope": "Read-only source audit, extracted production-helper reproduction, current CI metadata/logs and review of saved native VM evidence. No new model or live microphone test in this turn.",
+  "source_sha256": {
+    "Sources/Services/SpeechToTextService.swift": "9a2f2b2bf8971090f8082c0c56a8fb5e3d921b593c8acfe6efdc93746487fb72",
+    "Sources/Services/SemanticCorrectionService.swift": "87df9f07063a4c2da775b37f3af36ec8840872dfe61f46547067600eabf3b127",
+    ".github/workflows/ci.yml": "66aa667d6cfa082a7825b9798c02abe87f36af520ec7379b2754ae785b797b44"
+  },
+  "ci": {
+    "run_id": 37267004905,
+    "head_sha": "187eacdb55737ba8eb6b57c9bb59f5e0cc23c506",
+    "url": "https://github.com/jtn0123/AudioWhisper/actions/runs/37267004905",
+    "conclusion": "success",
+    "jobs": {
+      "build-and-test": "success",
+      "SwiftLint analyze": "success",
+      "lint": "success",
+      "bundle-smoke-test": "success",
+      "SonarCloud Scan": "skipped"
+    },
+    "swift_coverage": {
+      "scope": "Sources only",
+      "percent": 38.39,
+      "covered_lines": 14780,
+      "total_lines": 38498,
+      "files": 192,
+      "floor_percent": 27
+    }
+  },
+  "text_helper_reproductions": {
+    "method": "Foundation-only Swift helpers copied from audited sources and compiled with swiftc -O; no actual ASR/LLM inference",
+    "bracket_cleaner": {
+      "input": "Send the report (including taxes) to Jordan [the editor].",
+      "output": "Send the report to Jordan ."
+    },
+    "long_guard": {
+      "original_pattern": "alpha ",
+      "replacement_pattern": "bravo ",
+      "long_repetitions": 900,
+      "long_characters": 5400,
+      "max_change_ratio": 0.6,
+      "long_unrelated_rewrite_accepted": true,
+      "short_repetitions": 600,
+      "short_characters": 3600,
+      "short_unrelated_rewrite_rejected": true
+    }
+  },
+  "analyzer_reproduction": {
+    "installed_swiftlint": "0.65.1",
+    "ci_pinned_swiftlint": "0.65.0",
+    "trigger": "Deliberately missing compiler log; local recipe matches audited error suppression and string-count gates",
+    "tool_exit": 1,
+    "recipe_exit": 0,
+    "report_bytes": 0,
+    "unused_import_count": 0,
+    "unused_declaration_count": 0,
+    "diagnostic": "Error: Could not read compiler log at path: '/tmp/audiowhisper-audit-no-such-compiler.log'",
+    "limit": "Proves the recipe can conceal an analyzer execution failure; does not claim failure occurred in successful remote CI."
+  },
+  "product_changes": false,
+  "model_default_changes": false,
+  "latest_native_evidence": "../ui-ux-audit/2026-10-04-vm/README.md"
+}

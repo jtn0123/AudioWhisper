@@ -54,8 +54,4 @@ final class MockSemanticCorrectionService: @unchecked Sendable {
         correctionResult = text
         shouldApplyCorrection = true
     }
-
-    func disableCorrection() {
-        shouldApplyCorrection = false
-    }
 }

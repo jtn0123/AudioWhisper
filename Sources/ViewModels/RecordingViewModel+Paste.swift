@@ -23,6 +23,20 @@ extension RecordingViewModel {
 
     // MARK: - Source App Info
 
+    func capturePasteTarget(useStoredTarget: Bool = true) {
+        let foreground = NSWorkspace.shared.frontmostApplication
+        let target = foreground?.bundleIdentifier != Bundle.main.bundleIdentifier
+            ? foreground : (useStoredTarget ? WindowController.storedTargetApp : nil)
+        hasCapturedPasteTarget = true
+        targetAppForPaste = target?.isTerminated == false ? target : nil
+        lastSourceAppInfo = targetAppForPaste.flatMap { SourceAppInfo.from(app: $0) } ?? .unknown
+    }
+
+    func acceptProgress(_ notification: Notification) -> Bool {
+        guard isProcessing else { return false }
+        return (notification.userInfo?["sessionID"] as? UUID) == sessionID
+    }
+
     func currentSourceAppInfo() -> SourceAppInfo {
         if let cached = lastSourceAppInfo {
             return cached
@@ -36,12 +50,6 @@ extension RecordingViewModel {
 
         if let app = targetAppForPaste,
            let info = SourceAppInfo.from(app: app) {
-            lastSourceAppInfo = info
-            return info
-        }
-
-        if let fallback = findFallbackTargetApp(),
-           let info = SourceAppInfo.from(app: fallback) {
             lastSourceAppInfo = info
             return info
         }
@@ -61,9 +69,11 @@ extension RecordingViewModel {
         }
 
         Logger.paste.debug("Target app found: \(targetApp.localizedName ?? "unknown", privacy: .public)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.hideRecordingWindow()
-            self?.activateTargetAppAndPaste(targetApp)
+        let id = sessionID
+        Task { @MainActor [weak self] in
+            guard let self, self.isCurrentSession(id) else { return }
+            self.hideRecordingWindow()
+            await self.activateTargetAppAndPaste(targetApp, sessionID: id)
         }
     }
 
@@ -76,57 +86,21 @@ extension RecordingViewModel {
     /// first question every such report needs answered. Losing it in the
     /// de-duplication would have made the survivor worse than what it replaced.
     func findValidTargetApp() -> NSRunningApplication? {
-        Logger.paste.debug("findValidTargetApp: checking WindowController.storedTargetApp")
-        var targetApp = WindowController.storedTargetApp
-        if let app = targetApp {
-            Logger.paste.debug("findValidTargetApp: storedTargetApp = \(app.localizedName ?? "unknown", privacy: .public)")
-        } else {
-            Logger.paste.debug("findValidTargetApp: storedTargetApp is nil")
-        }
-
-        if targetApp == nil {
-            Logger.paste.debug("findValidTargetApp: checking targetAppForPaste")
-            targetApp = targetAppForPaste
-            if let app = targetApp {
-                Logger.paste.debug("findValidTargetApp: targetAppForPaste = \(app.localizedName ?? "unknown", privacy: .public)")
-            }
-        }
-
-        if let stored = targetApp, stored.isTerminated {
-            Logger.paste.debug("findValidTargetApp: target app is terminated, clearing")
-            targetApp = nil
-        }
-
-        if targetApp == nil {
-            Logger.paste.debug("findValidTargetApp: falling back to findFallbackTargetApp")
-            targetApp = findFallbackTargetApp()
-            if let app = targetApp {
-                Logger.paste.debug("findValidTargetApp: fallback found \(app.localizedName ?? "unknown", privacy: .public)")
-            } else {
-                Logger.paste.warning("findValidTargetApp: no fallback app found")
-            }
-        }
-
-        return targetApp
+        let target = hasCapturedPasteTarget ? targetAppForPaste
+            : (targetAppForPaste ?? WindowController.storedTargetApp)
+        guard let target, !target.isTerminated,
+              target.bundleIdentifier != Bundle.main.bundleIdentifier else { return nil }
+        return target
     }
 
-    func findFallbackTargetApp() -> NSRunningApplication? {
-        let runningApps = NSWorkspace.shared.runningApplications
-
-        return runningApps.first { app in
-            app.bundleIdentifier != Bundle.main.bundleIdentifier &&
-            app.bundleIdentifier != "com.tinyspeck.slackmacgap" &&
-            app.bundleIdentifier != "com.cron.electron" &&
-            app.activationPolicy == .regular &&
-            !app.isTerminated
-        }
-    }
+    /// An unknown destination always means clipboard-only delivery.
+    func findFallbackTargetApp() -> NSRunningApplication? { nil }
 
     /// Fades out the recording window, if there is one. Only that window: this
     /// used to fall back to `NSApp.keyWindow`, which after a paste was
     /// usually the Dashboard, so pasting could make the Dashboard vanish.
     private func hideRecordingWindow() {
-        if let window = NSApp.windows.first(where: { $0.title == WindowTitles.recording }) {
+        if let window = NSApp?.windows.first(where: { $0.title == WindowTitles.recording }) {
             fadeOutWindow(window)
         }
     }
@@ -134,11 +108,17 @@ extension RecordingViewModel {
     func fadeOutWindow(_ window: NSWindow, duration: TimeInterval = 0.3, completion: (() -> Void)? = nil) {
         // Retain window during animation to prevent deallocation
         let retainedWindow = window
+        let id = sessionID
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = duration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             retainedWindow.animator().alphaValue = 0.0
         }, completionHandler: {
+            Task { @MainActor in
+            guard self.isCurrentSession(id) else {
+                retainedWindow.alphaValue = 1.0
+                return
+            }
             // Check window is still valid before operating on it
             guard retainedWindow.isVisible || retainedWindow.alphaValue == 0 else {
                 completion?()
@@ -147,93 +127,30 @@ extension RecordingViewModel {
             retainedWindow.orderOut(nil)
             retainedWindow.alphaValue = 1.0
             completion?()
+            }
         })
     }
 
-    private func activateTargetAppAndPaste(_ target: NSRunningApplication) {
-        Task { @MainActor in
-            do {
-                try await activateApplication(target)
-                await pasteManager.pasteWithCompletionHandler()
-                showSuccess = false
-            } catch {
-                Logger.paste.error("activateTargetAppAndPaste failed: \(error.localizedDescription)")
-                showSuccess = false
-            }
+    private func activateTargetAppAndPaste(_ target: NSRunningApplication, sessionID: UUID) async {
+        guard isCurrentSession(sessionID), !target.isTerminated, target.activate(options: []) else {
+            if isCurrentSession(sessionID) { showSuccess = false }
+            return
         }
-    }
-
-    private func activateApplication(_ target: NSRunningApplication) async throws {
-        let success = target.activate(options: [])
-
-        if !success {
-            if let bundleURL = target.bundleURL {
-                let configuration = NSWorkspace.OpenConfiguration()
-                configuration.activates = true
-
-                return try await withCheckedThrowingContinuation { continuation in
-                    NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration) { _, error in
-                        if let error = error {
-                            continuation.resume(throwing: error)
-                        } else {
-                            continuation.resume()
-                        }
-                    }
-                }
-            } else {
-                throw NSError(
-                    domain: "AudioWhisper",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to activate target application"]
-                )
+        // Activation can cross a Space asynchronously. A timeout leaves the text
+        // on the clipboard rather than treating an unrelated foreground app as success.
+        let deadline = ContinuousClock.now + .milliseconds(500)
+        while NSWorkspace.shared.frontmostApplication?.processIdentifier != target.processIdentifier {
+            guard isCurrentSession(sessionID), !target.isTerminated, ContinuousClock.now < deadline else {
+                if isCurrentSession(sessionID) { showSuccess = false }
+                return
             }
+            do { try await Task.sleep(for: .milliseconds(20)) } catch { return }
         }
-
-        await waitForApplicationActivation(target)
-    }
-
-    private func waitForApplicationActivation(_ target: NSRunningApplication) async {
-        if target.isActive { return }
-
-        // Use actor for thread-safe resume coordination
-        let coordinator = ActivationCoordinator()
-
-        // NSWorkspace posts activation notifications on its own notification
-        // center, not NotificationCenter.default — observe the correct one.
-        let workspaceCenter = NSWorkspace.shared.notificationCenter
-
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            let timeoutTask = Task {
-                try? await Task.sleep(for: .milliseconds(500))
-                let shouldResume = await coordinator.tryResume()
-                if shouldResume {
-                    continuation.resume()
-                }
-            }
-
-            let observer = workspaceCenter.addObserver(
-                forName: NSWorkspace.didActivateApplicationNotification,
-                object: nil,
-                queue: .main
-            ) { notification in
-                if let activatedApp = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                   activatedApp.processIdentifier == target.processIdentifier {
-                    timeoutTask.cancel()
-                    Task {
-                        let shouldResume = await coordinator.tryResume()
-                        if shouldResume {
-                            continuation.resume()
-                        }
-                    }
-                }
-            }
-
-            // Clean up observer after a delay
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(1))
-                workspaceCenter.removeObserver(observer)
-            }
+        guard isCurrentSession(sessionID) else { return }
+        await pasteManager.pasteWithCompletionHandler(expectedTargetPID: target.processIdentifier) { [weak self] in
+            self?.isCurrentSession(sessionID) == true
         }
+        if isCurrentSession(sessionID) { showSuccess = false }
     }
 
     // MARK: - Notification Observers
@@ -244,7 +161,8 @@ extension RecordingViewModel {
         // Transcription progress
         let progressTask = Task { @MainActor [weak self] in
             for await notification in NotificationCenter.default.notifications(named: .transcriptionProgress) {
-                if let message = notification.object as? String {
+                if self?.acceptProgress(notification) == true,
+                   let message = notification.object as? String {
                     self?.progressMessage = message
                 }
             }
@@ -254,7 +172,8 @@ extension RecordingViewModel {
         // Target app stored
         let targetAppTask = Task { @MainActor [weak self] in
             for await notification in NotificationCenter.default.notifications(named: .targetAppStored) {
-                if let app = notification.object as? NSRunningApplication {
+                if self?.isProcessing == false, self?.capturedRecordingSettings == nil,
+                   let app = notification.object as? NSRunningApplication {
                     self?.targetAppForPaste = app
                     if let info = SourceAppInfo.from(app: app) {
                         self?.lastSourceAppInfo = info
@@ -279,18 +198,5 @@ extension RecordingViewModel {
             task.cancel()
         }
         notificationTasks.removeAll()
-    }
-}
-
-// MARK: - Activation Coordinator
-
-/// Actor to safely coordinate single resume of continuation
-private actor ActivationCoordinator {
-    private var resumed = false
-
-    func tryResume() -> Bool {
-        if resumed { return false }
-        resumed = true
-        return true
     }
 }

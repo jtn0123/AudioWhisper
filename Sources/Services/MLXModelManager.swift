@@ -7,9 +7,17 @@ internal struct MLXModel: Identifiable, Equatable {
     let repo: String
     let estimatedSize: String
     let description: String
+    let name: String?
+
+    init(repo: String, estimatedSize: String, description: String, name: String? = nil) {
+        self.repo = repo
+        self.estimatedSize = estimatedSize
+        self.description = description
+        self.name = name
+    }
 
     var displayName: String {
-        repo.split(separator: "/").last.map(String.init) ?? repo
+        name ?? repo.split(separator: "/").last.map(String.init) ?? repo
     }
 }
 
@@ -22,6 +30,11 @@ internal final class MLXModelManager {
     var modelSizes: [String: Int64] = [:]
     var isDownloading: [String: Bool] = [:]
     var downloadProgress: [String: String] = [:]
+    var downloadFraction: [String: Double] = [:]
+    var activeDownloads: [String: Process] = [:]
+    var cancelledDownloads: Set<String> = []
+    let prepareDownloadPython: () async throws -> URL
+    let downloadProcessFactory: ((String, String) -> Process?)?
     var totalCacheSize: Int64 = 0
 
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLXModelManager")
@@ -37,39 +50,44 @@ internal final class MLXModelManager {
         // allowing future model repos that aren't yet in the enum. For validated
         // access, use `AppDefaults.selectedParakeetModel`.
         AppDefaults.defaults.string(forKey: AppDefaults.Key.selectedParakeetModel.rawValue)
-            ?? ParakeetModel.v3Multilingual.rawValue
+            ?? ParakeetModel.v2English.rawValue
     }
 
-    /// Curated correction models, ordered fastest → highest quality.
-    ///
-    /// Chosen from a measured benchmark (2026-07-31, seven candidates against
-    /// the app's own prompts and safeMerge guard — see `.claude/bench/`), not
-    /// from release dates. Newer was emphatically not better: Qwen3.5-4B and
-    /// gemma-4-e2b both scored 0/6 because they emit reasoning in formats the
-    /// stripper did not recognise, and even with that fixed (A1) they leave
-    /// filler words in every case.
-    ///
-    /// Retired in that pass:
-    ///   * Phi-3.5-mini — 1/6 accepted. Labelled "Premium quality" while
-    ///     producing multiple alternative answers per request, which safeMerge
-    ///     rejects. Actively misleading.
-    ///   * Llama-3.2-1B — 0/6 homophones fixed, and the only candidate that
-    ///     dropped required technical terms.
+    /// Curated local editors, ordered from lightweight to larger models.
+    /// Qwen3.5/3.8 were compared on 64 English stress cases with thinking off
+    /// on an M5 Pro / 48 GB. See `.Codex/bench/2026-10-06-qwen-quants/`.
+    /// Estimates describe warm short edits and MLX allocation, not total app
+    /// memory or a guarantee that a larger model preserves every detail.
     static let recommendedModels = [
         MLXModel(
             repo: "mlx-community/gemma-3-1b-it-qat-4bit",
             estimatedSize: "0.8 GB",
-            description: "Fastest — 0.7s typical, but fixes fewer mistakes"
+            description: "Smallest download; fixes fewer mistakes",
+            name: "Gemma 3 · 1B · 4-bit"
         ),
         MLXModel(
             repo: "mlx-community/Qwen3-1.7B-4bit",
             estimatedSize: "1.0 GB",
-            description: "Smallest of the accurate options"
+            description: "Lightweight option for Macs with less memory",
+            name: "Qwen 3 · 1.7B · 4-bit"
         ),
         MLXModel(
             repo: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
             estimatedSize: "2.3 GB",
-            description: "Best quality, and faster than it looks"
+            description: "Fast option; about 0.2s per short edit and 3 GB model memory on M5 Pro",
+            name: "Qwen 3 · 4B · 4-bit"
+        ),
+        MLXModel(
+            repo: "mlx-community/Qwen3.5-9B-4bit",
+            estimatedSize: "6.0 GB",
+            description: "Recommended balance; about 0.4s per short edit and 6 GB model memory on M5 Pro",
+            name: "Qwen 3.5 · 9B · 4-bit"
+        ),
+        MLXModel(
+            repo: "leonsarmiento/Qwen3.8-27B-3bit-mlx",
+            estimatedSize: "12.7 GB",
+            description: "Stronger grammar results; about 1.6s per short edit and 13 GB model memory on M5 Pro",
+            name: "Qwen 3.8 · 27B · mixed 3-bit"
         )
     ]
 
@@ -98,8 +116,7 @@ internal final class MLXModelManager {
     // selected repo is resolved from `selectedParakeetModel` (see `parakeetRepo`).
 
     private convenience init() {
-        self.init(cacheDirectory: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/huggingface/hub"))
+        self.init(cacheDirectory: HuggingFaceCache.root)
         Task {
             await refreshModelList()
         }
@@ -112,8 +129,14 @@ internal final class MLXModelManager {
     /// Unlike `shared`, it does not scan the cache in the background — a scan
     /// finishing mid-test could re-add a model the test had just deleted. Call
     /// `refreshModelList()`.
-    init(cacheDirectory: URL) {
+    init(
+        cacheDirectory: URL,
+        prepareDownloadPython: @escaping () async throws -> URL = { try await UvBootstrap.ensureVenv() },
+        downloadProcessFactory: ((String, String) -> Process?)? = nil
+    ) {
         self.cacheDirectory = cacheDirectory
+        self.prepareDownloadPython = prepareDownloadPython
+        self.downloadProcessFactory = downloadProcessFactory
     }
 
     func refreshModelList() async {
@@ -170,7 +193,7 @@ internal final class MLXModelManager {
                 let mlxKeywords = ["mlx", "qwen", "llama", "phi", "mistral", "gemma", "starcoder", "parakeet"]
                 let isLikelyMLX = mlxKeywords.contains { modelName.lowercased().contains($0) }
 
-                if isLikelyMLX {
+                if isLikelyMLX, HuggingFaceCache.completeSnapshot(in: item) {
                     let size = Self.calculateDirectorySizeSync(at: item)
                     models.append((modelName, size))
                 }

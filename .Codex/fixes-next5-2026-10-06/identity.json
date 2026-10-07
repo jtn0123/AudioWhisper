@@ -1,0 +1,9 @@
+{
+  "package_code_head": "391f3dea8526b63afb6fa0bc70e0f6eecae68ec2",
+  "binary_sha256": "c62934c9aefdad5fa2700e782d50361b4e70453dd670f65255a13940cd1a1ba7",
+  "guest_matches": true,
+  "designated_requirement": "designated => identifier \"com.audiowhisper.rebuild\" and certificate leaf = H\"5bd8149edb580d16fcd20e95cc79a12782129aeb\"",
+  "leaf_sha1": "5BD8149EDB580D16FCD20E95CC79A12782129AEB",
+  "ci_test_bootstrap_head": "88d019f0afc7d054063957ab700b8bfa438d24bc",
+  "scope": "Later commits change only native-test startup/environment guards and evidence. Shipping Sources are identical."
+}

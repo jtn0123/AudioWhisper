@@ -1,0 +1,622 @@
+{
+  "reviewer": "Codex; one qualitative reviewer; not independently blinded",
+  "criteria": [
+    "Complete unambiguous repairs required by the profile.",
+    "Preserve information, roles, names, amounts, negation, uncertainty, and independent constraints.",
+    "Allow equivalent grammatical paraphrases and noninvented professional closing variants.",
+    "Terminal formatting may compress run/use prose and redundant references to an already explicit port; independent do-not constraints must remain.",
+    "No invented facts, attachments, commands, code, emojis, sender placeholders, or sign-offs.",
+    "Count malformed app-delivered punctuation as an app failure, not a model failure.",
+    "The short Chat prompt permits one casual filler; do not penalize it."
+  ],
+  "limitations": [
+    "64 handcrafted tasks; no estimate of everyday dictation failure rate.",
+    "One qualitative reviewer; model comparisons are exploratory.",
+    "Critical means a changed code token or intent, or an omitted explicit safety constraint; ordinary stylistic extras are separately counted."
+  ],
+  "reviews": {
+    "qwen3-4b/direct": {
+      "total": 64,
+      "passes": 51,
+      "critical_failures": 6,
+      "failures": {
+        "writing-2": {
+          "reason": "Changed grep -v into -d v.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-5": {
+          "reason": "Dropped await from the coding note.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-22": {
+          "reason": "Changed a request to send the URL into a statement that the speaker is sending it.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-23": {
+          "reason": "Invented an emoji despite the no-added-content instruction.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with the definite past marker yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-30": {
+          "reason": "Invented an emoji.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-31": {
+          "reason": "Invented an emoji that changes tone.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-32": {
+          "reason": "Dropped the independent instruction not to remove await.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-33": {
+          "reason": "Dropped the explicit not-3 clarification.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "5a199fde24bc7633325203991b726e8d37bf6d56a16ff6d0dcf51b54e91e4784"
+    },
+    "qwen3-4b/production": {
+      "total": 64,
+      "passes": 51,
+      "critical_failures": 6,
+      "failures": {
+        "writing-2": {
+          "reason": "Changed grep -v into -d v.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-5": {
+          "reason": "Dropped await from the coding note.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-22": {
+          "reason": "Changed a request to send the URL into a statement that the speaker is sending it.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-23": {
+          "reason": "Invented an emoji despite the no-added-content instruction.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with the definite past marker yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-30": {
+          "reason": "Invented an emoji.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-31": {
+          "reason": "Invented an emoji that changes tone.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-32": {
+          "reason": "Dropped the independent instruction not to remove await.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-33": {
+          "reason": "Dropped the explicit not-3 clarification.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "ec177346d6b9dc81278651ba2e4ac0e4c3b1516053de5815b03a1a3ead5295f7"
+    },
+    "qwen3.5-4b/direct": {
+      "total": 64,
+      "passes": 54,
+      "critical_failures": 3,
+      "failures": {
+        "writing-0": {
+          "reason": "Retained filler um despite the Terminal prompt.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-2": {
+          "reason": "Did not turn the spoken pipe into the requested | syntax.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-5": {
+          "reason": "Repaired a sink to sink rather than async.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-14": {
+          "reason": "Answered the reminder request as an assistant rather than editing the request.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-20": {
+          "reason": "Model returned balanced quotes; the app sanitizer removed the closing quote.",
+          "component": "app",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "4c6a3f34d34b6e06d9831e2e3b2e4070ebb1e235bfd990de4e6060839702d6d4"
+    },
+    "qwen3.5-4b/production": {
+      "total": 64,
+      "passes": 55,
+      "critical_failures": 3,
+      "failures": {
+        "writing-0": {
+          "reason": "Retained filler um despite the Terminal prompt.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-2": {
+          "reason": "Did not turn the spoken pipe into the requested | syntax.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-14": {
+          "reason": "Answered the reminder request as an assistant rather than editing the request.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-20": {
+          "reason": "Model returned balanced quotes; the app sanitizer removed the closing quote.",
+          "component": "app",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "5edca3f3436854baaec1308902a96db70a8ba41997f42b2be82ab778317946c4"
+    },
+    "qwen3.5-9b/direct": {
+      "total": 64,
+      "passes": 56,
+      "critical_failures": 2,
+      "failures": {
+        "writing-5": {
+          "reason": "Did not repair a sink to async.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-34": {
+          "reason": "Dropped the independent instruction not to replace -v with -d.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "90f396007f7440b31b37b3ef4b99e70e31470f00ad42edcc574eb227a302ac44"
+    },
+    "qwen3.5-9b/production": {
+      "total": 64,
+      "passes": 53,
+      "critical_failures": 3,
+      "failures": {
+        "writing-11": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-34": {
+          "reason": "Dropped the independent instruction not to replace -v with -d.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-25": {
+          "reason": "Dropped the request to document our thinking process.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-20": {
+          "reason": "Model returned balanced quotation marks around banana; app sanitizer removed the closing quote.",
+          "component": "app",
+          "critical": false
+        },
+        "qwen-28": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        }
+      },
+      "outputs_sha256": "9a8001d80a3b876098d1008836da14634b051a6467d067310fb5af25512b2681"
+    },
+    "qwen3.8-27b/direct": {
+      "total": 64,
+      "passes": 58,
+      "critical_failures": 1,
+      "failures": {
+        "writing-11": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-20": {
+          "reason": "Model returned balanced nested quotes; app sanitizer removed closing punctuation.",
+          "component": "app",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        }
+      },
+      "outputs_sha256": "d0ba8a22b389112cd4693b5cd06832b36a4485c8cd1081fa84eed43bce542b03"
+    },
+    "qwen3-4b/strict": {
+      "total": 64,
+      "passes": 57,
+      "critical_failures": 4,
+      "failures": {
+        "writing-2": {
+          "reason": "Changed grep -v into -d v.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-31": {
+          "reason": "Invented an emoji that changes tone.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-32": {
+          "reason": "Invented a code comment and dropped the independent instruction not to remove await.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-33": {
+          "reason": "Dropped the explicit not-3 clarification.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "a7f8000ba2fa702cfff7682a6e70659ff7c3867d1311a794bd89d56beb3f5539"
+    },
+    "qwen3.5-4b/strict": {
+      "total": 64,
+      "passes": 51,
+      "critical_failures": 4,
+      "failures": {
+        "writing-0": {
+          "reason": "Retained filler um despite the Terminal prompt.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-2": {
+          "reason": "Did not turn the spoken pipe into the requested | syntax.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-5": {
+          "reason": "Repaired a sink to sink rather than async.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off and sender placeholder.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-20": {
+          "reason": "Model returned balanced quotes; the app sanitizer removed the closing quote.",
+          "component": "app",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-16": {
+          "reason": "Dropped the editor qualifier from the recipient.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-17": {
+          "reason": "Invented a financial projection and changed an instruction to include literal text into a claim about a draft note.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        }
+      },
+      "outputs_sha256": "fa1b7291c786aacf78501f8d3fda28140d8be372f1c282d3c241f57d23a3321e"
+    },
+    "qwen3.5-9b/strict": {
+      "total": 64,
+      "passes": 55,
+      "critical_failures": 2,
+      "failures": {
+        "writing-5": {
+          "reason": "Did not repair a sink to async.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-11": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "writing-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-2": {
+          "reason": "Present-perfect tense remains incompatible with yesterday.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-27": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-29": {
+          "reason": "Invented a sign-off.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-34": {
+          "reason": "Dropped the independent instruction not to replace -v with -d.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-35": {
+          "reason": "Dropped the independent instruction not to append another command.",
+          "component": "model",
+          "critical": true
+        },
+        "writing-2": {
+          "reason": "Did not turn spoken pipe to less into the requested | syntax.",
+          "component": "model",
+          "critical": false
+        }
+      },
+      "outputs_sha256": "76b2d95270f5ca83f4099184283f2dc761d293412081a2d43d7ed693bf6f6989"
+    },
+    "qwen3.8-27b/strict": {
+      "total": 64,
+      "passes": 60,
+      "critical_failures": 2,
+      "failures": {
+        "writing-15": {
+          "reason": "Dropped the dictated do-not-remove instruction.",
+          "component": "model",
+          "critical": true
+        },
+        "qwen-20": {
+          "reason": "Model returned balanced quotes; app sanitizer removed the closing double quote.",
+          "component": "app",
+          "critical": false
+        },
+        "qwen-17": {
+          "reason": "Changed an instruction to include the literal label into a labeled instruction, rather than preserving both inclusion requests.",
+          "component": "model",
+          "critical": false
+        },
+        "qwen-34": {
+          "reason": "Omitted the explicit constraint not to replace -v with -d.",
+          "component": "model",
+          "critical": true
+        }
+      },
+      "outputs_sha256": "f031b19297339210c1d55702a751eab87e3a88e4100e2d57f6cee90d91eb4a6c"
+    }
+  }
+}

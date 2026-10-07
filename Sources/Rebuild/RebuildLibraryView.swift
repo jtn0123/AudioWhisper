@@ -1,0 +1,260 @@
+import AppKit
+import SwiftUI
+import UniformTypeIdentifiers
+
+struct RebuildLibraryView: View {
+    init(history: DataManagerProtocol = DataManager.shared) {
+        self._library = State(initialValue: RebuildLibraryState(history: history))
+    }
+
+    init(state: RebuildLibraryState) {
+        self._library = State(initialValue: state)
+    }
+
+    private struct LoadRequest: Hashable {
+        let search: String
+        let enabled: Bool
+        let revision: UInt64
+    }
+    @AppDefault(\.transcriptionHistoryEnabled) private var historyEnabled
+    @State private var library: RebuildLibraryState
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if !historyEnabled {
+                historyOff
+            } else {
+                toolbar
+                if library.exporting { exportProgress }
+                if let exportStatus = library.exportStatus {
+                    RebuildCallout(tone: exportStatus.hasPrefix("Export cancelled") ? .info : .success, message: exportStatus)
+                }
+                if let error = library.error {
+                    RebuildCallout(tone: .error, message: error) {
+                        Button("Try again") { Task { await load(reset: true) } }.disabled(library.loading)
+                    }
+                }
+                content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .padding(.horizontal, 28).padding(.vertical, 16)
+        .task(id: LoadRequest(
+            search: library.search, enabled: historyEnabled, revision: library.history.historyRevision.value)
+        ) {
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+                await load(reset: true)
+            } catch {}
+        }
+        .confirmationDialog("Delete every saved transcript permanently?", isPresented: $library.confirmClear) {
+            Button("Clear library", role: .destructive) {
+                Task { await library.clear() }
+            }
+        }
+        .confirmationDialog("Delete this transcript permanently?", isPresented: $library.confirmDelete) {
+            Button("Delete transcript", role: .destructive) {
+                Task { await library.deletePending() }
+            }
+        }
+    }
+
+    // MARK: Parts
+
+    private var historyOff: some View {
+        ContentUnavailableView {
+            Label("Your library is off", systemImage: "text.book.closed")
+        } description: {
+            Text("Recordings still become text and reach your clipboard. Turn on saving to keep future transcripts here.")
+        } actions: {
+            Button("Save future transcripts") { historyEnabled = true }.buttonStyle(.borderedProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 10) {
+            TextField("Search transcripts", text: $library.search, prompt: Text("Search transcripts"))
+                .textFieldStyle(.roundedBorder).frame(maxWidth: 340)
+                .accessibilityLabel("Search transcripts")
+            if library.loading && library.loaded { ProgressView().controlSize(.small) }
+            Spacer(minLength: 8)
+            if library.loaded && !library.records.isEmpty {
+                Text(countText).font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText).lineLimit(1)
+            }
+            Button(library.exporting ? "Exporting…" : "Export…") { chooseExport() }
+                .disabled(library.loading || library.exporting)
+                .help("Save every transcript to a plain text file")
+            Menu {
+                Button("Clear library…", role: .destructive) { library.confirmClear = true }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .disabled(library.loading || library.exporting)
+            .help("More library actions")
+            .accessibilityLabel("More library actions")
+        }
+    }
+
+    private var countText: String {
+        let count = library.hasMore ? "\(library.records.count)+" : "\(library.records.count)"
+        let trimmed = library.search.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return library.records.count == 1 ? "1 match" : "\(count) matches" }
+        return library.records.count == 1 ? "1 transcript" : "\(count) transcripts"
+    }
+
+    private var exportProgress: some View {
+        HStack(spacing: 10) {
+            ProgressView().controlSize(.small)
+            Text("Exported \(library.exportedCount) transcripts…").font(.system(size: 12)).monospacedDigit()
+            Spacer()
+            Button("Cancel export") { library.cancelExport() }
+        }.rebuildCard(padding: 10)
+    }
+
+    @ViewBuilder private var content: some View {
+        if !library.loaded && library.records.isEmpty && library.error == nil {
+            ProgressView("Loading your library…").controlSize(.small)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if library.records.isEmpty && !library.loading {
+            if library.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                ContentUnavailableView(
+                    "Room for your next idea", systemImage: "text.book.closed",
+                    description: Text("Saved transcripts appear here after your next recording."))
+            } else {
+                ContentUnavailableView {
+                    Label("No matching transcripts", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Try another search, or clear it to see your saved transcripts.")
+                } actions: {
+                    Button("Clear search") { library.search = "" }
+                }
+            }
+        } else {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    ForEach(library.records) { record in
+                        RebuildLibraryRow(
+                            record: record, deleteDisabled: library.exporting,
+                            expanded: Binding(
+                                get: { library.expanded.contains(record.id) },
+                                set: { if $0 { library.expanded.insert(record.id) } else { library.expanded.remove(record.id) } }),
+                            showOriginal: Binding(
+                                get: { library.showingOriginal.contains(record.id) },
+                                set: {
+                                    if $0 { library.showingOriginal.insert(record.id) } else { library.showingOriginal.remove(record.id) }
+                                })) {
+                            library.pendingDelete = record
+                            library.confirmDelete = true
+                        }
+                    }
+                    if library.hasMore {
+                        Button("Load more") { Task { await load(reset: false) } }.disabled(library.loading)
+                            .frame(maxWidth: .infinity)
+                    }
+                }.padding(.bottom, 8)
+            }
+        }
+    }
+
+    /// Whether a saved transcript starts collapsed behind Show more. Previews
+    /// that don't collapse are bounded by this length, so rows stay small.
+    static func collapsesPreview(_ text: String) -> Bool {
+        text.count > 360 || text.filter { $0 == "\n" }.count >= 5
+    }
+
+    // MARK: Loading and export
+
+    private func load(reset: Bool) async {
+        await library.load(reset: reset, enabled: historyEnabled)
+    }
+
+    private func chooseExport() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType.plainText]
+        panel.nameFieldStringValue = "AudioWhisper transcripts.txt"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            library.startExport(to: url)
+        }
+    }
+}
+
+/// One saved transcript: metadata, a bounded preview that can expand, and
+/// the original words when writing cleanup changed them.
+private struct RebuildLibraryRow: View {
+    let record: TranscriptionRecord
+    let deleteDisabled: Bool
+    @Binding var expanded: Bool
+    @Binding var showOriginal: Bool
+    let onDelete: () -> Void
+
+    private var dateText: String { record.date.formatted(date: .abbreviated, time: .shortened) }
+    private var original: String? { record.originalText.flatMap { $0 == record.text ? nil : $0 } }
+    private var isLong: Bool { RebuildLibraryView.collapsesPreview(record.text) }
+
+    private var providerName: String {
+        switch TranscriptionProvider(rawValue: record.provider) {
+        case .local: return "Whisper"
+        case .parakeet: return "Parakeet"
+        case nil: return record.provider
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text(record.date, format: .dateTime.month().day().hour().minute())
+                Text("·")
+                Text("\(record.wordCount) words")
+                Text("·")
+                Text(providerName)
+                if original != nil {
+                    Text("·")
+                    Text("Cleaned up").fontWeight(.medium).foregroundStyle(RebuildTheme.accentText)
+                }
+            }
+            .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+            .accessibilityElement(children: .combine)
+            Text(record.text).font(.system(size: 13.5)).lineSpacing(2).textSelection(.enabled)
+                // Only cap rows that offer Show more; a short preview of wide
+                // characters may wrap past five lines and must stay readable.
+                .lineLimit(isLong && !expanded ? 5 : nil)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            actions
+            if showOriginal, let original { originalBlock(original) }
+        }.rebuildCard(padding: 14)
+    }
+
+    private var actions: some View {
+        HStack(spacing: 10) {
+            Button("Copy") { PasteManager.copyToClipboard(record.text) }
+                .accessibilityLabel("Copy transcript from \(dateText)")
+            if isLong {
+                Button(expanded ? "Show less" : "Show more") { expanded.toggle() }.buttonStyle(.rebuildLink)
+            }
+            if original != nil {
+                Button(showOriginal ? "Hide original" : "Original transcript") { showOriginal.toggle() }
+                    .buttonStyle(.rebuildLink)
+                    .accessibilityLabel(showOriginal ? "Hide original transcript" : "Show original transcript")
+            }
+            Spacer()
+            Button("Delete", role: .destructive, action: onDelete)
+                .disabled(deleteDisabled)
+                .accessibilityLabel("Delete transcript from \(dateText)")
+        }
+        .font(.system(size: 12))
+        .controlSize(.small)
+    }
+
+    private func originalBlock(_ original: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Original transcript").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(RebuildTheme.secondaryText)
+            Text(original).font(.system(size: 13.5)).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Copy original") { PasteManager.copyToClipboard(original) }.controlSize(.small)
+        }
+        .padding(10)
+        .background(RebuildTheme.surfaceSunken, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}

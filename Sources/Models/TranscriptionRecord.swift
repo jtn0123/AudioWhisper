@@ -9,6 +9,7 @@ import SwiftData
 internal final class TranscriptionRecord {
     @Attribute(.unique) var id: UUID
     var text: String
+    var originalText: String?
     var date: Date
     var provider: String // TranscriptionProvider.rawValue
     var duration: TimeInterval?
@@ -30,10 +31,12 @@ internal final class TranscriptionRecord {
         characterCount: Int = 0,
         sourceAppBundleId: String? = nil,
         sourceAppName: String? = nil,
-        sourceAppIconData: Data? = nil
+        sourceAppIconData: Data? = nil,
+        originalText: String? = nil
     ) {
         self.id = UUID()
         self.text = text
+        self.originalText = originalText
         self.date = Date()
         self.provider = provider.rawValue
         self.duration = duration

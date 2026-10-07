@@ -1,0 +1,56 @@
+{
+  "recorded": "2026-10-03",
+  "platform": "macOS arm64",
+  "units": "bytes and seconds",
+  "observations": [
+    {
+      "stage": "baseline",
+      "seconds": null,
+      "rss_bytes": 680869888,
+      "mlx_active_bytes": 0,
+      "mlx_cache_bytes": 0,
+      "cache_entries": 0
+    },
+    {
+      "stage": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+      "seconds": 1.21657766700082,
+      "rss_bytes": 3107553280,
+      "mlx_active_bytes": 2264693768,
+      "mlx_cache_bytes": 4660,
+      "cache_entries": 1
+    },
+    {
+      "stage": "mlx-community/gemma-3-1b-it-qat-4bit",
+      "seconds": 1.2934737920004409,
+      "rss_bytes": 1248559104,
+      "mlx_active_bytes": 735852808,
+      "mlx_cache_bytes": 3604,
+      "cache_entries": 1
+    },
+    {
+      "stage": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+      "seconds": 0.49052862499956973,
+      "rss_bytes": 2696675328,
+      "mlx_active_bytes": 2264693768,
+      "mlx_cache_bytes": 4660,
+      "cache_entries": 1
+    },
+    {
+      "stage": "mlx-community/gemma-3-1b-it-qat-4bit",
+      "seconds": 1.1175597080000443,
+      "rss_bytes": 1724825600,
+      "mlx_active_bytes": 735852808,
+      "mlx_cache_bytes": 3604,
+      "cache_entries": 1
+    },
+    {
+      "stage": "released",
+      "seconds": null,
+      "rss_bytes": 801275904,
+      "mlx_active_bytes": 8,
+      "mlx_cache_bytes": 0,
+      "cache_entries": 0
+    }
+  ],
+  "hardware": "Apple M5 Pro"
+}

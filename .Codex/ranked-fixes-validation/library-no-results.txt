@@ -1,0 +1,29 @@
+Window: "AudioWhisper Rebuild", App: AudioWhisper Rebuild.
+0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
+	1 container
+		2 image Description: Waveform In A Filled Circle, ID: waveform.circle.fill
+		3 text LIBRARY On your Mac Audio
+Whisper Keep the useful words. REBUILD / NATIVE V2 A searchable library, stored only on this Mac. Saving is your choice.
+		4 button Record
+		5 text field (settable) Value: no-match-native-acceptance-20261004, Placeholder: Search your transcripts
+		6 button Export…
+		7 button Clear library…
+		8 button (selected) Library
+		9 button Models & setup
+		10 text No matching transcripts
+		11 button Writing profiles
+		12 text Try another search, or clear it to see your saved transcripts.
+		13 button Preferences
+		14 button Clear search
+		15 text Allow microphone access Private by default.
+No cloud transcription.
+	16 text AudioWhisper Rebuild
+	17 menu button Window sharing
+18 menu bar
+	19 AudioWhisper Rebuild
+	20 Edit
+	21 View
+	22 Window
+	23 Help
+
+The focused UI element is 5 text field (settable) Value: no-match-native-acceptance-20261004, Placeholder: Search your transcripts

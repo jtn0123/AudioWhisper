@@ -11,9 +11,8 @@ internal struct ModelVerificationResult: Equatable {
 
 /// Collects the last useful message from a verification subprocess's streams.
 ///
-/// Pure and synchronous so it is testable without spawning anything — the part
-/// of verification that can actually be wrong is the parsing and the
-/// success/failure wording, not the `Process` plumbing.
+/// Pure and synchronous so parsing and success/failure wording can be tested
+/// independently of subprocess execution.
 internal struct VerificationOutputCollector {
     private(set) var lastStdoutMessage = ""
     private(set) var lastStderrMessage = ""
@@ -115,70 +114,71 @@ internal enum ModelVerificationService {
         // Arguments are passed as argv entries, never interpolated into a shell
         // or into Python source, so a hostile repo name cannot break out.
         process.arguments = [scriptURL.path] + arguments
+        process.environment = MLDaemonManager.daemonEnvironment()
 
         let out = Pipe()
         let err = Pipe()
         process.standardOutput = out
         process.standardError = err
 
-        let collector = CollectorBox()
-        out.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
-            collector.ingestStdout(text)
-        }
-        err.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
-            collector.ingestStderr(text)
-        }
-
+        var stdoutTask: Task<Data, Never>?
+        var stderrTask: Task<Data, Never>?
+        var timeoutTask: Task<Void, Error>?
         defer {
-            // Clear before returning so a late callback cannot fire against a
-            // finished run, and so the handles do not leak.
-            out.fileHandleForReading.readabilityHandler = nil
-            err.fileHandleForReading.readabilityHandler = nil
+            timeoutTask?.cancel()
+            process.terminationHandler = nil
+            try? out.fileHandleForReading.close()
+            try? err.fileHandleForReading.close()
+            try? out.fileHandleForWriting.close()
+            try? err.fileHandleForWriting.close()
         }
 
-        try process.run()
+        let exitStatus: Int32 = try await withCheckedThrowingContinuation { continuation in
+            // Register before launch so even an immediate exit is observed.
+            // Foundation's cross-thread waitUntilExit can remain blocked after
+            // a fast child exits; the termination handler avoids that wait.
+            process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
+            do {
+                try process.run()
 
-        let timeoutTask = Task {
-            try await Task.sleep(for: timeout)
-            if process.isRunning {
-                logger.error("Verification of \(scriptName) timed out; terminating")
-                process.terminate()
+                // The child owns its duplicated write descriptors after launch.
+                // Release the parent's copies so the readers can reach EOF.
+                try? out.fileHandleForWriting.close()
+                try? err.fileHandleForWriting.close()
+
+                // Drain concurrently while the child runs so full pipes cannot
+                // deadlock it. Decode complete output after exit and stream EOF.
+                stdoutTask = Task.detached { out.fileHandleForReading.readDataToEndOfFile() }
+                stderrTask = Task.detached { err.fileHandleForReading.readDataToEndOfFile() }
+
+                timeoutTask = Task {
+                    try await Task.sleep(for: timeout)
+                    if process.isRunning {
+                        logger.error("Verification of \(scriptName) timed out; terminating")
+                        process.terminate()
+                    }
+                }
+            } catch {
+                // A process that never launched cannot deliver termination.
+                process.terminationHandler = nil
+                continuation.resume(throwing: error)
             }
         }
-        await Task.detached { process.waitUntilExit() }.value
-        timeoutTask.cancel()
+        timeoutTask?.cancel()
 
-        return collector.snapshot().result(
-            terminationStatus: process.terminationStatus,
+        let stdoutData = await stdoutTask?.value ?? Data()
+        let stderrData = await stderrTask?.value ?? Data()
+        var collector = VerificationOutputCollector()
+        if let stdout = String(data: stdoutData, encoding: .utf8) {
+            collector.ingestStdout(stdout)
+        }
+        if let stderr = String(data: stderrData, encoding: .utf8) {
+            collector.ingestStderr(stderr)
+        }
+
+        return collector.result(
+            terminationStatus: exitStatus,
             successFallback: successFallback
         )
-    }
-
-    /// Lock-guarded box so the pipe handlers — which fire on arbitrary queues —
-    /// can feed the collector without data races. Replaces the two private
-    /// `actor VerificationMessageStore` copies, whose `Task { await … }` hops
-    /// meant a late chunk could land after the result had already been read.
-    private final class CollectorBox: @unchecked Sendable {
-        private let lock = NSLock()
-        private var collector = VerificationOutputCollector()
-
-        func ingestStdout(_ text: String) {
-            lock.lock(); defer { lock.unlock() }
-            collector.ingestStdout(text)
-        }
-
-        func ingestStderr(_ text: String) {
-            lock.lock(); defer { lock.unlock() }
-            collector.ingestStderr(text)
-        }
-
-        func snapshot() -> VerificationOutputCollector {
-            lock.lock(); defer { lock.unlock() }
-            return collector
-        }
     }
 }

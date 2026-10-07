@@ -358,26 +358,3 @@ class UtilityTests: IsolatedXCTestCase {
         XCTAssertEqual(unwrappedNil, "default")
     }
 }
-
-// MARK: - Test Extensions and Helpers
-
-extension UtilityTests {
-    private func createTemporaryFile(content: String) -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let filename = tempDir.appendingPathComponent("temp_\(UUID().uuidString).txt")
-        
-        guard let data = content.data(using: .utf8) else {
-            fatalError("Failed to create test data from content")
-        }
-        do {
-            try data.write(to: filename)
-        } catch {
-            fatalError("Failed to write test file: \(error)")
-        }
-        return filename
-    }
-    
-    private func cleanupTemporaryFile(_ url: URL) {
-        try? FileManager.default.removeItem(at: url)
-    }
-}

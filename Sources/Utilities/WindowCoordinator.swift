@@ -18,4 +18,9 @@ internal final class WindowCoordinator: ObservableObject {
         }
         DashboardWindowManager.shared.showDashboardWindow()
     }
+
+    @MainActor
+    func presentRecordingSetup() {
+        DashboardWindowManager.shared.showRecordingSetup()
+    }
 }

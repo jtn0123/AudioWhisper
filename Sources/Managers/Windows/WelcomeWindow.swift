@@ -14,7 +14,7 @@ internal enum WelcomeWindow {
 
     /// Shows the welcome window, or brings it forward if it is already open.
     /// "Get started" closes it and posts `.welcomeCompleted`, which opens the
-    /// Dashboard.
+    /// recording checklist.
     static func show() {
         if let window {
             StandardWindow.present(window)
@@ -41,7 +41,7 @@ internal enum WelcomeWindow {
         }
     }
 
-    /// "Get started": records the welcome as seen, opens the Dashboard and
+    /// "Get started": records the welcome as seen, opens recording setup and
     /// closes the welcome window.
     static func finish() {
         // Only a first run has no provider yet. "Help / Welcome" reopens this
@@ -53,7 +53,7 @@ internal enum WelcomeWindow {
         }
         markSeen()
 
-        // AppDelegate opens the Dashboard on this.
+        // AppDelegate opens recording setup on this.
         NotificationCenter.default.post(name: .welcomeCompleted, object: nil)
         window?.close()
     }

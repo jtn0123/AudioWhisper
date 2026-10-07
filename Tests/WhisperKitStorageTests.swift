@@ -8,7 +8,7 @@ final class WhisperKitStorageTests: XCTestCase {
     func testStorageDirectoryReturnsValidPath() {
         let dir = WhisperKitStorage.storageDirectory()
         XCTAssertNotNil(dir)
-        XCTAssertTrue(dir?.path.contains("huggingface") ?? false)
+        XCTAssertTrue(dir?.path.contains("Application Support") ?? false)
         XCTAssertTrue(dir?.path.contains("whisperkit") ?? false)
     }
 
@@ -17,7 +17,8 @@ final class WhisperKitStorageTests: XCTestCase {
         XCTAssertNotNil(dir)
 
         let path = dir?.path ?? ""
-        XCTAssertTrue(path.contains("huggingface/models"))
+        XCTAssertTrue(path.contains("Application Support/AudioWhisper Rebuild/Whisper/models"))
+        XCTAssertFalse(path.contains("/Documents/"))
         XCTAssertTrue(path.contains("argmaxinc"))
         XCTAssertTrue(path.contains("whisperkit-coreml"))
     }

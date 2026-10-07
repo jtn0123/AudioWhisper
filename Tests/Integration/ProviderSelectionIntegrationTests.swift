@@ -27,26 +27,6 @@ final class ProviderSelectionIntegrationTests: IsolatedXCTestCase {
         try await super.tearDown()
     }
 
-    // MARK: - Helper Methods
-
-    private func createTempAudioFile() -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let audioFile = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).m4a")
-        // Create minimal audio-like data (ftyp header)
-        let data = Data([
-            0x00, 0x00, 0x00, 0x1C, // Size
-            0x66, 0x74, 0x79, 0x70, // "ftyp"
-            0x4D, 0x34, 0x41, 0x20, // "M4A "
-            0x00, 0x00, 0x00, 0x00
-        ])
-        FileManager.default.createFile(atPath: audioFile.path, contents: data, attributes: nil)
-        return audioFile
-    }
-
-    private func cleanupTempFile(_ url: URL) {
-        try? FileManager.default.removeItem(at: url)
-    }
-
     // MARK: - Provider Enum Tests
 
     func testAllProvidersHaveDisplayNames() {

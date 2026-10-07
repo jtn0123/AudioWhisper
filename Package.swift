@@ -8,18 +8,19 @@ let package = Package(
         .macOS(.v14)
     ],
     dependencies: [
-        // Was pinned below 2.0 on the belief that 2.x needed Swift 6 LANGUAGE
-        // MODE, which the universal release build compiles as Swift 5. Retested
-        // on 3.0.1: that is not the constraint. 3.x only isolates its own API to
-        // the main actor, which callers satisfy with @MainActor — no language
-        // mode change required. The universal arm64+x86_64 release build passes.
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.0.0"),
+        // 3.x requires the Swift 6.2 toolchain and main-actor callers, but does
+        // not require changing this package's Swift language mode. 3.1 fixes
+        // registered-shortcut recording and function keys while menus are open.
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
         // WhisperKit graduated to 1.0 and moved to the Argmax Open-Source SDK
         // repo. The package still vends a `WhisperKit` library product, so the
         // import sites are unchanged; only the URL and version move. The old
         // pin was `.upToNextMinor(from: "0.15.0")`, which capped us at 0.15.x
         // and silently skipped 0.16, 0.17, 0.18 and 1.0.
-        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.0.0")
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift", from: "1.1.0"),
+        // Test-only semantic assertions on actual SwiftUI controls. No native
+        // Accessibility tree or permission grant is needed by these fixtures.
+        .package(url: "https://github.com/nalexn/ViewInspector", exact: "0.10.5")
     ],
     targets: [
         .executableTarget(
@@ -43,9 +44,12 @@ let package = Package(
         ),
         .testTarget(
             name: "AudioWhisperTests",
-            dependencies: ["AudioWhisper"],
+            dependencies: [
+                "AudioWhisper",
+                .product(name: "ViewInspector", package: "ViewInspector")
+            ],
             path: "Tests",
-            exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "test_rpc.py", "test_verify_scripts.py", "__Snapshots__"],
+            exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "test_rpc.py", "test_verify_scripts.py", "test_coverage_artifacts.py", "test_analyze_gate.py", "test_install_rebuild.py", "test_coverage_gate.py", "test_parakeet.py", "__pycache__", "__Snapshots__"],
             resources: [
                 .copy("Resources")
             ]

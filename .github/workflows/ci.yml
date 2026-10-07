@@ -8,6 +8,7 @@ env:
   # mypy adds checks in minor releases, so an unpinned upgrade would fail the
   # build for nobody's mistake.
   MYPY_VERSION: "1.20.0"
+  COVERAGE_VERSION: "7.16.1"
 
 on:
   push:
@@ -22,6 +23,7 @@ on:
       - 'grade-fixes-**'
       - 'fix/**'
       - 'feat/**'
+      - 'rebuild/**'
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
@@ -143,17 +145,37 @@ jobs:
           # threshold above the real number only stays green by being broken.
           # Raise this as coverage improves; never lower it to make CI pass.
           #
-          # 27 is CI's measured baseline, NOT a local one. This runner reports
-          # ~0.5pp lower than a local machine — 27.86% (9601/34461) here against
-          # 28.35% (9748/34390) locally — because several tests skip on
-          # environment: "WhisperKit storage directory unavailable", "Both
-          # Parakeet models appear cached locally", "A real model directory
-          # exists". A dev box with models cached runs a different set than a
-          # clean runner does.
-          #
-          # So measure HERE before moving this number. Setting it from a local
-          # run is what made the first attempt at this gate fail.
-          python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 27
+          # Clean macOS CI run 37583653445 measured 40.57% Sources-only coverage
+          # (14870/36657 lines, 190 files) after removing app profiles. The 40%
+          # floor leaves 0.57pp for environment-gated cases, not the former 13pp gap.
+          python3 scripts/coverage-gate.py "$COV_JSON" "$PWD" 40
+
+
+      - name: Export Swift coverage from the tested build
+        run: |
+          set -euo pipefail
+          COV_JSON=$(swift test --show-codecov-path)
+          PROFDATA="$(dirname "$COV_JSON")/default.profdata"
+          # SwiftPM's native backend calls it AudioWhisperPackageTests;
+          # XCBuild calls it AudioWhisperTests. Resolve the actual single bundle.
+          BIN=$(python3 scripts/coverage-test-binary.py "$(swift build --show-bin-path)")
+          test -s "$PROFDATA"
+          test -f "$BIN"
+          xcrun llvm-cov export -format=lcov "$BIN" -instr-profile "$PROFDATA" \
+            --ignore-filename-regex='(\.build|/checkouts/|Tests/)' > coverage.lcov
+          python3 scripts/lcov-to-sonar.py coverage.lcov sonar-coverage.xml "$PWD"
+          python3 scripts/coverage-artifact.py create swift sonar-coverage.xml \
+            --commit "$(git rev-parse HEAD)" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Upload tested Swift coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-coverage-${{ github.sha }}
+          path: |
+            sonar-coverage.xml
+            sonar-coverage.xml.manifest.json
+          if-no-files-found: error
+          retention-days: 7
 
   lint:
     runs-on: macos-15
@@ -268,7 +290,7 @@ jobs:
           # per-module so this runs against a bare checkout in seconds. mypy
           # itself goes in a throwaway venv: PEP 668 marks the runner's Homebrew
           # python as externally managed, so a bare `pip install` is refused
-          # (same reason as the coverage venv in sonarcloud.yml).
+          # (coverage collection uses the same venv below).
           set -euo pipefail
           python3 -m venv .mypy-venv
           .mypy-venv/bin/pip install --quiet --disable-pip-version-check "mypy==${MYPY_VERSION}"
@@ -299,10 +321,22 @@ jobs:
           # verify_mlx.py (the Settings "Verify" buttons) against fake model
           # libraries: offline hit, pinned download on a miss, and each error.
           set -e
-          python3 Tests/test_correction_sanitize.py
-          python3 Tests/test_hub.py
-          python3 Tests/test_rpc.py
-          python3 Tests/test_verify_scripts.py
+          .mypy-venv/bin/pip install --quiet --disable-pip-version-check "coverage==${COVERAGE_VERSION}" "tqdm==4.67.1"
+          .mypy-venv/bin/python -m coverage run --source=Sources -m unittest discover -s Tests -p 'test_*.py'
+          .mypy-venv/bin/python -m coverage xml -o coverage-python.xml
+          python3 -m unittest scripts/test_unattended_acceptance.py
+          python3 scripts/coverage-artifact.py create python coverage-python.xml \
+            --commit "$(git rev-parse HEAD)" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+
+      - name: Upload tested Python coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage-${{ github.sha }}
+          path: |
+            coverage-python.xml
+            coverage-python.xml.manifest.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: TODO/FIXME audit (warn only)
         run: |
@@ -351,6 +385,11 @@ jobs:
           test -x "$APP/Contents/MacOS/AudioWhisper" || { echo "::error::Missing executable"; exit 1; }
           test -f "$APP/Contents/Info.plist" || { echo "::error::Missing Info.plist"; exit 1; }
           plutil -lint "$APP/Contents/Info.plist"
+          # A linker-only signature leaves the bundle unidentified to TCC.
+          # Local previews also need a complete, verified bundle signature.
+          codesign --verify --strict --verbose "$APP"
+          codesign -d -r- "$APP" 2>&1 | grep -q 'designated =>'
+          codesign -dv "$APP" 2>&1 | grep -q '^Identifier=com.audiowhisper.rebuild$'
           # Confirm Python bootstrap binary made it into the bundle
           test -f "$APP/Contents/Resources/bin/uv" -o -f "$APP/Contents/Resources/uv" \
             || echo "::warning::uv binary not found in bundled Resources (may be missing for dev builds)"
@@ -360,11 +399,39 @@ jobs:
           for py in ml_daemon.py download_model.py verify_parakeet.py verify_mlx.py ml/hub.py ml/rpc.py; do
             test -f "$APP/Contents/Resources/$py" || { echo "::error::Missing bundled Resources/$py"; exit 1; }
           done
+          # Opening Preferences creates the shortcut recorder, which resolves
+          # its localized text through Bundle.module. Missing resources trap at
+          # runtime even when the executable and headless tests pass.
+          for bundle in AudioWhisper_AudioWhisper KeyboardShortcuts_KeyboardShortcuts; do
+            test -d "$APP/Contents/Resources/$bundle.bundle" \
+              || { echo "::error::Missing SwiftPM resource bundle $bundle"; exit 1; }
+          done
+          # SwiftPM versions package macOS resources in either a flat bundle
+          # or Contents/Resources. Validate runtime resolution through Foundation.
+          xcrun swift -e 'import Foundation; let path = "AudioWhisper.app/Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle"; guard let bundle = Bundle(path: path), let url = bundle.url(forResource: "Localizable", withExtension: "strings", subdirectory: nil, localization: "en"), FileManager.default.fileExists(atPath: url.path) else { fatalError("Missing shortcut editor localization") }'
           # Confirm version was stamped (not left as a placeholder)
           if grep -q "VERSION_PLACEHOLDER\|BUILD_PLACEHOLDER" "$APP/Contents/MacOS/AudioWhisper" 2>/dev/null; then
             echo "::warning::Version placeholders found unsubstituted in binary"
           fi
           echo "App bundle smoke test passed."
+
+      - name: Run read-only recording diagnostics from the packaged app
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          result = subprocess.run(
+              ["AudioWhisper.app/Contents/MacOS/AudioWhisper", "--diagnose-recording"],
+              capture_output=True, text=True, timeout=30, check=True,
+          )
+          report = json.loads(result.stdout)
+          assert report["bundleIdentifier"] == "com.audiowhisper.rebuild", report
+          assert report["build"] == os.environ["GITHUB_SHA"], report
+          assert report["launchContext"] == "commandLine", report
+          assert report["nextStep"], report
+          if report["microphonePermission"] != "granted":
+              assert not report["readyToRecord"], report
+          print("Packaged recording diagnostics exited cleanly and reported valid setup state")
+          PY
 
       - name: Show bundle size
         run: |
@@ -451,74 +518,51 @@ jobs:
           xcodebuild -scheme AudioWhisper -destination 'platform=macOS' \
             build-for-testing 2>&1 | tee xcodebuild.log | tail -5
 
-      - name: Analyze (single pass)
-        run: |
-          # ONE analyze run, saved to a file that the summary and the gate below
-          # both read. This used to invoke `swiftlint analyze` three times —
-          # twice here, once in the gate — and each pass over 355 files takes
-          # ~10 minutes. The job took 28.5 minutes when it passed and was killed
-          # by its own 30-minute timeout when it did not. The gate step was the
-          # one cancelled, so the job reported "cancelled" rather than anything
-          # that pointed at the real cause.
-          swiftlint analyze --compiler-log-path xcodebuild.log \
-            --reporter github-actions-logging 2>/dev/null | tee analyze.txt || true
-          echo "--- summary ---"
-          grep -oE '\((unused_declaration|unused_import)\)' analyze.txt | sort | uniq -c || true
+      - name: Analyze and gate (single pass)
+        run: python3 scripts/analyze-gate.py xcodebuild.log --baseline 30
 
-      - name: Gate on unused_import
-        run: |
-          # unused_import IS enforced. The backlog was triaged by removing each
-          # flagged import and rebuilding — the compiler, not the analyzer, is
-          # the oracle. 95 were genuinely unused and removed; 20 were false
-          # positives (umbrella imports like Cocoa, modules needed only for @objc
-          # or a type in a signature, and `@testable import AudioWhisper`) and
-          # carry an inline swiftlint:disable:next with that justification.
-          # The rule now reports 0, so any new finding is real.
-          # Reads the single analyze pass above; does not re-run it.
-          count=$(grep -c '(unused_import)' analyze.txt || true)
-          if [ "${count:-0}" -ne 0 ]; then
-            # analyze.txt holds the reporter's raw "::warning file=...,line=..."
-            # lines. GitHub turns those into annotations and hides the file path
-            # from the log, so the first time this gate fired it said only that
-            # ONE import was unused, with no way to tell which. Neutralise the
-            # "::" prefix so the paths actually print.
-            echo "offending imports:"
-            grep '(unused_import)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
-          fi
-          if [ "${count:-0}" -ne 0 ]; then
-            echo "::error::$count unused import(s). Remove them, or if the compiler"
-            echo "::error::genuinely needs one, add swiftlint:disable:next with a reason."
-            exit 1
-          fi
-          echo "unused_import: 0"
+      - name: Retain analyzer report and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-${{ github.sha }}
+          path: |
+            analyze.json
+            analyze.stderr.txt
+          if-no-files-found: warn
 
-      - name: Ratchet on unused_declaration
+  sonarcloud:
+    name: SonarCloud Scan
+    needs: [build-and-test, lint]
+    # Match the former Sonar workflow's master/PR scope and secret boundary.
+    if: >-
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/master') ||
+       (github.event_name == 'pull_request' && github.base_ref == 'master'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: swift-coverage-${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-coverage-${{ github.sha }}
+      - name: Verify tested coverage provenance
         run: |
-          # NOT gated at zero, and probably never should be — much of what
-          # remains is structural rather than defective: protocol requirements
-          # reached only through the protocol, SwiftUI declarations required by
-          # position rather than by call, Tests/Mocks members that exist purely
-          # to satisfy a conformance.
-          #
-          # A RATCHET instead: the count may fall, never rise. That catches
-          # genuinely dead code as it appears — which is the actual risk — without
-          # demanding a triage pass nobody has time for.
-          #
-          # BASELINE is only valid for the pinned SWIFTLINT_VERSION. The same
-          # tree reports 144 findings on 0.63.2 and 46 on 0.65.0, so bump the
-          # two together or this gate becomes noise. (The note that used to live
-          # here claimed 215 with 87 in Tests/Mocks — stale on both counts.)
-          #
-          # Raising BASELINE should be a deliberate, explained act. Lowering it
-          # is always fine. (46 → 30 after the two dead-code passes.)
-          BASELINE=30
-          count=$(grep -c '(unused_declaration)' analyze.txt || true)
-          echo "unused_declaration: $count (baseline $BASELINE)"
-          if [ "${count:-0}" -gt "$BASELINE" ]; then
-            echo "::error::unused_declaration rose from $BASELINE to $count. Findings:"
-            grep '(unused_declaration)' analyze.txt | sed 's/^:://' | sed 's/^/  /'
-            exit 1
-          fi
-          if [ "${count:-0}" -lt "$BASELINE" ]; then
-            echo "::notice::unused_declaration fell to $count — lower BASELINE to lock it in."
-          fi
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 scripts/coverage-artifact.py verify swift sonar-coverage.xml \
+            --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+          python3 scripts/coverage-artifact.py verify python coverage-python.xml \
+            --commit "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v7
+        with:
+          args: >-
+            -Dsonar.coverageReportPaths=sonar-coverage.xml
+            -Dsonar.python.coverage.reportPaths=coverage-python.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

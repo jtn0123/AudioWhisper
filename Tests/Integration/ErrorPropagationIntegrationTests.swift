@@ -41,13 +41,6 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
         return audioFile
     }
 
-    private func createEmptyFile() -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let emptyFile = tempDir.appendingPathComponent("empty_\(UUID().uuidString).m4a")
-        FileManager.default.createFile(atPath: emptyFile.path, contents: Data(), attributes: nil)
-        return emptyFile
-    }
-
     private func cleanupTempFile(_ url: URL) {
         try? FileManager.default.removeItem(at: url)
     }
@@ -200,8 +193,8 @@ final class ErrorPropagationIntegrationTests: IsolatedXCTestCase {
         // When
         let cleaned = SpeechToTextService.cleanTranscriptionText(nested)
 
-        // Then - All markers removed
-        XCTAssertEqual(cleaned, "Hello world")
+        // Then - Unrecognized nested content preserved
+        XCTAssertEqual(cleaned, nested)
     }
 
     func testCleanTranscriptionTextWithOnlyMarkers() {

@@ -1,0 +1,94 @@
+{
+  "clipboard": "FULLSCREEN POLISH TEST: The quick brown fox jumps over the lazy dog.",
+  "frontmost": "com.audiowhisper.rebuild",
+  "modifierFlags": 0,
+  "screens": [
+    {
+      "frame": [
+        0,
+        0,
+        1024,
+        768
+      ],
+      "scale": 2,
+      "visible": [
+        0,
+        57,
+        1024,
+        681
+      ]
+    }
+  ],
+  "windows": [
+    {
+      "bounds": {
+        "Height": 230,
+        "Width": 380,
+        "X": 322,
+        "Y": 255
+      },
+      "id": 93,
+      "visible": false
+    },
+    {
+      "bounds": {
+        "Height": 30,
+        "Width": 1024,
+        "X": 0,
+        "Y": 0
+      },
+      "id": 88,
+      "visible": false
+    },
+    {
+      "bounds": {
+        "Height": 30,
+        "Width": 1024,
+        "X": 0,
+        "Y": 0
+      },
+      "id": 87,
+      "visible": false
+    },
+    {
+      "bounds": {
+        "Height": 500,
+        "Width": 500,
+        "X": 0,
+        "Y": 268
+      },
+      "id": 89,
+      "visible": false
+    },
+    {
+      "bounds": {
+        "Height": 30,
+        "Width": 1024,
+        "X": 0,
+        "Y": 0
+      },
+      "id": 86,
+      "visible": false
+    },
+    {
+      "bounds": {
+        "Height": 30,
+        "Width": 1024,
+        "X": 0,
+        "Y": 0
+      },
+      "id": 85,
+      "visible": false
+    },
+    {
+      "bounds": {
+        "Height": 620,
+        "Width": 870,
+        "X": 77,
+        "Y": 30
+      },
+      "id": 83,
+      "visible": true
+    }
+  ]
+}

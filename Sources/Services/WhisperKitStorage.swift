@@ -3,8 +3,7 @@ import os.log
 
 internal enum WhisperKitStorage {
     private static func baseDirectory(fileManager: FileManager = .default) -> URL? {
-        fileManager.urls(for: .documentDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml", isDirectory: true)
+        RebuildStorage.whisperModels
     }
 
     static func storageDirectory(fileManager: FileManager = .default) -> URL? {
@@ -19,18 +18,29 @@ internal enum WhisperKitStorage {
     static func isModelDownloaded(_ model: WhisperModel, fileManager: FileManager = .default) -> Bool {
         guard let modelDirectory = modelDirectory(for: model, fileManager: fileManager) else { return false }
 
-        var isDirectory: ObjCBool = false
-        let exists = fileManager.fileExists(atPath: modelDirectory.path, isDirectory: &isDirectory)
-        guard exists, isDirectory.boolValue else { return false }
+        return hasRequiredAssets(at: modelDirectory, fileManager: fileManager)
+    }
 
-        let contents: [String]
-        do {
-            contents = try fileManager.contentsOfDirectory(atPath: modelDirectory.path)
-        } catch {
-            Logger.fileSystem.error("Failed to read model directory contents at \(modelDirectory.path.redactingHomeDirectory): \(error.localizedDescription)")
+    static func hasRequiredAssets(at directory: URL, fileManager: FileManager = .default) -> Bool {
+        // These are the three models WhisperKit.loadModels actually opens.
+        ["MelSpectrogram", "AudioEncoder", "TextDecoder"].allSatisfy { name in
+            let compiled = directory.appendingPathComponent(name + ".mlmodelc")
+            let package = directory.appendingPathComponent(name + ".mlpackage")
+            for candidate in [compiled, package] {
+                var isDirectory: ObjCBool = false
+                guard fileManager.fileExists(atPath: candidate.path, isDirectory: &isDirectory), isDirectory.boolValue,
+                      fileManager.isReadableFile(atPath: candidate.path) else { continue }
+                let required = candidate.pathExtension == "mlmodelc"
+                    ? ["coremldata.bin", "model.mil", "weights/weight.bin"]
+                    : ["Manifest.json", "Data/com.apple.CoreML/model.mlmodel", "Data/com.apple.CoreML/weights/weight.bin"]
+                if required.allSatisfy({ relative in
+                    guard let values = try? candidate.appendingPathComponent(relative).resolvingSymlinksInPath()
+                        .resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]) else { return false }
+                    return values.isRegularFile == true && (values.fileSize ?? 0) > 0
+                }) { return true }
+            }
             return false
         }
-        return contents.contains { $0.hasSuffix(".json") || $0.hasSuffix(".bin") || $0.hasSuffix(".mlmodelc") }
     }
 
     static func localModelPath(for model: WhisperModel, fileManager: FileManager = .default) -> String? {

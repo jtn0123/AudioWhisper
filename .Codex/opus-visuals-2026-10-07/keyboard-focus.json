@@ -1,0 +1,78 @@
+[
+  {
+    "tab": 1,
+    "focused": [
+      {
+        "AXAttributedDescription": "Library",
+        "AXDescription": "Library",
+        "AXHelp": "Library (\u23182)",
+        "focused": true
+      }
+    ]
+  },
+  {
+    "tab": 2,
+    "focused": [
+      {
+        "AXAttributedDescription": "Models & setup",
+        "AXDescription": "Models & setup",
+        "AXHelp": "Models & setup (\u23183)",
+        "focused": true
+      }
+    ]
+  },
+  {
+    "tab": 3,
+    "focused": [
+      {
+        "AXAttributedDescription": "Writing cleanup",
+        "AXDescription": "Writing cleanup",
+        "AXHelp": "Writing cleanup (\u23184)",
+        "focused": true
+      }
+    ]
+  },
+  {
+    "tab": 4,
+    "focused": [
+      {
+        "AXAttributedDescription": "Preferences",
+        "AXDescription": "Preferences",
+        "AXHelp": "Preferences (\u23185)",
+        "focused": true
+      }
+    ]
+  },
+  {
+    "tab": 5,
+    "focused": [
+      {
+        "AXAttributedDescription": "Status: Ready to record",
+        "AXDescription": "Status: Ready to record",
+        "AXHelp": "Opens Models & setup",
+        "focused": true
+      }
+    ]
+  },
+  {
+    "tab": 6,
+    "focused": [
+      {
+        "AXAttributedDescription": "Start recording",
+        "AXDescription": "Start recording",
+        "AXHelp": "Start recording",
+        "focused": true
+      }
+    ]
+  },
+  {
+    "tab": 7,
+    "focused": [
+      {
+        "AXAttributedDescription": "Change recording shortcut",
+        "AXDescription": "Change recording shortcut",
+        "focused": true
+      }
+    ]
+  }
+]

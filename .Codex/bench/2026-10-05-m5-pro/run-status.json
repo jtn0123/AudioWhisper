@@ -1,0 +1,62 @@
+{
+  "parakeet-v2": {
+    "exit": 0,
+    "elapsed": 11.437496124999598
+  },
+  "granite-5": {
+    "exit": 0,
+    "elapsed": 5.869189124990953
+  },
+  "cohere-8bit": {
+    "exit": 0,
+    "elapsed": 34.30258129199501
+  },
+  "qwen3-asr-4bit": {
+    "exit": 0,
+    "elapsed": 25.492224249988794
+  },
+  "parakeet-v3": {
+    "exit": 0,
+    "elapsed": 10.789846583007602
+  },
+  "whisper-large-v3_turbo": {
+    "exit": 0,
+    "elapsed": 229.07060933299363
+  },
+  "whisper-base": {
+    "exit": 0,
+    "elapsed": 16.643231458001537
+  },
+  "whisper-small": {
+    "exit": 0,
+    "elapsed": 46.57351175000076
+  },
+  "whisper-tiny": {
+    "exit": 0,
+    "elapsed": 10.683131083991611
+  },
+  "writing-qwen4b": {
+    "exit": 0,
+    "elapsed": 19.13338191699586
+  },
+  "writing-gemma1b": {
+    "exit": 0,
+    "elapsed": 25.535264750011265
+  },
+  "writing-qwen1.7b": {
+    "exit": 0,
+    "elapsed": 50.28520137499436
+  },
+  "writing-lfm1.2b": {
+    "exit": 0,
+    "elapsed": 6.4097437919990625
+  },
+  "writing-qwen3.5-2b": {
+    "exit": 0,
+    "elapsed": 49.312984041986056
+  },
+  "writing-gemma4": {
+    "exit": 0,
+    "elapsed": 60.375156916008564
+  }
+}

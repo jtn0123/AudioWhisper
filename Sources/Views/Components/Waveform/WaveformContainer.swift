@@ -21,6 +21,15 @@ struct WaveformContainer: View {
     /// suppressed so snapshot tests render a deterministic frame.
     /// Production callers should leave this at the default (`true`).
     let processingAnimated: Bool
+    let completedAudioDuration: TimeInterval?
+    /// Hosts that draw their own status and timer (the rebuild HUD) hide the
+    /// built-in floating row so the state is not shown twice.
+    let showsStatusRow: Bool
+    /// Hosts can supply opaque chrome without changing the selected visualizer
+    /// or the shared component's default appearance.
+    let showsGlassBackground: Bool
+    let backgroundColor: Color
+    let waveformColor: Color
     let onTap: () -> Void
 
     init(
@@ -29,6 +38,11 @@ struct WaveformContainer: View {
         waveformSamples: [Float],
         frequencyBands: [Float],
         processingAnimated: Bool = true,
+        completedAudioDuration: TimeInterval? = nil,
+        showsStatusRow: Bool = true,
+        showsGlassBackground: Bool = true,
+        backgroundColor: Color = WaveformPalette.background,
+        waveformColor: Color = WaveformPalette.bar,
         onTap: @escaping () -> Void
     ) {
         self.status = status
@@ -36,6 +50,11 @@ struct WaveformContainer: View {
         self.waveformSamples = waveformSamples
         self.frequencyBands = frequencyBands
         self.processingAnimated = processingAnimated
+        self.completedAudioDuration = completedAudioDuration
+        self.showsStatusRow = showsStatusRow
+        self.showsGlassBackground = showsGlassBackground
+        self.backgroundColor = backgroundColor
+        self.waveformColor = waveformColor
         self.onTap = onTap
     }
 
@@ -53,8 +72,7 @@ struct WaveformContainer: View {
     @State private var recordingStartedAt: Date?
 
     // Colors (sourced from WaveformPalette so the theme owns the literals)
-    private let bgColor = WaveformPalette.background
-    private let creamColor = WaveformPalette.bar
+    private var creamColor: Color { waveformColor }
     private let creamDim = WaveformPalette.creamDim
     private let mutedColor = WaveformPalette.muted
     private let successColor = WaveformPalette.success
@@ -70,10 +88,10 @@ struct WaveformContainer: View {
         Button(action: onTap) {
             ZStack {
                 // Solid base
-                bgColor
+                backgroundColor
 
                 // Glass background (expressive / bold intensities only)
-                if intensity.showGlass {
+                if showsGlassBackground && intensity.showGlass {
                     GlassBackground(intensity: intensity, cornerRadius: cornerRadius)
                         .opacity(0.85)
                 }
@@ -114,10 +132,11 @@ struct WaveformContainer: View {
                 }
 
                 // Status row — floats, no chrome
-                statusRow
+                if showsStatusRow { statusRow }
             }
         }
         .buttonStyle(.plain)
+        .disabled(isProcessing)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         // Outer soft shadow — always on
         .shadow(color: .black.opacity(0.55), radius: 30, x: 0, y: 16)
@@ -140,8 +159,8 @@ struct WaveformContainer: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Recording waveform")
-        .accessibilityValue(isRecording ? "Active" : "Idle")
+        .accessibilityLabel(accessibilityAction)
+        .accessibilityValue(status.message)
     }
 
     // MARK: - Chrome layers
@@ -164,7 +183,7 @@ struct WaveformContainer: View {
     private var stateVisual: some View {
         switch status {
         case .processing:
-            ProcessingShimmerView(color: creamColor.opacity(0.85), animated: processingAnimated)
+            ProcessingShimmerView(color: creamColor.opacity(0.85), animated: processingAnimated && !reduceMotion)
                 .padding(.horizontal, 24)
 
         case .success:
@@ -238,6 +257,9 @@ struct WaveformContainer: View {
         }
     }
 
+}
+
+extension WaveformContainer {
     // MARK: - State badges
 
     private var successBadge: some View {
@@ -298,7 +320,7 @@ struct WaveformContainer: View {
                     case .ready:
                         HotkeyHint()
                     case .success:
-                        SuccessRecapLabel(start: recordingStartedAt, wordCount: nil)
+                        SuccessRecapLabel(duration: completedAudioDuration, wordCount: nil)
                     default:
                         EmptyView()
                     }
@@ -343,6 +365,7 @@ extension WaveformContainer {
     /// Whether the status dot should pulse. Tests can disable processing
     /// animations via `processingAnimated` to keep snapshots deterministic.
     private var shouldPulseStatusDot: Bool {
+        guard !reduceMotion else { return false }
         if isRecording { return true }
         if isProcessing { return processingAnimated }
         return false
@@ -355,7 +378,7 @@ extension WaveformContainer {
         case .success:            return successColor
         case .error:              return coralColor
         case .ready:              return creamDim
-        case .permissionRequired: return mutedColor
+        case .permissionRequired, .setupRequired: return mutedColor
         }
     }
 
@@ -386,7 +409,19 @@ extension WaveformContainer {
         case .success:             return "COPIED"
         case .ready:               return "TAP TO RECORD"
         case .permissionRequired:  return "PERMISSION NEEDED"
+        case .setupRequired:       return "FINISH SETUP"
         case .error(let message):  return message.uppercased()
+        }
+    }
+
+    private var accessibilityAction: String {
+        switch status {
+        case .recording: return "Stop recording"
+        case .processing: return "Transcribing recording"
+        case .success: return "Transcript copied"
+        case .permissionRequired, .setupRequired: return "Open recording setup"
+        case .error: return "Try recording again"
+        case .ready: return "Start recording"
         }
     }
 

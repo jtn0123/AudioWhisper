@@ -1,0 +1,246 @@
+{
+  "qwen3.5-9b-8bit/direct": {
+    "writing-2": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-8": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-9": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-11": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off that was absent from the source.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "writing-17": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-23": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-24": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-25": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-26": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-28": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off that was absent from the source.",
+        "component": "model",
+        "critical": false
+      }
+    }
+  },
+  "qwen3.5-9b-8bit/strict": {
+    "writing-0": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-4": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-11": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off that was absent from the source.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "writing-17": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-24": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-27": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off that was absent from the source.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-27": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off that was absent from the source.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-29": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-30": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-33": {
+      "acceptable": true,
+      "failure": null
+    }
+  },
+  "qwen3.8-27b-3bit/direct": {
+    "writing-0": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-5": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-11": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "writing-23": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-25": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Omitted the request to document the thinking process.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "writing-27": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-26": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-29": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-32": {
+      "acceptable": true,
+      "failure": null
+    }
+  },
+  "qwen3.8-27b-3bit/strict": {
+    "writing-1": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-16": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Dropped the editor qualifier from the recipient.",
+        "component": "model",
+        "critical": true
+      }
+    }
+  },
+  "qwen3.8-27b-6bit/direct": {
+    "writing-5": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-6": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Did not repair you state to useState.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "writing-27": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-25": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-27": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-29": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Invented a sign-off.",
+        "component": "model",
+        "critical": false
+      }
+    },
+    "qwen-30": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-31": {
+      "acceptable": false,
+      "failure": {
+        "reason": "Left dont without its required apostrophe.",
+        "component": "model",
+        "critical": false
+      }
+    }
+  },
+  "qwen3.8-27b-6bit/strict": {
+    "writing-0": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-5": {
+      "acceptable": true,
+      "failure": null
+    },
+    "writing-16": {
+      "acceptable": true,
+      "failure": null
+    },
+    "qwen-21": {
+      "acceptable": true,
+      "failure": null
+    }
+  }
+}

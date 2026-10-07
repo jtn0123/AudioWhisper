@@ -9,7 +9,6 @@ final class AppDefaultsTests: IsolatedXCTestCase {
     // UserDefaults instance.
     override var enforcesStandardUserDefaultsIsolation: Bool { false }
 
-    private var testDefaults: UserDefaults!
     private var originalDefaults: [String: Any] = [:]
 
     override func setUp() {
@@ -86,7 +85,7 @@ final class AppDefaultsTests: IsolatedXCTestCase {
 
     func testSelectedParakeetModelDefaultValue() {
         AppDefaults.removeValue(for: .selectedParakeetModel)
-        XCTAssertEqual(AppDefaults.selectedParakeetModel, .v3Multilingual)
+        XCTAssertEqual(AppDefaults.selectedParakeetModel, .v2English)
     }
 
     func testSelectedParakeetModelSetAndGet() {
@@ -114,11 +113,11 @@ final class AppDefaultsTests: IsolatedXCTestCase {
 
     func testSemanticCorrectionModelRepoDefault() {
         // The literal is pinned once, here, so a silent catalog change is caught.
-        // Chosen by measurement — see .claude/bench/.
+        // Chosen by measurement — see .Codex/bench/2026-10-06-qwen-quants/.
         AppDefaults.removeValue(for: .semanticCorrectionModelRepo)
         XCTAssertEqual(
             AppDefaults.semanticCorrectionModelRepo,
-            "mlx-community/Qwen3-4B-Instruct-2507-4bit"
+            "mlx-community/Qwen3.5-9B-4bit"
         )
     }
 

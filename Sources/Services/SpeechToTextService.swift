@@ -39,6 +39,7 @@ internal class SpeechToTextService {
     // likewise process-wide.
     private let localWhisperService: LocalWhisperTranscribing
     private let parakeetService: ParakeetTranscribing
+    private let preparePython: () async throws -> URL
 
     /// Audit item A5. These were `private let ... = .shared` with no way to
     /// substitute them, so nothing in `transcribeValidated` — provider routing,
@@ -48,10 +49,12 @@ internal class SpeechToTextService {
     /// can reach the routing logic.
     init(
         localWhisperService: LocalWhisperTranscribing = LocalWhisperService.shared,
-        parakeetService: ParakeetTranscribing = ParakeetService.shared
+        parakeetService: ParakeetTranscribing = ParakeetService.shared,
+        preparePython: @escaping () async throws -> URL = { try await UvBootstrap.ensureVenv() }
     ) {
         self.localWhisperService = localWhisperService
         self.parakeetService = parakeetService
+        self.preparePython = preparePython
     }
 
     /// Runs `AudioValidator` on `url` and surfaces any failure as
@@ -95,7 +98,8 @@ internal class SpeechToTextService {
     func transcribeValidated(
         audioURL: URL,
         provider: TranscriptionProvider,
-        model: WhisperModel? = nil
+        model: WhisperModel? = nil,
+        pipelineConfig: TranscriptionPipelineConfig? = nil
     ) async throws -> String {
         switch provider {
         case .local:
@@ -104,7 +108,7 @@ internal class SpeechToTextService {
             }
             return try await transcribeWithLocal(audioURL: audioURL, model: model)
         case .parakeet:
-            return try await transcribeWithParakeet(audioURL: audioURL)
+            return try await transcribeWithParakeet(audioURL: audioURL, config: pipelineConfig)
         }
     }
 
@@ -128,12 +132,13 @@ internal class SpeechToTextService {
     /// provider's raw output; semantic correction is applied by
     /// `TranscriptionPipeline` (see audit item B1).
     private func transcribeWithLocal(audioURL: URL, model: WhisperModel) async throws -> String {
+        let sessionID = TranscriptionProgress.sessionID
         do {
             let text = try await localWhisperService.transcribe(
                 audioFileURL: audioURL,
                 model: model,
                 progressCallback: { progress in
-                    NotificationCenter.default.post(name: .transcriptionProgress, object: progress)
+                    TranscriptionProgress.post(progress, sessionID: sessionID)
                 }
             )
             return try Self.cleanedNonEmptyTranscription(text)
@@ -141,45 +146,30 @@ internal class SpeechToTextService {
             // Already a domain error (e.g. .noSpeechDetected) — preserve it
             // instead of burying it under .localTranscriptionFailed.
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw SpeechToTextError.localTranscriptionFailed(error)
         }
     }
 
-    /// Delegates to `ParakeetService` (Parakeet-MLX, Apple-Silicon only) and warms up
-    /// the MLX correction daemon in parallel when correction is enabled.
-    /// Returns the provider's raw output; semantic correction is applied by
-    /// `TranscriptionPipeline` (see audit item B1). The warmup remains here so
-    /// the MLX daemon can spin up in parallel with the transcription itself.
-    private func transcribeWithParakeet(audioURL: URL) async throws -> String {
+    /// Returns Parakeet's raw output before correction can occupy the serial ML
+    /// worker. The pipeline loads the writing model only after recognition and
+    /// only when cleanup is enabled; concurrent warmup cannot run in parallel
+    /// on the shared request worker and can delay the speech result.
+    private func transcribeWithParakeet(audioURL: URL, config: TranscriptionPipelineConfig?) async throws -> String {
         guard Arch.isAppleSilicon else {
             throw SpeechToTextError.transcriptionFailed("Parakeet requires an Apple Silicon Mac.")
         }
-        let semanticCorrectionMode = AppDefaults.semanticCorrectionMode
-        let shouldWarmup = semanticCorrectionMode != .off
-        // Ensure managed Python environment with uv
-        let pyURL = try await UvBootstrap.ensureVenv(userPython: nil)
-        let pythonPath = pyURL.path
+        let parakeetModel = config?.parakeetModel ?? AppDefaults.selectedParakeetModel
+        let pyURL = try await preparePython()
         do {
-            if shouldWarmup {
-                // B1: warm up the SAME model correction will actually run.
-                // This used to hardcode Llama-3.2-1B when the key was unset while
-                // `SemanticCorrectionService` did the same — so both agreed with
-                // each other but disagreed with the Dashboard. Now there is one
-                // source of truth, which also means the warmup is no longer
-                // wasted on a model the correction pass won't use.
-                let modelRepo = AppDefaults.semanticCorrectionModelRepo
-                // Warm up the MLX daemon in parallel, but treat its outcome as
-                // non-fatal: a warmup failure must NOT abort an otherwise-good
-                // transcription. Its error is swallowed (logged by the daemon).
-                async let warmupTask: Void = MLDaemonManager.shared.warmup(type: .mlx, repo: modelRepo)
-                let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
-                try? await warmupTask
-                return try Self.cleanedNonEmptyTranscription(text)
-            } else {
-                let text = try await parakeetService.transcribe(audioFileURL: audioURL, pythonPath: pythonPath)
-                return try Self.cleanedNonEmptyTranscription(text)
-            }
+            let text = try await parakeetService.transcribe(
+                audioFileURL: audioURL, pythonPath: pyURL.path, model: parakeetModel
+            )
+            return try Self.cleanedNonEmptyTranscription(text)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Pass through model-not-ready distinctly so UI can redirect to Settings
             if let pe = error as? ParakeetError, pe == .modelNotReady {
@@ -211,36 +201,26 @@ internal class SpeechToTextService {
         return cleaned
     }
 
-    /// Cleans transcription text by removing common markers and artifacts
+    /// Remove only recognized acoustic annotations. Ordinary bracketed content,
+    /// code punctuation and line structure belong to the user's transcript.
+    private static let acousticMarkers: NSRegularExpression? = {
+        let names = [
+            "blank audio", "no audio", "silence", "empty", "music", "background music",
+            "background noise", "inaudible", "laughter", "laughing", "applause", "coughing",
+            "door closing", "door slamming", "phone ringing", "crying", "sighs", "whispers", "shouting"
+        ].map { $0.replacingOccurrences(of: " ", with: "[ _]+") }.joined(separator: "|")
+        // A quoted literal or an array/function operand is not an acoustic tag.
+        let marker = "(?:\\[(?:\(names))\\]|\\((?:\(names))\\))"
+        return try? NSRegularExpression(
+            pattern: "[ \t]*(?<![\\p{L}\\p{N}_\"'`])" + marker + "(?![\\p{L}\\p{N}_])[ \t]*",
+            options: [.caseInsensitive])
+    }()
+
     static func cleanTranscriptionText(_ text: String) -> String {
-        var cleanedText = text
-
-        // Remove bracketed markers iteratively to handle nested cases
-        var previousLength = 0
-        while cleanedText.count != previousLength {
-            previousLength = cleanedText.count
-            cleanedText = cleanedText.replacingOccurrences(
-                of: "\\[[^\\[\\]]*\\]",
-                with: "",
-                options: .regularExpression
-            )
-        }
-
-        // Remove parenthetical markers iteratively to handle nested cases
-        previousLength = 0
-        while cleanedText.count != previousLength {
-            previousLength = cleanedText.count
-            cleanedText = cleanedText.replacingOccurrences(
-                of: "\\([^\\(\\)]*\\)",
-                with: "",
-                options: .regularExpression
-            )
-        }
-
-        // Clean up whitespace and return
-        return cleanedText
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        guard let markers = acousticMarkers else { return text }
+        let cleaned = markers.stringByReplacingMatches(
+            in: text, range: NSRange(text.startIndex..<text.endIndex, in: text), withTemplate: " ")
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
 }

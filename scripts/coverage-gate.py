@@ -24,6 +24,7 @@ substring match would silently readmit exactly what we are excluding.
 """
 
 import json
+import math
 import os
 import sys
 
@@ -34,7 +35,13 @@ def main() -> int:
         return 2
 
     cov_path, repo_root, threshold_arg = sys.argv[1:4]
-    threshold = float(threshold_arg)
+    try:
+        threshold = float(threshold_arg)
+        if not math.isfinite(threshold) or not 0 <= threshold <= 100:
+            raise ValueError("expected a finite percentage between 0 and 100")
+    except ValueError as exc:
+        print(f"::error::Invalid coverage threshold '{threshold_arg}': {exc}")
+        return 1
     prefix = os.path.join(os.path.realpath(repo_root), "Sources") + os.sep
 
     try:
@@ -46,20 +53,30 @@ def main() -> int:
 
     try:
         files = payload["data"][0]["files"]
-    except (KeyError, IndexError) as exc:
+    except (KeyError, IndexError, TypeError) as exc:
         print(f"::error::Unexpected codecov JSON shape in '{cov_path}': {exc}")
         return 1
 
     covered = 0
     count = 0
     matched = 0
-    for entry in files:
-        if not os.path.realpath(entry["filename"]).startswith(prefix):
-            continue
-        matched += 1
-        lines = entry["summary"]["lines"]
-        covered += lines["covered"]
-        count += lines["count"]
+    try:
+        if not isinstance(files, list):
+            raise ValueError("files must be a list")
+        for entry in files:
+            if not os.path.realpath(entry["filename"]).startswith(prefix):
+                continue
+            matched += 1
+            lines = entry["summary"]["lines"]
+            file_covered, file_count = lines["covered"], lines["count"]
+            if (type(file_count) is not int or type(file_covered) is not int
+                    or not 0 <= file_covered <= file_count):
+                raise ValueError(f"invalid line counts for {entry['filename']}")
+            covered += file_covered
+            count += file_count
+    except (KeyError, TypeError, ValueError) as exc:
+        print(f"::error::Invalid coverage data: {exc}")
+        return 1
 
     if matched == 0:
         # A gate that cannot find its input is broken and should say so, not
@@ -69,7 +86,10 @@ def main() -> int:
               f"{len(files)} instrumented files — check the repo root argument.")
         return 1
 
-    pct = (covered / count * 100) if count else 0.0
+    if count == 0:
+        print("::error::Application coverage contains no executable lines")
+        return 1
+    pct = covered / count * 100
     print(f"Line coverage (Sources only): {pct:.2f}% "
           f"({covered}/{count} lines across {matched} files)")
 

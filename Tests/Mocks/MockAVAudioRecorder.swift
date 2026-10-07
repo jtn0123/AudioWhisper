@@ -59,29 +59,4 @@ class MockAVAudioRecorder: AVAudioRecorder, @unchecked Sendable {
     override func peakPower(forChannel channelNumber: Int) -> Float {
         return mockPeakPower
     }
-    
-    // Mock configuration methods
-    func setMockRecordingState(_ isRecording: Bool) {
-        mockIsRecording = isRecording
-    }
-    
-    func setMockCurrentTime(_ time: TimeInterval) {
-        mockCurrentTime = time
-    }
-    
-    func setMockAveragePower(_ power: Float) {
-        mockAveragePower = power
-    }
-    
-    func setMockPeakPower(_ power: Float) {
-        mockPeakPower = power
-    }
-    
-    func setShouldFailToRecord(_ shouldFail: Bool) {
-        shouldFailToRecord = shouldFail
-    }
-    
-    func setShouldFailToStop(_ shouldFail: Bool) {
-        shouldFailToStop = shouldFail
-    }
 }

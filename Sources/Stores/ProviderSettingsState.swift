@@ -23,6 +23,7 @@ final class ProviderSettingsState {
 
     // MARK: - Model Download State
     var downloadError: String?
+    var failedDownloadModel: WhisperModel?
     var totalModelsSize: Int64 = 0
     var downloadedModels: [WhisperModel] = []
     var modelDownloadStates: [WhisperModel: Bool] = [:]
@@ -42,13 +43,40 @@ final class ProviderSettingsState {
 
     // MARK: - Status Helpers
 
-    func statusInfo(for provider: TranscriptionProvider) -> (text: String, isReady: Bool) {
-        switch provider {
-        case .local:
-            return downloadedModels.isEmpty ? ("Setup", false) : ("Ready", true)
-        case .parakeet:
-            return envReady ? ("Ready", true) : ("Setup", false)
+    func statusInfo(
+        for provider: TranscriptionProvider,
+        selectedWhisperModel: WhisperModel = AppDefaults.selectedWhisperModel,
+        parakeetModelCached: Bool = false
+    ) -> (text: String, isReady: Bool) {
+        let requirement = RecordingSetupRequirement.modelRequirement(RecordingSetupInputs(
+            provider: provider,
+            whisperModel: selectedWhisperModel,
+            downloadedWhisperModels: Set(downloadedModels),
+            parakeetModel: AppDefaults.selectedParakeetModel,
+            environmentReady: envReady,
+            parakeetModelCached: parakeetModelCached,
+            supportsParakeet: RecordingSetupState.supportsParakeet
+        ))
+        return (requirement.isReady ? "Installed" : "Setup", requirement.isReady)
+    }
+
+    func beginDownload(_ model: WhisperModel) {
+        downloadError = nil
+        failedDownloadModel = nil
+        downloadStartTime[model] = Date()
+    }
+
+    func finishDownload(_ model: WhisperModel, error: String? = nil) {
+        downloadStartTime.removeValue(forKey: model)
+        if let error {
+            downloadError = error
+            failedDownloadModel = model
         }
+    }
+
+    func retryFailedDownload(using download: (WhisperModel) -> Void) {
+        guard let model = failedDownloadModel else { return }
+        download(model)
     }
 
     // MARK: - Environment Check
@@ -110,6 +138,7 @@ final class ProviderSettingsState {
         parakeetVerifyMessage = nil
         isVerifyingParakeet = false
         downloadError = nil
+        failedDownloadModel = nil
         totalModelsSize = 0
         downloadedModels = []
         modelDownloadStates = [:]

@@ -1,0 +1,42 @@
+{
+  "source": "7b839ae",
+  "swift": {
+    "cases": 2979,
+    "exit_code": 0,
+    "mode": "parallel, coverage, TESTING; isolated defaults"
+  },
+  "coverage": {
+    "sources_only_percent": 40.52,
+    "covered_lines": 14849,
+    "total_lines": 36645,
+    "files": 189,
+    "floor": 40
+  },
+  "swiftlint": {
+    "version": "0.65.0",
+    "strict_lint": "passed"
+  },
+  "python": {
+    "tests": 121,
+    "result": "passed",
+    "dependency_environment": "isolated venv matching CI; tqdm 4.67.1"
+  },
+  "mypy": {
+    "version": "1.20.0",
+    "result": "no issues in 11 source files"
+  },
+  "limits": [
+    "Native layout unit cases are gated without host WindowServer; guest UI acceptance is separate.",
+    "VM uses synthetic native input, public speech fixture and virtual microphone.",
+    "No physical hold-key, complete VoiceOver audit or notarized release claim."
+  ],
+  "final_follow_up": {
+    "source": "45632e5",
+    "focused_swift_cases": 34,
+    "failures": 0,
+    "strict_lint": "passed",
+    "imports_analyzed_files": 3,
+    "import_findings": 0,
+    "full_final_analyzer_CI": "pending"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-06T17:12:09.780667+00:00",
+  "benchmark_workers": {
+    "successful": 6,
+    "failed": 0
+  },
+  "delivered_edits": 768,
+  "reviewed_configurations": 12,
+  "novel_outputs_manually_adjudicated": 43,
+  "speed_calls": 72,
+  "production_source_hashes": "unchanged",
+  "installed_runtime_models_passed": 6,
+  "installed_source_hashes": "unchanged before/after read-only smoke",
+  "review_output_hashes": "12 matched",
+  "benchmark_script_hashes_and_syntax": "passed",
+  "scoring_tests": {
+    "passed": 10,
+    "command": "PYTHONDONTWRITEBYTECODE=1 benchmark-python -m pytest -q scripts/bench/test_scoring.py"
+  },
+  "local_document_links_checked": 44,
+  "chart_visual_review": "passed: labels, values and caption readable",
+  "scope": "Benchmark tooling and documentation only; no full-app, microphone, UI or paste acceptance test."
+}

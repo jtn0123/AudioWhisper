@@ -126,9 +126,9 @@ internal struct SidebarVisualEffect: NSViewRepresentable {
 // MARK: - Navigation Item
 
 internal enum DashboardNavItem: String, CaseIterable, Identifiable {
+    case setup = "Setup"
     case dashboard = "Overview"
     case transcripts = "Transcripts"
-    case categories = "Categories"
     case recording = "Input"
     case providers = "Models"
     case visuals = "Visuals"
@@ -139,9 +139,9 @@ internal enum DashboardNavItem: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .setup:       return "checklist"
         case .dashboard:   return "square.text.square"
         case .transcripts: return "doc.text"
-        case .categories:  return "folder"
         case .recording:   return "mic.fill"
         case .providers:   return "cpu"
         case .visuals:     return "paintpalette"
@@ -165,6 +165,9 @@ internal struct DashboardView: View {
             mainContent
         }
         .background(DashboardTheme.pageBg)
+        .onChange(of: RecordingSetupState.shared.navigationRequest) { _, _ in
+            selectedNav = .setup
+        }
     }
 
     // MARK: - Sidebar
@@ -183,7 +186,7 @@ internal struct DashboardView: View {
 
                 // Navigation
                 VStack(alignment: .leading, spacing: DashboardTheme.Spacing.md) {
-                    navSection(items: [.dashboard, .transcripts, .categories])
+                    navSection(items: [.setup, .dashboard, .transcripts])
                     sectionDivider("Settings")
                     navSection(items: [.recording, .providers, .visuals, .preferences, .permissions])
                 }
@@ -429,9 +432,9 @@ internal struct DashboardView: View {
     @ViewBuilder
     private var mainContent: some View {
         switch selectedNav {
+        case .setup:       RecordingSetupView()
         case .dashboard:   DashboardHomeView(selectedNav: $selectedNav)
         case .transcripts: DashboardTranscriptsView()
-        case .categories:  DashboardCategoriesView()
         case .recording:   DashboardRecordingView()
         case .providers:   DashboardProvidersView()
         case .visuals:     DashboardVisualsView()
@@ -452,4 +455,10 @@ internal struct DashboardView: View {
     DashboardView()
         .frame(width: LayoutMetrics.DashboardWindow.previewSize.width,
                height: LayoutMetrics.DashboardWindow.previewSize.height)
+}
+
+extension DashboardView {
+    init(initialNav: DashboardNavItem = .dashboard) {
+        _selectedNav = State(initialValue: initialNav)
+    }
 }

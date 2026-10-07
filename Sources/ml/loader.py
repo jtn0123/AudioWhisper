@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import gc
 from typing import Any, Dict, Tuple
 
 from .hub import cached_snapshot_path
@@ -26,6 +27,21 @@ _CORRECTION_CACHE: Dict[str, Tuple[Any, Any]] = {}
 # load went online. See ml/hub.py.
 
 
+def _release_previous_models(cache: Dict[str, Any]) -> None:
+    # RPC dispatch is sequential, so the previous inference has finished here.
+    # Release its weights before allocating a replacement, keeping each engine
+    # bounded to one loaded repository.
+    if not cache:
+        return
+    cache.clear()
+    gc.collect()
+    try:
+        import mlx.core as mx
+    except ImportError:
+        return
+    mx.clear_cache()
+
+
 def load_parakeet_model(repo: str) -> Any:
     cached = _PARAKEET_CACHE.get(repo)
     if cached is not None:
@@ -36,6 +52,7 @@ def load_parakeet_model(repo: str) -> Any:
     except Exception as exc:
         raise RuntimeError(f"parakeet-mlx import failed: {exc}") from exc
 
+    _release_previous_models(_PARAKEET_CACHE)
     try:
         model = from_pretrained(cached_snapshot_path(repo))
     except Exception as exc:
@@ -55,6 +72,7 @@ def load_correction_model(repo: str) -> Tuple[Any, Any]:
     except Exception as exc:
         raise RuntimeError(f"mlx-lm import failed: {exc}") from exc
 
+    _release_previous_models(_CORRECTION_CACHE)
     try:
         model, tokenizer = load(cached_snapshot_path(repo))
     except Exception as exc:

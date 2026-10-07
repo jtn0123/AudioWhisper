@@ -1,22 +1,10 @@
 import Foundation
 @testable import AudioWhisper
 
-/// Protocol for speech-to-text service to enable mocking
-/// Test-only protocol mirroring the surface `SpeechToTextService` actually
-/// vends. `SpeechToTextService` does not conform to it — only the mock does —
-/// so it has to be kept in step by hand.
-///
-/// Audit item B4: the two `transcribe(...)` overloads were dropped here when
-/// they were deleted from the real service. Leaving them would have kept the
-/// mock advertising an API the production type no longer has, which is how a
-/// mock surface drifts into fiction.
-protocol SpeechToTextServiceProtocol {
-    func transcribeRaw(audioURL: URL, provider: TranscriptionProvider, model: WhisperModel?) async throws -> String
-}
-
-/// Mock implementation for testing transcription flows
+/// Mock implementation for testing transcription flows. It mirrors the
+/// `transcribeRaw` surface `SpeechToTextService` vends, kept in step by hand.
 @MainActor
-final class MockSpeechToTextService: SpeechToTextServiceProtocol {
+final class MockSpeechToTextService {
     var transcriptionResult: Result<String, Error> = .success("Mock transcription")
     var transcribeRawResult: Result<String, Error>?
     var lastAudioURL: URL?

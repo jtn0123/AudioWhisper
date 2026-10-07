@@ -180,7 +180,7 @@ class TestVerifyParakeet(VerifyScriptBehaviour, ScriptTestCase):
         code, _ = self.run_script(self.script, [])
 
         self.assertEqual(code, 0)
-        self.assertEqual(self.hub.calls[0]["repo"], "mlx-community/parakeet-tdt-0.6b-v3")
+        self.assertEqual(self.hub.calls[0]["repo"], "mlx-community/parakeet-tdt-0.6b-v2")
 
 
 class TestVerifyMLX(VerifyScriptBehaviour, ScriptTestCase):

@@ -33,7 +33,9 @@ internal enum ModelPins {
         // Semantic correction (MLXModelManager.recommendedModels)
         "mlx-community/gemma-3-1b-it-qat-4bit": "15fed4eafb456c6fcb2a1165f19ac609670ed14b",
         "mlx-community/Qwen3-1.7B-4bit": "3b1b1768f8f8cf8351c712464f906e86c2b8269e",
-        "mlx-community/Qwen3-4B-Instruct-2507-4bit": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b"
+        "mlx-community/Qwen3-4B-Instruct-2507-4bit": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+        "mlx-community/Qwen3.5-9B-4bit": "8b2b98c00a6b4d291155e4890773ca8f769aee53",
+        "leonsarmiento/Qwen3.8-27B-3bit-mlx": "5fc234d9e6080b8388a11286380e801b7c9f535c"
     ]
 
     /// The pinned commit for `repo`, or nil for a repo the app does not ship.

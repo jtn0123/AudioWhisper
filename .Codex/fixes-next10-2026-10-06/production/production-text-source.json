@@ -1,0 +1,6 @@
+{
+  "Sources/Services/SemanticCorrectionService.swift": "8f00a4be7545109e2e68aafe8170b0d3880eac639b95b45acfec96e257b124fe",
+  "Sources/Services/SpeechToTextService.swift": "edc740e69b7f1b3cda50b929112c908f19c24ab2dd79ae7774ed28d36be95a90",
+  "Sources/Services/CorrectionIntegrity.swift": "833752c10e5694b3b7933f94bbcd765497a14aae3767e991108b49feaac409fa",
+  "Sources/Services/CorrectionContentComparison.swift": "bcc7587388e3fe57de1aba068b4331b61a37d444567c44c72469d2f61985abad"
+}

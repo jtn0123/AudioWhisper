@@ -1,0 +1,28 @@
+{
+  "qwen3.5-9b": {
+    "edits": 64,
+    "single_pass_edits": 64,
+    "guard_rejections": 2,
+    "versions": {
+      "mlx": "0.32.0",
+      "mlx-lm": "0.31.3",
+      "transformers": "5.10.1",
+      "huggingface-hub": "1.9.1"
+    },
+    "median_warm_seconds": 0.6312821250030538,
+    "scope": "Integration regression run on app Python; concurrent build/desktop/VM activity. Not a new quality score or a controlled speed comparison."
+  },
+  "qwen3.8-27b-3bit": {
+    "edits": 64,
+    "single_pass_edits": 64,
+    "guard_rejections": 3,
+    "versions": {
+      "mlx": "0.32.0",
+      "mlx-lm": "0.31.3",
+      "transformers": "5.10.1",
+      "huggingface-hub": "1.9.1"
+    },
+    "median_warm_seconds": 1.5842037920010625,
+    "scope": "Integration regression run on app Python; concurrent build/desktop/VM activity. Not a new quality score or a controlled speed comparison."
+  }
+}

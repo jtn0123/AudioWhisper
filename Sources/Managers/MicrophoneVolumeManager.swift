@@ -6,8 +6,15 @@ import Observation
 // Protocol for testing (bug regression tests)
 internal protocol MicrophoneVolumeManaging {
     func boostMicrophoneVolume() async -> Bool
+    func boostMicrophoneVolume(deviceID: AudioDeviceID) async -> Bool
     func restoreMicrophoneVolume() async
     func isVolumeControlAvailable() async -> Bool
+}
+
+extension MicrophoneVolumeManaging {
+    func boostMicrophoneVolume(deviceID: AudioDeviceID) async -> Bool {
+        await boostMicrophoneVolume()
+    }
 }
 
 @Observable
@@ -38,10 +45,18 @@ internal class MicrophoneVolumeManager: MicrophoneVolumeManaging {
 
     /// Temporarily boost microphone volume to maximum (100%)
     func boostMicrophoneVolume() async -> Bool {
+        do {
+            return await boostMicrophoneVolume(deviceID: try await controller.defaultInputDeviceID())
+        } catch {
+            Logger.microphoneVolume.error("Failed to resolve microphone volume device: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    func boostMicrophoneVolume(deviceID: AudioDeviceID) async -> Bool {
         guard !isVolumeBoosted else { return true }
 
         do {
-            let deviceID = try await controller.defaultInputDeviceID()
             let currentVolume = try await controller.inputVolume(deviceID: deviceID)
 
             // Store original volume and device for restoration

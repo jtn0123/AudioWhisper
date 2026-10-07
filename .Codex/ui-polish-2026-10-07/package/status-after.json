@@ -1,0 +1,9 @@
+{
+  "source": "7b839ae",
+  "status": "passed",
+  "checks": [
+    "Cancellation is shown for Qwen3.8 only",
+    "Selecting Qwen3.5 removes Qwen3.8 terminal message",
+    "Selected model remains correctly shown as not installed"
+  ]
+}

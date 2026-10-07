@@ -4,8 +4,7 @@ private class BundleFinder {}
 
 internal enum ResourceLocator {
     /// The SwiftPM resource bundle, or nil instead of crashing when there is
-    /// none (the `.app` that build.sh assembles copies resources flat into
-    /// Contents/Resources, so it has no separate bundle).
+    /// none. Packaged apps carry both flat Python resources and SwiftPM bundles.
     ///
     /// `UvBootstrap` used to keep its own copy of this lookup; both now share it.
     static var moduleBundle: Bundle? {

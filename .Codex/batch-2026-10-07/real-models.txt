@@ -1,0 +1,49 @@
+Exact source: 3312fd35be5b83ee2c6345190dc5b168854f4a4c
+ProductName:		macOS
+ProductVersion:		27.2
+BuildVersion:		26B5101f
+Test Suite 'Selected tests' started at 2026-10-07 14:32:16.414.
+Test Suite 'AudioWhisperTests.xctest' started at 2026-10-07 14:32:16.415.
+Test Suite 'CurrentWritingModelFixtureTests' started at 2026-10-07 14:32:16.415.
+Test Case '-[AudioWhisperTests.CurrentWritingModelFixtureTests testProductionCleanupWarmReuseAndSwitchingAcrossCurrentQwenModels]' started.
+Test Case '-[AudioWhisperTests.CurrentWritingModelFixtureTests testProductionCleanupWarmReuseAndSwitchingAcrossCurrentQwenModels]' passed (14.926 seconds).
+Test Suite 'CurrentWritingModelFixtureTests' passed at 2026-10-07 14:32:31.341.
+	 Executed 1 test, with 0 failures (0 unexpected) in 14.926 (14.926) seconds
+Test Suite 'LocalEngineFixtureTests' started at 2026-10-07 14:32:31.341.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse]' started.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse]' passed (2.529 seconds).
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperIncrementalLoadingPreservesShortSpeech]' started.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperIncrementalLoadingPreservesShortSpeech]' passed (3.682 seconds).
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperTranscribesSpeechAndReusesWarmModel]' started.
+Test Case '-[AudioWhisperTests.LocalEngineFixtureTests testWhisperTranscribesSpeechAndReusesWarmModel]' passed (4.079 seconds).
+Test Suite 'LocalEngineFixtureTests' passed at 2026-10-07 14:32:41.631.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 10.290 (10.290) seconds
+Test Suite 'ParakeetEndToEndTests' started at 2026-10-07 14:32:41.631.
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testExplicitEnglishModelsWarmReuseAndSwitching]' started.
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testExplicitEnglishModelsWarmReuseAndSwitching]' passed (1.977 seconds).
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testV3TranscribesSpanishWithoutAnEnglishTranslation]' started.
+Test Case '-[AudioWhisperTests.ParakeetEndToEndTests testV3TranscribesSpanishWithoutAnEnglishTranslation]' passed (0.813 seconds).
+Test Suite 'ParakeetEndToEndTests' passed at 2026-10-07 14:32:44.421.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 2.790 (2.790) seconds
+Test Suite 'AudioWhisperTests.xctest' passed at 2026-10-07 14:32:44.421.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 28.005 (28.006) seconds
+Test Suite 'Selected tests' passed at 2026-10-07 14:32:44.421.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 28.005 (28.007) seconds
+REAL_CURRENT_CORRECTION run=0 repo=mlx-community/Qwen3.5-9B-4bit pin=8b2b98c00a6b4d291155e4890773ca8f769aee53 elapsed=3.535724958 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=1 repo=mlx-community/Qwen3.5-9B-4bit pin=8b2b98c00a6b4d291155e4890773ca8f769aee53 elapsed=0.593158291 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=2 repo=leonsarmiento/Qwen3.8-27B-3bit-mlx pin=5fc234d9e6080b8388a11286380e801b7c9f535c elapsed=6.51605025 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=3 repo=leonsarmiento/Qwen3.8-27B-3bit-mlx pin=5fc234d9e6080b8388a11286380e801b7c9f535c elapsed=1.270640542 seconds output=They're going to the store tomorrow.
+REAL_CURRENT_CORRECTION run=4 repo=mlx-community/Qwen3.5-9B-4bit pin=8b2b98c00a6b4d291155e4890773ca8f769aee53 elapsed=1.937120042 seconds output=They're going to the store tomorrow.
+REAL_RUNTIME refreshed=0.846486042 seconds warm=0.001019041 seconds
+REAL_CORRECTION elapsed=1.247859417 seconds output=They are going to the store tomorrow.
+REAL_WHISPER_LOADING_PARITY transcript=The quick brown fox jumps over the lazy dog.
+REAL_WHISPER_AUDIO samples=42732 peak=0.80947876
+REAL_WHISPER run=0 elapsed=0.643725209 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_WHISPER run=1 elapsed=0.069717042 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_WHISPER verification=loaded
+REAL_PARAKEET repo=mlx-community/parakeet-tdt-0.6b-v2 pin=8ae155301e23d820d82aa60d24817c900e69e487 elapsed=1.260972708 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_PARAKEET repo=mlx-community/parakeet-tdt-0.6b-v2 pin=8ae155301e23d820d82aa60d24817c900e69e487 elapsed=0.069367125 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_PARAKEET repo=mlx-community/parakeet-tdt-0.6b-v3 pin=ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15 elapsed=0.297590208 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_PARAKEET repo=mlx-community/parakeet-tdt-0.6b-v3 pin=ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15 elapsed=0.068394375 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_PARAKEET repo=mlx-community/parakeet-tdt-0.6b-v2 pin=8ae155301e23d820d82aa60d24817c900e69e487 elapsed=0.201772125 seconds transcript=The quick brown fox jumps over the lazy dog.
+REAL_PARAKEET language=Spanish repo=mlx-community/parakeet-tdt-0.6b-v3 transcript=Mañana vamos a visitar el parque. Por favor, trae agua y una cámara.

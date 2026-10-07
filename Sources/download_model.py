@@ -16,7 +16,7 @@ Reports progress as one JSON object per stdout line — the contract
 import json
 import os
 import sys
-from typing import List
+from typing import Any, List
 
 # Read by huggingface_hub at import time, so these must precede the import in
 # main(). Never pick up a token from the user's environment or HF login.
@@ -41,7 +41,24 @@ def main(argv: List[str]) -> int:
     try:
         # ml.hub imports huggingface_hub lazily, so a missing install surfaces
         # here, at the call, rather than at the import above.
-        download_snapshot(repo, revision)
+        from tqdm.auto import tqdm
+
+        # tqdm is the runtime's untyped third-party progress base.
+        class DownloadProgress(tqdm):  # type: ignore[misc]
+            def display(self, msg: Any = None, pos: Any = None) -> None:
+                total = self.total
+                completed = self.n
+                if not total or total <= 0:
+                    return
+                unit = "bytes" if self.unit == "B" else "files"
+                if unit == "bytes":
+                    message = f"Downloaded {completed / 1_000_000:.1f} / {total / 1_000_000:.1f} MB"
+                else:
+                    message = f"Fetched {int(completed)} / {int(total)} files"
+                print(json.dumps({"status": "downloading", "message": message,
+                                  "completed": completed, "total": total, "unit": unit}), flush=True)
+
+        download_snapshot(repo, revision, tqdm_class=DownloadProgress)
     except ImportError as exc:
         emit("error", f"huggingface_hub not installed: {exc}")
         return 1

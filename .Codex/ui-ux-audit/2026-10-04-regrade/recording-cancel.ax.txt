@@ -1,0 +1,31 @@
+Window: "AudioWhisper Rebuild", App: AudioWhisper Rebuild.
+0 standard window AudioWhisper Rebuild, Secondary Actions: Raise
+	1 container
+		2 image Description: Waveform In A Filled Circle, ID: waveform.circle.fill
+		3 text RECORD On your Mac Audio
+Whisper REBUILD / NATIVE V2
+		4 button (selected) Record
+		5 button Library
+		6 button Models & setup
+		7 button Writing profiles
+		8 button Preferences
+		9 text Ready to record Private by default.
+No cloud transcription.
+		10 scroll area
+			11 text Your words, made useful. Speak naturally. Get useful text, right where you need it. RECORDING WORKSPACE
+			12 button Description: Start recording, ID: mic.fill
+			13 text Ready to record Click the microphone, or enable your shortcut in Preferences. Parakeet · on device
+			14 button Description: Transcribe a file…, Help: Choose one audio file to transcribe
+			15 text You can also drop one audio file here. File transcription does not need microphone access. YOUR TRANSCRIPT A little less typing. Your next recording appears here. It is copied when transcription finishes; saving to your library is optional. 4 39 0 min Sessions Words spoken Estimated time saved
+	16 close button
+	17 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	18 minimize button
+	19 text AudioWhisper Rebuild
+20 menu bar
+	21 AudioWhisper Rebuild
+	22 Edit
+	23 View
+	24 Window
+	25 Help
+
+The focused UI element is 0 standard window AudioWhisper Rebuild, Secondary Actions: Raise

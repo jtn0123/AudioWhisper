@@ -54,20 +54,12 @@ internal extension DashboardProvidersView {
                     .stroke(DashboardTheme.rule, lineWidth: 1)
             )
 
-            // Error message — uses the shared DownloadProgressView so retry
-            // is exposed consistently across providers. The retry target is
-            // the most recently attempted download (derived from
-            // downloadStartTime), or clears the error if no candidate exists.
+            // Keep the failed model separate from active download timings.
             if let error = downloadError {
                 DownloadProgressView(
                     state: .failed(message: error),
-                    onRetry: {
-                        if let lastModel = downloadStartTime
-                            .max(by: { $0.value < $1.value })?.key {
-                            downloadModel(lastModel)
-                        } else {
-                            downloadError = nil
-                        }
+                    onRetry: state.failedDownloadModel == nil ? nil : {
+                        state.retryFailedDownload(using: downloadModel)
                     }
                 )
                 .padding(DashboardTheme.Spacing.md)
@@ -87,61 +79,65 @@ internal extension DashboardProvidersView {
         let isDownloading = stage?.isActive ?? false
 
         return HStack(spacing: DashboardTheme.Spacing.md) {
-            // Selection indicator
-            ZStack {
-                Circle()
-                    .stroke(isSelected ? DashboardTheme.accent : DashboardTheme.rule, lineWidth: 1.5)
-                    .frame(width: 20, height: 20)
+            Button { selectedWhisperModel = model } label: {
+                HStack(spacing: DashboardTheme.Spacing.md) {
+                    // Selection indicator
+                    ZStack {
+                        Circle()
+                            .stroke(isSelected ? DashboardTheme.accent : DashboardTheme.rule, lineWidth: 1.5)
+                            .frame(width: 20, height: 20)
 
-                if isSelected {
-                    Circle()
-                        .fill(DashboardTheme.accent)
-                        .frame(width: 10, height: 10)
-                }
-            }
-
-            // Model info
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: DashboardTheme.Spacing.sm) {
-                    Text(model.displayName)
-                        .font(DashboardTheme.Fonts.sans(14, weight: .medium))
-                        .foregroundStyle(DashboardTheme.ink)
-
-                    if model == .base {
-                        Text("RECOMMENDED")
-                            .font(DashboardTheme.Fonts.sans(9, weight: .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(DashboardTheme.accent)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                        if isSelected {
+                            Circle()
+                                .fill(DashboardTheme.accent)
+                                .frame(width: 10, height: 10)
+                        }
                     }
+
+                    // Model info
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: DashboardTheme.Spacing.sm) {
+                            Text(model.displayName)
+                                .font(DashboardTheme.Fonts.sans(14, weight: .medium))
+                                .foregroundStyle(DashboardTheme.ink)
+
+                            if model == .base {
+                                Text("RECOMMENDED")
+                                    .font(DashboardTheme.Fonts.sans(9, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(DashboardTheme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
+                        }
+
+                        Text(model.description)
+                            .font(DashboardTheme.Fonts.sans(12, weight: .regular))
+                            .foregroundStyle(DashboardTheme.inkMuted)
+                    }
+
+                    Spacer()
+
+                    // Size
+                    Text(model.fileSize)
+                        .font(DashboardTheme.Fonts.mono(11, weight: .regular))
+                        .foregroundStyle(DashboardTheme.inkMuted)
+
                 }
-
-                Text(model.description)
-                    .font(DashboardTheme.Fonts.sans(12, weight: .regular))
-                    .foregroundStyle(DashboardTheme.inkMuted)
+                .contentShape(Rectangle())
             }
-
-            Spacer()
-
-            // Size
-            Text(model.fileSize)
-                .font(DashboardTheme.Fonts.mono(11, weight: .regular))
-                .foregroundStyle(DashboardTheme.inkMuted)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Select \(model.displayName)")
+            .accessibilityValue("\(isSelected ? "Selected. " : "")\(isDownloaded ? "Installed" : "Needs download")")
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
 
             // Status/Action
             whisperModelStatusAction(model, stage: stage, isDownloaded: isDownloaded, isDownloading: isDownloading)
         }
         .padding(.horizontal, DashboardTheme.Spacing.md)
         .padding(.vertical, DashboardTheme.Spacing.md)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            selectedWhisperModel = model
-            if !isDownloaded && !isDownloading {
-                downloadModel(model)
-            }
-        }
+
     }
 
     @ViewBuilder
@@ -173,12 +169,14 @@ internal extension DashboardProvidersView {
                         .foregroundStyle(DashboardTheme.inkMuted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Delete \(model.displayName) model")
+                .help("Delete \(model.displayName) model")
             }
         } else {
             Button {
                 downloadModel(model)
             } label: {
-                Text("Get")
+                Text("Download")
                     .font(DashboardTheme.Fonts.sans(11, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
@@ -187,6 +185,7 @@ internal extension DashboardProvidersView {
                     .clipShape(RoundedRectangle(cornerRadius: 5))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Download \(model.displayName) model")
         }
     }
 
@@ -224,16 +223,14 @@ internal extension DashboardProvidersView {
 
     // MARK: - Actions
     private func downloadModel(_ model: WhisperModel) {
-        downloadError = nil
-        downloadStartTime[model] = Date()
+        state.beginDownload(model)
         Task {
             do {
                 try await modelManager.downloadModel(model)
-                downloadStartTime.removeValue(forKey: model)
+                state.finishDownload(model)
                 loadModelStates()
             } catch {
-                downloadError = error.localizedDescription
-                downloadStartTime.removeValue(forKey: model)
+                state.finishDownload(model, error: error.localizedDescription)
             }
         }
     }

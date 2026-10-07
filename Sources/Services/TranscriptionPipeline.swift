@@ -14,6 +14,19 @@ internal struct TranscriptionResult {
     /// Outcome of the semantic-correction stage. `nil` when correction was
     /// disabled via `TranscriptionPipelineConfig.applySemanticCorrection`.
     let correctionOutcome: CorrectionOutcome?
+    let originalText: String
+    /// Validated file length, used when no live capture duration exists.
+    let audioDuration: TimeInterval?
+
+    init(
+        text: String, correctionOutcome: CorrectionOutcome?, originalText: String? = nil,
+        audioDuration: TimeInterval? = nil
+    ) {
+        self.text = text
+        self.correctionOutcome = correctionOutcome
+        self.originalText = originalText ?? text
+        self.audioDuration = audioDuration.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+    }
 }
 
 /// Orchestrates the full transcription flow: validate audio → transcribe →
@@ -55,29 +68,36 @@ internal class TranscriptionPipeline {
     func transcribe(audioURL: URL, config: TranscriptionPipelineConfig) async throws -> TranscriptionResult {
         logger.debug("Starting transcription pipeline with provider: \(config.provider.rawValue)")
 
+        try Task.checkCancellation()
         // Step 1: Validate audio file
         let validationResult = await AudioValidator.validateAudioFile(at: audioURL)
+        let audioDuration: TimeInterval
         switch validationResult {
-        case .valid:
+        case .valid(let info):
+            audioDuration = info.duration
             logger.debug("Audio validation passed")
         case .invalid(let error):
             logger.error("Audio validation failed: \(error.localizedDescription)")
             throw SpeechToTextError.transcriptionFailed(error.localizedDescription)
         }
 
+        try Task.checkCancellation()
         // Step 2: Perform transcription
         let rawText = try await performTranscription(audioURL: audioURL, config: config)
         logger.debug("Raw transcription completed: \(rawText.prefix(50))...")
 
+        try Task.checkCancellation()
         // Step 3: Apply semantic correction if enabled
         guard config.applySemanticCorrection else {
-            return TranscriptionResult(text: rawText, correctionOutcome: nil)
+            return TranscriptionResult(text: rawText, correctionOutcome: nil, audioDuration: audioDuration)
         }
 
         let outcome = await correctionService.correctWithOutcome(
             text: rawText,
             providerUsed: config.provider,
-            sourceAppBundleId: config.sourceAppBundleId
+            sourceAppBundleId: config.sourceAppBundleId,
+            mode: config.correctionMode,
+            modelRepo: config.correctionModelRepo
         )
         logger.debug("Semantic correction completed")
 
@@ -89,7 +109,8 @@ internal class TranscriptionPipeline {
         let outcomeText = outcome.text
         let trimmed = outcomeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalText = trimmed.isEmpty ? rawText : outcomeText
-        return TranscriptionResult(text: finalText, correctionOutcome: outcome)
+        return TranscriptionResult(
+            text: finalText, correctionOutcome: outcome, originalText: rawText, audioDuration: audioDuration)
     }
 
     /// Convenience method that transcribes without semantic correction.
@@ -115,9 +136,10 @@ internal class TranscriptionPipeline {
             guard let model = config.whisperModel else {
                 throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
             }
-            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .local, model: model)
+            return try await speechService.transcribeValidated(
+                audioURL: audioURL, provider: .local, model: model, pipelineConfig: config)
         case .parakeet:
-            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .parakeet)
+            return try await speechService.transcribeValidated(audioURL: audioURL, provider: .parakeet, pipelineConfig: config)
         }
     }
 
@@ -133,6 +155,6 @@ internal class TranscriptionPipeline {
 
     /// Posts a progress notification for the current pipeline step.
     func postProgress(_ step: PipelineStep) {
-        NotificationCenter.default.post(name: .transcriptionProgress, object: step.rawValue)
+        TranscriptionProgress.post(step.rawValue, sessionID: TranscriptionProgress.sessionID)
     }
 }

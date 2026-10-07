@@ -204,7 +204,6 @@ final class DashboardNavItemTests: XCTestCase {
     func testNavItemIcons() {
         XCTAssertEqual(DashboardNavItem.dashboard.icon, "square.text.square")
         XCTAssertEqual(DashboardNavItem.transcripts.icon, "doc.text")
-        XCTAssertEqual(DashboardNavItem.categories.icon, "folder")
         XCTAssertEqual(DashboardNavItem.recording.icon, "mic.fill")
         XCTAssertEqual(DashboardNavItem.providers.icon, "cpu")
         XCTAssertEqual(DashboardNavItem.visuals.icon, "paintpalette")
@@ -215,7 +214,6 @@ final class DashboardNavItemTests: XCTestCase {
     func testNavItemRawValues() {
         XCTAssertEqual(DashboardNavItem.dashboard.rawValue, "Overview")
         XCTAssertEqual(DashboardNavItem.transcripts.rawValue, "Transcripts")
-        XCTAssertEqual(DashboardNavItem.categories.rawValue, "Categories")
         XCTAssertEqual(DashboardNavItem.recording.rawValue, "Input")
         XCTAssertEqual(DashboardNavItem.providers.rawValue, "Models")
         XCTAssertEqual(DashboardNavItem.visuals.rawValue, "Visuals")
@@ -256,7 +254,7 @@ final class DashboardViewTests: XCTestCase {
 final class DashboardNavItemNavigationTests: XCTestCase {
 
     func testMainSectionItems() {
-        let mainItems: [DashboardNavItem] = [.dashboard, .transcripts, .categories]
+        let mainItems: [DashboardNavItem] = [.dashboard, .transcripts]
         for item in mainItems {
             XCTAssertTrue(DashboardNavItem.allCases.contains(item))
         }

@@ -1,0 +1,14 @@
+[
+  {
+    "script": "scripts/typecheck.sh",
+    "exit": 0,
+    "stdout": "",
+    "stderr": "mypy not installed \u2014 skipping (pip install mypy==1.20.0)\n"
+  },
+  {
+    "script": "scripts/lint.sh",
+    "exit": 0,
+    "stdout": "",
+    "stderr": "note: active toolchain lacks actool; using DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer\nswiftlint not installed \u2014 skipping (brew install swiftlint)\n"
+  }
+]

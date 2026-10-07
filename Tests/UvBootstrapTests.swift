@@ -27,7 +27,7 @@ final class UvBootstrapTests: XCTestCase {
         setenv("HOME", tempHome.path, 1)
         setenv("AUDIOWHISPER_APP_SUPPORT_DIR", tempAppSupport.path, 1)
         // Keep /usr/bin last so tools like /usr/bin/env remain reachable while excluding any real uv in default paths.
-        setenv("PATH", "\(tempBin.path):/usr/bin", 1)
+        setenv("PATH", "\(tempBin.path):/usr/bin:/bin", 1)
     }
 
     override func tearDownWithError() throws {
@@ -72,11 +72,11 @@ final class UvBootstrapTests: XCTestCase {
 
     func testFindUvFallsBackToUserToolsDirectory() throws {
         // No uv on PATH; add one under Application Support/AudioWhisper/bin/uv
-        let toolsDir = tempAppSupport.appendingPathComponent("AudioWhisper/bin", isDirectory: true)
+        let toolsDir = tempAppSupport.appendingPathComponent("\(RebuildStorage.directoryName)/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: toolsDir, withIntermediateDirectories: true)
 
         let uvURL = toolsDir.appendingPathComponent("uv")
-        try writeExecutable("#!/bin/bash\necho 'uv 0.9.0'\n", to: uvURL)
+        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23'\n", to: uvURL)
 
         let found = try UvBootstrap.findUv()
         // In test environment, Bundle.main may contain a valid bundled uv which takes precedence.
@@ -90,7 +90,7 @@ final class UvBootstrapTests: XCTestCase {
 
     func testEnsureVenvCreatesAndSyncsWithDefaultPython() async throws {
         let logURL = tempHome.appendingPathComponent("uv_invocations.log")
-        let uvURL = try writeUvStub(version: "0.8.6", logFile: logURL)
+        let uvURL = try writeUvStub(version: "0.12.23", logFile: logURL)
         XCTAssertTrue(FileManager.default.isExecutableFile(atPath: uvURL.path))
 
         let project = try UvBootstrap.projectDir()
@@ -123,7 +123,7 @@ final class UvBootstrapTests: XCTestCase {
         let invocations = try String(contentsOf: logURL).split(separator: "\n")
         XCTAssertTrue(invocations.contains(where: { $0.contains("--version") }))
         XCTAssertTrue(
-            invocations.contains(where: { $0.contains("venv --python \(UvBootstrap.defaultPythonVersion)") }) ||
+            invocations.contains(where: { $0.contains("venv --clear --python \(UvBootstrap.defaultPythonVersion)") }) ||
             FileManager.default.fileExists(atPath: project.appendingPathComponent(".venv").path)
         )
         XCTAssertTrue(invocations.contains(where: { $0.contains("sync") }))
@@ -136,7 +136,7 @@ final class UvBootstrapTests: XCTestCase {
     /// found nothing to sync, and the nightly end-to-end run failed every night.
     func testEnsureVenvCopiesTheBundledProjectAndSyncsFrozen() async throws {
         let logURL = tempHome.appendingPathComponent("uv_invocations.log")
-        try writeUvStub(version: "0.8.6", logFile: logURL)
+        try writeUvStub(version: "0.12.23", logFile: logURL)
         let project = try UvBootstrap.projectDir()
         let pythonBin = project.appendingPathComponent(".venv/bin", isDirectory: true)
         try FileManager.default.createDirectory(at: pythonBin, withIntermediateDirectories: true)
@@ -157,7 +157,67 @@ final class UvBootstrapTests: XCTestCase {
         )
     }
 
+    func testFailedFrozenSyncDoesNotRunUnlockedResolution() async throws {
+        let log = tempHome.appendingPathComponent("sync.log")
+        try writeExecutable("""
+        #!/bin/bash
+        echo "$*" >> '\(log.path)'
+        if [[ "$1" == "--version" ]]; then echo 'uv 0.12.23'; exit 0; fi
+        if [[ "$1" == "sync" && "$2" == "--frozen" ]]; then echo 'pinned failure' >&2; exit 1; fi
+        if [[ "$1" == "venv" ]]; then mkdir -p .venv; exit 0; fi
+        exit 0
+        """, to: tempBin.appendingPathComponent("uv"))
+        do {
+            _ = try await UvBootstrap.ensureVenv()
+            XCTFail("expected pinned install failure")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("pinned failure"))
+        }
+        let invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.hasPrefix("sync") }, ["sync --frozen"])
+    }
+
+    func testUnverifiedBinaryCannotExecuteAndFailedChecksRemainRetryable() throws {
+        let marker = tempHome.appendingPathComponent("executed")
+        let binary = tempBin.appendingPathComponent("unverified")
+        try writeExecutable("#!/bin/bash\ntouch '\(marker.path)'\necho 'uv 0.12.23'\n", to: binary)
+        for _ in 0..<2 {
+            XCTAssertThrowsError(try UvBootstrap.verifiedUvVersion(at: binary, expected: String(repeating: "0", count: 64)))
+            XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+        }
+        XCTAssertThrowsError(try UvBootstrap.verifiedUvVersion(at: binary, expected: ""))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+
     // MARK: - Helpers
+
+    func testWarmAndConcurrentPreparationsSyncOnceAndRecoverDeletedInterpreter() async throws {
+        let log = tempHome.appendingPathComponent("warm.log")
+        try writeUvStub(version: "0.12.23", logFile: log)
+        let initial = try await UvBootstrap.ensureVenv()
+        try await withThrowingTaskGroup(of: URL.self) { group in
+            for _ in 0..<8 { group.addTask { try await UvBootstrap.ensureVenv() } }
+            for try await python in group { XCTAssertEqual(python, initial) }
+        }
+        var invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 1)
+        try FileManager.default.removeItem(at: initial)
+        _ = try await UvBootstrap.ensureVenv()
+        invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 2)
+    }
+
+    func testChangedLockAndExplicitRefreshInvalidateWarmPreparation() async throws {
+        let log = tempHome.appendingPathComponent("invalidate.log")
+        try writeUvStub(version: "0.12.23", logFile: log)
+        _ = try await UvBootstrap.ensureVenv()
+        let project = try UvBootstrap.projectDir()
+        try "changed lock".write(to: project.appendingPathComponent("uv.lock"), atomically: true, encoding: .utf8)
+        _ = try await UvBootstrap.ensureVenv()
+        _ = try await UvBootstrap.ensureVenv(forceRefresh: true)
+        let invocations = try String(contentsOf: log, encoding: .utf8).split(separator: "\n")
+        XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 3)
+    }
 
     private func whichUVPath() -> String? {
         let process = Process()
@@ -181,15 +241,15 @@ final class UvBootstrapTests: XCTestCase {
         if let logFile {
             lines.append("echo \"$dir :: $*\" >> \"\(logFile.path)\"")
         }
+        lines.append("if [[ \"$1\" == \"--version\" ]]; then")
+        lines.append("  echo 'uv \(version)'")
+        lines.append("  exit 0")
+        lines.append("fi")
         // Always ensure a minimal venv layout so tests remain deterministic
         lines.append("mkdir -p \"$dir/.venv/bin\"")
         lines.append("cat > \"$dir/.venv/bin/python3\" <<'PY'\n#!/bin/bash\necho python\nPY")
         lines.append("chmod +x \"$dir/.venv/bin/python3\"")
         lines.append("ln -sf python3 \"$dir/.venv/bin/python\"")
-        lines.append("if [[ \"$1\" == \"--version\" ]]; then")
-        lines.append("  echo 'uv \(version)'")
-        lines.append("  exit 0")
-        lines.append("fi")
         lines.append("if [[ \"$1\" == \"venv\" ]]; then")
         lines.append("  exit 0")
         lines.append("fi")

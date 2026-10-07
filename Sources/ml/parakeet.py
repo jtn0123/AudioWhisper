@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
+from typing import Any, Callable, Dict
 
 from .loader import load_parakeet_model
 
-DEFAULT_PARAKEET_REPO = "mlx-community/parakeet-tdt-0.6b-v3"
+DEFAULT_PARAKEET_REPO = "mlx-community/parakeet-tdt-0.6b-v2"
+CHUNK_SECONDS = 120
+OVERLAP_SECONDS = 15
 
 
 def extract_parakeet_text(result: Any) -> str:
@@ -53,12 +55,48 @@ def transcribe(repo: str, pcm_path: str) -> Dict[str, Any]:
         raise RuntimeError(f"parakeet_mlx.audio import failed: {exc}") from exc
 
     model = load_parakeet_model(repo)
-    audio_data = np.fromfile(pcm_path, dtype=np.float32)
-
-    audio_mlx = mx.array(audio_data.astype(np.float32))
-    mel = get_logmel(audio_mlx, model.preprocessor_config)
-    result = model.generate(mel)
-
-    text = extract_parakeet_text(result)
+    frames = os.path.getsize(pcm_path) // 4
+    sample_rate = model.preprocessor_config.sample_rate
+    if frames <= CHUNK_SECONDS * sample_rate:
+        audio_data = np.fromfile(pcm_path, dtype=np.float32, count=CHUNK_SECONDS * sample_rate)
+        mel = get_logmel(mx.array(audio_data), model.preprocessor_config)
+        text = extract_parakeet_text(model.generate(mel))
+    else:
+        text = transcribe_chunks(model, pcm_path, frames, np, mx, get_logmel)
     return {"success": True, "text": text}
 
+
+def transcribe_chunks(
+    model: Any, pcm_path: str, frames: int, np: Any, mx: Any,
+    get_logmel: Callable[[Any, Any], Any],
+) -> str:
+    # Use the vendor's overlapping-token merge, while reading raw PCM in bounded
+    # windows instead of its full-file loader. Short recordings retain the same
+    # generation path; long attention tensors never span the complete input.
+    from parakeet_mlx import DecodingConfig
+    from parakeet_mlx.alignment import (
+        merge_longest_contiguous, merge_longest_common_subsequence,
+        sentences_to_result, tokens_to_sentences,
+    )
+
+    rate = model.preprocessor_config.sample_rate
+    chunk_frames = CHUNK_SECONDS * rate
+    stride = (CHUNK_SECONDS - OVERLAP_SECONDS) * rate
+    tokens: list[Any] = []
+    for start in range(0, frames, stride):
+        data = np.fromfile(pcm_path, dtype=np.float32, count=chunk_frames, offset=start * 4)
+        if len(data) < model.preprocessor_config.hop_length:
+            break
+        result = model.generate(get_logmel(mx.array(data), model.preprocessor_config))[0]
+        for token in result.tokens:
+            token.start += start / rate
+            token.end = token.start + token.duration
+        if tokens:
+            try:
+                tokens = merge_longest_contiguous(tokens, result.tokens, overlap_duration=OVERLAP_SECONDS)
+            except RuntimeError:
+                tokens = merge_longest_common_subsequence(tokens, result.tokens, overlap_duration=OVERLAP_SECONDS)
+        else:
+            tokens = result.tokens
+    merged = sentences_to_result(tokens_to_sentences(tokens, DecodingConfig().sentence))
+    return extract_parakeet_text(merged)

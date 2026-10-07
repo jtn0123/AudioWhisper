@@ -20,6 +20,7 @@ final class StubSpeechToTextServiceForFlow: SpeechToTextService, @unchecked Send
     /// Suspends before returning, so a test can cancel a run that is genuinely
     /// mid-flight rather than racing an already-finished Task.
     var delay: Duration?
+    var handler: ((URL) async throws -> String)?
 
     private(set) var callCount = 0
     private(set) var lastAudioURL: URL?
@@ -28,11 +29,13 @@ final class StubSpeechToTextServiceForFlow: SpeechToTextService, @unchecked Send
     override func transcribeValidated(
         audioURL: URL,
         provider: TranscriptionProvider,
-        model: WhisperModel? = nil
+        model: WhisperModel? = nil,
+        pipelineConfig: TranscriptionPipelineConfig? = nil
     ) async throws -> String {
         callCount += 1
         lastAudioURL = audioURL
         lastProvider = provider
+        if let handler { return try await handler(audioURL) }
         if let delay {
             try await Task.sleep(for: delay)
         }

@@ -1,0 +1,90 @@
+{
+  "cause": "Qwen3.8 chat template opens <think> in the prompt. Generated continuation starts with untagged reasoning. sanitize_model_output expects an opening tag in generated output and misses it; nonempty cleaned reasoning prevents no-thinking retry.",
+  "production_source_changed": false,
+  "cases": [
+    {
+      "case": "writing-0",
+      "category": "terminal",
+      "delivered": "um run suit oh apt update then see dee into documents",
+      "edit_ratio": 0.9101694915254237,
+      "focus": "code",
+      "generation_calls": 1,
+      "generations": [
+        {
+          "max_tokens": 128,
+          "output_tokens": 128,
+          "text": "We need answer user's request. Need clean up speech transcription for terminal context. User: \"um run suit oh apt update then see dee into documents\". Need output only corrected text. Need infer: um filler remove. suit oh -> sudo. see dee -> cd. into documents -> into Documents? Preserve path? \"cd into Documents\" maybe \"cd ~/Documents\"? The instruction says preserve paths, but original says documents. Could correct to \"cd Documents\"? In terminal, \"cd into documents\" likely \"cd Documents\" or \"cd ~/Documents\"? They said infer common fragments, don't add/invent commands. \"into documents\""
+        }
+      ],
+      "guard_rejected": true,
+      "input": "um run suit oh apt update then see dee into documents",
+      "kind": "writing",
+      "max_change_ratio": 0.85,
+      "mlx_peak_bytes": 16024933536,
+      "mode": "production",
+      "model_id": "qwen3.8-27b",
+      "process_to_result_seconds": null,
+      "rss_peak_bytes": 8845000704,
+      "seconds": 9.280613834001997,
+      "success": true,
+      "template_sha256": "515f208ced6cd4c9563defc0ec176d99c75e615c60ca79a039184ee3db3a365f",
+      "text": "We need answer user's request. Need clean up speech transcription for terminal context. User: \"um run suit oh apt update then see dee into documents\". Need output only corrected text. Need infer: um filler remove. suit oh -> sudo. see dee -> cd. into documents -> into Documents? Preserve path? \"cd into Documents\" maybe \"cd ~/Documents\"? The instruction says preserve paths, but original says documents. Could correct to \"cd Documents\"? In terminal, \"cd into documents\" likely \"cd Documents\" or \"cd ~/Documents\"? They said infer common fragments, don't add/invent commands. \"into documents"
+    },
+    {
+      "case": "writing-1",
+      "category": "terminal",
+      "delivered": "open eye term and uh run git status",
+      "edit_ratio": 0.9393414211438474,
+      "focus": "code",
+      "generation_calls": 1,
+      "generations": [
+        {
+          "max_tokens": 128,
+          "output_tokens": 128,
+          "text": "We need answer user's request. Need clean up speech transcription for terminal context. User: \"open eye term and uh run git status\". Need output only corrected text. Need preserve technical terms, app names. \"eye term\" -> iTerm. Remove uh. \"open iTerm and run git status\". Maybe terminal context: \"Open iTerm and run git status.\" Should we capitalize? Output only corrected text. Could be \"Open iTerm and run git status.\" Need preserve command structure. Since it's a sentence, okay. Maybe \"open iTerm and run git status\" lower. The instruction says fix grammar punctuation. So"
+        }
+      ],
+      "guard_rejected": true,
+      "input": "open eye term and uh run git status",
+      "kind": "writing",
+      "max_change_ratio": 0.85,
+      "mlx_peak_bytes": 16041252018,
+      "mode": "production",
+      "model_id": "qwen3.8-27b",
+      "process_to_result_seconds": null,
+      "rss_peak_bytes": 8845000704,
+      "seconds": 8.961912333004875,
+      "success": true,
+      "template_sha256": "515f208ced6cd4c9563defc0ec176d99c75e615c60ca79a039184ee3db3a365f",
+      "text": "We need answer user's request. Need clean up speech transcription for terminal context. User: \"open eye term and uh run git status\". Need output only corrected text. Need preserve technical terms, app names. \"eye term\" -> iTerm. Remove uh. \"open iTerm and run git status\". Maybe terminal context: \"Open iTerm and run git status.\" Should we capitalize? Output only corrected text. Could be \"Open iTerm and run git status.\" Need preserve command structure. Since it's a sentence, okay. Maybe \"open iTerm and run git status\" lower. The instruction says fix grammar punctuation. So"
+    },
+    {
+      "case": "writing-2",
+      "category": "terminal",
+      "delivered": "run grep dash v error then pipe to less",
+      "edit_ratio": 0.9235294117647059,
+      "focus": "code",
+      "generation_calls": 1,
+      "generations": [
+        {
+          "max_tokens": 128,
+          "output_tokens": 128,
+          "text": "We need answer user's request. Need produce final only corrected text. User: \"run grep dash v error then pipe to less\". Need clean up for terminal context. Likely command: grep -v error | less. Need preserve command structure. \"dash v\" -> -v. \"pipe to\" -> |. Output only corrected text. Could be \"grep -v error | less\". Need maybe include run? They say run ... then pipe to less. In terminal context, likely just command. \"run\" filler? Remove. So final: grep -v error | less. Ensure no extra.\n</think>\n\ngrep -v"
+        }
+      ],
+      "guard_rejected": true,
+      "input": "run grep dash v error then pipe to less",
+      "kind": "writing",
+      "max_change_ratio": 0.85,
+      "mlx_peak_bytes": 16043824306,
+      "mode": "production",
+      "model_id": "qwen3.8-27b",
+      "process_to_result_seconds": null,
+      "rss_peak_bytes": 8845000704,
+      "seconds": 10.326096374999906,
+      "success": true,
+      "template_sha256": "515f208ced6cd4c9563defc0ec176d99c75e615c60ca79a039184ee3db3a365f",
+      "text": "We need answer user's request. Need produce final only corrected text. User: \"run grep dash v error then pipe to less\". Need clean up for terminal context. Likely command: grep -v error | less. Need preserve command structure. \"dash v\" -> -v. \"pipe to\" -> |. Output only corrected text. Could be \"grep -v error | less\". Need maybe include run? They say run ... then pipe to less. In terminal context, likely just command. \"run\" filler? Remove. So final: grep -v error | less. Ensure no extra.\n</think>\n\ngrep -v"
+    }
+  ]
+}

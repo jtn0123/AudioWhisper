@@ -57,7 +57,7 @@ final class ProviderSettingsStateTests: XCTestCase {
 
     func testStatusInfoLocalProviderNoModels() {
         state.downloadedModels = []
-        let info = state.statusInfo(for: .local)
+        let info = state.statusInfo(for: .local, selectedWhisperModel: .base)
 
         XCTAssertEqual(info.text, "Setup")
         XCTAssertFalse(info.isReady)
@@ -65,9 +65,9 @@ final class ProviderSettingsStateTests: XCTestCase {
 
     func testStatusInfoLocalProviderWithModels() {
         state.downloadedModels = [.base]
-        let info = state.statusInfo(for: .local)
+        let info = state.statusInfo(for: .local, selectedWhisperModel: .base)
 
-        XCTAssertEqual(info.text, "Ready")
+        XCTAssertEqual(info.text, "Installed")
         XCTAssertTrue(info.isReady)
     }
 
@@ -79,12 +79,17 @@ final class ProviderSettingsStateTests: XCTestCase {
         XCTAssertFalse(info.isReady)
     }
 
-    func testStatusInfoParakeetProviderReady() {
+    func testStatusInfoParakeetProviderInstalled() {
         state.envReady = true
-        let info = state.statusInfo(for: .parakeet)
+        let info = state.statusInfo(for: .parakeet, parakeetModelCached: true)
 
-        XCTAssertEqual(info.text, "Ready")
+        #if arch(arm64)
+        XCTAssertEqual(info.text, "Installed")
         XCTAssertTrue(info.isReady)
+        #else
+        XCTAssertEqual(info.text, "Setup")
+        XCTAssertFalse(info.isReady)
+        #endif
     }
 
     func testModelDownloadStatesCanBeSetDirectly() {

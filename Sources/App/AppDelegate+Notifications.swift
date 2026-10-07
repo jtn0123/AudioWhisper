@@ -1,4 +1,3 @@
-// swiftlint:disable:next unused_import - verified required: removing it breaks the build
 import AppKit
 
 internal extension AppDelegate {
@@ -12,7 +11,7 @@ internal extension AppDelegate {
     func setupNotificationObservers() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(showDashboard),
+            selector: #selector(showFirstRecordingSetup),
             name: .welcomeCompleted,
             object: nil
         )
@@ -21,6 +20,13 @@ internal extension AppDelegate {
             self,
             selector: #selector(restoreFocusToPreviousApp),
             name: .restoreFocusToPreviousApp,
+            object: nil
+        )
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refreshRecordingSetup),
+            name: NSApplication.didBecomeActiveNotification,
             object: nil
         )
 
@@ -44,6 +50,14 @@ internal extension AppDelegate {
             name: .transcriptionProcessingStateChanged,
             object: nil
         )
+    }
+
+    @objc private func refreshRecordingSetup() {
+        Task { await RecordingSetupState.shared.refresh() }
+    }
+
+    @objc func showFirstRecordingSetup() {
+        WindowCoordinator.shared.presentRecordingSetup()
     }
 
     @objc private func onPressAndHoldSettingsChanged(_ notification: Notification) {
