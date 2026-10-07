@@ -34,7 +34,7 @@ struct RebuildPreferencesView: View {
                 RebuildAdvancedSection(message: $message)
                 if let message {
                     RebuildCallout(tone: .info, message: message) {
-                        Button("Dismiss") { self.message = nil }.buttonStyle(.link)
+                        Button("Dismiss") { self.message = nil }.buttonStyle(.rebuildLink)
                     }
                 }
             }
@@ -101,7 +101,7 @@ struct RebuildPreferencesView: View {
                         }.fixedSize()
                     }
                     Text("Requires Accessibility access. No access is requested automatically.")
-                        .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                 }
             }
             RebuildFormRow(label: "Overlay") {
@@ -150,7 +150,7 @@ struct RebuildPreferencesView: View {
                     .accessibilityLabel("Open Accessibility settings")
                 }
                 Text("Needed for Smart Paste and hold-to-record. Nothing is requested automatically.")
-                    .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
             }
         }
     }
@@ -189,7 +189,7 @@ struct RebuildPreferencesView: View {
                     }.labelsHidden().fixedSize()
                 }
                 Text("Visual style and motion. The recorder respects macOS Reduce Motion.")
-                    .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
             }
             RebuildFormRow(label: "Startup") {
                 Toggle("Open AudioWhisper at login", isOn: $login)
@@ -238,7 +238,7 @@ private struct RebuildAdvancedSection: View {
                         }
                     }
                     Text("Build \(VersionInfo.gitHash) · Development preview")
-                        .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(.secondary)
+                        .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(RebuildTheme.secondaryText)
                         .textSelection(.enabled)
                 }.padding(.top, 12)
             } label: {
@@ -249,7 +249,7 @@ private struct RebuildAdvancedSection: View {
                     HStack {
                         Text("Advanced & support").font(.system(size: 13, weight: .semibold))
                         Text("Storage limit, diagnostics, usage totals").font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(RebuildTheme.secondaryText)
                         Spacer(minLength: 0)
                     }.contentShape(Rectangle())
                 }

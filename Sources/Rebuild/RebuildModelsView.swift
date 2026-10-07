@@ -77,7 +77,7 @@ struct RebuildModelsView: View {
                 }
             }
             Text("Requested only when you click Allow. The recording shortcut never opens a permission dialog.")
-                .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
         }.rebuildCard()
     }
 
@@ -94,12 +94,12 @@ struct RebuildModelsView: View {
                 }
                 .pickerStyle(.segmented).labelsHidden().fixedSize().disabled(modelActionsBlocked)
                 if !Arch.isAppleSilicon {
-                    Text("Parakeet requires Apple Silicon.").font(.system(size: 11.5)).foregroundStyle(.secondary)
+                    Text("Parakeet requires Apple Silicon.").font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                 }
             }
             RebuildFormRow(label: "Model") {
                 modelPicker.disabled(modelActionsBlocked)
-                Text(modelDescription).font(.system(size: 11.5)).foregroundStyle(.secondary)
+                Text(modelDescription).font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Divider()
@@ -185,7 +185,7 @@ struct RebuildModelsView: View {
                 }
                 Text(downloadMessage).font(.system(size: 11.5)).textSelection(.enabled)
                 Text("This can take a few minutes. You can keep using other apps.")
-                    .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
             }
         }
         if let error = session.setupError, !session.isInstalling {
@@ -219,7 +219,7 @@ struct RebuildModelsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text(RebuildStorage.root.path).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
         }
-        .font(.system(size: 11.5)).foregroundStyle(.secondary).padding(.horizontal, 4)
+        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText).padding(.horizontal, 4)
     }
 
     // MARK: State

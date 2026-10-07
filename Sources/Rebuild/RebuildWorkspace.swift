@@ -38,9 +38,9 @@ struct RebuildRootView: View {
             RebuildSidebar(session: session, navigation: navigation)
             VStack(alignment: .leading, spacing: 0) {
                 header
-                Divider()
+                Rectangle().fill(RebuildTheme.border).frame(height: 1).accessibilityHidden(true)
                 page.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            }.background(RebuildTheme.paper)
+            }.background(RebuildTheme.canvas)
         }
         .tint(RebuildTheme.accent)
         .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
@@ -53,14 +53,20 @@ struct RebuildRootView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(navigation.selection.title).font(RebuildTheme.titleFont(22))
+                Text(navigation.selection.title).font(RebuildTheme.titleFont(20))
                     .accessibilityAddTraits(.isHeader)
-                Text(navigation.selection.subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
+                Text(navigation.selection.subtitle).font(.system(size: 12))
+                    .foregroundStyle(RebuildTheme.secondaryText)
                     .lineLimit(1)
             }
             Spacer(minLength: 12)
-            Label("On your Mac", systemImage: "lock.shield").font(.system(size: 11)).foregroundStyle(.secondary)
-                .help("Transcription, writing cleanup and your library stay on this Mac.")
+            Label {
+                Text("On your Mac").foregroundStyle(RebuildTheme.secondaryText)
+            } icon: {
+                Image(systemName: "lock.shield").foregroundStyle(RebuildTheme.accentText)
+            }
+            .font(.system(size: 11, weight: .medium))
+            .help("Transcription, writing cleanup and your library stay on this Mac.")
         }
         .padding(.horizontal, 28).padding(.top, 14).padding(.bottom, 12)
     }
@@ -79,11 +85,13 @@ struct RebuildRootView: View {
     }
 }
 
-/// Ink sidebar: compact brand, page navigation (⌘1–⌘5) and live status.
+/// Slate sidebar: compact brand, page navigation (⌘1–⌘5) and live status.
 struct RebuildSidebar: View {
     @Bindable var session: RebuildSession
     @Bindable var navigation: RebuildNavigation
     @FocusState private var focusedPage: RebuildPage?
+    @State private var hoveredPage: RebuildPage?
+    @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -100,8 +108,8 @@ struct RebuildSidebar: View {
         .frame(width: 200)
         .frame(maxHeight: .infinity)
         .foregroundStyle(.white)
-        .background(RebuildTheme.ink)
-        .overlay(alignment: .trailing) { Rectangle().fill(.white.opacity(0.07)).frame(width: 1) }
+        .background(RebuildTheme.sidebarBackground)
+        .overlay(alignment: .trailing) { Rectangle().fill(RebuildTheme.sidebarDivider).frame(width: 1) }
         .environment(\.colorScheme, .dark)
         // Clicks, ⌘1–⌘5 and in-page links all change the selection; keyboard
         // focus follows it so the ring never stays on a page left behind.
@@ -111,9 +119,10 @@ struct RebuildSidebar: View {
 
     private var brand: some View {
         HStack(spacing: 9) {
-            Image(systemName: "waveform.circle.fill").font(.system(size: 24)).foregroundStyle(RebuildTheme.brand)
+            Image(systemName: "waveform.circle.fill").font(.system(size: 24))
+                .foregroundStyle(RebuildTheme.sidebarAccent)
             VStack(alignment: .leading, spacing: 1) {
-                Text("AudioWhisper").font(RebuildTheme.titleFont(17))
+                Text("AudioWhisper").font(RebuildTheme.brandFont(17))
                 Text("PRIVATE DICTATION").font(.system(size: 8.5, weight: .medium, design: .monospaced))
                     .tracking(1.2).foregroundStyle(RebuildTheme.sidebarSecondary)
             }
@@ -131,22 +140,26 @@ struct RebuildSidebar: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: page.symbol).font(.system(size: 13, weight: .medium)).frame(width: 18)
-                    .foregroundStyle(selected ? RebuildTheme.brand : .white.opacity(0.78))
+                    .foregroundStyle(selected ? RebuildTheme.sidebarAccent : RebuildTheme.sidebarIcon)
                 Text(page.title).font(.system(size: 13, weight: selected ? .semibold : .regular))
                     .foregroundStyle(selected ? .white : .white.opacity(0.86))
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 10).padding(.vertical, 7)
             .contentShape(Rectangle())
-            .background(selected ? Color.white.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 7))
-            .overlay(alignment: .leading) {
-                if selected { Capsule().fill(RebuildTheme.brand).frame(width: 3, height: 14) }
+            .background(navFill(page, selected: selected), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .overlay {
+                // Increase Contrast outlines the selection; the focus ring
+                // always wins so keyboard position is never ambiguous.
+                let focused = focusedPage == page
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .strokeBorder(
+                        focused ? RebuildTheme.sidebarAccent : .white.opacity(0.5), lineWidth: focused ? 1.5 : 1)
+                    .opacity(focused || (selected && contrast == .increased) ? 1 : 0)
             }
-            .overlay(
-                RoundedRectangle(cornerRadius: 7)
-                    .strokeBorder(RebuildTheme.brand, lineWidth: 1.5).opacity(focusedPage == page ? 1 : 0))
         }
         .buttonStyle(.plain)
+        .onHover { hoveredPage = $0 ? page : (hoveredPage == page ? nil : hoveredPage) }
         .focused($focusedPage, equals: page)
         .focusEffectDisabled()
         .keyboardShortcut(KeyEquivalent(Character(String(number))), modifiers: .command)
@@ -155,16 +168,23 @@ struct RebuildSidebar: View {
         .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
+    private func navFill(_ page: RebuildPage, selected: Bool) -> Color {
+        if selected { return RebuildTheme.sidebarSelection }
+        return hoveredPage == page ? RebuildTheme.sidebarHover : .clear
+    }
+
     private var setupBusy: Bool { session.isInstalling || session.maintenanceInProgress }
 
     private var statusLine: (text: String, color: Color) {
         switch session.phase {
-        case .starting: return ("Connecting microphone…", .orange)
-        case .recording: return ("Recording", .red)
-        case .transcribing: return ("Transcribing…", .orange)
+        case .starting: return ("Connecting microphone…", RebuildTheme.warning)
+        case .recording: return ("Recording", RebuildTheme.recording)
+        case .transcribing: return ("Transcribing…", RebuildTheme.warning)
         default:
-            if setupBusy { return ("Model setup in progress…", .orange) }
-            return (session.readiness.nextStep, session.readiness.ready ? .green : .orange)
+            if setupBusy { return ("Model setup in progress…", RebuildTheme.warning) }
+            return (
+                session.readiness.nextStep, session.readiness.ready ? RebuildTheme.success : RebuildTheme.warning
+            )
         }
     }
 
@@ -263,8 +283,8 @@ struct RebuildRecordView: View {
                         Text(statusTitle).font(.system(size: 17, weight: .semibold))
                         if let start = session.recordingStartedAt {
                             RebuildElapsedTime(start: start)
-                                .font(.system(size: 17, weight: .medium, design: .monospaced))
-                                .foregroundStyle(.red)
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(RebuildTheme.recordingText)
                         }
                     }
                     statusDetail
@@ -282,7 +302,7 @@ struct RebuildRecordView: View {
                 Spacer(minLength: 8)
                 Text(session.fileBlockedReason ?? "Or drop one audio file here. No microphone needed.")
                     .lineLimit(1).truncationMode(.tail)
-            }.font(.system(size: 11.5)).foregroundStyle(.secondary)
+            }.font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
         }.rebuildCard(padding: 18)
     }
 
@@ -300,7 +320,7 @@ struct RebuildRecordView: View {
             .frame(width: 64, height: 64)
             .overlay {
                 if session.phase == .recording {
-                    Circle().strokeBorder(Color.red.opacity(0.3), lineWidth: 4).padding(-7)
+                    Circle().strokeBorder(RebuildTheme.recording.opacity(0.3), lineWidth: 4).padding(-7)
                 }
             }
             .contentShape(Circle())
@@ -313,10 +333,10 @@ struct RebuildRecordView: View {
 
     private var recordFill: Color {
         switch session.phase {
-        case .recording: return .red
-        // Solid gray keeps the white glyph legible in both appearances.
-        case .starting, .transcribing: return Color(nsColor: .systemGray)
-        default: return session.readiness.ready && !setupBusy ? RebuildTheme.accent : Color(nsColor: .systemGray)
+        case .recording: return RebuildTheme.recording
+        // Solid slate keeps the white glyph legible in both appearances.
+        case .starting, .transcribing: return RebuildTheme.inactiveFill
+        default: return session.readiness.ready && !setupBusy ? RebuildTheme.accent : RebuildTheme.inactiveFill
         }
     }
 
@@ -336,9 +356,11 @@ struct RebuildRecordView: View {
     @ViewBuilder private var statusDetail: some View {
         switch session.phase {
         case .starting:
-            Text("You can cancel while the microphone connects.").font(.system(size: 12.5)).foregroundStyle(.secondary)
+            Text("You can cancel while the microphone connects.").font(.system(size: 12.5))
+                .foregroundStyle(RebuildTheme.secondaryText)
         case .transcribing:
-            Text("The local model is working. You can cancel.").font(.system(size: 12.5)).foregroundStyle(.secondary)
+            Text("The local model is working. You can cancel.").font(.system(size: 12.5))
+                .foregroundStyle(RebuildTheme.secondaryText)
         default:
             shortcutLine
         }
@@ -356,11 +378,11 @@ struct RebuildRecordView: View {
                 Text(shortcutEnabled ? "No recording shortcut assigned." : "Recording shortcut is off.")
             }
             Button(assigned == nil ? "Set up" : "Change", action: configureShortcut)
-                .buttonStyle(.link)
-                .foregroundStyle(Color(nsColor: .linkColor))
+                .buttonStyle(.rebuildLink)
+                .fontWeight(.medium)
                 .accessibilityLabel(assigned == nil ? "Set up recording shortcut" : "Change recording shortcut")
         }
-        .font(.system(size: 12.5)).foregroundStyle(.secondary)
+        .font(.system(size: 12.5)).foregroundStyle(RebuildTheme.secondaryText)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -413,7 +435,7 @@ struct RebuildTranscriptCard: View {
                 Text("Transcript").font(.system(size: 13, weight: .semibold)).accessibilityAddTraits(.isHeader)
                 if !session.transcript.isEmpty {
                     Text("\(UsageMetricsStore.estimatedWordCount(for: session.transcript)) words")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                        .font(.system(size: 12)).foregroundStyle(RebuildTheme.secondaryText)
                 }
                 Spacer()
                 if !session.transcript.isEmpty {
@@ -426,9 +448,9 @@ struct RebuildTranscriptCard: View {
             }
             if session.transcript.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("A little less typing.").font(RebuildTheme.titleFont(19)).foregroundStyle(.secondary)
+                    Text("A little less typing.").font(RebuildTheme.titleFont(15))
                     Text("Your next transcript appears here and is copied automatically. Saving to the library is optional.")
-                        .font(.system(size: 12.5)).foregroundStyle(.secondary)
+                        .font(.system(size: 12.5)).foregroundStyle(RebuildTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
             } else {
@@ -457,32 +479,39 @@ struct RebuildRecorderView: View {
             WaveformContainer(
                 status: session.phase == .recording ? .recording : .processing("Transcribing"),
                 audioLevel: recorder.audioLevel, waveformSamples: recorder.waveformSamples,
-                frequencyBands: recorder.frequencyBands, showsStatusRow: false, onTap: session.toggleRecording
+                frequencyBands: recorder.frequencyBands, showsStatusRow: false,
+                showsGlassBackground: false, backgroundColor: RebuildTheme.hudWaveformBackground,
+                waveformColor: RebuildTheme.hudWaveformForeground, onTap: session.toggleRecording
             )
             .frame(height: 118)
+            // Keep the waveform's own drop shadow and coral glow inside its
+            // panel so the HUD stays one calm slate surface.
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.06)))
             .padding(.horizontal, 12).padding(.top, 12)
             statusRow.frame(height: 40).padding(.horizontal, 18)
             Spacer(minLength: 0)
             controls.frame(height: 32).padding(.horizontal, 18).padding(.bottom, 18)
         }
         .frame(width: 380, height: 230)
-        .background(RebuildTheme.ink.opacity(0.97), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.white.opacity(0.09)))
+        .background(RebuildTheme.hudBackground.opacity(0.97), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(RebuildTheme.hudBorder))
         .environment(\.colorScheme, .dark)
-        .tint(RebuildTheme.accent)
+        .tint(RebuildTheme.hudAccent)
         .onExitCommand(perform: session.cancel)
     }
 
     private var statusRow: some View {
         HStack(alignment: .center, spacing: 8) {
-            Circle().fill(session.phase == .recording ? Color.red : Color.orange).frame(width: 8, height: 8)
+            Circle().fill(session.phase == .recording ? RebuildTheme.recording : RebuildTheme.warning)
+                .frame(width: 8, height: 8)
                 .accessibilityHidden(true)
             Text(session.phase == .recording ? "Recording" : "Transcribing…")
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
             Spacer()
             if let start = session.recordingStartedAt {
                 RebuildElapsedTime(start: start)
-                    .font(.system(size: 26, weight: .medium, design: .monospaced)).foregroundStyle(.white)
+                    .font(.system(size: 24, weight: .medium)).foregroundStyle(.white)
             } else if session.phase == .transcribing {
                 ProgressView().controlSize(.small)
             }
@@ -494,15 +523,14 @@ struct RebuildRecorderView: View {
             Button(action: session.cancel) {
                 Text("Cancel").frame(minWidth: 84)
             }
-            .controlSize(.large)
+            .buttonStyle(RebuildHUDButtonStyle())
             .help("Discard this recording. Nothing is copied or saved.")
             Spacer()
             Button(action: session.finishRecording) {
                 Label(session.phase == .recording ? "Stop & transcribe" : "Transcribing…", systemImage: "stop.fill")
                     .frame(minWidth: 140)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(RebuildHUDButtonStyle(prominent: true))
             .disabled(session.phase != .recording)
         }
     }
@@ -523,6 +551,6 @@ struct RebuildUsageView: View {
     }
 
     private func metric(_ value: String, _ title: String) -> Text {
-        Text(value).fontWeight(.semibold) + Text(" \(title)").foregroundStyle(.secondary)
+        Text(value).fontWeight(.semibold) + Text(" \(title)").foregroundStyle(RebuildTheme.secondaryText)
     }
 }

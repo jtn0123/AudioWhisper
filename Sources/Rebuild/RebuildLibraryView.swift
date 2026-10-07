@@ -101,7 +101,7 @@ struct RebuildLibraryView: View {
             if loading && loaded { ProgressView().controlSize(.small) }
             Spacer(minLength: 8)
             if loaded && !records.isEmpty {
-                Text(countText).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
+                Text(countText).font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText).lineLimit(1)
             }
             Button(exporting ? "Exporting…" : "Export…") { chooseExport() }
                 .disabled(loading || exporting)
@@ -266,10 +266,10 @@ private struct RebuildLibraryRow: View {
                 Text(providerName)
                 if original != nil {
                     Text("·")
-                    Text("Cleaned up")
+                    Text("Cleaned up").fontWeight(.medium).foregroundStyle(RebuildTheme.accentText)
                 }
             }
-            .font(.system(size: 11.5)).foregroundStyle(.secondary)
+            .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
             .accessibilityElement(children: .combine)
             Text(record.text).font(.system(size: 13.5)).lineSpacing(2).textSelection(.enabled)
                 // Only cap rows that offer Show more; a short preview of wide
@@ -286,11 +286,11 @@ private struct RebuildLibraryRow: View {
             Button("Copy") { PasteManager.copyToClipboard(record.text) }
                 .accessibilityLabel("Copy transcript from \(dateText)")
             if isLong {
-                Button(expanded ? "Show less" : "Show more") { expanded.toggle() }.buttonStyle(.link)
+                Button(expanded ? "Show less" : "Show more") { expanded.toggle() }.buttonStyle(.rebuildLink)
             }
             if original != nil {
                 Button(showOriginal ? "Hide original" : "Original transcript") { showOriginal.toggle() }
-                    .buttonStyle(.link)
+                    .buttonStyle(.rebuildLink)
                     .accessibilityLabel(showOriginal ? "Hide original transcript" : "Show original transcript")
             }
             Spacer()
@@ -304,12 +304,12 @@ private struct RebuildLibraryRow: View {
 
     private func originalBlock(_ original: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Original transcript").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(.secondary)
+            Text("Original transcript").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(RebuildTheme.secondaryText)
             Text(original).font(.system(size: 13.5)).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button("Copy original") { PasteManager.copyToClipboard(original) }.controlSize(.small)
         }
         .padding(10)
-        .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+        .background(RebuildTheme.surfaceSunken, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

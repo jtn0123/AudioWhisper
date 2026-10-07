@@ -41,7 +41,7 @@ struct RebuildWritingView: View {
                     "One conservative policy in every app: grammar, punctuation and filler words are fixed without "
                         + "changing meaning. Compare or restore the original on Record and in the Library."
                 )
-                .font(.system(size: 11.5)).foregroundStyle(.secondary).padding(.horizontal, 4)
+                .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText).padding(.horizontal, 4)
                 .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 28).padding(.vertical, 20).frame(maxWidth: 860, alignment: .leading)
@@ -84,7 +84,7 @@ struct RebuildWritingView: View {
                         ? "Runs after each transcription. If cleanup can’t safely keep your words, the original is used."
                         : "Install a correction model below to turn this on."
                 )
-                .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .font(.system(size: 12)).foregroundStyle(RebuildTheme.secondaryText).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
             Toggle(
@@ -109,7 +109,7 @@ struct RebuildWritingView: View {
                 .disabled(actionsBlocked || !Arch.isAppleSilicon)
                 if let selected = MLXModelManager.recommendedModels.first(where: { $0.repo == model }) {
                     Text("\(selected.description). Download \(selected.estimatedSize); memory estimates exclude your other apps.")
-                        .font(.system(size: 11.5)).foregroundStyle(.secondary)
+                        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -160,7 +160,7 @@ struct RebuildWritingView: View {
                 Spacer()
                 if let fraction = installer.fraction {
                     Text(fraction.formatted(.percent.precision(.fractionLength(0))))
-                        .font(.system(size: 11.5)).monospacedDigit().foregroundStyle(.secondary)
+                        .font(.system(size: 11.5)).monospacedDigit().foregroundStyle(RebuildTheme.secondaryText)
                 }
                 Button(installer.cancelling ? "Cancelling…" : "Cancel install") {
                     Task { await installer.cancel() }

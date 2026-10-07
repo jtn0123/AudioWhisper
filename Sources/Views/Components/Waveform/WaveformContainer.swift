@@ -25,6 +25,11 @@ struct WaveformContainer: View {
     /// Hosts that draw their own status and timer (the rebuild HUD) hide the
     /// built-in floating row so the state is not shown twice.
     let showsStatusRow: Bool
+    /// Hosts can supply opaque chrome without changing the selected visualizer
+    /// or the shared component's default appearance.
+    let showsGlassBackground: Bool
+    let backgroundColor: Color
+    let waveformColor: Color
     let onTap: () -> Void
 
     init(
@@ -35,6 +40,9 @@ struct WaveformContainer: View {
         processingAnimated: Bool = true,
         completedAudioDuration: TimeInterval? = nil,
         showsStatusRow: Bool = true,
+        showsGlassBackground: Bool = true,
+        backgroundColor: Color = WaveformPalette.background,
+        waveformColor: Color = WaveformPalette.bar,
         onTap: @escaping () -> Void
     ) {
         self.status = status
@@ -44,6 +52,9 @@ struct WaveformContainer: View {
         self.processingAnimated = processingAnimated
         self.completedAudioDuration = completedAudioDuration
         self.showsStatusRow = showsStatusRow
+        self.showsGlassBackground = showsGlassBackground
+        self.backgroundColor = backgroundColor
+        self.waveformColor = waveformColor
         self.onTap = onTap
     }
 
@@ -61,8 +72,7 @@ struct WaveformContainer: View {
     @State private var recordingStartedAt: Date?
 
     // Colors (sourced from WaveformPalette so the theme owns the literals)
-    private let bgColor = WaveformPalette.background
-    private let creamColor = WaveformPalette.bar
+    private var creamColor: Color { waveformColor }
     private let creamDim = WaveformPalette.creamDim
     private let mutedColor = WaveformPalette.muted
     private let successColor = WaveformPalette.success
@@ -78,10 +88,10 @@ struct WaveformContainer: View {
         Button(action: onTap) {
             ZStack {
                 // Solid base
-                bgColor
+                backgroundColor
 
                 // Glass background (expressive / bold intensities only)
-                if intensity.showGlass {
+                if showsGlassBackground && intensity.showGlass {
                     GlassBackground(intensity: intensity, cornerRadius: cornerRadius)
                         .opacity(0.85)
                 }
@@ -247,6 +257,9 @@ struct WaveformContainer: View {
         }
     }
 
+}
+
+extension WaveformContainer {
     // MARK: - State badges
 
     private var successBadge: some View {
