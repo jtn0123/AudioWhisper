@@ -153,46 +153,21 @@ internal class SpeechToTextService {
         }
     }
 
-    /// Delegates to `ParakeetService` (Parakeet-MLX, Apple-Silicon only) and warms up
-    /// the MLX correction daemon in parallel when correction is enabled.
-    /// Returns the provider's raw output; semantic correction is applied by
-    /// `TranscriptionPipeline` (see audit item B1). The warmup remains here so
-    /// the MLX daemon can spin up in parallel with the transcription itself.
+    /// Returns Parakeet's raw output before correction can occupy the serial ML
+    /// worker. The pipeline loads the writing model only after recognition and
+    /// only when cleanup is enabled; concurrent warmup cannot run in parallel
+    /// on the shared request worker and can delay the speech result.
     private func transcribeWithParakeet(audioURL: URL, config: TranscriptionPipelineConfig?) async throws -> String {
         guard Arch.isAppleSilicon else {
             throw SpeechToTextError.transcriptionFailed("Parakeet requires an Apple Silicon Mac.")
         }
-        let options = config
-        let semanticCorrectionMode = options?.correctionMode ?? AppDefaults.semanticCorrectionMode
-        let parakeetModel = options?.parakeetModel ?? AppDefaults.selectedParakeetModel
-        let shouldWarmup = (options?.applySemanticCorrection ?? true) && semanticCorrectionMode != .off
-        // Ensure managed Python environment with uv
+        let parakeetModel = config?.parakeetModel ?? AppDefaults.selectedParakeetModel
         let pyURL = try await preparePython()
-        let pythonPath = pyURL.path
         do {
-            if shouldWarmup {
-                // B1: warm up the SAME model correction will actually run.
-                // This used to hardcode Llama-3.2-1B when the key was unset while
-                // `SemanticCorrectionService` did the same — so both agreed with
-                // each other but disagreed with the Dashboard. Now there is one
-                // source of truth, which also means the warmup is no longer
-                // wasted on a model the correction pass won't use.
-                let modelRepo = options?.correctionModelRepo ?? AppDefaults.semanticCorrectionModelRepo
-                // Warm up the MLX daemon in parallel, but treat its outcome as
-                // non-fatal: a warmup failure must NOT abort an otherwise-good
-                // transcription. Its error is swallowed (logged by the daemon).
-                async let warmupTask: Void = MLDaemonManager.shared.warmup(type: .mlx, repo: modelRepo)
-                let text = try await parakeetService.transcribe(
-                    audioFileURL: audioURL, pythonPath: pythonPath, model: parakeetModel
-                )
-                try? await warmupTask
-                return try Self.cleanedNonEmptyTranscription(text)
-            } else {
-                let text = try await parakeetService.transcribe(
-                    audioFileURL: audioURL, pythonPath: pythonPath, model: parakeetModel
-                )
-                return try Self.cleanedNonEmptyTranscription(text)
-            }
+            let text = try await parakeetService.transcribe(
+                audioFileURL: audioURL, pythonPath: pyURL.path, model: parakeetModel
+            )
+            return try Self.cleanedNonEmptyTranscription(text)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
