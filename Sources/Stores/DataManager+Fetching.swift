@@ -36,9 +36,8 @@ extension DataManager {
     /// See `DataManagerProtocol.forEachRecordPage(pageSize:_:)`.
     ///
     /// Uses `fetchLimit` + `fetchOffset` on a stable `date`-descending sort. A
-    /// concurrent insert during iteration can shift the window, which is
-    /// acceptable here: every caller is computing approximate running totals
-    /// for display, not a transactional report.
+    /// concurrent insert during iteration can shift the window. Authoritative
+    /// usage scans use HistoryMaintenance and reject a changed revision.
     func forEachRecordPage(
         pageSize: Int,
         _ body: ([TranscriptionRecord]) -> Void
@@ -51,6 +50,7 @@ extension DataManager {
         let context = ModelContext(container)
         var offset = 0
         while true {
+            try Task.checkCancellation()
             var descriptor = FetchDescriptor<TranscriptionRecord>(
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
@@ -62,6 +62,7 @@ extension DataManager {
             body(page)
             if page.count < pageSize { break }
             offset += pageSize
+            await Task.yield()
         }
     }
 

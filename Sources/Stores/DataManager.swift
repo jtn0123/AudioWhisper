@@ -310,27 +310,13 @@ internal final class DataManager: DataManagerProtocol {
         }
 
         do {
-            let context = ModelContext(container)
-
-            // Use SwiftData predicate for database-level filtering
-            let predicate = #Predicate<TranscriptionRecord> { record in
-                record.date < cutoffDate
-            }
-
-            let descriptor = FetchDescriptor<TranscriptionRecord>(predicate: predicate)
-            let expiredRecords = try context.fetch(descriptor)
-
-            for record in expiredRecords {
-                context.delete(record)
-            }
-
-            try context.save()
-
-            if !expiredRecords.isEmpty {
+            let count = try await HistoryMaintenance.deleteExpired(container: container, before: cutoffDate)
+            if count > 0 {
                 historyRevision.advance()
-                Logger.dataManager.info("Cleaned up \(expiredRecords.count) expired transcription records")
+                Logger.dataManager.info("Cleaned up \(count) expired transcription records")
             }
-
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             Logger.dataManager.error("Failed to cleanup expired records: \(error.localizedDescription)")
             throw DataManagerError.cleanupFailed(error)
