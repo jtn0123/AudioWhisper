@@ -33,6 +33,7 @@ struct RebuildSessionServices {
     var copy: (String) -> Void
     var save: (String, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void
     var interruptionSource: NSObject?
+    var capturePasteDestination: () -> RebuildPasteDestination? = { .capture() }
     var startError: () -> String? = { nil }
     var startAsync: ((UUID) async -> Bool)?
     var saveResult: ((TranscriptionResult, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void)?
@@ -127,11 +128,11 @@ final class RebuildSession {
     @ObservationIgnored private var job: Task<Void, Never>?
     @ObservationIgnored private var sessionID: UUID?
     @ObservationIgnored private var configuration: TranscriptionPipelineConfig?
-    @ObservationIgnored private var capturedTarget: NSRunningApplication?
+    @ObservationIgnored private var capturedTarget: RebuildPasteDestination?
     @ObservationIgnored private var startedAt: Date?
     @ObservationIgnored private var refreshInFlight = false
     @ObservationIgnored private var refreshAgain = false
-    @ObservationIgnored private let paste = PasteManager()
+    @ObservationIgnored private let paste: PasteManager
     @ObservationIgnored private var retryAudio: RetryAudio?
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var verificationSelection: RebuildModelSelection?
@@ -171,9 +172,11 @@ final class RebuildSession {
 
     init(
         services: RebuildSessionServices, setup: RebuildSetupServices? = nil,
-        verificationDefaults: UserDefaults? = nil, writingInstaller: RebuildWritingInstaller? = nil
+        verificationDefaults: UserDefaults? = nil, writingInstaller: RebuildWritingInstaller? = nil,
+        paste: PasteManager? = nil
     ) {
         self.services = services
+        self.paste = paste ?? PasteManager()
         self.setup = setup ?? .live
         self.writingInstaller = writingInstaller ?? RebuildWritingInstaller()
         self.verificationStore = RebuildModelVerificationStore(defaults: verificationDefaults ?? AppDefaults.defaults)
@@ -281,8 +284,7 @@ final class RebuildSession {
     private func prepareSession() {
         discardRetry()
         duration = nil
-        let front = NSWorkspace.shared.frontmostApplication
-        capturedTarget = front?.bundleIdentifier == Bundle.main.bundleIdentifier ? nil : front
+        capturedTarget = services.capturePasteDestination()
         sessionID = UUID()
         notice = nil
         configuration = TranscriptionPipelineConfig(
@@ -337,19 +339,7 @@ final class RebuildSession {
                 closeRecorder()
                 didDeliver()
                 if AppDefaults.playCompletionSound { NSSound(named: "Pop")?.play() }
-                if AppDefaults.enableSmartPaste, let target = capturedTarget, !target.isTerminated {
-                    target.activate()
-                    paste.pasteWithUserInteraction(
-                        expectedTargetPID: target.processIdentifier,
-                        isSessionValid: { [weak self] in
-                            self?.sessionID == id
-                        },
-                        completion: { [weak self] result in
-                            guard self?.sessionID == id else { return }
-                            if case .failure = result { self?.notice = "Copied. Paste manually with Command V." }
-                        }
-                    )
-                }
+                await pasteTranscript(sessionID: id)
             } catch {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
@@ -364,6 +354,27 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    private func pasteTranscript(sessionID id: UUID) async {
+        if AppDefaults.enableSmartPaste, let target = capturedTarget {
+            let activated = await target.activateAndWait { [weak self] in self?.sessionID == id }
+            guard !Task.isCancelled, sessionID == id else { return }
+            guard activated else {
+                notice = "Copied. Paste manually with Command V."
+                return
+            }
+            paste.pasteWithUserInteraction(
+                expectedTargetPID: target.processIdentifier,
+                isSessionValid: { [weak self] in
+                    self?.sessionID == id
+                },
+                completion: { [weak self] result in
+                    guard self?.sessionID == id else { return }
+                    if case .failure = result { self?.notice = "Copied. Paste manually with Command V." }
+                }
+            )
+        }
+    }
+
     func removeVoiceModel() async {
         guard !phase.isBusy, !isInstalling, !maintenanceInProgress else { return }
         maintenanceInProgress = true
