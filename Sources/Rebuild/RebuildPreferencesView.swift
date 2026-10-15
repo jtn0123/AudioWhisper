@@ -5,6 +5,7 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.immediateRecording) private var express
     @AppDefault(\.enableSmartPaste) private var smartPaste
     @AppDefault(\.matchCursorContext) private var matchContext
+    @AppDefault(\.restoreClipboardAfterPaste) private var restoreClipboard
     @AppDefault(\.playCompletionSound) private var sound
     @AppDefault(\.selectedMicrophone) private var microphone
     @AppDefault(\.autoBoostMicrophoneVolume) private var boost
@@ -148,11 +149,13 @@ struct RebuildPreferencesView: View {
     private var deliverySection: some View {
         RebuildSection(
             title: "Delivery",
-            caption: "Text always reaches your clipboard. Smart Paste uses only the app you recorded from."
+            caption: "Text always reaches your clipboard first. Smart Paste uses only the app you recorded from."
         ) {
             RebuildFormRow(label: "Smart Paste") {
                 Toggle("Paste into the app I recorded from", isOn: $smartPaste)
                 Toggle("Match spacing and capitals to the text before the cursor", isOn: $matchContext)
+                    .disabled(!smartPaste)
+                Toggle("Put back what was on the clipboard after pasting", isOn: $restoreClipboard)
                     .disabled(!smartPaste)
             }
             RebuildFormRow(label: "Accessibility") {

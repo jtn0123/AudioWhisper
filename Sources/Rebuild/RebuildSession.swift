@@ -38,6 +38,8 @@ struct RebuildSessionServices {
     var startAsync: ((UUID) async -> Bool)?
     var saveResult: ((TranscriptionResult, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void)?
     var recordedSignal: () -> RecordingSignalMeter? = { nil }
+    /// Present when the user wants their clipboard back after Smart Paste.
+    var clipboardKeeper: () -> ClipboardKeeper? = { AppDefaults.restoreClipboardAfterPaste ? ClipboardKeeper() : nil }
 
     static func live(
         recorder: AudioEngineRecorder,
@@ -336,7 +338,7 @@ final class RebuildSession {
                 // imported retries use the file metadata already validated by
                 // the pipeline, without opening the audio a second time.
                 let deliveredDuration = duration ?? result.audioDuration
-                services.copy(result.text)
+                let loan = copyTranscript(result.text)
                 if case .rejected = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup could not safely preserve your words."
                 }
@@ -357,7 +359,7 @@ final class RebuildSession {
                 closeRecorder()
                 didDeliver()
                 if AppDefaults.playCompletionSound { NSSound(named: "Pop")?.play() }
-                await pasteTranscript(result.text, sessionID: id)
+                await pasteTranscript(result.text, sessionID: id, loan: loan)
             } catch {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
@@ -372,13 +374,46 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
-    private func pasteTranscript(_ text: String, sessionID id: UUID) async {
+    /// What Smart Paste borrowed from the clipboard, to give back afterwards.
+    struct ClipboardLoan {
+        let id = UUID()
+        let keeper: ClipboardKeeper
+        let saved: ClipboardKeeper.Snapshot
+    }
+
+    /// Lends the clipboard only when the user wants it back and a paste is
+    /// going to happen; otherwise the transcript simply stays on it.
+    private func copyTranscript(_ text: String) -> ClipboardLoan? {
+        guard AppDefaults.enableSmartPaste, capturedTarget != nil, let keeper = services.clipboardKeeper() else {
+            services.copy(text)
+            return nil
+        }
+        let loan = ClipboardLoan(keeper: keeper, saved: keeper.save())
+        keeper.copy(text, loan: loan.id)
+        return loan
+    }
+
+    private func pasteTranscript(_ text: String, sessionID id: UUID, loan: ClipboardLoan?) async {
         guard AppDefaults.enableSmartPaste, let target = capturedTarget else { return }
-        let outcome = await delivery.deliver(text, to: target, paste: paste, copy: services.copy) { [weak self] in
+        let copy: (String) -> Void = loan.map { loan in { loan.keeper.copy($0, loan: loan.id) } } ?? services.copy
+        let outcome = await delivery.deliver(text, to: target, paste: paste, copy: copy) { [weak self] in
             self?.sessionID == id
         }
+        if let loan { await giveBack(loan, after: outcome) }
         guard !Task.isCancelled, sessionID == id else { return }
         if outcome == .failed { notice = "Copied. Paste manually with Command V." }
+    }
+
+    /// A failed or abandoned paste keeps the transcript for pasting by hand.
+    /// One that could not be seen landing gets a moment to be read first.
+    private func giveBack(_ loan: ClipboardLoan, after outcome: RebuildPasteDelivery.Outcome) async {
+        switch outcome {
+        case .confirmed: break
+        case .unverified:
+            do { try await Task.sleep(for: delivery.restoreGrace) } catch { return }
+        case .failed, .cancelled: return
+        }
+        loan.keeper.restore(loan.saved, loan: loan.id)
     }
 
     func removeVoiceModel() async {

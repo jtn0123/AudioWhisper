@@ -98,6 +98,7 @@ enum AppDefaults {
         // Behavior
         case enableSmartPaste
         case matchCursorContext
+        case restoreClipboardAfterPaste
         case playCompletionSound
         case startAtLogin
 

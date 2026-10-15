@@ -30,6 +30,14 @@ extension AppDefaults {
         set { defaults.set(newValue, forKey: Key.matchCursorContext.rawValue) }
     }
 
+    /// After Smart Paste, puts back what was on the clipboard before. Off by
+    /// default: the transcript staying on the clipboard is the long-standing
+    /// promise, and a fallback for pasting by hand.
+    static var restoreClipboardAfterPaste: Bool {
+        get { bool(.restoreClipboardAfterPaste, default: false) }
+        set { defaults.set(newValue, forKey: Key.restoreClipboardAfterPaste.rawValue) }
+    }
+
     private static func bool(_ key: Key, default fallback: Bool) -> Bool {
         defaults.object(forKey: key.rawValue) == nil ? fallback : defaults.bool(forKey: key.rawValue)
     }
