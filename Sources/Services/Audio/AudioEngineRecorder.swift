@@ -398,7 +398,6 @@ extension AudioEngineRecorder {
         let tempPath = FileManager.default.temporaryDirectory
         let timestamp = dateProvider().timeIntervalSince1970
         let audioFilename = tempPath.appendingPathComponent("recording_\(timestamp).m4a")
-        recordingURL = audioFilename
 
         do {
             let engine = prepared.engine
@@ -410,21 +409,7 @@ extension AudioEngineRecorder {
             // this, frequency bands are mislabeled (Hz→bin mapping uses sampleRate).
             fftProcessor?.updateSampleRate(Float(inputFormat.sampleRate))
 
-            // Create output file for recording.
-            // The channel count MUST match the input tap buffer's channel count, or
-            // every `audioFile.write(from:)` throws (channel-count mismatch) and the
-            // recording ends up empty on stereo input devices.
-            let outputSettings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: inputFormat.sampleRate,
-                AVNumberOfChannelsKey: Int(inputFormat.channelCount),
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-            ]
-
-            audioFile = try AVAudioFile(
-                forWriting: audioFilename,
-                settings: outputSettings
-            )
+            try beginCaptureFile(at: audioFilename, format: inputFormat)
 
             // Install tap for real-time audio access
             let bufferSize = AVAudioFrameCount(1024)
@@ -432,8 +417,6 @@ extension AudioEngineRecorder {
                 self?.processAudioBuffer(buffer)
             }
 
-            // Reset diagnostics before the first callback can arrive.
-            resetCaptureCounters()
             audioEngine = engine
             try engine.start()
             currentSessionStart = dateProvider()
@@ -458,6 +441,24 @@ extension AudioEngineRecorder {
             PermissionManager.shared.checkPermissionState()
             return false
         }
+    }
+
+    /// Creates the capture file and zeroes the per-capture counters, before
+    /// the tap that delivers the first buffer is installed.
+    ///
+    /// The channel count MUST match the input tap buffer's channel count, or
+    /// every `audioFile.write(from:)` throws (channel-count mismatch) and the
+    /// recording ends up empty on stereo input devices.
+    func beginCaptureFile(at url: URL, format: AVAudioFormat) throws {
+        recordingURL = url
+        let outputSettings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: format.sampleRate,
+            AVNumberOfChannelsKey: Int(format.channelCount),
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+        audioFile = try AVAudioFile(forWriting: url, settings: outputSettings)
+        resetCaptureCounters()
     }
 
     private func resetCaptureCounters() {

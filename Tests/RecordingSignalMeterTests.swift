@@ -92,6 +92,46 @@ final class AudioEngineRecorderSignalTests: XCTestCase {
         XCTAssertNil(recorder.lastRecordingSignal)
     }
 
+    func testWrittenAudioMakesAUsableRecording() throws {
+        let recorder = AudioEngineRecorder()
+        let url = captureURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        try recorder.beginCaptureFile(at: url, format: try format(channels: 1))
+        for _ in 0..<3 { recorder.processAudioBuffer(try pcmBuffer(amplitude: 0.2)) }
+        XCTAssertEqual(recorder.stopRecording(), url)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+    }
+
+    func testRecordingWhoseEveryWriteFailedIsDiscarded() throws {
+        let recorder = AudioEngineRecorder()
+        let url = captureURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        // A stereo file fed mono buffers: every write throws, as it did on
+        // stereo devices before the file matched the tap's channel count.
+        try recorder.beginCaptureFile(at: url, format: try format(channels: 2))
+        for _ in 0..<3 { recorder.processAudioBuffer(try pcmBuffer(amplitude: 0.2)) }
+        XCTAssertNil(recorder.stopRecording())
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path), "the unusable file is removed")
+    }
+
+    func testANewCaptureForgetsThePreviousSignal() throws {
+        let recorder = AudioEngineRecorder()
+        recorder.processAudioBuffer(try pcmBuffer(amplitude: 0))
+        let url = captureURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        try recorder.beginCaptureFile(at: url, format: try format(channels: 1))
+        _ = recorder.stopRecording()
+        XCTAssertEqual(recorder.lastRecordingSignal?.frames, 0)
+    }
+
+    private func captureURL() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("signal-\(UUID()).m4a")
+    }
+
+    private func format(channels: AVAudioChannelCount) throws -> AVAudioFormat {
+        try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: channels))
+    }
+
     private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
         for _ in 0..<100 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertTrue(condition())

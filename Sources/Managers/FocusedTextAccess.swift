@@ -102,12 +102,21 @@ enum FocusedTextAX {
         guard !AppEnvironment.isRunningTests, AXIsProcessTrusted(),
               let focused = focusedTextElement(pid: pid) else { return nil }
         let value = copy(focused, kAXValueAttribute) as? String
-        let count = copy(focused, kAXNumberOfCharactersAttribute) as? Int
-        let selection = range(focused, kAXSelectedTextRangeAttribute)
+        return state(
+            value: value, count: copy(focused, kAXNumberOfCharactersAttribute) as? Int,
+            selection: range(focused, kAXSelectedTextRangeAttribute)
+        ) { location in preceding(focused, before: location, value: value) }
+    }
+
+    /// What a text control reported, as a state; `nil` when it reported nothing.
+    /// `preceding` is only asked when there is a selection to read before.
+    static func state(
+        value: String?, count: Int?, selection: NSRange?, preceding: (Int) -> String?
+    ) -> FocusedTextState? {
         guard value != nil || count != nil || selection != nil else { return nil }
         return FocusedTextState(
             length: count ?? value.map { ($0 as NSString).length }, selection: selection,
-            preceding: selection.flatMap { preceding(focused, before: $0.location, value: value) })
+            preceding: selection.flatMap { preceding($0.location) })
     }
 
     /// Presses the menu item bound to plain ⌘V, matched by its key equivalent
@@ -127,9 +136,19 @@ enum FocusedTextAX {
     }
 
     private static func isPlainPaste(_ item: AXUIElement) -> Bool {
-        guard (copy(item, kAXMenuItemCmdCharAttribute) as? String)?.uppercased() == "V",
-              copy(item, kAXMenuItemCmdModifiersAttribute) as? Int == 0 else { return false }
-        return copy(item, kAXEnabledAttribute) as? Bool ?? false
+        isPlainPaste(
+            commandCharacter: copy(item, kAXMenuItemCmdCharAttribute) as? String,
+            modifiers: copy(item, kAXMenuItemCmdModifiersAttribute) as? Int,
+            enabled: copy(item, kAXEnabledAttribute) as? Bool)
+    }
+
+    /// An enabled item whose key equivalent is ⌘V and nothing else. Lazy, so
+    /// the usual non-match costs one Accessibility call, not three.
+    static func isPlainPaste(
+        commandCharacter: String?, modifiers: @autoclosure () -> Int?, enabled: @autoclosure () -> Bool?
+    ) -> Bool {
+        guard commandCharacter?.uppercased() == "V", modifiers() == 0 else { return false }
+        return enabled() ?? false
     }
 
     private static func preceding(_ element: AXUIElement, before location: Int, value: String?) -> String? {
@@ -143,8 +162,18 @@ enum FocusedTextAX {
                 element, kAXStringForRangeParameterizedAttribute as CFString, parameter, &result)
             if status == .success, let text = result as? String { return text }
         }
+        return text(value, before: location)
+    }
+
+    /// Up to `contextLength` UTF-16 units of `value` before `location`, widened
+    /// to whole characters so the window never starts inside an emoji.
+    static func text(_ value: String?, before location: Int) -> String? {
+        guard location > 0 else { return "" }
         guard let value, location <= (value as NSString).length else { return nil }
-        return (value as NSString).substring(with: NSRange(location: start, length: location - start))
+        let start = max(0, location - contextLength)
+        let window = (value as NSString).rangeOfComposedCharacterSequences(
+            for: NSRange(location: start, length: location - start))
+        return (value as NSString).substring(with: window)
     }
 
     private static func copy(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
