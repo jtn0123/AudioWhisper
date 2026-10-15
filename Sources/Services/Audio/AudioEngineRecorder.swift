@@ -16,6 +16,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     @Published var audioLevel: Float = 0.0
     @Published private(set) var waveformSamples: [Float] = []
     @Published private(set) var frequencyBands: [Float] = Array(repeating: 0, count: 8)
+    /// The input has carried no signal for `RecordingSignalMeter.liveWarningDelay`.
+    @Published private(set) var inputAppearsSilent = false
 
     // MARK: - Recording State
 
@@ -23,11 +25,13 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     private(set) var lastRecordingDuration: TimeInterval?
     var recordingSessionID: UUID?
     private(set) var lastStartError: String?
+    /// Loudness of the last stopped capture; `nil` after a cancel.
+    private(set) var lastRecordingSignal: RecordingSignalMeter?
 
     // MARK: - Audio Engine
 
     var audioEngine: AVAudioEngine?
-    // audioFile is read on the audio thread (in processAudioBuffer) and mutated on the main thread.
+    // audioFile is read on the audio thread (in writeToFile) and mutated on the main thread.
     // Mutations always happen after removeTap + engine.stop (in stopEngine), so the audio thread
     // cannot observe a torn-down file reference while the tap is still firing.
     private nonisolated(unsafe) var audioFile: AVAudioFile?
@@ -40,8 +44,9 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // re-sliced on every callback. See SampleRingBuffer for the measurement.
     private nonisolated(unsafe) var sampleBuffer = SampleRingBuffer(capacity: 2048)  // Under sampleBufferLock
     private let dateProvider: () -> Date
-    // Guards sampleBuffer, _writeErrorCount, _writeSuccessCount, _framesWritten, _lastLevelPublishTime.
+    // Guards sampleBuffer, _writeErrorCount, _writeSuccessCount, _framesWritten, _signal, _lastLevelPublishTime.
     private let sampleBufferLock = NSLock()
+    private nonisolated(unsafe) var _signal = RecordingSignalMeter()  // Under sampleBufferLock
     private nonisolated(unsafe) var _writeErrorCount = 0  // Write errors for diagnostics (under sampleBufferLock)
     private nonisolated(unsafe) var _writeSuccessCount = 0  // Successful buffer writes (under sampleBufferLock)
     private nonisolated(unsafe) var _framesWritten: Int64 = 0  // Total frames written (under sampleBufferLock)
@@ -140,6 +145,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         let errorCount = _writeErrorCount
         let successCount = _writeSuccessCount
         let framesWritten = _framesWritten
+        lastRecordingSignal = _signal
         sampleBufferLock.unlock()
         if errorCount > 0 {
             Logger.audioEngineRecorder.warning("Recording had \(errorCount) audio buffer write errors - audio may be incomplete")
@@ -170,6 +176,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     func cancelRecording() {
         currentSessionStart = nil
         lastRecordingDuration = nil
+        lastRecordingSignal = nil
 
         stopEngine()
 
@@ -227,6 +234,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         audioLevel = 0.0
         waveformSamples = []
         frequencyBands = Array(repeating: 0, count: 8)
+        inputAppearsSilent = false
         // Use lock for thread-safe sampleBuffer access
         sampleBufferLock.lock()
         sampleBuffer.removeAll()
@@ -236,7 +244,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     /// Called on the AVAudioEngine audio thread (NOT main). Stays `nonisolated` so the audio
     /// path does no MainActor hops for the data path itself — only the throttled level/waveform
     /// publish hops to main.
-    nonisolated private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+    nonisolated func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
         guard let channelData = buffer.floatChannelData else { return }
 
         let frameLength = Int(buffer.frameLength)
@@ -260,27 +268,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
 
         // Write to file (on audio thread for performance)
-        if let audioFile = audioFile {
-            do {
-                try audioFile.write(from: buffer)
-                // Track successful writes + frames so stopRecording can tell whether
-                // the recording is actually usable (thread-safe via sampleBufferLock).
-                sampleBufferLock.lock()
-                _writeSuccessCount += 1
-                _framesWritten += Int64(frameLength)
-                sampleBufferLock.unlock()
-            } catch {
-                // Track write errors for later reporting (thread-safe via sampleBufferLock)
-                sampleBufferLock.lock()
-                _writeErrorCount += 1
-                let isFirstError = _writeErrorCount == 1
-                sampleBufferLock.unlock()
-                if isFirstError {
-                    // Only log the first error to avoid log spam
-                    Logger.audioEngineRecorder.error("Failed to write audio buffer: \(error.localizedDescription)")
-                }
-            }
-        }
+        writeToFile(buffer, frames: frameLength)
 
         // Use lock for thread-safe sampleBuffer access (called from audio thread).
         // `SampleRingBuffer` keeps the most recent 2048 samples (~128ms at 16kHz)
@@ -294,6 +282,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         let now = CACurrentMediaTime()
         sampleBufferLock.lock()
         sampleBuffer.append(contentsOf: monoSamples)
+        _signal.add(monoSamples, sampleRate: buffer.format.sampleRate)
+        let silent = _signal.warrantsSilenceWarning
         let shouldPublish = (now - _lastLevelPublishTime) >= Self.levelPublishInterval
         if shouldPublish {
             _lastLevelPublishTime = now
@@ -318,6 +308,36 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
             self.audioLevel = level
             self.frequencyBands = bands
             self.waveformSamples = displaySamples
+            self.publishInputSilence(silent)
+        }
+    }
+
+    /// Only a still-running capture may raise the warning; a late hop must not
+    /// resurrect it after stop cleared it.
+    private func publishInputSilence(_ silent: Bool) {
+        if isRecording, inputAppearsSilent != silent { inputAppearsSilent = silent }
+    }
+
+    /// Track successful writes + frames so stopRecording can tell whether the
+    /// recording is actually usable (thread-safe via sampleBufferLock).
+    nonisolated private func writeToFile(_ buffer: AVAudioPCMBuffer, frames frameLength: Int) {
+        guard let audioFile = audioFile else { return }
+        do {
+            try audioFile.write(from: buffer)
+            sampleBufferLock.lock()
+            _writeSuccessCount += 1
+            _framesWritten += Int64(frameLength)
+            sampleBufferLock.unlock()
+        } catch {
+            // Track write errors for later reporting (thread-safe via sampleBufferLock)
+            sampleBufferLock.lock()
+            _writeErrorCount += 1
+            let isFirstError = _writeErrorCount == 1
+            sampleBufferLock.unlock()
+            if isFirstError {
+                // Only log the first error to avoid log spam
+                Logger.audioEngineRecorder.error("Failed to write audio buffer: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -378,7 +398,6 @@ extension AudioEngineRecorder {
         let tempPath = FileManager.default.temporaryDirectory
         let timestamp = dateProvider().timeIntervalSince1970
         let audioFilename = tempPath.appendingPathComponent("recording_\(timestamp).m4a")
-        recordingURL = audioFilename
 
         do {
             let engine = prepared.engine
@@ -390,21 +409,7 @@ extension AudioEngineRecorder {
             // this, frequency bands are mislabeled (Hz→bin mapping uses sampleRate).
             fftProcessor?.updateSampleRate(Float(inputFormat.sampleRate))
 
-            // Create output file for recording.
-            // The channel count MUST match the input tap buffer's channel count, or
-            // every `audioFile.write(from:)` throws (channel-count mismatch) and the
-            // recording ends up empty on stereo input devices.
-            let outputSettings: [String: Any] = [
-                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-                AVSampleRateKey: inputFormat.sampleRate,
-                AVNumberOfChannelsKey: Int(inputFormat.channelCount),
-                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-            ]
-
-            audioFile = try AVAudioFile(
-                forWriting: audioFilename,
-                settings: outputSettings
-            )
+            try beginCaptureFile(at: audioFilename, format: inputFormat)
 
             // Install tap for real-time audio access
             let bufferSize = AVAudioFrameCount(1024)
@@ -412,13 +417,6 @@ extension AudioEngineRecorder {
                 self?.processAudioBuffer(buffer)
             }
 
-            // Reset diagnostics before the first callback can arrive.
-            sampleBufferLock.lock()
-            _writeErrorCount = 0  // Reset error count for new session
-            _writeSuccessCount = 0  // Reset success count for new session
-            _framesWritten = 0  // Reset frame counter for new session
-            _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
-            sampleBufferLock.unlock()
             audioEngine = engine
             try engine.start()
             currentSessionStart = dateProvider()
@@ -443,6 +441,34 @@ extension AudioEngineRecorder {
             PermissionManager.shared.checkPermissionState()
             return false
         }
+    }
+
+    /// Creates the capture file and zeroes the per-capture counters, before
+    /// the tap that delivers the first buffer is installed.
+    ///
+    /// The channel count MUST match the input tap buffer's channel count, or
+    /// every `audioFile.write(from:)` throws (channel-count mismatch) and the
+    /// recording ends up empty on stereo input devices.
+    func beginCaptureFile(at url: URL, format: AVAudioFormat) throws {
+        recordingURL = url
+        let outputSettings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: format.sampleRate,
+            AVNumberOfChannelsKey: Int(format.channelCount),
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+        ]
+        audioFile = try AVAudioFile(forWriting: url, settings: outputSettings)
+        resetCaptureCounters()
+    }
+
+    private func resetCaptureCounters() {
+        sampleBufferLock.lock()
+        _writeErrorCount = 0  // Reset error count for new session
+        _writeSuccessCount = 0  // Reset success count for new session
+        _framesWritten = 0  // Reset frame counter for new session
+        _signal = RecordingSignalMeter()
+        _lastLevelPublishTime = 0  // Allow the first level publish in this session to fire immediately
+        sampleBufferLock.unlock()
     }
 
     func scheduleVolumeBoost(deviceID: AudioDeviceID, sessionID: UUID) {

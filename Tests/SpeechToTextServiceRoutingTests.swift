@@ -8,15 +8,18 @@ private final class FakeLocalWhisper: LocalWhisperTranscribing, @unchecked Senda
     private(set) var callCount = 0
     private(set) var lastModel: WhisperModel?
     private(set) var lastURL: URL?
+    private(set) var lastPrompt: String?
 
     func transcribe(
         audioFileURL: URL,
         model: WhisperModel,
+        prompt: String?,
         progressCallback: (@Sendable (String) -> Void)?
     ) async throws -> String {
         callCount += 1
         lastModel = model
         lastURL = audioFileURL
+        lastPrompt = prompt
         progressCallback?("working")
         return try result.get()
     }
@@ -93,6 +96,19 @@ final class SpeechToTextServiceRoutingTests: XCTestCase {
         XCTAssertEqual(whisper.lastModel, .small, "the requested model must be forwarded, not a default")
         XCTAssertEqual(whisper.lastURL, url)
         XCTAssertEqual(parakeet.callCount, 0, "the local provider must not touch Parakeet")
+    }
+
+    func testVocabularyReachesWhisperAsItsPrompt() async throws {
+        let url = makeAudioFile()
+        let config = TranscriptionPipelineConfig(
+            provider: .local, whisperModel: .base, applySemanticCorrection: false,
+            formatting: TranscriptFormattingOptions(vocabulary: CustomVocabulary(terms: ["Kubernetes"])))
+
+        _ = try await service.transcribeValidated(audioURL: url, provider: .local, model: .base, pipelineConfig: config)
+        XCTAssertEqual(whisper.lastPrompt, "Kubernetes")
+
+        _ = try await service.transcribeValidated(audioURL: url, provider: .local, model: .base)
+        XCTAssertNil(whisper.lastPrompt, "no vocabulary means an unprompted decoder")
     }
 
     /// The guard that turns a missing model into a clear error instead of a

@@ -144,5 +144,11 @@ coverage-python.xml
 .coverage
 .pycov/
 .mypy-venv/
+.mypy_cache/
+
+# CI analyzer artifacts (xcodebuild log and scripts/analyze-gate.py reports)
+xcodebuild.log
+analyze.json
+analyze.stderr.txt
 
 *.xml.manifest.json

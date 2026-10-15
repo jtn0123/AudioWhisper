@@ -15,9 +15,12 @@ import Foundation
 /// `SpeechToTextService.init` defaults to the shared instances, so production
 /// behaviour is unchanged, and tests can pass a double.
 internal protocol LocalWhisperTranscribing: Sendable {
+    /// `prompt` is the user's vocabulary as decoder context; see
+    /// `CustomVocabulary.promptText`.
     func transcribe(
         audioFileURL: URL,
         model: WhisperModel,
+        prompt: String?,
         progressCallback: (@Sendable (String) -> Void)?
     ) async throws -> String
 }

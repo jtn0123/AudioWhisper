@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import Carbon
 import Observation
 import os.log
 
@@ -219,7 +218,7 @@ internal class PasteManager {
 
         // Create ⌘V key events for paste operation
         let cmdFlag = CGEventFlags([.maskCommand])
-        let vKeyCode = CGKeyCode(kVK_ANSI_V) // V key code
+        let vKeyCode = KeyboardLayoutKeyCode.pasteKeyCode() // Types "v" in the user's layout, not QWERTY's
 
         // Create both key down and key up events for complete key press simulation
         guard let keyVDown = CGEvent(keyboardEventSource: source, virtualKey: vKeyCode, keyDown: true),

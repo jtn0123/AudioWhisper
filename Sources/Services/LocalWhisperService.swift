@@ -168,6 +168,7 @@ internal final class LocalWhisperService: Sendable {
     func transcribe(
         audioFileURL: URL,
         model: WhisperModel,
+        prompt: String? = nil,
         progressCallback: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         // Get or create WhisperKit instance from actor-isolated cache.
@@ -179,20 +180,14 @@ internal final class LocalWhisperService: Sendable {
         let durationHint = getDurationHint(for: model)
         progressCallback?("Transcribing audio... \(durationHint)")
 
-        // Configure decoding options for transcription (not translation)
-        // task: .transcribe ensures X→X speech recognition (preserves original language)
-        // task: .translate would perform X→English translation
-        var decodingOptions = DecodingOptions()
-        decodingOptions.task = .transcribe
-        // Let WhisperKit auto-detect the language
-        decodingOptions.language = nil
-
-        // Transcribe the audio file
+        // Transcribe the audio file. Incremental loading already cuts the file
+        // at silences (VADAudioChunker) into model-sized windows, so long
+        // recordings never decode across a 30 s seam.
         progressCallback?("Processing audio...")
         let results = try await whisperKit.transcribe(
             audioPath: audioFileURL.path,
             audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental),
-            decodeOptions: decodingOptions)
+            decodeOptions: Self.decodingOptions(prompt: prompt, tokenizer: whisperKit.tokenizer))
 
         // Combine all transcription segments into a single text
         let transcription = results.map { $0.text }.joined(separator: " ")
@@ -200,9 +195,46 @@ internal final class LocalWhisperService: Sendable {
         guard !transcription.isEmpty else {
             throw LocalWhisperError.transcriptionFailed
         }
+        if let prompt, Self.isPromptEcho(transcription, prompt: prompt) {
+            throw SpeechToTextError.noSpeechDetected
+        }
 
         progressCallback?("Transcription complete!")
         return transcription.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+    }
+
+    /// Transcription (X→X, never translation) with the language auto-detected.
+    static func decodingOptions(prompt: String?, tokenizer: WhisperTokenizer?) -> DecodingOptions {
+        var options = DecodingOptions()
+        options.task = .transcribe
+        options.language = nil
+        if let prompt, let tokenizer {
+            options.promptTokens = promptTokens(
+                for: prompt, encode: { tokenizer.encode(text: $0) },
+                specialTokenBegin: tokenizer.specialTokens.specialTokenBegin)
+        }
+        return options
+    }
+
+    /// Whisper conditions on preceding text, so the user's spellings supplied
+    /// as "previous context" pull decoding toward them. Special tokens would be
+    /// read as control codes and are dropped, as WhisperKit's own CLI does.
+    static func promptTokens(for prompt: String, encode: (String) -> [Int], specialTokenBegin: Int) -> [Int]? {
+        let text = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let tokens = encode(" " + text).filter { $0 < specialTokenBegin }
+        return tokens.isEmpty ? nil : tokens
+    }
+
+    /// A prompted decoder can answer near-silence by repeating its prompt.
+    /// That is not something the user said.
+    static func isPromptEcho(_ transcription: String, prompt: String) -> Bool {
+        let normalize: (String) -> String = {
+            $0.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+                .joined(separator: " ")
+        }
+        let spoken = normalize(transcription)
+        return !spoken.isEmpty && spoken == normalize(prompt)
     }
 
     /// Locale-independent network-failure detection: inspects the error type

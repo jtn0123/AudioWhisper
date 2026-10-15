@@ -37,6 +37,7 @@ struct RebuildSessionServices {
     var startError: () -> String? = { nil }
     var startAsync: ((UUID) async -> Bool)?
     var saveResult: ((TranscriptionResult, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void)?
+    var recordedSignal: () -> RecordingSignalMeter? = { nil }
 
     static func live(
         recorder: AudioEngineRecorder,
@@ -52,8 +53,7 @@ struct RebuildSessionServices {
             start: { id in
                 PermissionManager.shared.checkPermissionState()
                 return recorder.startRecording(sessionID: id)
-            }, stop: { recorder.stopRecording() },
-            cancel: { recorder.cancelRecording() },
+            }, stop: { recorder.stopRecording() }, cancel: { recorder.cancelRecording() },
             transcribe: { url, config, id in
                 try await TranscriptionProgress.$sessionID.withValue(id) {
                     try await TranscriptionProgress.$pipelineConfig.withValue(config) {
@@ -75,7 +75,8 @@ struct RebuildSessionServices {
             },
             saveResult: { result, config, duration in
                 try await persist(result, config: config, duration: duration, history: history, usage: usage)
-            }
+            },
+            recordedSignal: { recorder.lastRecordingSignal }
         )
     }
 
@@ -133,6 +134,7 @@ final class RebuildSession {
     @ObservationIgnored private var refreshInFlight = false
     @ObservationIgnored private var refreshAgain = false
     @ObservationIgnored private let paste: PasteManager
+    @ObservationIgnored private let delivery: RebuildPasteDelivery
     @ObservationIgnored private var retryAudio: RetryAudio?
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var verificationSelection: RebuildModelSelection?
@@ -173,10 +175,11 @@ final class RebuildSession {
     init(
         services: RebuildSessionServices, setup: RebuildSetupServices? = nil,
         verificationDefaults: UserDefaults? = nil, writingInstaller: RebuildWritingInstaller? = nil,
-        paste: PasteManager? = nil
+        paste: PasteManager? = nil, delivery: RebuildPasteDelivery? = nil
     ) {
         self.services = services
         self.paste = paste ?? PasteManager()
+        self.delivery = delivery ?? RebuildPasteDelivery()
         self.setup = setup ?? .live
         self.writingInstaller = writingInstaller ?? RebuildWritingInstaller()
         self.verificationStore = RebuildModelVerificationStore(defaults: verificationDefaults ?? AppDefaults.defaults)
@@ -265,7 +268,21 @@ final class RebuildSession {
             closeRecorder()
             return
         }
+        guard services.recordedSignal()?.isSilent != true else {
+            rejectSilentRecording(url: url, config: config)
+            return
+        }
         transcribe(url: url, config: config, id: id, removeAfterward: true)
+    }
+
+    /// A dead input yields an all-silent file, and WhisperKit invents text for
+    /// silence rather than reporting none. The audio is kept, so Retry can
+    /// still force a transcription if the meter was wrong.
+    private func rejectSilentRecording(url: URL, config: TranscriptionPipelineConfig) {
+        retryAudio = RetryAudio(url: url, config: config, owned: true, duration: duration)
+        phase = .failed
+        notice = "The microphone recorded only silence. Check the selected microphone, its mute switch and input level."
+        closeRecorder()
     }
 
     func importAudio(_ url: URL) {
@@ -292,7 +309,8 @@ final class RebuildSession {
             applySemanticCorrection: AppDefaults.semanticCorrectionMode != .off,
             sourceAppBundleId: capturedTarget?.bundleIdentifier, parakeetModel: AppDefaults.selectedParakeetModel,
             correctionMode: AppDefaults.semanticCorrectionMode,
-            correctionModelRepo: AppDefaults.semanticCorrectionModelRepo
+            correctionModelRepo: AppDefaults.semanticCorrectionModelRepo,
+            formatting: .current
         )
     }
 
@@ -339,7 +357,7 @@ final class RebuildSession {
                 closeRecorder()
                 didDeliver()
                 if AppDefaults.playCompletionSound { NSSound(named: "Pop")?.play() }
-                await pasteTranscript(sessionID: id)
+                await pasteTranscript(result.text, sessionID: id)
             } catch {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
@@ -354,25 +372,13 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
-    private func pasteTranscript(sessionID id: UUID) async {
-        if AppDefaults.enableSmartPaste, let target = capturedTarget {
-            let activated = await target.activateAndWait { [weak self] in self?.sessionID == id }
-            guard !Task.isCancelled, sessionID == id else { return }
-            guard activated else {
-                notice = "Copied. Paste manually with Command V."
-                return
-            }
-            paste.pasteWithUserInteraction(
-                expectedTargetPID: target.processIdentifier,
-                isSessionValid: { [weak self] in
-                    self?.sessionID == id
-                },
-                completion: { [weak self] result in
-                    guard self?.sessionID == id else { return }
-                    if case .failure = result { self?.notice = "Copied. Paste manually with Command V." }
-                }
-            )
+    private func pasteTranscript(_ text: String, sessionID id: UUID) async {
+        guard AppDefaults.enableSmartPaste, let target = capturedTarget else { return }
+        let outcome = await delivery.deliver(text, to: target, paste: paste, copy: services.copy) { [weak self] in
+            self?.sessionID == id
         }
+        guard !Task.isCancelled, sessionID == id else { return }
+        if outcome == .failed { notice = "Copied. Paste manually with Command V." }
     }
 
     func removeVoiceModel() async {

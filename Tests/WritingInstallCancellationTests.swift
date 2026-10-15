@@ -78,8 +78,23 @@ final class WritingInstallCancellationTests: IsolatedXCTestCase {
         XCTAssertFalse(process.isRunning)
         XCTAssertNil(output.fileHandleForReading.readabilityHandler)
         XCTAssertNil(errors.fileHandleForReading.readabilityHandler)
-        XCTAssertThrowsError(try output.fileHandleForReading.read(upToCount: 1))
-        XCTAssertThrowsError(try errors.fileHandleForReading.read(upToCount: 1))
+        await assertReadEndCloses(output)
+        await assertReadEndCloses(errors)
+    }
+
+    /// `close()` on a handle that had a readability handler returns before the
+    /// descriptor is released, so reading it straight away raced: about 7% of
+    /// reads returned nil instead of throwing. The write end, which the test
+    /// still owns, reports EPIPE once no reader remains.
+    private func assertReadEndCloses(_ pipe: Pipe, line: UInt = #line) async {
+        let descriptor = pipe.fileHandleForWriting.fileDescriptor
+        _ = fcntl(descriptor, F_SETNOSIGPIPE, 1)
+        var byte: UInt8 = 0
+        for _ in 0..<200 {
+            if write(descriptor, &byte, 1) == -1, errno == EPIPE { return }
+            try? await Task.sleep(for: .milliseconds(10))
+        }
+        XCTFail("The pipe's read end was still open after 2 s", line: line)
     }
 
     func testInstantProcessFailuresPreserveTheActionableError() async {
