@@ -7,7 +7,7 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.matchCursorContext) private var matchContext
     @AppDefault(\.restoreClipboardAfterPaste) private var restoreClipboard
     @AppDefault(\.playCompletionSound) private var sound
-    @AppDefault(\.selectedMicrophone) private var microphone
+    @AppDefault(\.microphoneRanking) private var ranking
     @AppDefault(\.autoBoostMicrophoneVolume) private var boost
     @AppDefault(\.lowerOtherAudioWhileRecording) private var lowerOthers
     @AppDefault(\.pressAndHoldEnabled) private var holdEnabled
@@ -127,18 +127,7 @@ struct RebuildPreferencesView: View {
     private var microphoneSection: some View {
         RebuildSection(title: "Microphone & feedback") {
             RebuildFormRow(label: "Input") {
-                Picker("Microphone", selection: $microphone) {
-                    Text("System default").tag("")
-                    ForEach(inputs.devices) { Text($0.name).tag($0.id) }
-                    if !microphone.isEmpty && !inputs.devices.contains(where: { $0.id == microphone }) {
-                        Text("Saved microphone · unavailable").tag(microphone).disabled(true)
-                    }
-                }
-                .labelsHidden().frame(maxWidth: 320)
-                if !microphone.isEmpty && !inputs.devices.contains(where: { $0.id == microphone }) {
-                    Text("Reconnect your saved microphone or choose another input.")
-                        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
-                }
+                RebuildMicrophoneRankingView(ranking: $ranking, connected: inputs.devices)
                 Toggle("Boost microphone input while recording", isOn: $boost)
             }
             RebuildFormRow(label: "Sound") {

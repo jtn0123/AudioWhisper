@@ -63,6 +63,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     private let volumeManager: MicrophoneVolumeManaging
     let inputRouting: AudioInputRouting
+    let microphoneChooser: MicrophoneChooser
     let hardwarePreparation = AudioHardwarePreparation<PreparedAudioEngine>()
     private var volumeTask: Task<Void, Never>?
     private var volumeBoostRequested = false
@@ -83,6 +84,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         self.volumeManager = MicrophoneVolumeManager.shared
         self.outputDucker = .shared
         self.inputRouting = .live
+        self.microphoneChooser = .live
         self.dateProvider = { Date() }
         super.init()
     }
@@ -91,7 +93,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         volumeManager: MicrophoneVolumeManaging? = nil,
         outputDucker: OutputDucker? = nil,
         dateProvider: @escaping () -> Date = { Date() },
-        inputRouting: AudioInputRouting = .live
+        inputRouting: AudioInputRouting = .live,
+        microphoneChooser: MicrophoneChooser = .live
     ) {
         // A5: resolved in the body rather than as a default argument.
         // Default-argument expressions are evaluated in the CALLER's
@@ -104,6 +107,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         self.outputDucker = outputDucker ?? .shared
         self.dateProvider = dateProvider
         self.inputRouting = inputRouting
+        self.microphoneChooser = microphoneChooser
         super.init()
     }
 
@@ -111,9 +115,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // Safety-net cleanup if the recorder is dropped mid-recording without a
         // balanced stop/cancel: stop the engine, remove the tap, close/flush the
         // open file (niling the AVAudioFile flushes it), and restore boosted mic
-        // volume and lowered other audio. `deinit` may access these MainActor-isolated stored properties
-        // directly (it shares the isolation domain); AVAudioEngine teardown is
-        // safe here. `restoreMicrophoneVolume` is idempotent when nothing boosted.
+        // volume and lowered other audio. `deinit` may access these
+        // MainActor-isolated stored properties directly (it shares the isolation
+        // domain); AVAudioEngine teardown is safe here.
+        // `restoreMicrophoneVolume` is idempotent when nothing boosted.
         if let observer = sleepObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
         }
@@ -371,7 +376,8 @@ extension AudioEngineRecorder {
     func startRecording(sessionID: UUID) -> Bool {
         guard canStartRecording() else { return false }
         do {
-            let prepared = try PreparedAudioEngine.make(routing: inputRouting, selectedUID: AppDefaults.selectedMicrophone)
+            let selectedUID = microphoneChooser.choose(ranking: AppDefaults.microphoneRanking)
+            let prepared = try PreparedAudioEngine.make(routing: inputRouting, selectedUID: selectedUID)
             return startPreparedEngine(prepared, sessionID: sessionID)
         } catch {
             lastStartError = error.localizedDescription

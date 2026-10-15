@@ -80,6 +80,7 @@ enum AppDefaults {
         case globalHotkey
         case immediateRecording
         case selectedMicrophone
+        case microphoneRanking
         case pressAndHoldEnabled
         case pressAndHoldKeyIdentifier
         case pressAndHoldMode
