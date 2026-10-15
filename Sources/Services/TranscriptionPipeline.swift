@@ -51,8 +51,8 @@ internal class TranscriptionPipeline {
     // MARK: - Pipeline Execution
 
     /// Executes the full transcription pipeline with the given configuration.
-    /// Stages: (1) audio validation, (2) provider transcription, (3) optional
-    /// semantic correction.
+    /// Stages: (1) audio validation, (2) provider transcription and rule-based
+    /// formatting, (3) optional semantic correction.
     ///
     /// As of audit item B1, this pipeline is the SOLE caller of
     /// `SemanticCorrectionService`. `SpeechToTextService` only returns raw
@@ -82,8 +82,8 @@ internal class TranscriptionPipeline {
         }
 
         try Task.checkCancellation()
-        // Step 2: Perform transcription
-        let rawText = try await performTranscription(audioURL: audioURL, config: config)
+        // Step 2: Transcribe, then format; cleanup and "original" both see the formatted text
+        let rawText = try await formatted(performTranscription(audioURL: audioURL, config: config), options: config.formatting)
         logger.debug("Raw transcription completed: \(rawText.prefix(50))...")
 
         try Task.checkCancellation()
@@ -125,6 +125,16 @@ internal class TranscriptionPipeline {
     }
 
     // MARK: - Private Helpers
+
+    /// A transcript that was nothing but fillers formats to empty, which is the
+    /// same outcome as hearing no speech.
+    private func formatted(_ text: String, options: TranscriptFormattingOptions) throws -> String {
+        let result = TranscriptFormatter.format(text, options: options)
+        guard !result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw SpeechToTextError.noSpeechDetected
+        }
+        return result
+    }
 
     /// Audit item A4: calls `transcribeValidated`, not `transcribeRaw`. Step 1
     /// of `transcribe(audioURL:config:)` has already run `AudioValidator` on

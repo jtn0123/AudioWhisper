@@ -371,3 +371,44 @@ final class TranscriptionPipelineTests: XCTestCase {
         return fileURL
     }
 }
+
+// MARK: - Rule-based formatting
+
+extension TranscriptionPipelineTests {
+    @MainActor
+    func testFormattingRunsAfterRecognitionAndBecomesTheOriginal() async throws {
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .success("Um, open github")
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let url = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let config = TranscriptionPipelineConfig(
+            provider: .parakeet, applySemanticCorrection: false,
+            formatting: TranscriptFormattingOptions(vocabulary: CustomVocabulary(terms: ["GitHub"]), removeFillers: true))
+
+        let result = try await pipeline.transcribe(audioURL: url, config: config)
+
+        XCTAssertEqual(result.text, "Open GitHub")
+        XCTAssertEqual(result.originalText, "Open GitHub", "Use Original must not bring the fillers back")
+    }
+
+    @MainActor
+    func testFillerOnlyTranscriptIsReportedAsNoSpeech() async {
+        let stub = StubSpeechToTextService()
+        stub.rawResult = .success("Uh.")
+        let pipeline = TranscriptionPipeline(speechService: stub)
+        let url = createTemporaryAudioFile()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let config = TranscriptionPipelineConfig(
+            provider: .parakeet, applySemanticCorrection: false,
+            formatting: TranscriptFormattingOptions(removeFillers: true))
+
+        do {
+            _ = try await pipeline.transcribe(audioURL: url, config: config)
+            XCTFail("a transcript of nothing but fillers must not be delivered")
+        } catch SpeechToTextError.noSpeechDetected {
+        } catch {
+            XCTFail("unexpected error: \(error)")
+        }
+    }
+}

@@ -12,6 +12,7 @@ final class RebuildSessionTests: IsolatedXCTestCase {
     private var session: RebuildSession!
     private var captureID: UUID?
     private var interruptionSource = NSObject()
+    private var signal: RecordingSignalMeter?
     private var transcribe: ((URL, TranscriptionPipelineConfig, UUID) async throws -> TranscriptionResult)!
     private let ready = RebuildReadiness(
         microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
@@ -25,6 +26,7 @@ final class RebuildSessionTests: IsolatedXCTestCase {
         saved = []
         captureID = nil
         interruptionSource = NSObject()
+        signal = nil
         AppDefaults.enableSmartPaste = false
         AppDefaults.playCompletionSound = false
         transcribe = { _, _, _ in TranscriptionResult(text: "A useful transcript", correctionOutcome: nil) }
@@ -44,7 +46,8 @@ final class RebuildSessionTests: IsolatedXCTestCase {
                 transcribe: { url, config, id in try await self.transcribe(url, config, id) },
                 copy: { self.copies.append($0) },
                 save: { text, _, _ in self.saved.append(text) },
-                interruptionSource: interruptionSource
+                interruptionSource: interruptionSource,
+                recordedSignal: { self.signal }
             ))
     }
 
@@ -394,5 +397,45 @@ extension RebuildSessionTests {
 
     private func settle() async {
         for _ in 0..<20 { await Task.yield() }
+    }
+}
+
+// MARK: - Silence gate
+
+extension RebuildSessionTests {
+    func testSilentRecordingIsNotTranscribedButCanBeForcedWithRetry() async {
+        var meter = RecordingSignalMeter()
+        meter.add([Float](repeating: 0, count: 48_000 * 3), sampleRate: 48_000)
+        signal = meter
+        var attempts = 0
+        transcribe = { _, _, _ in
+            attempts += 1
+            return TranscriptionResult(text: "Forced transcript", correctionOutcome: nil)
+        }
+        session.readiness = ready
+        session.toggleRecording()
+        session.finishRecording()
+        await settle()
+        XCTAssertEqual(attempts, 0, "a silent take must not reach the model, which would invent text")
+        XCTAssertEqual(session.phase, .failed)
+        XCTAssertEqual(session.notice?.contains("only silence"), true)
+        XCTAssertTrue(copies.isEmpty)
+        XCTAssertTrue(session.canRetry)
+
+        session.retry()
+        await settle()
+        XCTAssertEqual(attempts, 1)
+        XCTAssertEqual(copies, ["Forced transcript"])
+    }
+
+    func testAudibleRecordingIsTranscribed() async {
+        var meter = RecordingSignalMeter()
+        meter.add([Float](repeating: 0.1, count: 48_000), sampleRate: 48_000)
+        signal = meter
+        session.readiness = ready
+        session.toggleRecording()
+        session.finishRecording()
+        await settle()
+        XCTAssertEqual(copies, ["A useful transcript"])
     }
 }

@@ -4,6 +4,7 @@ import SwiftUI
 struct RebuildPreferencesView: View {
     @AppDefault(\.immediateRecording) private var express
     @AppDefault(\.enableSmartPaste) private var smartPaste
+    @AppDefault(\.matchCursorContext) private var matchContext
     @AppDefault(\.playCompletionSound) private var sound
     @AppDefault(\.selectedMicrophone) private var microphone
     @AppDefault(\.autoBoostMicrophoneVolume) private var boost
@@ -151,6 +152,8 @@ struct RebuildPreferencesView: View {
         ) {
             RebuildFormRow(label: "Smart Paste") {
                 Toggle("Paste into the app I recorded from", isOn: $smartPaste)
+                Toggle("Match spacing and capitals to the text before the cursor", isOn: $matchContext)
+                    .disabled(!smartPaste)
             }
             RebuildFormRow(label: "Accessibility") {
                 HStack(spacing: 8) {

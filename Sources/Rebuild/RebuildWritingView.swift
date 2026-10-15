@@ -50,6 +50,7 @@ struct RebuildWritingView: View {
                 if !Arch.isAppleSilicon {
                     RebuildCallout(tone: .info, message: "Local writing cleanup requires Apple Silicon.")
                 }
+                RebuildWritingRulesCard()
                 enableCard(installed: installed)
                 modelCard(installed: installed)
                 Text(

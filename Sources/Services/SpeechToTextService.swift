@@ -106,7 +106,8 @@ internal class SpeechToTextService {
             guard let model = model else {
                 throw SpeechToTextError.transcriptionFailed("Whisper model required for local transcription")
             }
-            return try await transcribeWithLocal(audioURL: audioURL, model: model)
+            return try await transcribeWithLocal(
+                audioURL: audioURL, model: model, prompt: pipelineConfig?.formatting.vocabulary.promptText)
         case .parakeet:
             return try await transcribeWithParakeet(audioURL: audioURL, config: pipelineConfig)
         }
@@ -131,12 +132,13 @@ internal class SpeechToTextService {
     /// Delegates to `LocalWhisperService` (WhisperKit / CoreML). Returns the
     /// provider's raw output; semantic correction is applied by
     /// `TranscriptionPipeline` (see audit item B1).
-    private func transcribeWithLocal(audioURL: URL, model: WhisperModel) async throws -> String {
+    private func transcribeWithLocal(audioURL: URL, model: WhisperModel, prompt: String?) async throws -> String {
         let sessionID = TranscriptionProgress.sessionID
         do {
             let text = try await localWhisperService.transcribe(
                 audioFileURL: audioURL,
                 model: model,
+                prompt: prompt,
                 progressCallback: { progress in
                     TranscriptionProgress.post(progress, sessionID: sessionID)
                 }

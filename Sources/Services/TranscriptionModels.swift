@@ -9,6 +9,8 @@ internal struct TranscriptionPipelineConfig: Sendable {
     let parakeetModel: ParakeetModel?
     let correctionMode: SemanticCorrectionMode?
     let correctionModelRepo: String?
+    /// Vocabulary and rule-based formatting; identity unless a session opts in.
+    let formatting: TranscriptFormattingOptions
 
     init(
         provider: TranscriptionProvider,
@@ -17,7 +19,8 @@ internal struct TranscriptionPipelineConfig: Sendable {
         sourceAppBundleId: String? = nil,
         parakeetModel: ParakeetModel? = nil,
         correctionMode: SemanticCorrectionMode? = nil,
-        correctionModelRepo: String? = nil
+        correctionModelRepo: String? = nil,
+        formatting: TranscriptFormattingOptions = .none
     ) {
         self.provider = provider
         self.whisperModel = whisperModel
@@ -26,6 +29,7 @@ internal struct TranscriptionPipelineConfig: Sendable {
         self.parakeetModel = parakeetModel
         self.correctionMode = correctionMode
         self.correctionModelRepo = correctionModelRepo
+        self.formatting = formatting
     }
 }
 

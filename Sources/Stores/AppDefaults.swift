@@ -5,6 +5,7 @@ import Foundation
 ///
 /// Accessors are split across concern-specific extension files:
 /// - `AppDefaults+Settings.swift` — provider/model/recording/behavior settings
+/// - `AppDefaults+Writing.swift` — vocabulary, formatting and cursor-context rules
 /// - `AppDefaults+FeatureFlags.swift` — one-time setup state and rollouts
 /// - `AppDefaults+Visual.swift` — UI/visual state (waveform, intensity, icon)
 ///
@@ -89,8 +90,14 @@ enum AppDefaults {
         case visualIntensity
         case menuBarIconSize
 
+        // Writing
+        case customVocabulary
+        case removeFillerWords
+        case spokenPunctuation
+
         // Behavior
         case enableSmartPaste
+        case matchCursorContext
         case playCompletionSound
         case startAtLogin
 

@@ -19,7 +19,7 @@ extension RebuildPage {
         case .record: return "Speak naturally. Your text is copied when transcription finishes."
         case .library: return "Saved transcripts stay on this Mac. Saving is optional."
         case .models: return "Two essentials: microphone access and a voice model."
-        case .writing: return "Optional on-device grammar cleanup. Your original words are kept."
+        case .writing: return "Your vocabulary, formatting rules and optional on-device cleanup."
         case .preferences: return "Shortcuts, delivery, privacy and appearance."
         }
     }
@@ -310,6 +310,10 @@ struct RebuildRecordView: View {
                     if session.phase == .recording {
                         ProgressView(value: Double(recorder.audioLevel)).frame(maxWidth: 220)
                             .accessibilityLabel("Microphone level")
+                        if recorder.inputAppearsSilent {
+                            Label(RebuildRecorderView.silentInputMessage, systemImage: "mic.slash")
+                                .font(.system(size: 12, weight: .medium)).foregroundStyle(RebuildTheme.warning)
+                        }
                     }
                 }
                 Spacer(minLength: 12)
@@ -520,13 +524,18 @@ struct RebuildRecorderView: View {
         .onExitCommand(perform: session.cancel)
     }
 
+    static let silentInputMessage = "No sound from the microphone"
+
+    private var silent: Bool { session.phase == .recording && recorder.inputAppearsSilent }
+
     private var statusRow: some View {
         HStack(alignment: .center, spacing: 8) {
-            Circle().fill(session.phase == .recording ? RebuildTheme.recording : RebuildTheme.warning)
+            Circle().fill(session.phase == .recording && !silent ? RebuildTheme.recording : RebuildTheme.warning)
                 .frame(width: 8, height: 8)
                 .accessibilityHidden(true)
-            Text(session.phase == .recording ? "Recording" : "Transcribing…")
+            Text(session.phase == .recording ? (silent ? Self.silentInputMessage : "Recording") : "Transcribing…")
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                .lineLimit(1).minimumScaleFactor(0.8)
             Spacer()
             if let start = session.recordingStartedAt {
                 RebuildElapsedTime(start: start)
