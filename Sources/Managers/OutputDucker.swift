@@ -1,4 +1,3 @@
-import CoreAudio
 import os.log
 
 /// Lowers other audio for the length of a recording and puts it back.
