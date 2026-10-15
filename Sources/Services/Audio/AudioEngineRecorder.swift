@@ -66,6 +66,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     let hardwarePreparation = AudioHardwarePreparation<PreparedAudioEngine>()
     private var volumeTask: Task<Void, Never>?
     private var volumeBoostRequested = false
+    private let outputDucker: OutputDucker
+    private var otherAudioLowered = false
 
     // MARK: - Interruption Observers
     // Registered for the lifetime of a recording session (start → stop/cancel)
@@ -79,6 +81,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     override init() {
         self.fftProcessor = FFTProcessor()
         self.volumeManager = MicrophoneVolumeManager.shared
+        self.outputDucker = .shared
         self.inputRouting = .live
         self.dateProvider = { Date() }
         super.init()
@@ -86,6 +89,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     init(
         volumeManager: MicrophoneVolumeManaging? = nil,
+        outputDucker: OutputDucker? = nil,
         dateProvider: @escaping () -> Date = { Date() },
         inputRouting: AudioInputRouting = .live
     ) {
@@ -97,6 +101,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
         self.fftProcessor = FFTProcessor()
         self.volumeManager = volumeManager ?? MicrophoneVolumeManager.shared
+        self.outputDucker = outputDucker ?? .shared
         self.dateProvider = dateProvider
         self.inputRouting = inputRouting
         super.init()
@@ -106,7 +111,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // Safety-net cleanup if the recorder is dropped mid-recording without a
         // balanced stop/cancel: stop the engine, remove the tap, close/flush the
         // open file (niling the AVAudioFile flushes it), and restore boosted mic
-        // volume. `deinit` may access these MainActor-isolated stored properties
+        // volume and lowered other audio. `deinit` may access these MainActor-isolated stored properties
         // directly (it shares the isolation domain); AVAudioEngine teardown is
         // safe here. `restoreMicrophoneVolume` is idempotent when nothing boosted.
         if let observer = sleepObserver {
@@ -129,6 +134,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
                 await pendingVolume?.value
                 await manager.restoreMicrophoneVolume()
             }
+        }
+        if otherAudioLowered {
+            let ducker = outputDucker
+            Task { @MainActor in ducker.restore() }
         }
     }
 
@@ -155,6 +164,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
         // Restore microphone volume if it was boosted
         scheduleVolumeRestore()
+        restoreOtherAudio()
 
         isRecording = false
         recordingSessionID = nil
@@ -182,6 +192,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
         // Restore microphone volume
         scheduleVolumeRestore()
+        restoreOtherAudio()
 
         isRecording = false
         recordingSessionID = nil
@@ -424,6 +435,7 @@ extension AudioEngineRecorder {
             isRecording = true
             recordingSessionID = sessionID
             scheduleVolumeBoost(deviceID: prepared.device, sessionID: sessionID)
+            lowerOtherAudio()
 
             installInterruptionObservers()
 
@@ -492,5 +504,19 @@ extension AudioEngineRecorder {
             await pending?.value
             await manager.restoreMicrophoneVolume()
         }
+    }
+
+    /// Turns other audio down for this recording, if the user asked for it.
+    func lowerOtherAudio() {
+        guard AppDefaults.lowerOtherAudioWhileRecording else { return }
+        otherAudioLowered = true
+        outputDucker.duck()
+    }
+
+    /// Synchronous, so quitting mid-recording cannot outrun it.
+    private func restoreOtherAudio() {
+        guard otherAudioLowered else { return }
+        otherAudioLowered = false
+        outputDucker.restore()
     }
 }

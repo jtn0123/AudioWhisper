@@ -9,6 +9,7 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.playCompletionSound) private var sound
     @AppDefault(\.selectedMicrophone) private var microphone
     @AppDefault(\.autoBoostMicrophoneVolume) private var boost
+    @AppDefault(\.lowerOtherAudioWhileRecording) private var lowerOthers
     @AppDefault(\.pressAndHoldEnabled) private var holdEnabled
     @AppDefault(\.pressAndHoldKeyIdentifier) private var holdKey
     @AppDefault(\.pressAndHoldMode) private var holdMode
@@ -142,6 +143,7 @@ struct RebuildPreferencesView: View {
             }
             RebuildFormRow(label: "Sound") {
                 Toggle("Play a completion sound", isOn: $sound)
+                Toggle("Lower other audio while recording", isOn: $lowerOthers)
             }
         }
     }

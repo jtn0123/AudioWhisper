@@ -135,6 +135,29 @@ extension AppDefaults {
         set { defaults.set(newValue, forKey: Key.autoBoostMicrophoneVolume.rawValue) }
     }
 
+    /// Turns other audio down while recording. Off by default: it changes a
+    /// system setting the user did not ask this app to touch.
+    static var lowerOtherAudioWhileRecording: Bool {
+        get { defaults.bool(forKey: Key.lowerOtherAudioWhileRecording.rawValue) }
+        set { defaults.set(newValue, forKey: Key.lowerOtherAudioWhileRecording.rawValue) }
+    }
+
+    /// Output volumes `OutputDucker` lowered and has not yet put back, by
+    /// device UID.
+    static var loweredOutputVolumes: [String: OutputDucker.Lowered] {
+        get {
+            defaults.data(forKey: Key.loweredOutputVolumes.rawValue)
+                .flatMap { try? JSONDecoder().decode([String: OutputDucker.Lowered].self, from: $0) } ?? [:]
+        }
+        set {
+            guard !newValue.isEmpty, let data = try? JSONEncoder().encode(newValue) else {
+                defaults.removeObject(forKey: Key.loweredOutputVolumes.rawValue)
+                return
+            }
+            defaults.set(data, forKey: Key.loweredOutputVolumes.rawValue)
+        }
+    }
+
     // MARK: - Behavior Settings
 
     static var enableSmartPaste: Bool {

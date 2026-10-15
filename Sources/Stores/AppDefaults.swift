@@ -84,6 +84,8 @@ enum AppDefaults {
         case pressAndHoldKeyIdentifier
         case pressAndHoldMode
         case autoBoostMicrophoneVolume
+        case lowerOtherAudioWhileRecording
+        case loweredOutputVolumes
 
         // Visual
         case waveformStyle
