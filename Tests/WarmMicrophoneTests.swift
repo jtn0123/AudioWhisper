@@ -1,3 +1,4 @@
+import AppKit
 import AVFAudio
 import CoreAudio
 import XCTest
@@ -196,6 +197,7 @@ final class WarmMicrophoneTests: XCTestCase {
         await opening?.value
         XCTAssertFalse(microphone.isWarm)
         XCTAssertTrue(fake.feeds.isEmpty, "never started")
+        XCTAssertEqual(fake.opened.last?.stopped, true, "and not left open")
     }
 
     func testLendingWhileOpeningCancelsTheOpen() async throws {
@@ -279,9 +281,92 @@ final class WarmMicrophoneTests: XCTestCase {
         XCTAssertTrue(microphone.isWarm, "the held input is untouched")
     }
 
+    func testTurningTheSettingOffWhileOpeningDropsTheInput() async throws {
+        fake.slowOpen = true
+        let opening = microphone.refresh()
+        try await waitUntil { self.fake.pendingOpen != nil }
+        enabled = false
+        XCTAssertNil(microphone.refresh())
+        fake.pendingOpen?.resume()
+        await opening?.value
+        XCTAssertFalse(microphone.isWarm)
+        XCTAssertTrue(fake.feeds.isEmpty, "never started")
+        XCTAssertEqual(fake.opened.last?.stopped, true)
+    }
+
+    func testSleepReleasesTheMicrophoneAndWakeOpensItAgain() async throws {
+        let workspace = NotificationCenter()
+        let watchers = microphone.watchSystem(on: workspace, wakeDelay: .zero)
+        XCTAssertEqual(watchers.count, 3, "sleep, wake and the default input")
+        let first = try await warmUp()
+
+        workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
+        try await waitUntil { !self.microphone.isWarm }
+        XCTAssertTrue(first.stopped)
+
+        workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
+        try await waitUntil { self.microphone.isWarm }
+        XCTAssertEqual(fake.opened.count, 2)
+    }
+
+    func testReleasedWatchersNoLongerFollowSleep() async throws {
+        let workspace = NotificationCenter()
+        var watchers: [AnyObject]? = microphone.watchSystem(on: workspace, wakeDelay: .zero)
+        XCTAssertNotNil(watchers)
+        watchers = nil
+        let input = try await warmUp()
+
+        workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertFalse(input.stopped)
+        XCTAssertTrue(microphone.isWarm)
+    }
+
     private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
         for _ in 0..<200 where !condition() { try await Task.sleep(for: .milliseconds(5)) }
         XCTAssertTrue(condition())
+    }
+}
+
+final class AudioDeviceTransportTests: XCTestCase {
+    func testOnlyBluetoothTransportsCountAsBluetooth() {
+        XCTAssertTrue(AudioDeviceTransport.isBluetooth(transport: kAudioDeviceTransportTypeBluetooth))
+        XCTAssertTrue(AudioDeviceTransport.isBluetooth(transport: kAudioDeviceTransportTypeBluetoothLE))
+        XCTAssertFalse(AudioDeviceTransport.isBluetooth(transport: kAudioDeviceTransportTypeBuiltIn))
+        XCTAssertFalse(AudioDeviceTransport.isBluetooth(transport: kAudioDeviceTransportTypeUSB))
+    }
+
+    func testADeviceThatCannotBeReadIsNotBluetooth() {
+        XCTAssertFalse(AudioDeviceTransport.isBluetooth(AudioDeviceID(kAudioObjectUnknown)))
+    }
+}
+
+/// The setting itself, and the guarantee that tests never open a real microphone.
+final class KeepMicrophoneReadySettingTests: IsolatedXCTestCase {
+    override func setUp() {
+        super.setUp()
+        AppDefaults.removeValue(for: .keepMicrophoneReady)
+    }
+
+    override func tearDown() {
+        AppDefaults.removeValue(for: .keepMicrophoneReady)
+        super.tearDown()
+    }
+
+    func testTheSettingIsOffUntilTurnedOn() {
+        XCTAssertFalse(AppDefaults.keepMicrophoneReady)
+        AppDefaults.keepMicrophoneReady = true
+        XCTAssertTrue(AppDefaults.keepMicrophoneReady)
+    }
+
+    @MainActor
+    func testTheRecorderWatchesTheSystemButNeverOpensAMicrophoneUnderTests() {
+        AppDefaults.keepMicrophoneReady = true
+        let recorder = AudioEngineRecorder()
+        recorder.startWarmMicrophone()
+        XCTAssertEqual(recorder.warmWatchers.count, 3, "sleep, wake and the default input")
+        XCTAssertNil(recorder.warmMicrophone.refresh())
+        XCTAssertFalse(recorder.warmMicrophone.isWarm)
     }
 }
 
@@ -303,6 +388,13 @@ final class AudioEngineRecorderWarmTests: XCTestCase {
         XCTAssertEqual(recorder.lastRecordingSignal?.frames, 14_400, "two pre-roll buffers and one live one")
         feed.receive(try buffer())
         XCTAssertEqual(feed.preRollFrames, 4_800, "stopping hands the feed back")
+    }
+
+    func testTheEngineTapFeedsTheHeldInput() throws {
+        let feed = AudioFeed()
+        let tap = WarmMicrophone<PreparedAudioEngine>.tap(into: feed)
+        tap(try buffer(), AVAudioTime(hostTime: 0))
+        XCTAssertEqual(feed.preRollFrames, 4_800)
     }
 
     func testTheReadyMicrophoneFollowsTheRecordersChoiceAndState() {

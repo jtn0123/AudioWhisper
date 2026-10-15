@@ -38,15 +38,19 @@ extension WarmMicrophone where Input == PreparedAudioEngine {
     }
 
     /// Built outside the main actor: the engine calls it on its audio thread.
-    nonisolated private static func tap(into feed: AudioFeed) -> AVAudioNodeTapBlock {
+    nonisolated static func tap(into feed: AudioFeed) -> AVAudioNodeTapBlock {
         { buffer, _ in feed.receive(buffer) }
     }
+}
 
+extension WarmMicrophone {
     /// Releases the microphone before sleep and opens it again after wake,
     /// and follows changes of the system default input. Each registration is
     /// removed when the returned token is released.
-    func watchSystem() -> [AnyObject] {
-        let workspace = NSWorkspace.shared.notificationCenter
+    func watchSystem(
+        on workspace: NotificationCenter = NSWorkspace.shared.notificationCenter,
+        wakeDelay: Duration = .seconds(2)
+    ) -> [AnyObject] {
         let sleep = workspace.addObserver(
             forName: NSWorkspace.willSleepNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -56,7 +60,7 @@ extension WarmMicrophone where Input == PreparedAudioEngine {
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: wakeDelay)
                 self?.refresh()
             }
         }

@@ -80,8 +80,11 @@ final class WarmMicrophone<Input> {
             if case .opening(token) = state { state = .cold }
             return
         }
-        // A recording that started meanwhile, or a cool-down, wins.
+        // A recording that started meanwhile, or a cool-down, wins. The input
+        // never started, but stop it anyway: every opened input is either held
+        // or stopped, never left for deallocation to release.
         guard case .opening(token) = state, isEnabled(), !recordingActive() else {
+            hardware.stop(input)
             if case .opening(token) = state { state = .cold }
             return
         }
