@@ -110,6 +110,22 @@ extension AppDefaults {
         set { defaults.set(newValue, forKey: Key.selectedMicrophone.rawValue) }
     }
 
+    /// Microphones in the user's order of preference. Until a ranking is
+    /// saved, the single microphone chosen before ranking existed.
+    static var microphoneRanking: [PreferredMicrophone] {
+        get {
+            guard let data = defaults.data(forKey: Key.microphoneRanking.rawValue) else {
+                return selectedMicrophone.isEmpty ? [] : [PreferredMicrophone(uid: selectedMicrophone, name: "")]
+            }
+            return (try? JSONDecoder().decode([PreferredMicrophone].self, from: data)) ?? []
+        }
+        set {
+            defaults.set(try? JSONEncoder().encode(newValue), forKey: Key.microphoneRanking.rawValue)
+            // The single choice older builds read.
+            selectedMicrophone = newValue.first?.uid ?? ""
+        }
+    }
+
     static var pressAndHoldEnabled: Bool {
         get {
             if defaults.object(forKey: Key.pressAndHoldEnabled.rawValue) == nil {
@@ -133,6 +149,29 @@ extension AppDefaults {
     static var autoBoostMicrophoneVolume: Bool {
         get { defaults.bool(forKey: Key.autoBoostMicrophoneVolume.rawValue) }
         set { defaults.set(newValue, forKey: Key.autoBoostMicrophoneVolume.rawValue) }
+    }
+
+    /// Turns other audio down while recording. Off by default: it changes a
+    /// system setting the user did not ask this app to touch.
+    static var lowerOtherAudioWhileRecording: Bool {
+        get { defaults.bool(forKey: Key.lowerOtherAudioWhileRecording.rawValue) }
+        set { defaults.set(newValue, forKey: Key.lowerOtherAudioWhileRecording.rawValue) }
+    }
+
+    /// Output volumes `OutputDucker` lowered and has not yet put back, by
+    /// device UID.
+    static var loweredOutputVolumes: [String: OutputDucker.Lowered] {
+        get {
+            defaults.data(forKey: Key.loweredOutputVolumes.rawValue)
+                .flatMap { try? JSONDecoder().decode([String: OutputDucker.Lowered].self, from: $0) } ?? [:]
+        }
+        set {
+            guard !newValue.isEmpty, let data = try? JSONEncoder().encode(newValue) else {
+                defaults.removeObject(forKey: Key.loweredOutputVolumes.rawValue)
+                return
+            }
+            defaults.set(data, forKey: Key.loweredOutputVolumes.rawValue)
+        }
     }
 
     // MARK: - Behavior Settings

@@ -5,9 +5,11 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.immediateRecording) private var express
     @AppDefault(\.enableSmartPaste) private var smartPaste
     @AppDefault(\.matchCursorContext) private var matchContext
+    @AppDefault(\.restoreClipboardAfterPaste) private var restoreClipboard
     @AppDefault(\.playCompletionSound) private var sound
-    @AppDefault(\.selectedMicrophone) private var microphone
+    @AppDefault(\.microphoneRanking) private var ranking
     @AppDefault(\.autoBoostMicrophoneVolume) private var boost
+    @AppDefault(\.lowerOtherAudioWhileRecording) private var lowerOthers
     @AppDefault(\.pressAndHoldEnabled) private var holdEnabled
     @AppDefault(\.pressAndHoldKeyIdentifier) private var holdKey
     @AppDefault(\.pressAndHoldMode) private var holdMode
@@ -125,22 +127,12 @@ struct RebuildPreferencesView: View {
     private var microphoneSection: some View {
         RebuildSection(title: "Microphone & feedback") {
             RebuildFormRow(label: "Input") {
-                Picker("Microphone", selection: $microphone) {
-                    Text("System default").tag("")
-                    ForEach(inputs.devices) { Text($0.name).tag($0.id) }
-                    if !microphone.isEmpty && !inputs.devices.contains(where: { $0.id == microphone }) {
-                        Text("Saved microphone · unavailable").tag(microphone).disabled(true)
-                    }
-                }
-                .labelsHidden().frame(maxWidth: 320)
-                if !microphone.isEmpty && !inputs.devices.contains(where: { $0.id == microphone }) {
-                    Text("Reconnect your saved microphone or choose another input.")
-                        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
-                }
+                RebuildMicrophoneRankingView(ranking: $ranking, connected: inputs.devices)
                 Toggle("Boost microphone input while recording", isOn: $boost)
             }
             RebuildFormRow(label: "Sound") {
                 Toggle("Play a completion sound", isOn: $sound)
+                Toggle("Lower other audio while recording", isOn: $lowerOthers)
             }
         }
     }
@@ -148,11 +140,13 @@ struct RebuildPreferencesView: View {
     private var deliverySection: some View {
         RebuildSection(
             title: "Delivery",
-            caption: "Text always reaches your clipboard. Smart Paste uses only the app you recorded from."
+            caption: "Text always reaches your clipboard first. Smart Paste uses only the app you recorded from."
         ) {
             RebuildFormRow(label: "Smart Paste") {
                 Toggle("Paste into the app I recorded from", isOn: $smartPaste)
                 Toggle("Match spacing and capitals to the text before the cursor", isOn: $matchContext)
+                    .disabled(!smartPaste)
+                Toggle("Put back what was on the clipboard after pasting", isOn: $restoreClipboard)
                     .disabled(!smartPaste)
             }
             RebuildFormRow(label: "Accessibility") {

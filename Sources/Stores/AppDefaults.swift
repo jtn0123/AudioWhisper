@@ -80,10 +80,13 @@ enum AppDefaults {
         case globalHotkey
         case immediateRecording
         case selectedMicrophone
+        case microphoneRanking
         case pressAndHoldEnabled
         case pressAndHoldKeyIdentifier
         case pressAndHoldMode
         case autoBoostMicrophoneVolume
+        case lowerOtherAudioWhileRecording
+        case loweredOutputVolumes
 
         // Visual
         case waveformStyle
@@ -98,6 +101,7 @@ enum AppDefaults {
         // Behavior
         case enableSmartPaste
         case matchCursorContext
+        case restoreClipboardAfterPaste
         case playCompletionSound
         case startAtLogin
 

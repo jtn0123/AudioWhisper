@@ -71,6 +71,8 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !AppEnvironment.isRunningTests else { return }
+        // Other audio a crashed recording left lowered.
+        OutputDucker.shared.restore()
         RebuildStartup.configure(
             session: session, navigation: navigation,
             effects: .init(initializeHistory: { try DataManager.shared.initialize() },

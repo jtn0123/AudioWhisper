@@ -21,6 +21,9 @@ struct RebuildPasteDelivery {
     /// double it, short enough that a failure is reported promptly.
     var confirmationWindow: Duration = .milliseconds(800)
     var pollInterval: Duration = .milliseconds(40)
+    /// How long a paste that could not be confirmed may still be reading the
+    /// clipboard before the user's own contents go back on it.
+    var restoreGrace: Duration = .seconds(1)
     /// Read at delivery time, so the Preferences toggle applies to the next paste.
     var matchContext: () -> Bool = { AppDefaults.matchCursorContext }
 

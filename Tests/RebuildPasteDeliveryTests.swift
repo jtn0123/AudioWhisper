@@ -19,6 +19,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
     private var notifications = 0
     private var notifiesTransiently = false
     private var watchersStopped = 0
+    private var keeper: ClipboardKeeper?
 
     private let empty = FocusedTextState(length: 15, selection: NSRange(location: 15, length: 0), preceding: "I told her that")
     private let pasted = FocusedTextState(length: 28, selection: NSRange(location: 28, length: 0), preceding: "that we should go")
@@ -40,6 +41,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
         notifications = 0
         notifiesTransiently = false
         watchersStopped = 0
+        keeper = nil
         session = makeSession()
     }
 
@@ -144,6 +146,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
             cancel: {},
             transcribe: { _, _, _ in TranscriptionResult(text: self.transcriptText, correctionOutcome: nil) },
             copy: { self.copies.append($0) }, save: { _, _, _ in }, interruptionSource: nil)
+        services.clipboardKeeper = { self.keeper }
         services.capturePasteDestination = {
             RebuildPasteDestination(
                 processIdentifier: 111, bundleIdentifier: "fixture.destination",
@@ -158,7 +161,8 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
                 FocusedTextChanges(count: { self.notifications }, stop: { self.watchersStopped += 1 })
             })
         let delivery = RebuildPasteDelivery(
-            focusedText: access, confirmationWindow: .milliseconds(120), pollInterval: .milliseconds(10))
+            focusedText: access, confirmationWindow: .milliseconds(120), pollInterval: .milliseconds(10),
+            restoreGrace: .milliseconds(30))
         let session = RebuildSession(services: services, paste: paste, delivery: delivery)
         session.readiness = RebuildReadiness(
             microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
@@ -187,5 +191,43 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
     private func waitFor(_ condition: @MainActor () -> Bool) async throws {
         for _ in 0..<200 where !condition() { try await Task.sleep(for: .milliseconds(10)) }
         XCTAssertTrue(condition())
+    }
+}
+
+// MARK: - Giving the clipboard back
+
+extension RebuildPasteDeliveryTests {
+    func testTheClipboardComesBackAfterAConfirmedPaste() async throws {
+        let board = lendableBoard(holding: "what I had copied")
+        defer { board.releaseGlobally() }
+        try await recordAndDeliver()
+        XCTAssertEqual(board.string(forType: .string), "what I had copied")
+        XCTAssertEqual(copies, [], "a lent clipboard is written through the keeper only")
+    }
+
+    func testAPasteThatCouldNotBeSeenLandingGivesTheClipboardBackAfterTheGrace() async throws {
+        field = nil
+        let board = lendableBoard(holding: "what I had copied")
+        defer { board.releaseGlobally() }
+        try await recordAndDeliver()
+        XCTAssertEqual(board.string(forType: .string), "what I had copied")
+    }
+
+    func testAFailedPasteLeavesTheTranscriptToPasteByHand() async throws {
+        pasteLands = false
+        menuLands = false
+        let board = lendableBoard(holding: "what I had copied")
+        defer { board.releaseGlobally() }
+        try await recordAndDeliver()
+        XCTAssertEqual(session.notice, "Copied. Paste manually with Command V.")
+        XCTAssertEqual(board.string(forType: .string), " we should go", "the fitted transcript, ready to paste")
+    }
+
+    private func lendableBoard(holding text: String) -> NSPasteboard {
+        let board = NSPasteboard(name: NSPasteboard.Name("audiowhisper.tests.\(UUID().uuidString)"))
+        board.clearContents()
+        board.setString(text, forType: .string)
+        keeper = ClipboardKeeper(pasteboard: board)
+        return board
     }
 }

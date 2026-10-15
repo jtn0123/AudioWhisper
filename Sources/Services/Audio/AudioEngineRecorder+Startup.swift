@@ -26,10 +26,11 @@ extension AudioEngineRecorder {
     func startRecordingAsync(sessionID: UUID) async -> Bool {
         guard canStartRecording() else { return false }
         let routing = inputRouting
-        let selectedUID = AppDefaults.selectedMicrophone
+        let chooser = microphoneChooser
+        let ranking = AppDefaults.microphoneRanking
         do {
             let prepared = try await hardwarePreparation.run {
-                try PreparedAudioEngine.make(routing: routing, selectedUID: selectedUID)
+                try PreparedAudioEngine.make(routing: routing, selectedUID: chooser.choose(ranking: ranking))
             }
             guard !Task.isCancelled, audioEngine == nil,
                   PermissionManager.shared.microphonePermissionState == .granted else { return false }
