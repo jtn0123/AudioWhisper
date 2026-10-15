@@ -28,8 +28,48 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+# One live run per pull request or feature branch: a newer push cancels the run
+# it supersedes instead of queueing behind it for macOS runners. master is keyed
+# by run, so every merge still gets its own complete run (SonarCloud's master
+# analysis depends on it).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || (github.ref != 'refs/heads/master' && github.ref) || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
+  # A feature-branch push with an open pull request into master would otherwise
+  # run everything twice: once for the push, once for the pull request. The
+  # pull request run tests the merge result, so the push run stands down. With
+  # no open pull request the push run is the only CI the branch gets, and it
+  # runs. Any lookup failure also runs: a duplicate beats no CI.
+  preflight:
+    name: Duplicate-run check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=true
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" != refs/heads/master ]; then
+            open=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open \
+              --json baseRefName,isCrossRepository \
+              --jq '[.[] | select((.isCrossRepository | not) and (.baseRefName == "master" or .baseRefName == "main"))] | length') || open=0
+            if [ "${open:-0}" -gt 0 ]; then
+              run=false
+              echo "::notice::An open pull request runs CI for $GITHUB_REF_NAME; this push run is skipped."
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   build-and-test:
+    needs: preflight
+    if: needs.preflight.outputs.run == 'true'
     runs-on: macos-15
     timeout-minutes: 30
 
@@ -178,6 +218,8 @@ jobs:
           retention-days: 7
 
   lint:
+    needs: preflight
+    if: needs.preflight.outputs.run == 'true'
     runs-on: macos-15
     steps:
       - name: Checkout
@@ -454,6 +496,8 @@ jobs:
   # SNAPSHOT_RECORD=1 to re-record. See Tests/SnapshotTestCase.swift.
   analyze:
     name: SwiftLint analyze
+    needs: preflight
+    if: needs.preflight.outputs.run == 'true'
     runs-on: macos-15
     # xcodebuild build-for-testing plus a full analyze pass. 30 was too tight
     # even after dropping from three analyze runs to one.
