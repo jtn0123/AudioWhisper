@@ -10,6 +10,7 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.microphoneRanking) private var ranking
     @AppDefault(\.autoBoostMicrophoneVolume) private var boost
     @AppDefault(\.lowerOtherAudioWhileRecording) private var lowerOthers
+    @AppDefault(\.keepMicrophoneReady) private var keepReady
     @AppDefault(\.pressAndHoldEnabled) private var holdEnabled
     @AppDefault(\.pressAndHoldKeyIdentifier) private var holdKey
     @AppDefault(\.pressAndHoldMode) private var holdMode
@@ -84,6 +85,7 @@ struct RebuildPreferencesView: View {
                 }
             }
         }
+        .onChange(of: keepReady) { _, _ in settingsChanged() }
     }
 
     // MARK: Sections
@@ -129,6 +131,12 @@ struct RebuildPreferencesView: View {
             RebuildFormRow(label: "Input") {
                 RebuildMicrophoneRankingView(ranking: $ranking, connected: inputs.devices)
                 Toggle("Boost microphone input while recording", isOn: $boost)
+                Toggle("Keep the microphone ready between recordings", isOn: $keepReady)
+                Text("Recording starts at once and keeps the moment before you pressed the shortcut. "
+                     + "The microphone stays on, so macOS shows it in use; nothing is kept until you record. "
+                     + "Bluetooth headsets are left alone.")
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             RebuildFormRow(label: "Sound") {
                 Toggle("Play a completion sound", isOn: $sound)

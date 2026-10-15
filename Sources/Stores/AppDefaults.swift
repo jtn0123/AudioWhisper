@@ -86,6 +86,7 @@ enum AppDefaults {
         case pressAndHoldMode
         case autoBoostMicrophoneVolume
         case lowerOtherAudioWhileRecording
+        case keepMicrophoneReady
         case loweredOutputVolumes
 
         // Visual
