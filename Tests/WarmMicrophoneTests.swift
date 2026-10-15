@@ -1,4 +1,5 @@
 import AVFAudio
+import CoreAudio
 import XCTest
 @testable import AudioWhisper
 
@@ -310,5 +311,49 @@ final class AudioEngineRecorderWarmTests: XCTestCase {
         XCTAssertEqual(recorder.warmMicrophone.chosenUID(), "")
         XCTAssertFalse(recorder.warmMicrophone.recordingActive())
         XCTAssertNil(recorder.lendWarmInput(), "nothing is held under tests")
+    }
+}
+
+/// Following the system default input: the listener Core Audio calls, and its removal.
+@MainActor
+final class DefaultInputWatchTests: XCTestCase {
+    func testReleasingTheWatchRemovesItsHandler() {
+        let before = DefaultInputWatchers.shared.count
+        var registration: Registration? = AudioDeviceTransport.watchDefaultInput {}
+        XCTAssertNotNil(registration)
+        XCTAssertEqual(DefaultInputWatchers.shared.count, before + 1)
+        registration = nil
+        XCTAssertEqual(DefaultInputWatchers.shared.count, before)
+    }
+
+    func testAChangeReachesTheHandlerOnTheMainActorUntilItIsRemoved() async throws {
+        var calls = 0
+        let id = DefaultInputWatchers.shared.add {
+            XCTAssertTrue(Thread.isMainThread)
+            calls += 1
+        }
+        notifyFromAnotherThread(id)
+        try await waitUntil { calls == 1 }
+
+        notifyFromAnotherThread(id)
+        DefaultInputWatchers.shared.remove(id)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(calls, 1, "a change already in flight is dropped once the watch is gone")
+    }
+
+    /// Calls the listener the way Core Audio does: off the main thread.
+    private func notifyFromAnotherThread(_ id: Int) {
+        let token = UnsafeMutableRawPointer(bitPattern: id)
+        DispatchQueue.global().sync {
+            var address = AudioObjectPropertyAddress(
+                mSelector: kAudioHardwarePropertyDefaultInputDevice, mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain)
+            _ = AudioDeviceTransport.defaultInputChanged(AudioObjectID(kAudioObjectSystemObject), 1, &address, token)
+        }
+    }
+
+    private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
+        for _ in 0..<200 where !condition() { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertTrue(condition())
     }
 }

@@ -75,6 +75,41 @@ final class Registration {
     deinit { cancel() }
 }
 
+/// The handlers behind `AudioDeviceTransport.watchDefaultInput`, keyed by the
+/// token Core Audio passes back to the listener.
+final class DefaultInputWatchers: @unchecked Sendable {
+    static let shared = DefaultInputWatchers()
+    private let lock = NSLock()
+    private var handlers: [Int: @MainActor () -> Void] = [:]
+    private var lastID = 0
+
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return handlers.count
+    }
+
+    func add(_ handler: @escaping @MainActor () -> Void) -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        lastID += 1
+        handlers[lastID] = handler
+        return lastID
+    }
+
+    func remove(_ id: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        handlers[id] = nil
+    }
+
+    func handler(for id: Int) -> (@MainActor () -> Void)? {
+        lock.lock()
+        defer { lock.unlock() }
+        return handlers[id]
+    }
+}
+
 enum AudioDeviceTransport {
     static func isBluetooth(_ device: AudioDeviceID) -> Bool {
         var transport: UInt32 = 0
@@ -91,14 +126,32 @@ enum AudioDeviceTransport {
     }
 
     /// Calls `changed` on the main actor whenever the system default input changes.
+    ///
+    /// This is the function-pointer listener, not the block one: Swift wraps a
+    /// closure in a new block on every call into Core Audio, so
+    /// `AudioObjectRemovePropertyListenerBlock` never matches the block that was
+    /// added and the listener outlives its registration. Removal by proc and
+    /// token is exact.
     static func watchDefaultInput(_ changed: @escaping @MainActor () -> Void) -> Registration {
+        let token = UnsafeMutableRawPointer(bitPattern: DefaultInputWatchers.shared.add(changed))
         var address = defaultInputAddress
-        let listener: AudioObjectPropertyListenerBlock = { _, _ in MainActor.assumeIsolated { changed() } }
-        AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, .main, listener)
+        AudioObjectAddPropertyListener(AudioObjectID(kAudioObjectSystemObject), &address, defaultInputChanged, token)
         return Registration {
             var address = defaultInputAddress
-            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, .main, listener)
+            AudioObjectRemovePropertyListener(
+                AudioObjectID(kAudioObjectSystemObject), &address, defaultInputChanged, token)
+            DefaultInputWatchers.shared.remove(Int(bitPattern: token))
         }
+    }
+
+    /// Core Audio calls this on its own thread. The handler is looked up once on
+    /// the main actor, so one removed in the meantime is not called.
+    static let defaultInputChanged: AudioObjectPropertyListenerProc = { _, _, _, token in
+        let id = Int(bitPattern: token)
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { DefaultInputWatchers.shared.handler(for: id)?() }
+        }
+        return noErr
     }
 
     private static let defaultInputAddress = AudioObjectPropertyAddress(
