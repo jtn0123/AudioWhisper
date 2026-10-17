@@ -119,7 +119,9 @@ struct RebuildRememberCorrectionView: View {
     @AppDefault(\.customVocabulary) private var vocabulary
     @State var draft: RebuildVocabularyDocument.Draft
     @State private var error: String?
-    var saved: () -> Void = {}
+    var saved: () -> Void = {
+        // Standalone sheets save and dismiss without a parent success indicator to update.
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
