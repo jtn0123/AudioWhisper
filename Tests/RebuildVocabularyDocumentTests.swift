@@ -2,6 +2,41 @@ import XCTest
 @testable import AudioWhisper
 
 final class RebuildVocabularyDocumentTests: XCTestCase {
+    func testEditingAndRemovingPreserveEverySupportedLineSeparator() throws {
+        for separator in ["\n", "\r", "\r\n", "\u{000B}", "\u{000C}", "\u{0085}", "\u{2028}", "\u{2029}"] {
+            let source = "# Keep this note\(separator)Alpha\(separator)Beta\(separator)"
+            let document = RebuildVocabularyDocument(source: source)
+            XCTAssertEqual(document.entries.count, CustomVocabulary(parsing: source).terms.count)
+            let entry = try XCTUnwrap(document.matching("Alpha").first)
+            var draft = RebuildVocabularyDocument.Draft(entry: entry)
+            draft.written = "Changed"
+            XCTAssertEqual(try document.saving(draft), source.replacingOccurrences(of: "Alpha", with: "Changed"))
+            XCTAssertEqual(try document.removing(entry), "# Keep this note\(separator)Beta\(separator)")
+            let last = try XCTUnwrap(RebuildVocabularyDocument(source: "Alpha\(separator)Beta").matching("Beta").first)
+            XCTAssertEqual(try RebuildVocabularyDocument(source: "Alpha\(separator)Beta").removing(last), "Alpha")
+        }
+    }
+
+    func testWordEntryIgnoresAnInvalidHiddenHeardPhrase() throws {
+        var draft = RebuildVocabularyDocument.Draft()
+        draft.written = "SwiftUI"
+        for hidden in ["# Hidden", "one -> two", "one\ntwo"] {
+            draft.heard = hidden
+            XCTAssertEqual(try RebuildVocabularyDocument(source: "AudioWhisper").saving(draft), "AudioWhisper\nSwiftUI")
+        }
+    }
+
+    func testReplacementCanWriteAHashtagButCannotBecomeAComment() throws {
+        var draft = RebuildVocabularyDocument.Draft()
+        draft.replacement = true
+        draft.heard = "hash tag"
+        draft.written = "#hashtag"
+        let updated = try RebuildVocabularyDocument(source: "").saving(draft)
+        XCTAssertEqual(CustomVocabulary(parsing: updated).apply(to: "Use hash tag"), "Use #hashtag")
+        draft.heard = "# ignored"
+        XCTAssertThrowsError(try RebuildVocabularyDocument(source: "").saving(draft))
+    }
+
     func testSearchAndEditingPreserveCommentsAndUnrelatedRules() throws {
         let source = "# My names\nKubernetes\npost gress -> Postgres\nuh -> \n\n# Keep this note\n"
         let document = RebuildVocabularyDocument(source: source)

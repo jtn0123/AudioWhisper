@@ -3,6 +3,10 @@
 Requested items: **3, 7, 12 and 14** from the Superwhisper comparison.
 Base: `a80f42f9208bdf98a25d623b15d6397181f52781`.
 
+These captures and validation record the first polish checkpoint. The
+[daily-dictation follow-up](../dictation-flow-2026-10-16/README.md) records later
+changes, including the current one-second preview cadence.
+
 ## Behavior
 
 - The recorder keeps its 380 × 230 frame, with a smaller waveform, readable timer,
@@ -11,7 +15,8 @@ Base: `a80f42f9208bdf98a25d623b15d6397181f52781`.
 - Preferences → Recording → **Show words while I speak** enables Parakeet-only,
   on-device rolling drafts. It starts off. A preallocated ring retains at most
   12 seconds, snapshots run off the audio/main threads, and the next recognition
-  runs two seconds after the previous inference finishes. Silent/short snapshots
+  ran two seconds after the previous inference finished at this checkpoint.
+  The current default is one second after each inference. Silent/short snapshots
   are skipped. Only one preview inference can be outstanding across replacement
   sessions. Long drafts show their most recent words.
 - Preview does not run writing cleanup, copy, paste or save anything. Stop and

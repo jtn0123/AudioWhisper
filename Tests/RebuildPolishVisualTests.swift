@@ -57,7 +57,7 @@ final class RebuildPolishVisualTests: IsolatedXCTestCase {
         session.cancel()
         AppDefaults.liveTranscriptionPreview = true
         session.toggleRecording()
-        for _ in 0..<100 where preview.text.isEmpty { try await Task.sleep(for: .milliseconds(2)) }
+        try await requireVisualState("Recorder preview text") { !preview.text.isEmpty }
         try capture(RebuildRecorderView(session: session, recorder: recorder), name: "recorder-preview",
                     size: NSSize(width: 380, height: 350), scheme: .dark, output: output)
         session.finishRecording()

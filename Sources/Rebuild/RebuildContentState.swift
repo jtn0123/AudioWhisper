@@ -1,6 +1,7 @@
 import SwiftUI
 
 /// Empty, working and recovery states share a readable hierarchy on every page.
+@MainActor
 struct RebuildContentState<Actions: View>: View {
     let title: String
     let symbol: String
@@ -35,6 +36,7 @@ extension RebuildContentState where Actions == EmptyView {
 
 /// Download progress has the same spacing, measured percentage and cancellation
 /// affordance for speech and writing models. Indeterminate work stays honest.
+@MainActor
 struct RebuildDownloadProgress<Actions: View>: View {
     let title: String
     let message: String

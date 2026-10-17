@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct RebuildVocabularyEditor: View {
     @AppDefault(\.customVocabulary) private var vocabulary
     @State private var state: RebuildVocabularyEditorState
@@ -7,7 +8,6 @@ struct RebuildVocabularyEditor: View {
 
     private var document: RebuildVocabularyDocument { .init(source: vocabulary) }
 
-    @MainActor
     init(state: RebuildVocabularyEditorState? = nil) { _state = State(initialValue: state ?? .init()) }
 
     var body: some View {
@@ -84,6 +84,7 @@ struct RebuildVocabularyEditor: View {
     }
 }
 
+@MainActor
 struct RebuildVocabularyFields: View {
     @Binding var draft: RebuildVocabularyDocument.Draft
     var focusOnAppear = false
@@ -114,6 +115,7 @@ struct RebuildVocabularyFields: View {
     private func focusFirstField() { focused = draft.replacement ? .heard : .written }
 }
 
+@MainActor
 struct RebuildRememberCorrectionView: View {
     @Environment(\.dismiss) private var dismiss
     @AppDefault(\.customVocabulary) private var vocabulary

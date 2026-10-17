@@ -41,7 +41,7 @@ final class DictationFlowVisualTests: IsolatedXCTestCase {
         try capture(RebuildWritingRulesCard(), "vocabulary", NSSize(width: 730, height: 550), .light, output)
         session.startPractice()
         session.finishRecording()
-        for _ in 0..<100 where session.phase != .completed { try await Task.sleep(for: .milliseconds(2)) }
+        try await requireVisualState("Completed practice recording") { session.phase == .completed }
         try capture(RebuildPracticeView(session: session), "practice-result", NSSize(width: 730, height: 330), .light, output)
         session.transcript = "I work with Postgres."
         try capture(RebuildTranscriptCard(session: session), "transcript-correction",
@@ -52,7 +52,7 @@ final class DictationFlowVisualTests: IsolatedXCTestCase {
         session.cancel()
         AppDefaults.liveTranscriptionPreview = true
         session.toggleRecording()
-        for _ in 0..<100 where preview.stablePrefix.isEmpty { try await Task.sleep(for: .milliseconds(2)) }
+        try await requireVisualState("Stable live preview") { !preview.stablePrefix.isEmpty }
         try capture(RebuildRecorderView(session: session, recorder: AudioEngineRecorder()), "preview",
                     NSSize(width: 380, height: 350), .dark, output)
         session.cancel()

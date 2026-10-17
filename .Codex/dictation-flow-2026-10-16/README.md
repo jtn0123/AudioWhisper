@@ -47,6 +47,34 @@ Baseline: `5e01957aea0de3f88ce43cdaa311f382c099877f` on PR #46.
   and the source hash manifest record this iteration. Component images use fixed
   synthetic content and are not proof of physical microphone interaction.
 
+## Code review follow-up
+
+Follow-up to reviewed head `517c508166e9f8492e01cade6d776519a1784f2c`:
+
+- Vocabulary edits and removals preserve comments, neighboring entries and the
+  original separators across LF, CR, CRLF, vertical tab, form feed, NEL, line
+  separator and paragraph separator. Validation ignores hidden heard text for
+  word entries and permits a replacement to write `#hashtag`.
+- Focus identity retains the Accessibility reference and uses `CFEqual`, so two
+  controls with the same hash cannot trigger a fallback into the changed field.
+  These reference-bearing snapshots stay within the main-actor delivery flow.
+- Shared UI components explicitly use `@MainActor`. Practice completion displays
+  and announces the same next-step guidance. Visual captures now throw if their
+  required practice or preview state has not arrived within three seconds.
+- Baseline logs use repository-relative paths. The earlier recorder evidence
+  identifies its historical two-second cadence and the current one-second default.
+
+Four new regression cases produced ten failed assertions before the fixes.
+Afterward, 37 targeted cases and both opted-in native capture tests pass. Full
+`make test` passes with 3,206 discovered XCTest cases; optional checks can skip.
+CI-pinned SwiftLint 0.65.0 strict lint reports zero violations across 498 files.
+Fresh guarded native captures were inspected; writing, practice-result and
+correction-sheet images match the original captures byte for byte.
+
+The committed `source-sha256.json` and original images retain the implementation
+checkpoint `0c730b76b876e9c1ad29b9d19baf897376315281`; they are not a manifest of
+the later review fixes. Physical microphone and device acceptance remain open.
+
 ## Cached-model measurement
 
 `model-timings.json` records one cold daemon and two warm trials using the full

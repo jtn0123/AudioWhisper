@@ -66,9 +66,9 @@ struct RebuildPracticeView: View {
                 RebuildCallout(tone: .error, message: notice)
             }
             if completed {
-                RebuildCallout(tone: .success,
-                    message: "Practice complete. Use Record, or enable a recording shortcut in Preferences.")
-                    .rebuildAnnouncement("Practice complete. Your text was pasted successfully.", onAppear: true)
+                let message = "Practice complete. Use Record, or enable a recording shortcut in Preferences."
+                RebuildCallout(tone: .success, message: message)
+                    .rebuildAnnouncement(message, onAppear: true)
             }
         }.rebuildCard()
     }

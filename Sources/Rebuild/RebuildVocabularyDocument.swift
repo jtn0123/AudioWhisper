@@ -41,14 +41,14 @@ struct RebuildVocabularyDocument {
     }
 
     let source: String
-    private var lines: [String] { source.components(separatedBy: "\n") }
+    private var lines: [Substring] { source.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline) }
     var entries: [Entry] {
         lines.enumerated().compactMap { index, raw in
-            let parsed = CustomVocabulary(parsing: raw)
+            let parsed = CustomVocabulary(parsing: String(raw))
             if let replacement = parsed.replacements.first {
-                return Entry(id: index, raw: raw, heard: replacement.heard, written: replacement.written)
+                return Entry(id: index, raw: String(raw), heard: replacement.heard, written: replacement.written)
             }
-            return parsed.terms.first.map { Entry(id: index, raw: raw, heard: nil, written: $0) }
+            return parsed.terms.first.map { Entry(id: index, raw: String(raw), heard: nil, written: $0) }
         }
     }
 
@@ -62,32 +62,43 @@ struct RebuildVocabularyDocument {
         let heard = draft.heard.trimmingCharacters(in: .whitespacesAndNewlines)
         let written = draft.written.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !(draft.replacement ? heard : written).isEmpty else { throw EditError.empty }
-        for value in [heard, written] where !value.isEmpty {
-            guard !value.contains(where: \.isNewline), !value.contains("->"), !value.contains("=>"), !value.hasPrefix("#")
+        let key = draft.replacement ? heard : written
+        guard !key.hasPrefix("#") else { throw EditError.delimiter }
+        for value in draft.replacement ? [heard, written] : [written] {
+            guard !value.contains(where: \.isNewline), !value.contains("->"), !value.contains("=>")
             else { throw EditError.delimiter }
         }
-        let key = draft.replacement ? heard : written
         guard !entries.contains(where: {
             $0.id != draft.entry?.id && ($0.heard != nil) == draft.replacement
                 && $0.title.caseInsensitiveCompare(key) == .orderedSame
         }) else { throw EditError.duplicate }
         let line = draft.replacement ? "\(heard) -> \(written)" : written
-        var updated = lines
+        var updated = source
         if let entry = draft.entry {
-            guard updated.indices.contains(entry.id), updated[entry.id] == entry.raw else { throw EditError.changed }
-            updated[entry.id] = line
+            let current = try checkedLine(for: entry)
+            updated.replaceSubrange(current.startIndex..<current.endIndex, with: line)
         } else {
-            if updated.last == "" { updated.removeLast() }
-            updated.append(line)
+            if !updated.isEmpty, updated.last?.isNewline != true { updated.append("\n") }
+            updated.append(contentsOf: line)
         }
-        return updated.joined(separator: "\n")
+        return updated
     }
 
     func removing(_ entry: Entry) throws -> String {
-        var updated = lines
-        guard updated.indices.contains(entry.id), updated[entry.id] == entry.raw else { throw EditError.changed }
-        updated.remove(at: entry.id)
-        return updated.joined(separator: "\n")
+        let current = try checkedLine(for: entry)
+        let lines = lines
+        let last = entry.id == lines.count - 1
+        let start = last && entry.id > 0 ? lines[entry.id - 1].endIndex : current.startIndex
+        let end = last ? current.endIndex : lines[entry.id + 1].startIndex
+        var updated = source
+        updated.removeSubrange(start..<end)
+        return updated
+    }
+
+    private func checkedLine(for entry: Entry) throws -> Substring {
+        let lines = lines
+        guard lines.indices.contains(entry.id), lines[entry.id] == entry.raw else { throw EditError.changed }
+        return lines[entry.id]
     }
 
     static func correction(from original: String, to edited: String) -> Draft {
