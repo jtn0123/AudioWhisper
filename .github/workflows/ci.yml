@@ -543,14 +543,43 @@ jobs:
       - name: Generate VersionInfo.swift
         run: |
           VERSION=$(tr -d '[:space:]' < VERSION 2>/dev/null || echo "0.0.0")
+          # This build exists only for analysis. Stable metadata lets unchanged
+          # compiler inputs reuse a report across documentation-only commits.
           sed -e "s/BUNDLED_UV_VERSION_PLACEHOLDER//g" \
               -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
               -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
-              -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
-              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
+              -e "s/GIT_HASH_PLACEHOLDER/ci-analysis/g" \
+              -e "s/BUILD_DATE_PLACEHOLDER//g" \
               Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
 
+      - name: Fingerprint complete analyzer inputs
+        id: analyzer-inputs
+        run: |
+          analyzer_key=$(python3 scripts/analyze_cache.py)
+          echo "key=$analyzer_key" >> "$GITHUB_OUTPUT"
+
+      - name: Restore exact-input analyzer report
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: .analyzer-cache
+          key: analyzer-v1-${{ runner.os }}-${{ steps.analyzer-inputs.outputs.key }}
+          # No prefix restores: a different source graph must run full analysis.
+
+      - name: Revalidate restored analyzer report
+        id: analyzer-cache
+        env:
+          ANALYZER_KEY: ${{ steps.analyzer-inputs.outputs.key }}
+        run: |
+          if python3 scripts/analyze-gate.py xcodebuild.log --baseline 30 \
+            --cache-directory .analyzer-cache --cache-key "$ANALYZER_KEY" --check-cache; then
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build with xcodebuild (analyzer needs a compiler log)
+        if: steps.analyzer-cache.outputs.valid != 'true'
         run: |
           # `swift build -v` does NOT emit a log swiftlint can parse — SPM's new
           # build system omits the per-file swiftc invocations the analyzer
@@ -563,7 +592,23 @@ jobs:
             build-for-testing 2>&1 | tee xcodebuild.log | tail -5
 
       - name: Analyze and gate (single pass)
-        run: python3 scripts/analyze-gate.py xcodebuild.log --baseline 30
+        id: analyzer-run
+        if: steps.analyzer-cache.outputs.valid != 'true'
+        run: |
+          # Resolution/build steps may materialize or update compiler inputs.
+          # Publish under their actual post-build fingerprint, not an earlier key.
+          analyzer_key=$(python3 scripts/analyze_cache.py)
+          python3 scripts/analyze-gate.py xcodebuild.log --baseline 30 --benchmark \
+            --cache-directory .analyzer-cache --cache-key "$analyzer_key"
+          echo "key=$analyzer_key" >> "$GITHUB_OUTPUT"
+
+      - name: Save verified analyzer report
+        if: steps.analyzer-cache.outputs.valid != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: .analyzer-cache
+          key: analyzer-v1-${{ runner.os }}-${{ steps.analyzer-run.outputs.key }}
 
       - name: Retain analyzer report and diagnostics
         if: always()
@@ -573,6 +618,8 @@ jobs:
           path: |
             analyze.json
             analyze.stderr.txt
+            benchmark_files.txt
+            benchmark_rules.txt
           if-no-files-found: warn
 
   sonarcloud:
