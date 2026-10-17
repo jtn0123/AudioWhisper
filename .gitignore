@@ -152,3 +152,6 @@ analyze.json
 analyze.stderr.txt
 
 *.xml.manifest.json
+.analyzer-cache/
+benchmark_files.txt
+benchmark_rules.txt
