@@ -97,3 +97,13 @@ multi-display Spaces need separate device acceptance. The view renders and
 inference fixtures do not certify these paths or complete VoiceOver acceptance.
 No TCC database edits or permission changes were made. Public Developer ID
 signing, notarization and release distribution remain separate.
+
+The signed debug test bundle built from `0c730b76b876e9c1ad29b9d19baf897376315281`
+passed deep, strict signature verification. Its recording diagnostics report the
+cached Parakeet v2 model ready and microphone authorization not yet requested.
+The user authorized the microphone grant, but native automation could not reach
+the macOS permission flow: selecting the app timed out, and Finder actions,
+desktop capture and System Settings returned `cgWindowNotFound`. A process sample showed the test app idle
+in its normal AppKit event loop, with no observed main-thread hang. No microphone
+permission was granted and no live microphone capture was completed. The
+preexisting AudioWhisper process and installed application were left in place.
