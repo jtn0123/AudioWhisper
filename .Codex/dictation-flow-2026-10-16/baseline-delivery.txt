@@ -1,0 +1,4 @@
+Tests/RebuildDeliveryLatencyTests.swift:33: error: -[AudioWhisperTests.RebuildDeliveryLatencyTests testSlowHistoryDoesNotDelayPasteAndStillSavesExactlyOnce] : XCTAssertEqual failed: ("0") is not equal to ("1") - A slow library write must not hold back the user's text
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.655 (0.655) seconds
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.655 (0.655) seconds
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.655 (0.656) seconds

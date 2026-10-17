@@ -1,4 +1,5 @@
 import ViewInspector
+import SwiftUI
 import XCTest
 @testable import AudioWhisper
 
@@ -105,6 +106,40 @@ final class RebuildPreferencesBehaviorTests: IsolatedXCTestCase {
         XCTAssertNotNil(object["readyToRecord"])
         XCTAssertNil(object["transcripts"])
         XCTAssertNil(object["history"])
+    }
+
+    func testSimpleMicrophoneChoiceKeepsTheOtherFallbacks() throws {
+        var ranking = [PreferredMicrophone(uid: "a", name: "Desk"), PreferredMicrophone(uid: "b", name: "Headset")]
+        let view = RebuildPreferredMicrophonePicker(
+            ranking: Binding(get: { ranking }, set: { ranking = $0 }),
+            connected: [.init(id: "a", name: "Desk"), .init(id: "b", name: "Headset"), .init(id: "c", name: "USB")])
+        try view.inspect().find(ViewType.Picker.self).select(value: "c")
+        XCTAssertEqual(ranking.map(\.uid), ["c", "a", "b"])
+        try view.inspect().find(ViewType.Picker.self).select(value: "b")
+        XCTAssertEqual(ranking.map(\.uid), ["b", "c", "a"])
+        try view.inspect().find(ViewType.Picker.self).select(value: "")
+        XCTAssertTrue(ranking.isEmpty)
+    }
+
+    func testLivePreviewControlExplainsEngineSupportWithoutResettingThePreference() throws {
+        AppDefaults.liveTranscriptionPreview = true
+        AppDefaults.transcriptionProvider = .local
+        defer {
+            AppDefaults.defaults.removeObject(forKey: AppDefaults.Key.liveTranscriptionPreview.rawValue)
+            AppDefaults.defaults.removeObject(forKey: AppDefaults.Key.transcriptionProvider.rawValue)
+        }
+        let view = RebuildPreferencesView(state: state())
+        XCTAssertTrue(try view.inspect().find(ViewType.Toggle.self, where: {
+            (try? $0.labelView().text().string()) == "Show words while I speak"
+        }).isDisabled())
+        _ = try view.inspect().find(text: "Choose Parakeet in Models & setup to use live preview.")
+        XCTAssertTrue(AppDefaults.liveTranscriptionPreview)
+        AppDefaults.transcriptionProvider = .parakeet
+        // An unmounted ViewInspector value does not run DynamicProperty.update.
+        let refreshed = RebuildPreferencesView(state: state())
+        XCTAssertFalse(try refreshed.inspect().find(ViewType.Toggle.self, where: {
+            (try? $0.labelView().text().string()) == "Show words while I speak"
+        }).isDisabled())
     }
 
     private func waitFor(_ condition: () -> Bool) async throws {

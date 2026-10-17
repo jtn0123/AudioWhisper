@@ -1,0 +1,22 @@
+{
+  "Sources/Managers/FocusedTextAccess.swift": "c33fc0d96190846693bf04558d517fb454d3f01db23dec4e55c9969c488142e5",
+  "Sources/Rebuild/RebuildAccessibility.swift": "7f8c1c0057e46255a02efd77b9fda0b01fb8df8bfb9dfe4bd951402955591a16",
+  "Sources/Rebuild/RebuildApp.swift": "ef014117565d91a1eecaa2f1ed5cdd641f0e37f71f50ee34d0409572e81e812c",
+  "Sources/Rebuild/RebuildLivePreview.swift": "00131578d3694c5d0d3565a34daa7de16eb254715617968937a1c09190134e7f",
+  "Sources/Rebuild/RebuildModelsView.swift": "819ad910687b8e1ce940967dbfc39900611fcca418c9ec44c63a245a74fa4518",
+  "Sources/Rebuild/RebuildPasteDelivery.swift": "9b2d2a8886c5dfa8ac1e85f0bf6dec35b43b9e819b96f75d0ad63f44ade829a9",
+  "Sources/Rebuild/RebuildPerformanceView.swift": "9ec2110defd924ec6c00372d1056e03a1dcaa6c6d0c8877a29bf73ef551bf022",
+  "Sources/Rebuild/RebuildPracticeView.swift": "3f2ab7db8bda23752c93bfcb92535c7288e067a3e60acd590ba38c012bb8f24d",
+  "Sources/Rebuild/RebuildPreferencesView.swift": "78e8dfab19bf4fb6287c0e1d6a0f63b5c851086e18598e765a28c3ca9f3e0eb8",
+  "Sources/Rebuild/RebuildReadiness.swift": "a474f3546e9a56b054c4c3c3b0c4a15d6692438180e0929556559e0eb4813df7",
+  "Sources/Rebuild/RebuildRecorderView.swift": "54369dc2f905e2f61063e54b4e997d67895ba435c10088f4a6efca5d0bc0d4e9",
+  "Sources/Rebuild/RebuildSession.swift": "87ee25c21163c6537aa621c0b2ff86ec55cfd765ba09bb1cc29cc72592a81b13",
+  "Sources/Rebuild/RebuildSessionTiming.swift": "eb8ca985d391c3ebbeed05c75556dc16264c98930f320846bc8b6004d18de096",
+  "Sources/Rebuild/RebuildTranscriptCard.swift": "357a2f5ecc5016dce5faac260f964bd8b0a4ced913063a8428197cec48ca8b4e",
+  "Sources/Rebuild/RebuildVocabularyDocument.swift": "39505cc184bf46ece1fa7b4ae2a3c18d2ce0adac6fe43e9f5d2300919ca8cd9e",
+  "Sources/Rebuild/RebuildVocabularyEditor.swift": "f8fdbb80fbfd012e3d3bff3a47ced2ffe19f0d8f94643ca8e8e5df42c431adab",
+  "Sources/Rebuild/RebuildVocabularyEditorState.swift": "74bcebd8421fd9542e7664e610a1b63abb7d850c4708cc3bf18f7860eb37677c",
+  "Sources/Rebuild/RebuildWorkspace.swift": "b17562758ccef08991640c6ad58f6468457b31ea7a23c57e9bdd588cf445c038",
+  "Sources/Rebuild/RebuildWritingRulesView.swift": "1f04937709f32af0053b1d42ce22213f5dee74328b31c2330bb0335927a08fa5",
+  "Sources/Services/Audio/RecordingPreviewAudio.swift": "0597c676c9f85626964c724f96ee4ef815a56e69a5ac352b9fadea2795848ac2"
+}

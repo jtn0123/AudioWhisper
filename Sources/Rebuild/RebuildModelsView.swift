@@ -8,6 +8,7 @@ struct RebuildSetupStatus {
 
 struct RebuildModelsView: View {
     @Bindable var session: RebuildSession
+    var recorder: AudioEngineRecorder?
     @AppDefault(\.transcriptionProvider) private var provider
     @AppDefault(\.selectedWhisperModel) private var whisper
     @AppDefault(\.selectedParakeetModel) private var parakeet
@@ -18,6 +19,7 @@ struct RebuildModelsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 microphoneStep
                 voiceModelStep
+                RebuildPracticeView(session: session, recorder: recorder)
                 readinessRow
                 storageNote
             }
@@ -48,12 +50,18 @@ struct RebuildModelsView: View {
 
     private var microphoneStep: some View {
         let granted = session.readiness.microphoneGranted
+        let status: String
+        if session.readiness.checking {
+            status = "Checking microphone access…"
+        } else {
+            status = granted ? "Microphone allowed" : "Microphone access needed"
+        }
         return VStack(alignment: .leading, spacing: 10) {
             RebuildStepHeader(number: 1, title: "Microphone access", done: granted)
             HStack(spacing: 10) {
                 RebuildStatusLabel(
-                    text: granted ? "Microphone allowed" : "Microphone access needed",
-                    tone: granted ? .success : .warning, busy: session.isRequestingMicrophone)
+                    text: status,
+                    tone: granted ? .success : .warning, busy: session.isRequestingMicrophone || session.readiness.checking)
                 Spacer()
                 if !granted {
                     Button(
@@ -164,16 +172,12 @@ struct RebuildModelsView: View {
 
     @ViewBuilder private var installMessages: some View {
         if session.isInstalling {
-            VStack(alignment: .leading, spacing: 6) {
-                if provider == .parakeet, let fraction = MLXModelManager.shared.downloadFraction[parakeet.rawValue] {
-                    ProgressView(value: fraction).accessibilityLabel("Voice model download")
-                } else {
-                    ProgressView().progressViewStyle(.linear).accessibilityLabel("Voice model download")
-                }
-                Text(downloadMessage).font(.system(size: 11.5)).textSelection(.enabled)
-                Text("This can take a few minutes. You can keep using other apps.")
-                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
-            }
+            RebuildDownloadProgress(
+                title: "Voice model download", message: downloadMessage,
+                fraction: provider == .parakeet ? MLXModelManager.shared.downloadFraction[parakeet.rawValue] : nil
+            ) { EmptyView() }
+            Text("This can take a few minutes. You can keep using other apps.")
+                .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
         }
         if let error = session.setupError, !session.isInstalling {
             RebuildCallout(tone: .error, message: error) {

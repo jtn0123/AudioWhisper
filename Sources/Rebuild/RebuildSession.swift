@@ -1,113 +1,21 @@
 import AppKit
 import Observation
 
-enum RebuildPhase: Equatable {
-    case idle, starting, recording, transcribing, completed, failed
-
-    var isBusy: Bool { self == .starting || self == .recording || self == .transcribing }
-}
-
-struct RebuildReadiness: Equatable {
-    var microphoneGranted = false
-    var modelInstalled = false
-    var runtimeReady = false
-    var checking = true
-    var modelVerificationFailed = false
-    var ready: Bool { !checking && microphoneGranted && modelInstalled && runtimeReady && !modelVerificationFailed }
-    var nextStep: String {
-        if checking { return "Checking your recording setup" }
-        if !microphoneGranted { return "Allow microphone access" }
-        if !runtimeReady { return "Install the local runtime" }
-        if !modelInstalled { return "Install your voice model" }
-        if modelVerificationFailed { return "Repair or verify your voice model" }
-        return "Ready to record"
-    }
-}
-
-@MainActor
-struct RebuildSessionServices {
-    var start: (UUID) -> Bool
-    var stop: () -> URL?
-    var cancel: () -> Void
-    var transcribe: (URL, TranscriptionPipelineConfig, UUID) async throws -> TranscriptionResult
-    var copy: (String) -> Void
-    var save: (String, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void
-    var interruptionSource: NSObject?
-    var capturePasteDestination: () -> RebuildPasteDestination? = { .capture() }
-    var startError: () -> String? = { nil }
-    var startAsync: ((UUID) async -> Bool)?
-    var saveResult: ((TranscriptionResult, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void)?
-    var recordedSignal: () -> RecordingSignalMeter? = { nil }
-    /// Present when the user wants their clipboard back after Smart Paste.
-    var clipboardKeeper: () -> ClipboardKeeper? = { AppDefaults.restoreClipboardAfterPaste ? ClipboardKeeper() : nil }
-
-    static func live(
-        recorder: AudioEngineRecorder,
-        pipeline: TranscriptionPipeline? = nil,
-        copy: ((String) -> Void)? = nil,
-        history: DataManagerProtocol? = nil,
-        usage: UsageMetricsStore? = nil
-    ) -> Self {
-        let pipeline = pipeline ?? TranscriptionPipeline()
-        let history = history ?? DataManager.shared
-        let usage = usage ?? UsageMetricsStore.shared
-        return Self(
-            start: { id in
-                PermissionManager.shared.checkPermissionState()
-                return recorder.startRecording(sessionID: id)
-            }, stop: { recorder.stopRecording() }, cancel: { recorder.cancelRecording() },
-            transcribe: { url, config, id in
-                try await TranscriptionProgress.$sessionID.withValue(id) {
-                    try await TranscriptionProgress.$pipelineConfig.withValue(config) {
-                        try await pipeline.transcribe(audioURL: url, config: config)
-                    }
-                }
-            },
-            copy: copy ?? PasteManager.copyToClipboard,
-            save: { text, config, duration in
-                try await persist(
-                    TranscriptionResult(text: text, correctionOutcome: nil), config: config,
-                    duration: duration, history: history, usage: usage)
-            },
-            interruptionSource: recorder,
-            startError: { recorder.lastStartError },
-            startAsync: { id in
-                PermissionManager.shared.checkPermissionState()
-                return await recorder.startRecordingAsync(sessionID: id)
-            },
-            saveResult: { result, config, duration in
-                try await persist(result, config: config, duration: duration, history: history, usage: usage)
-            },
-            recordedSignal: { recorder.lastRecordingSignal }
-        )
-    }
-
-    private static func persist(
-        _ result: TranscriptionResult, config: TranscriptionPipelineConfig, duration: TimeInterval?,
-        history: DataManagerProtocol, usage: UsageMetricsStore
-    ) async throws {
-        let count = UsageMetricsStore.estimatedWordCount(for: result.text)
-        usage.recordSession(duration: duration, wordCount: count, characterCount: result.text.count)
-        guard AppDefaults.transcriptionHistoryEnabled else { return }
-        try await history.saveTranscription(
-            TranscriptionRecord(
-                text: result.text, provider: config.provider, duration: duration,
-                modelUsed: config.provider == .local
-                    ? config.whisperModel?.rawValue : config.parakeetModel?.rawValue,
-                wordCount: count, characterCount: result.text.count, sourceAppBundleId: config.sourceAppBundleId,
-                originalText: result.originalText == result.text ? nil : result.originalText))
-    }
-}
-
 /// The rebuild has one owner for a recording or file job. Views never record,
 /// request permissions, transcribe, or paste independently.
 @MainActor
 @Observable
 final class RebuildSession {
     let writingInstaller: RebuildWritingInstaller
+    let livePreview: RebuildLivePreview
     private(set) var phase: RebuildPhase = .idle
     var readiness = RebuildReadiness()
     var transcript = ""
+    private(set) var deliveredTranscript = ""
+    private(set) var isPractice = false
+    private(set) var timing = RebuildSessionTiming()
+    private(set) var pendingHistoryWrites = 0
+    @ObservationIgnored private var historyTasks: [UUID: Task<String?, Never>] = [:]
     private(set) var originalTranscript: String?
     var notice: String?
     var setupError: String?
@@ -141,6 +49,7 @@ final class RebuildSession {
     @ObservationIgnored private var interruptionObserver: NSObjectProtocol?
     @ObservationIgnored private var verificationSelection: RebuildModelSelection?
     @ObservationIgnored private var verificationAssets: String?
+    @ObservationIgnored private var previewRequested = false
 
     private struct RetryAudio {
         let url: URL
@@ -149,37 +58,13 @@ final class RebuildSession {
         let duration: TimeInterval?
     }
 
-    func selectionChanged() {
-        readiness.checking = true
-        verificationMessage = nil
-        Task { await refreshSetup() }
-    }
-
-    func retry() {
-        guard hasRetryAudio, let audio = retryAudio else { return }
-        guard retryBlockedReason == nil else {
-            notice = retryBlockedReason
-            return
-        }
-        retryAudio = nil
-        sessionID = UUID()
-        notice = nil
-        duration = audio.duration
-        guard let id = sessionID else { return }
-        transcribe(url: audio.url, config: audio.config, id: id, removeAfterward: audio.owned)
-    }
-
-    private func discardRetry() {
-        if let audio = retryAudio, audio.owned { try? FileManager.default.removeItem(at: audio.url) }
-        retryAudio = nil
-    }
-
     init(
         services: RebuildSessionServices, setup: RebuildSetupServices? = nil,
         verificationDefaults: UserDefaults? = nil, writingInstaller: RebuildWritingInstaller? = nil,
-        paste: PasteManager? = nil, delivery: RebuildPasteDelivery? = nil
+        paste: PasteManager? = nil, delivery: RebuildPasteDelivery? = nil, livePreview: RebuildLivePreview? = nil
     ) {
         self.services = services
+        self.livePreview = livePreview ?? RebuildLivePreview()
         self.paste = paste ?? PasteManager()
         self.delivery = delivery ?? RebuildPasteDelivery()
         self.setup = setup ?? .live
@@ -206,6 +91,7 @@ final class RebuildSession {
         }
         // A duplicate stop event must not delete audio already in transcription.
         guard phase == .recording, let config = configuration else { return }
+        livePreview.stop()
         closeRecorder()
         switch event {
         case .finished(let id, let audio?, let capturedDuration):
@@ -229,11 +115,20 @@ final class RebuildSession {
             return
         }
         guard phase != .starting, phase != .transcribing else { return }
+        beginRecording(practice: false)
+    }
+
+    func startPractice() {
+        guard !phase.isBusy else { return }
+        beginRecording(practice: true)
+    }
+
+    private func beginRecording(practice: Bool) {
         guard readiness.ready, !isInstalling, !maintenanceInProgress else {
             openSetup()
             return
         }
-        prepareSession()
+        prepareSession(practice: practice)
         if let startAsync = services.startAsync, let id = sessionID {
             phase = .starting
             job = Task { [weak self] in
@@ -256,12 +151,18 @@ final class RebuildSession {
             return
         }
         startedAt = Date()
+        timing.recording = ProcessInfo.processInfo.systemUptime
         phase = .recording
-        if !AppDefaults.immediateRecording { showRecorder() }
+        if previewRequested, let model = configuration?.parakeetModel {
+            livePreview.start(model: model, snapshot: services.previewSnapshot)
+        }
+        if !isPractice && !AppDefaults.immediateRecording { showRecorder() }
     }
 
     func finishRecording() {
         guard phase == .recording, let id = sessionID, let config = configuration else { return }
+        livePreview.stop()
+        timing.stopped = ProcessInfo.processInfo.systemUptime
         duration = startedAt.map { Date().timeIntervalSince($0) }
         guard let url = services.stop() else {
             phase = .failed
@@ -300,23 +201,32 @@ final class RebuildSession {
         transcribe(url: url, config: config, id: id, removeAfterward: false)
     }
 
-    private func prepareSession() {
+    private func prepareSession(practice: Bool = false) {
+        livePreview.stop(clear: true)
         discardRetry()
         duration = nil
-        capturedTarget = services.capturePasteDestination()
+        isPractice = practice
+        timing = RebuildSessionTiming()
+        capturedTarget = practice ? nil : services.capturePasteDestination()
         sessionID = UUID()
         notice = nil
         configuration = TranscriptionPipelineConfig(
             provider: AppDefaults.transcriptionProvider, whisperModel: AppDefaults.selectedWhisperModel,
-            applySemanticCorrection: AppDefaults.semanticCorrectionMode != .off,
+            applySemanticCorrection: !practice && AppDefaults.semanticCorrectionMode != .off,
             sourceAppBundleId: capturedTarget?.bundleIdentifier, parakeetModel: AppDefaults.selectedParakeetModel,
             correctionMode: AppDefaults.semanticCorrectionMode,
             correctionModelRepo: AppDefaults.semanticCorrectionModelRepo,
             formatting: .current
         )
+        previewRequested = AppDefaults.liveTranscriptionPreview && configuration?.provider == .parakeet
+        services.configureLivePreview(previewRequested)
     }
 
+}
+
+extension RebuildSession {
     private func transcribe(url: URL, config: TranscriptionPipelineConfig, id: UUID, removeAfterward: Bool) {
+        if timing.stopped == nil { timing.stopped = ProcessInfo.processInfo.systemUptime }
         phase = .transcribing
         job = Task { [weak self] in
             guard let self else { return }
@@ -333,7 +243,9 @@ final class RebuildSession {
                         ])
                 }
                 transcript = result.text
+                deliveredTranscript = result.text
                 originalTranscript = result.originalText
+                timing.recognized = ProcessInfo.processInfo.systemUptime
                 // Live captures keep their measured elapsed time. Imports and
                 // imported retries use the file metadata already validated by
                 // the pipeline, without opening the audio a second time.
@@ -345,21 +257,23 @@ final class RebuildSession {
                 if case .failed = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup was unavailable."
                 }
-                do {
-                    if let saveResult = services.saveResult {
-                        try await saveResult(result, config, deliveredDuration)
-                    } else {
-                        try await services.save(result.text, config, deliveredDuration)
-                    }
-                } catch {
-                    notice = "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
-                }
-                guard !Task.isCancelled, sessionID == id else { return }
+                // History is independent after a valid result is copied. A slow
+                // write must not delay paste, and a new recording must not cancel it.
+                let persistence = persistInBackground(result, config: config, duration: deliveredDuration)
+                if removeAfterward { try? FileManager.default.removeItem(at: url) }
                 phase = .completed
                 closeRecorder()
                 didDeliver()
                 if AppDefaults.playCompletionSound { NSSound(named: "Pop")?.play() }
                 await pasteTranscript(result.text, sessionID: id, loan: loan)
+                if let (token, task) = persistence {
+                    let message = await task.value
+                    if let message, sessionID == id, !Task.isCancelled {
+                        notice = [notice, message].compactMap { $0 }.joined(separator: " ")
+                    }
+                    historyTasks.removeValue(forKey: token)
+                    pendingHistoryWrites = historyTasks.count
+                }
             } catch {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
@@ -374,6 +288,61 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    private func persistInBackground(
+        _ result: TranscriptionResult, config: TranscriptionPipelineConfig, duration: TimeInterval?
+    ) -> (UUID, Task<String?, Never>)? {
+        guard !isPractice else { return nil }
+        let token = UUID()
+        let task = Task { @MainActor [services] () -> String? in
+            do {
+                if let save = services.saveResult {
+                    try await save(result, config, duration)
+                } else {
+                    try await services.save(result.text, config, duration)
+                }
+                return nil
+            } catch {
+                return "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
+            }
+        }
+        historyTasks[token] = task
+        pendingHistoryWrites = historyTasks.count
+        return (token, task)
+    }
+
+    func waitForHistoryWrites() async {
+        while !historyTasks.isEmpty {
+            for task in Array(historyTasks.values) { _ = await task.value }
+            await Task.yield()
+        }
+    }
+
+    func selectionChanged() {
+        readiness.checking = true
+        verificationMessage = nil
+        Task { await refreshSetup() }
+    }
+
+    func retry() {
+        guard hasRetryAudio, let audio = retryAudio else { return }
+        guard retryBlockedReason == nil else {
+            notice = retryBlockedReason
+            return
+        }
+        retryAudio = nil
+        sessionID = UUID()
+        timing = RebuildSessionTiming()
+        notice = nil
+        duration = audio.duration
+        guard let id = sessionID else { return }
+        transcribe(url: audio.url, config: audio.config, id: id, removeAfterward: audio.owned)
+    }
+
+    private func discardRetry() {
+        if let audio = retryAudio, audio.owned { try? FileManager.default.removeItem(at: audio.url) }
+        retryAudio = nil
+    }
+
     /// What Smart Paste borrowed from the clipboard, to give back afterwards.
     struct ClipboardLoan {
         let id = UUID()
@@ -394,10 +363,22 @@ extension RebuildSession {
     }
 
     private func pasteTranscript(_ text: String, sessionID id: UUID, loan: ClipboardLoan?) async {
-        guard AppDefaults.enableSmartPaste, let target = capturedTarget else { return }
+        guard AppDefaults.enableSmartPaste, let target = capturedTarget else {
+            timing.delivered = ProcessInfo.processInfo.systemUptime
+            timing.delivery = "Copied to clipboard"
+            return
+        }
         let copy: (String) -> Void = loan.map { loan in { loan.keeper.copy($0, loan: loan.id) } } ?? services.copy
         let outcome = await delivery.deliver(text, to: target, paste: paste, copy: copy) { [weak self] in
             self?.sessionID == id
+        }
+        if sessionID == id, !Task.isCancelled {
+            timing.delivered = ProcessInfo.processInfo.systemUptime
+            switch outcome {
+            case .confirmed: timing.delivery = "Paste confirmed"
+            case .unverified: timing.delivery = "Paste sent; confirmation unavailable"
+            case .failed, .cancelled: timing.delivery = "Copied; paste manually"
+            }
         }
         if let loan { await giveBack(loan, after: outcome) }
         guard !Task.isCancelled, sessionID == id else { return }
@@ -428,8 +409,12 @@ extension RebuildSession {
     }
 
     var captureIdentity: UUID? { sessionID }
+    var recordingDestinationName: String {
+        AppDefaults.enableSmartPaste ? (capturedTarget?.displayName ?? "Clipboard") : "Clipboard"
+    }
 
     func cancel() {
+        livePreview.stop(clear: true)
         discardRetry()
         sessionID = nil
         job?.cancel()

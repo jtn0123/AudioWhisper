@@ -1,0 +1,7 @@
+Tests/RebuildPasteFocusTests.swift:16: error: -[AudioWhisperTests.RebuildPasteFocusTests testChangedFieldNeverTriggersAFallbackPaste] : XCTAssertEqual failed: ("failed") is not equal to ("unverified")
+Tests/RebuildPasteFocusTests.swift:18: error: -[AudioWhisperTests.RebuildPasteFocusTests testChangedFieldNeverTriggersAFallbackPaste] : XCTAssertEqual failed: ("1") is not equal to ("0")
+Tests/RebuildPasteFocusTests.swift:30: error: -[AudioWhisperTests.RebuildPasteFocusTests testChangedForegroundNeverTriggersAFallbackPaste] : XCTAssertEqual failed: ("failed") is not equal to ("cancelled")
+Tests/RebuildPasteFocusTests.swift:31: error: -[AudioWhisperTests.RebuildPasteFocusTests testChangedForegroundNeverTriggersAFallbackPaste] : XCTAssertEqual failed: ("1") is not equal to ("0")
+	 Executed 2 tests, with 4 failures (0 unexpected) in 0.483 (0.484) seconds
+	 Executed 2 tests, with 4 failures (0 unexpected) in 0.483 (0.484) seconds
+	 Executed 2 tests, with 4 failures (0 unexpected) in 0.483 (0.484) seconds

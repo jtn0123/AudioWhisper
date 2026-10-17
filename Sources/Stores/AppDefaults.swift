@@ -79,6 +79,7 @@ enum AppDefaults {
         // Recording
         case globalHotkey
         case immediateRecording
+        case liveTranscriptionPreview
         case selectedMicrophone
         case microphoneRanking
         case pressAndHoldEnabled

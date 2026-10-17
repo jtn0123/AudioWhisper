@@ -87,7 +87,7 @@ final class RebuildRecordBehaviorTests: IsolatedXCTestCase {
         _ = try view.inspect().find(text: "Select the voice model used for this recording before retrying.")
         AppDefaults.selectedWhisperModel = .base
         try view.inspect().find(button: "Retry transcription").tap()
-        try await waitFor { session.phase == .completed }
+        try await waitFor { session.phase == .completed && session.pendingHistoryWrites == 0 }
         _ = try view.inspect().find(text: "Copied to your clipboard")
         XCTAssertThrowsError(try view.inspect().find(button: "Retry transcription"))
         XCTAssertEqual(copies, ["Recovered words."])

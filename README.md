@@ -89,12 +89,31 @@ coverage from physical hardware acceptance.
 - Library offers search, original comparison, copying, deletion and cancellable background export — all stored locally
 - The recording page shows sessions, words and estimated time saved. Preferences offers recalculation from history and reset.
 
+### Words and formatting
+
+- Writing cleanup includes searchable **Vocabulary** entries for names, spellings and phrase replacements. Add or edit entries with normal fields; removing an entry offers Undo. Existing vocabulary and comments are preserved.
+- After editing a transcript, **Remember a correction…** suggests the changed phrase. Saving explicitly adds a rule for future recordings; it does not rewrite history or paste again.
+- Vocabulary and the filler-word/spoken-punctuation controls work without a writing model, with both transcription engines.
+
 ### Productivity toggles
 
 - **Express Mode** — the hotkey starts/stops recording and pastes without opening the window
 - **Press & Hold** — hold a chosen modifier (⌘ / ⌥ / ⌃ / Fn) to record; requires Accessibility permission
 - **Smart Paste** — auto-⌘V after transcription; requires Accessibility permission
+- **Live preview** — opt in under Preferences → Recording with Parakeet selected. A rolling draft of the last
+  12 seconds updates locally about one second after each inference finishes. Drafts may change and are
+  never copied or saved; stopping still transcribes the full recording. Preview is off by default and pauses
+  independently if it encounters an error. Whisper continues to transcribe after you stop.
 - Auto-boost microphone input while recording, start at login, completion sound
+
+Preferences keeps the everyday recording, microphone, delivery and privacy controls together. Microphone fallback
+order, input boost, cursor matching, clipboard restoration and recorder visuals live under **Advanced & support**;
+upgrading preserves their existing values.
+
+Advanced & support also shows the latest session's microphone-start, transcription and Stop-to-delivery times.
+These measurements stay in memory on this Mac and include writing cleanup when enabled. Delivery reports whether
+paste was confirmed, sent without confirmation, or left on the clipboard. History saves independently so a slow
+library write cannot delay pasting; pending writes finish before the app quits normally.
 
 ### First run
 
@@ -102,7 +121,8 @@ coverage from physical hardware acceptance.
 2. Click **Allow microphone** and respond to the macOS prompt. If access was previously denied, Setup opens the Microphone settings instead.
 3. Choose your transcription engine and voice model, then install it from the same Setup page. Parakeet requires Apple Silicon; its install includes the local Python environment.
 4. Wait for **Ready to record**. Both microphone access and the selected voice model must be available. Using the recording shortcut before then opens Setup without recording or requesting more permissions.
-5. Smart Paste, semantic correction, history, Express Mode, and Press & Hold are optional. Smart Paste's Accessibility access is configured separately; it is not required to record and copy a transcript.
+5. **Try your first dictation** in Models & setup: record a short practice sentence, stop, copy it, then press Command V in the practice field. Practice does not paste into another app, use writing cleanup, or save to history and usage totals. It does not enable shortcuts or Smart Paste.
+6. Smart Paste, semantic correction, history, Express Mode, and Press & Hold are optional. Smart Paste's Accessibility access is configured separately; it is not required to record and copy a transcript.
 
 ## Usage 🎯
 

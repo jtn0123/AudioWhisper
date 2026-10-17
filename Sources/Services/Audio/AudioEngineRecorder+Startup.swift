@@ -10,6 +10,7 @@ struct PreparedAudioEngine: @unchecked Sendable {
     let inputNode: AVAudioInputNode
     let format: AVAudioFormat
     let device: AudioDeviceID
+    var microphoneName: String?
 
     static func make(routing: AudioInputRouting, selectedUID: String) throws -> Self {
         let engine = AVAudioEngine()
@@ -18,7 +19,11 @@ struct PreparedAudioEngine: @unchecked Sendable {
         let device = try routing.prepare(selectedUID: selectedUID, unit: unit)
         let format = inputNode.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { throw AudioInputError.invalidFormat }
-        return Self(engine: engine, inputNode: inputNode, format: format, device: device)
+        let microphone = selectedUID.isEmpty ? AVCaptureDevice.default(for: .audio)
+            : AVCaptureDevice.DiscoverySession(deviceTypes: [.microphone], mediaType: .audio, position: .unspecified)
+                .devices.first { $0.uniqueID == selectedUID }
+        return Self(engine: engine, inputNode: inputNode, format: format, device: device,
+                    microphoneName: microphone?.localizedName)
     }
 }
 

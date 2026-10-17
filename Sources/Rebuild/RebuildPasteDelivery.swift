@@ -35,6 +35,7 @@ struct RebuildPasteDelivery {
         guard !Task.isCancelled, isValid() else { return .cancelled }
         guard activated else { return .failed }
         let pid = target.processIdentifier
+        let deliveryValid = { !Task.isCancelled && isValid() && !target.isTerminated() && target.foregroundPID() == pid }
         let before = focusedText.read(pid)
         let changes = before == nil ? nil : focusedText.watchChanges(pid)
         defer { changes?.stop() }
@@ -43,12 +44,12 @@ struct RebuildPasteDelivery {
             if fitted != text { copy(fitted) }
         }
         var pasted = false
-        paste.pasteWithUserInteraction(expectedTargetPID: pid, isSessionValid: isValid) { result in
+        paste.pasteWithUserInteraction(expectedTargetPID: pid, isSessionValid: deliveryValid) { result in
             if case .success = result { pasted = true }
         }
-        guard isValid() else { return .cancelled }
+        guard deliveryValid() else { return .cancelled }
         guard pasted else { return .failed }
-        return await confirm(pid: pid, before: before, changes: changes, isValid: isValid)
+        return await confirm(pid: pid, before: before, changes: changes, isValid: deliveryValid)
     }
 
     func confirm(
@@ -83,11 +84,12 @@ struct RebuildPasteDelivery {
     ) async -> Observation {
         let deadline = ContinuousClock.now + confirmationWindow
         repeat {
-            do { try await Task.sleep(for: pollInterval) } catch { return .unknown }
-            guard isValid() else { return .unknown }
+            guard !Task.isCancelled, isValid() else { return .unknown }
             if let changes, changes.count() > baseline { return .changed }
             guard let now = focusedText.read(pid) else { return .unknown }
+            if let identity = before.controlIdentity, now.controlIdentity != identity { return .unknown }
             if now.length != before.length || now.selection != before.selection { return .changed }
+            do { try await Task.sleep(for: pollInterval) } catch { return .unknown }
         } while ContinuousClock.now < deadline
         return .unchanged
     }
