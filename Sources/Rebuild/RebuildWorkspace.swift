@@ -243,6 +243,9 @@ struct RebuildRecordView: View {
             VStack(alignment: .leading, spacing: 14) {
                 setupBanner
                 recorderCard
+                if session.livePreview.enabled && session.phase.isBusy {
+                    RebuildLivePreviewView(preview: session.livePreview)
+                }
                 notice
                 RebuildTranscriptCard(session: session)
                 RebuildUsageView()
@@ -469,13 +472,19 @@ struct RebuildTranscriptCard: View {
                     Button("Copy text") { PasteManager.copyToClipboard(session.transcript) }
                 }
             }
-            if session.transcript.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("A little less typing.").font(RebuildTheme.titleFont(15))
-                    Text("Your next transcript appears here and is copied automatically. Saving to the library is optional.")
-                        .font(.system(size: 12.5)).foregroundStyle(RebuildTheme.secondaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }.frame(maxWidth: .infinity, minHeight: 64, alignment: .topLeading)
+            if session.phase.isBusy {
+                RebuildContentState(
+                    title: session.phase == .recording ? "Listening…" : "Preparing your transcript…",
+                    symbol: "waveform", detail: session.phase == .recording
+                        ? "Stop when you’re done. Your final transcript will appear here."
+                        : "Processing on this Mac. You can cancel without delivering any text.", busy: true)
+            } else if session.transcript.isEmpty {
+                RebuildContentState(
+                    title: session.phase == .failed ? "No transcript yet" : "A little less typing.",
+                    symbol: session.phase == .failed ? "arrow.clockwise" : "text.bubble",
+                    detail: session.phase == .failed
+                        ? "Your recording hasn’t been delivered. Follow the recovery action above, or start again."
+                        : "Your next transcript appears here and is copied automatically. Saving to the library is optional.")
             } else {
                 TextEditor(text: $session.transcript).font(.system(size: 14)).scrollContentBackground(.hidden)
                     .frame(minHeight: 110, maxHeight: 240)
@@ -488,79 +497,6 @@ struct RebuildTranscriptCard: View {
                 }
             }
         }.rebuildCard()
-    }
-}
-
-/// The floating recording HUD. Its 380×230 frame is relied on by the desktop
-/// acceptance harness, which clicks Cancel near the bottom-left corner.
-struct RebuildRecorderView: View {
-    @Bindable var session: RebuildSession
-    @ObservedObject var recorder: AudioEngineRecorder
-
-    var body: some View {
-        VStack(spacing: 0) {
-            WaveformContainer(
-                status: session.phase == .recording ? .recording : .processing("Transcribing"),
-                audioLevel: recorder.audioLevel, waveformSamples: recorder.waveformSamples,
-                frequencyBands: recorder.frequencyBands, showsStatusRow: false,
-                showsGlassBackground: false, backgroundColor: RebuildTheme.hudWaveformBackground,
-                waveformColor: RebuildTheme.hudWaveformForeground, onTap: session.toggleRecording
-            )
-            .frame(height: 118)
-            // Keep the waveform's own drop shadow and coral glow inside its
-            // panel so the HUD stays one calm slate surface.
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.06)))
-            .padding(.horizontal, 12).padding(.top, 12)
-            statusRow.frame(height: 40).padding(.horizontal, 18)
-            Spacer(minLength: 0)
-            controls.frame(height: 32).padding(.horizontal, 18).padding(.bottom, 18)
-        }
-        .frame(width: 380, height: 230)
-        .background(RebuildTheme.hudBackground.opacity(0.97), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(RebuildTheme.hudBorder))
-        .environment(\.colorScheme, .dark)
-        .tint(RebuildTheme.hudAccent)
-        .onExitCommand(perform: session.cancel)
-    }
-
-    static let silentInputMessage = "No sound from the microphone"
-
-    private var silent: Bool { session.phase == .recording && recorder.inputAppearsSilent }
-
-    private var statusRow: some View {
-        HStack(alignment: .center, spacing: 8) {
-            Circle().fill(session.phase == .recording && !silent ? RebuildTheme.recording : RebuildTheme.warning)
-                .frame(width: 8, height: 8)
-                .accessibilityHidden(true)
-            Text(session.phase == .recording ? (silent ? Self.silentInputMessage : "Recording") : "Transcribing…")
-                .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
-                .lineLimit(1).minimumScaleFactor(0.8)
-            Spacer()
-            if let start = session.recordingStartedAt {
-                RebuildElapsedTime(start: start)
-                    .font(.system(size: 24, weight: .medium)).foregroundStyle(.white)
-            } else if session.phase == .transcribing {
-                ProgressView().controlSize(.small)
-            }
-        }
-    }
-
-    private var controls: some View {
-        HStack {
-            Button(action: session.cancel) {
-                Text("Cancel").frame(minWidth: 84)
-            }
-            .buttonStyle(RebuildHUDButtonStyle())
-            .help("Discard this recording. Nothing is copied or saved.")
-            Spacer()
-            Button(action: session.finishRecording) {
-                Label(session.phase == .recording ? "Stop & transcribe" : "Transcribing…", systemImage: "stop.fill")
-                    .frame(minWidth: 140)
-            }
-            .buttonStyle(RebuildHUDButtonStyle(prominent: true))
-            .disabled(session.phase != .recording)
-        }
     }
 }
 

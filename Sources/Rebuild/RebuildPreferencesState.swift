@@ -39,6 +39,7 @@ struct RebuildPreferencesEffects {
 final class RebuildPreferencesState {
     let effects: RebuildPreferencesEffects
     var message: String?
+    var messageTone: RebuildTone = .info
     var accessibilityAllowed: Bool
     var showAdvanced = false
     var resetUsage = false

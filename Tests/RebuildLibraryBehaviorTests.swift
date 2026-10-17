@@ -57,6 +57,8 @@ final class RebuildLibraryBehaviorTests: IsolatedXCTestCase {
         await state.load(reset: true, enabled: true)
         let view = RebuildLibraryView(state: state)
         _ = try view.inspect().find(text: "Mock error")
+        XCTAssertThrowsError(try view.inspect().find(text: "Room for your next idea"),
+                             "A failed load must not claim that the library is empty")
         history.shouldThrowOnFetch = false
         history.recordsToReturn = [TranscriptionRecord(text: "Recovered fixture", provider: .parakeet)]
         try view.inspect().find(button: "Try again").tap()

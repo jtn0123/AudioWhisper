@@ -2,21 +2,18 @@ import KeyboardShortcuts
 import SwiftUI
 
 struct RebuildPreferencesView: View {
+    @AppDefault(\.liveTranscriptionPreview) private var livePreview
+    @AppDefault(\.transcriptionProvider) private var provider
     @AppDefault(\.immediateRecording) private var express
     @AppDefault(\.enableSmartPaste) private var smartPaste
-    @AppDefault(\.matchCursorContext) private var matchContext
-    @AppDefault(\.restoreClipboardAfterPaste) private var restoreClipboard
     @AppDefault(\.playCompletionSound) private var sound
     @AppDefault(\.microphoneRanking) private var ranking
-    @AppDefault(\.autoBoostMicrophoneVolume) private var boost
     @AppDefault(\.lowerOtherAudioWhileRecording) private var lowerOthers
     @AppDefault(\.pressAndHoldEnabled) private var holdEnabled
     @AppDefault(\.pressAndHoldKeyIdentifier) private var holdKey
     @AppDefault(\.pressAndHoldMode) private var holdMode
     @AppDefault(\.transcriptionHistoryEnabled) private var history
     @AppDefault(\.transcriptionRetentionPeriod) private var retention
-    @AppDefault(\.waveformStyle) private var waveform
-    @AppDefault(\.visualIntensity) private var intensity
     @AppDefault(\.startAtLogin) private var login
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
     @AppStorage("rebuild.appearance", store: AppDefaults.defaults) private var appearance = "system"
@@ -47,9 +44,9 @@ struct RebuildPreferencesView: View {
                 deliverySection
                 librarySection
                 appearanceSection
-                RebuildAdvancedSection(state: state)
+                RebuildAdvancedSection(state: state, connected: inputs.devices)
                 if let message {
-                    RebuildCallout(tone: .info, message: message) {
+                    RebuildCallout(tone: state.messageTone, message: message) {
                         Button("Dismiss") { self.message = nil }.buttonStyle(.rebuildLink)
                     }
                 }
@@ -73,6 +70,7 @@ struct RebuildPreferencesView: View {
                 try state.effects.changeLogin(enabled)
                 message = nil
             } catch {
+                state.messageTone = .error
                 message = "Login setting could not be updated: \(error.localizedDescription)"
                 login = state.effects.loginEnabled()
             }
@@ -80,6 +78,7 @@ struct RebuildPreferencesView: View {
         .onChange(of: retention) { _, _ in
             Task {
                 do { try await state.effects.cleanupRetention() } catch {
+                    state.messageTone = .error
                     message = "Retention cleanup failed: \(error.localizedDescription)"
                 }
             }
@@ -118,6 +117,14 @@ struct RebuildPreferencesView: View {
                         .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                 }
             }
+            RebuildFormRow(label: "Live preview") {
+                Toggle("Show words while I speak", isOn: $livePreview).disabled(provider != .parakeet)
+                Text(provider == .parakeet
+                     ? "A rolling, on-device draft of recent speech. Final text is transcribed when you stop."
+                     : "Choose Parakeet in Models & setup to use live preview.")
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             RebuildFormRow(label: "Overlay") {
                 Toggle("Express Mode · record without showing the overlay", isOn: $express)
             }
@@ -127,8 +134,9 @@ struct RebuildPreferencesView: View {
     private var microphoneSection: some View {
         RebuildSection(title: "Microphone & feedback") {
             RebuildFormRow(label: "Input") {
-                RebuildMicrophoneRankingView(ranking: $ranking, connected: inputs.devices)
-                Toggle("Boost microphone input while recording", isOn: $boost)
+                RebuildPreferredMicrophonePicker(ranking: $ranking, connected: inputs.devices)
+                Text("Set fallback order in Advanced & support.")
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
             }
             RebuildFormRow(label: "Sound") {
                 Toggle("Play a completion sound", isOn: $sound)
@@ -144,10 +152,6 @@ struct RebuildPreferencesView: View {
         ) {
             RebuildFormRow(label: "Smart Paste") {
                 Toggle("Paste into the app I recorded from", isOn: $smartPaste)
-                Toggle("Match spacing and capitals to the text before the cursor", isOn: $matchContext)
-                    .disabled(!smartPaste)
-                Toggle("Put back what was on the clipboard after pasting", isOn: $restoreClipboard)
-                    .disabled(!smartPaste)
             }
             RebuildFormRow(label: "Accessibility") {
                 HStack(spacing: 8) {
@@ -174,7 +178,7 @@ struct RebuildPreferencesView: View {
                 Picker("Keep transcripts for", selection: $retention) {
                     ForEach(RetentionPeriod.allCases, id: \.self) { Text($0.displayName).tag($0) }
                 }
-                .labelsHidden().fixedSize()
+                .labelsHidden().fixedSize().disabled(!history)
             }
         }
     }
@@ -188,18 +192,6 @@ struct RebuildPreferencesView: View {
                     Text("Dark").tag("dark")
                 }
                 .pickerStyle(.segmented).labelsHidden().fixedSize()
-            }
-            RebuildFormRow(label: "Recorder") {
-                HStack(spacing: 10) {
-                    Picker("Recorder visual", selection: $waveform) {
-                        ForEach(WaveformStyle.allCases) { Text($0.rawValue).tag($0) }
-                    }.labelsHidden().fixedSize()
-                    Picker("Motion intensity", selection: $intensity) {
-                        ForEach(VisualIntensity.allCases) { Text($0.rawValue).tag($0) }
-                    }.labelsHidden().fixedSize()
-                }
-                Text("Visual style and motion. The recorder respects macOS Reduce Motion.")
-                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
             }
             RebuildFormRow(label: "Startup") {
                 Toggle("Open AudioWhisper at login", isOn: $login)
@@ -222,13 +214,16 @@ struct RebuildPreferencesView: View {
 /// through the shared Preferences message.
 private struct RebuildAdvancedSection: View {
     @Bindable var state: RebuildPreferencesState
+    let connected: [RebuildMicrophoneInputs.Input]
     @AppDefault(\.transcriptionHistoryEnabled) private var history
     @AppDefault(\.maxModelStorageGB) private var storageLimit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             DisclosureGroup(isExpanded: $state.showAdvanced) {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 16) {
+                    RebuildRecordingTuningView(connected: connected)
+                    Divider()
                     RebuildFormRow(label: "Whisper storage") {
                         Stepper("Limit: \(Int(storageLimit)) GB", value: $storageLimit, in: 2...30, step: 1)
                             .fixedSize()
@@ -255,7 +250,7 @@ private struct RebuildAdvancedSection: View {
                 } label: {
                     HStack {
                         Text("Advanced & support").font(.system(size: 13, weight: .semibold))
-                        Text("Storage limit, diagnostics, usage totals").font(.system(size: 12))
+                        Text("Input fallbacks, paste behavior, visuals and diagnostics").font(.system(size: 12))
                             .foregroundStyle(RebuildTheme.secondaryText)
                         Spacer(minLength: 0)
                     }.contentShape(Rectangle())
@@ -275,6 +270,7 @@ private struct RebuildAdvancedSection: View {
         Task {
             if let text = await state.effects.diagnostics() {
                 state.effects.copy(text)
+                state.messageTone = .success
                 state.message = "Setup diagnostics copied. No transcripts or history are included."
             }
         }
@@ -283,6 +279,7 @@ private struct RebuildAdvancedSection: View {
     private func recalculateUsage() {
         Task {
             do { try await state.effects.recalculate() } catch {
+                state.messageTone = .error
                 state.message = "Usage could not be recalculated: \(error.localizedDescription)"
             }
         }

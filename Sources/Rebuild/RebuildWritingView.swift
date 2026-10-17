@@ -156,23 +156,13 @@ struct RebuildWritingView: View {
     }
 
     private var progress: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let fraction = installer.fraction {
-                ProgressView(value: fraction).accessibilityLabel("Correction model download")
-            } else {
-                ProgressView().progressViewStyle(.linear).accessibilityLabel("Correction model download")
-            }
-            HStack(spacing: 8) {
-                Text(installer.progress ?? "Preparing download…").font(.system(size: 11.5)).textSelection(.enabled)
-                Spacer()
-                if let fraction = installer.fraction {
-                    Text(fraction.formatted(.percent.precision(.fractionLength(0))))
-                        .font(.system(size: 11.5)).monospacedDigit().foregroundStyle(RebuildTheme.secondaryText)
-                }
-                Button(installer.cancelling ? "Cancelling…" : "Cancel install") {
-                    Task { await installer.cancel() }
-                }.disabled(installer.cancelling)
-            }
+        RebuildDownloadProgress(
+            title: "Correction model download", message: installer.progress ?? "Preparing download…",
+            fraction: installer.fraction
+        ) {
+            Button(installer.cancelling ? "Cancelling…" : "Cancel install") {
+                Task { await installer.cancel() }
+            }.disabled(installer.cancelling)
         }
     }
 

@@ -8,6 +8,7 @@ struct RebuildPasteDestination {
     var activate: () -> Bool
     var isTerminated: () -> Bool
     var foregroundPID: () -> pid_t?
+    var displayName: String?
 
     func activateAndWait(isSessionValid: () -> Bool) async -> Bool {
         guard !Task.isCancelled, isSessionValid(), !isTerminated(), activate() else { return false }
@@ -28,6 +29,6 @@ struct RebuildPasteDestination {
         return Self(
             processIdentifier: target.processIdentifier, bundleIdentifier: target.bundleIdentifier,
             activate: { target.activate() }, isTerminated: { target.isTerminated },
-            foregroundPID: { NSWorkspace.shared.frontmostApplication?.processIdentifier })
+            foregroundPID: { NSWorkspace.shared.frontmostApplication?.processIdentifier }, displayName: target.localizedName)
     }
 }

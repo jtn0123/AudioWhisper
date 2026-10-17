@@ -94,7 +94,15 @@ coverage from physical hardware acceptance.
 - **Express Mode** — the hotkey starts/stops recording and pastes without opening the window
 - **Press & Hold** — hold a chosen modifier (⌘ / ⌥ / ⌃ / Fn) to record; requires Accessibility permission
 - **Smart Paste** — auto-⌘V after transcription; requires Accessibility permission
+- **Live preview** — opt in under Preferences → Recording with Parakeet selected. A rolling draft of the last
+  12 seconds updates locally about every two seconds, after each inference finishes. Drafts may change and are
+  never copied or saved; stopping still transcribes the full recording. Preview is off by default and pauses
+  independently if it encounters an error. Whisper continues to transcribe after you stop.
 - Auto-boost microphone input while recording, start at login, completion sound
+
+Preferences keeps the everyday recording, microphone, delivery and privacy controls together. Microphone fallback
+order, input boost, cursor matching, clipboard restoration and recorder visuals live under **Advanced & support**;
+upgrading preserves their existing values.
 
 ### First run
 

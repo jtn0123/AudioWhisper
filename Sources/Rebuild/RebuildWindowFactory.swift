@@ -17,8 +17,9 @@ enum RebuildWindowFactory {
     }
 
     static func recorder(session: RebuildSession, recorder: AudioEngineRecorder) -> NSWindow {
+        let size = RebuildRecorderView.size(preview: session.livePreview.enabled)
         let window = ChromelessWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 230),
+            contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless], backing: .buffered, defer: false)
         RecordingWindowStyle.configure(window)
         let controller = NSHostingController(rootView: RebuildRecorderView(session: session, recorder: recorder))
@@ -26,7 +27,7 @@ enum RebuildWindowFactory {
         // size can be zero before its first layout; it must not resize the panel.
         controller.sizingOptions = []
         window.contentViewController = controller
-        window.setContentSize(NSSize(width: 380, height: 230))
+        window.setContentSize(size)
         return window
     }
 }

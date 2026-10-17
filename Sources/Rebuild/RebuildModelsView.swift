@@ -52,8 +52,9 @@ struct RebuildModelsView: View {
             RebuildStepHeader(number: 1, title: "Microphone access", done: granted)
             HStack(spacing: 10) {
                 RebuildStatusLabel(
-                    text: granted ? "Microphone allowed" : "Microphone access needed",
-                    tone: granted ? .success : .warning, busy: session.isRequestingMicrophone)
+                    text: session.readiness.checking ? "Checking microphone access…"
+                        : granted ? "Microphone allowed" : "Microphone access needed",
+                    tone: granted ? .success : .warning, busy: session.isRequestingMicrophone || session.readiness.checking)
                 Spacer()
                 if !granted {
                     Button(
@@ -164,16 +165,12 @@ struct RebuildModelsView: View {
 
     @ViewBuilder private var installMessages: some View {
         if session.isInstalling {
-            VStack(alignment: .leading, spacing: 6) {
-                if provider == .parakeet, let fraction = MLXModelManager.shared.downloadFraction[parakeet.rawValue] {
-                    ProgressView(value: fraction).accessibilityLabel("Voice model download")
-                } else {
-                    ProgressView().progressViewStyle(.linear).accessibilityLabel("Voice model download")
-                }
-                Text(downloadMessage).font(.system(size: 11.5)).textSelection(.enabled)
-                Text("This can take a few minutes. You can keep using other apps.")
-                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
-            }
+            RebuildDownloadProgress(
+                title: "Voice model download", message: downloadMessage,
+                fraction: provider == .parakeet ? MLXModelManager.shared.downloadFraction[parakeet.rawValue] : nil
+            ) { EmptyView() }
+            Text("This can take a few minutes. You can keep using other apps.")
+                .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
         }
         if let error = session.setupError, !session.isInstalling {
             RebuildCallout(tone: .error, message: error) {
