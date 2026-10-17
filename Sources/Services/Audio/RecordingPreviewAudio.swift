@@ -8,11 +8,13 @@ final class RecordingPreviewAudio: @unchecked Sendable {
     private let lock = NSLock()
     private var ring: SampleRingBuffer?
     private var sampleRate: Double = 0
+    private var framesWritten: Int64 = 0
 
     func configure(enabled: Bool, sampleRate: Double) {
         lock.lock()
         defer { lock.unlock() }
         self.sampleRate = sampleRate
+        framesWritten = 0
         ring = enabled && sampleRate >= 8000 && sampleRate <= 192000
             ? SampleRingBuffer(capacity: Int(sampleRate * Self.windowSeconds)) : nil
     }
@@ -20,12 +22,14 @@ final class RecordingPreviewAudio: @unchecked Sendable {
     func append(_ samples: [Float]) {
         lock.lock()
         ring?.append(contentsOf: samples)
+        if ring != nil { framesWritten += Int64(samples.count) }
         lock.unlock()
     }
 
     func clear() {
         lock.lock()
         ring = nil
+        framesWritten = 0
         lock.unlock()
     }
 
@@ -33,16 +37,19 @@ final class RecordingPreviewAudio: @unchecked Sendable {
     func snapshot() -> RecordingPreviewSnapshot? {
         lock.lock()
         let rate = sampleRate
+        let position = framesWritten
         let samples = ring.flatMap { $0.count >= Int(rate) ? $0.snapshot() : nil }
         lock.unlock()
         guard let samples, RecordingSignalMeter.rms(of: samples) >= RecordingSignalMeter.silenceRMS else { return nil }
-        return RecordingPreviewSnapshot(samples: samples, sampleRate: rate)
+        return RecordingPreviewSnapshot(samples: samples, sampleRate: rate, endFrame: position)
     }
 }
 
 struct RecordingPreviewSnapshot: Sendable {
     let samples: [Float]
     let sampleRate: Double
+    /// Absent for fixture snapshots. Real capture stamps skip duplicate work.
+    var endFrame: Int64?
 
     /// All conversion and temporary-file work happens on the preview worker.
     /// The returned raw PCM is transferred to Parakeet's existing file lease.

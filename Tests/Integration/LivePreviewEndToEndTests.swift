@@ -22,7 +22,7 @@ final class LivePreviewEndToEndTests: IsolatedXCTestCase {
         defer { try? FileManager.default.removeItem(at: pcm) }
         let samples = try Data(contentsOf: pcm).withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
         let audio = RecordingPreviewSnapshot(samples: samples, sampleRate: 16000)
-        let preview = RebuildLivePreview(interval: .milliseconds(20)) { snapshot, model in
+        let preview = RebuildLivePreview { snapshot, model in
             try await service.transcribePreparedPCM(snapshot.writePCM(), repo: model.rawValue)
         }
         var delivered: [String] = []

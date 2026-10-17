@@ -172,6 +172,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         session.cancel()
         holdMonitor?.stop()
         Task {
+            await session.waitForHistoryWrites()
             await MLDaemonManager.shared.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)
         }

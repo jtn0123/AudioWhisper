@@ -44,7 +44,7 @@ struct RebuildPreferencesView: View {
                 deliverySection
                 librarySection
                 appearanceSection
-                RebuildAdvancedSection(state: state, connected: inputs.devices)
+                RebuildAdvancedSection(state: state, connected: inputs.devices, timing: session?.timing)
                 if let message {
                     RebuildCallout(tone: state.messageTone, message: message) {
                         Button("Dismiss") { self.message = nil }.buttonStyle(.rebuildLink)
@@ -215,6 +215,7 @@ struct RebuildPreferencesView: View {
 private struct RebuildAdvancedSection: View {
     @Bindable var state: RebuildPreferencesState
     let connected: [RebuildMicrophoneInputs.Input]
+    var timing: RebuildSessionTiming?
     @AppDefault(\.transcriptionHistoryEnabled) private var history
     @AppDefault(\.maxModelStorageGB) private var storageLimit
 
@@ -223,6 +224,7 @@ private struct RebuildAdvancedSection: View {
             DisclosureGroup(isExpanded: $state.showAdvanced) {
                 VStack(alignment: .leading, spacing: 16) {
                     RebuildRecordingTuningView(connected: connected)
+                    if let timing { RebuildPerformanceView(timing: timing) }
                     Divider()
                     RebuildFormRow(label: "Whisper storage") {
                         Stepper("Limit: \(Int(storageLimit)) GB", value: $storageLimit, in: 2...30, step: 1)

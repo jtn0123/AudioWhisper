@@ -17,6 +17,33 @@ private actor PreviewWorkerProbe {
 final class RebuildLivePreviewTests: IsolatedXCTestCase {
     private let sample = RecordingPreviewSnapshot(samples: [Float](repeating: 0.1, count: 16000), sampleRate: 16000)
 
+    func testUnchangedCaptureFramesAreNotRecognizedAgain() async throws {
+        let worker = PreviewWorkerProbe()
+        let preview = RebuildLivePreview(interval: .milliseconds(1)) { _, _ in try await worker.recognize() }
+        var frame: Int64 = 16000
+        preview.start(model: .v2English) {
+            RecordingPreviewSnapshot(samples: self.sample.samples, sampleRate: 16000, endFrame: frame)
+        }
+        try await waitFor { await worker.calls == 1 }
+        await worker.finish("A first draft")
+        try await waitFor { preview.text == "A first draft" }
+        try await Task.sleep(for: .milliseconds(15))
+        let calls = await worker.calls
+        XCTAssertEqual(calls, 1)
+        frame = 32000
+        try await waitFor { await worker.calls == 2 }
+        await worker.finish("A first draft with more words")
+        try await waitFor { preview.text == "A first draft with more words" }
+        XCTAssertEqual(preview.stablePrefix, "A first draft ")
+        preview.stop(clear: true)
+    }
+
+    func testDraftPrefixNeverClaimsTheChangingTailIsFinal() {
+        XCTAssertEqual(RebuildLivePreview.sharedPrefix("one two three", "one two three four"), "one two ")
+        XCTAssertEqual(RebuildLivePreview.sharedPrefix("wrong words", "different words"), "")
+        XCTAssertEqual(RebuildLivePreview.sharedPrefix("", "first words"), "")
+    }
+
     override func tearDown() {
         for key in [AppDefaults.Key.liveTranscriptionPreview, .transcriptionProvider, .enableSmartPaste] {
             AppDefaults.defaults.removeObject(forKey: key.rawValue)

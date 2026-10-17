@@ -10,6 +10,8 @@ struct FocusedTextState: Equatable, Sendable {
     /// Up to `FocusedTextAX.contextLength` characters before the selection.
     /// Empty at the start of the field; `nil` when unreadable.
     var preceding: String?
+    /// A different field in the same app is never a reason to retry a paste.
+    var controlIdentity: UInt?
 }
 
 /// A running count of change notifications from one focused control.
@@ -102,10 +104,12 @@ enum FocusedTextAX {
         guard !AppEnvironment.isRunningTests, AXIsProcessTrusted(),
               let focused = focusedTextElement(pid: pid) else { return nil }
         let value = copy(focused, kAXValueAttribute) as? String
-        return state(
+        var result = state(
             value: value, count: copy(focused, kAXNumberOfCharactersAttribute) as? Int,
             selection: range(focused, kAXSelectedTextRangeAttribute)
         ) { location in preceding(focused, before: location, value: value) }
+        result?.controlIdentity = CFHash(focused)
+        return result
     }
 
     /// What a text control reported, as a state; `nil` when it reported nothing.

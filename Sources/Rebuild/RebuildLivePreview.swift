@@ -8,6 +8,7 @@ import Observation
 @Observable
 final class RebuildLivePreview {
     private(set) var text = ""
+    private(set) var stablePrefix = ""
     private(set) var enabled = false
     private(set) var updating = false
     private(set) var paused = false
@@ -15,11 +16,12 @@ final class RebuildLivePreview {
     @ObservationIgnored private var generation: UUID?
     @ObservationIgnored private var job: Task<Void, Never>?
     @ObservationIgnored private var inferenceInFlight = false
+    @ObservationIgnored private var lastFrame: Int64?
     @ObservationIgnored private let interval: Duration
     @ObservationIgnored private let recognize: @Sendable (RecordingPreviewSnapshot, ParakeetModel) async throws -> String
 
     init(
-        interval: Duration = .seconds(2),
+        interval: Duration = .seconds(1),
         recognize: @escaping @Sendable (RecordingPreviewSnapshot, ParakeetModel) async throws -> String = { audio, model in
             let pcm = try audio.writePCM()
             return try await ParakeetService.shared.transcribePreparedPCM(pcm, repo: model.rawValue)
@@ -33,6 +35,7 @@ final class RebuildLivePreview {
         stop(clear: true)
         enabled = true
         paused = false
+        lastFrame = nil
         message = "Listening for speech…"
         let id = UUID()
         generation = id
@@ -42,8 +45,10 @@ final class RebuildLivePreview {
                 do { try await Task.sleep(for: interval) } catch { return }
                 guard let self, generation == id, !Task.isCancelled else { return }
                 guard !inferenceInFlight, let audio = await snapshot() else { continue }
+                if let frame = audio.endFrame, lastFrame == frame { continue }
                 guard generation == id, !Task.isCancelled else { return }
                 inferenceInFlight = true
+                lastFrame = audio.endFrame
                 updating = true
                 let recognize = self.recognize
                 let worker = Task.detached(priority: .utility) { try await recognize(audio, model) }
@@ -55,7 +60,10 @@ final class RebuildLivePreview {
                 case .success(let draft):
                     let cleaned = SpeechToTextService.cleanTranscriptionText(draft)
                         .trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !cleaned.isEmpty { text = cleaned }
+                    if !cleaned.isEmpty {
+                        stablePrefix = Self.sharedPrefix(text, cleaned)
+                        text = cleaned
+                    }
                 case .failure:
                     paused = true
                     message = "Preview paused. Your recording will still be transcribed."
@@ -72,6 +80,16 @@ final class RebuildLivePreview {
         job?.cancel()
         job = nil
         updating = false
-        if clear { text = ""; enabled = false }
+        if clear { text = ""; stablePrefix = ""; enabled = false }
+    }
+
+    /// Only emphasis, never committed output: a later hypothesis may revise it.
+    static func sharedPrefix(_ before: String, _ after: String) -> String {
+        let old = before.split(whereSeparator: \.isWhitespace)
+        let new = after.split(whereSeparator: \.isWhitespace)
+        var count = 0
+        while count < min(old.count, new.count), old[count] == new[count] { count += 1 }
+        count = min(count, max(0, new.count - 2))
+        return count == 0 ? "" : new.prefix(count).joined(separator: " ") + " "
     }
 }

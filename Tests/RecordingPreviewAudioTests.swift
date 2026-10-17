@@ -9,11 +9,13 @@ final class RecordingPreviewAudioTests: XCTestCase {
         let snapshot = try XCTUnwrap(audio.snapshot())
         XCTAssertEqual(snapshot.samples.count, 96000)
         XCTAssertEqual(snapshot.samples.first, Float(64000) / 160000)
+        XCTAssertEqual(snapshot.endFrame, 160000)
         audio.clear()
         XCTAssertNil(audio.snapshot())
         audio.configure(enabled: true, sampleRate: 16000)
         audio.append([Float](repeating: 0.2, count: 16000))
         XCTAssertEqual(audio.snapshot()?.samples.first, 0.2)
+        XCTAssertEqual(audio.snapshot()?.endFrame, 16000)
     }
 
     func testDisabledSilentAndTooShortCapturesNeverReachInference() {

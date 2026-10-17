@@ -8,6 +8,7 @@ struct RebuildSetupStatus {
 
 struct RebuildModelsView: View {
     @Bindable var session: RebuildSession
+    var recorder: AudioEngineRecorder?
     @AppDefault(\.transcriptionProvider) private var provider
     @AppDefault(\.selectedWhisperModel) private var whisper
     @AppDefault(\.selectedParakeetModel) private var parakeet
@@ -18,6 +19,7 @@ struct RebuildModelsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 microphoneStep
                 voiceModelStep
+                RebuildPracticeView(session: session, recorder: recorder)
                 readinessRow
                 storageNote
             }

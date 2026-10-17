@@ -54,6 +54,7 @@ struct RebuildRecorderView: View {
             Circle().fill(session.phase == .recording && !silent ? RebuildTheme.recording : RebuildTheme.warning)
                 .frame(width: 7, height: 7).accessibilityHidden(true)
             Text(statusTitle)
+                .rebuildAnnouncement(statusTitle)
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
@@ -92,11 +93,13 @@ struct RebuildLivePreviewView: View {
                 Spacer()
                 Text(preview.updating ? "Updating…" : "Recent speech · draft").font(.system(size: 10.5))
             }.foregroundStyle(RebuildTheme.secondaryText)
-            Text(preview.text.isEmpty ? preview.message : preview.text)
+            draftText
                 .font(.system(size: 13)).lineSpacing(2)
                 .foregroundStyle(preview.text.isEmpty ? RebuildTheme.secondaryText : Color.primary)
                 .frame(maxWidth: .infinity, minHeight: 55, maxHeight: 55, alignment: .topLeading)
                 .lineLimit(3).truncationMode(.head).accessibilityLabel("Live transcript draft")
+                .accessibilityValue(preview.text.isEmpty ? preview.message : preview.text)
+                .transaction { $0.animation = nil }
             if !preview.text.isEmpty, preview.paused {
                 Text(preview.message).font(.system(size: 11)).foregroundStyle(RebuildTheme.warning)
             }
@@ -104,5 +107,12 @@ struct RebuildLivePreviewView: View {
         .padding(10)
         .background(RebuildTheme.surfaceSunken, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+
+    private var draftText: Text {
+        guard !preview.text.isEmpty else { return Text(preview.message) }
+        let prefix = preview.stablePrefix
+        guard preview.text.hasPrefix(prefix) else { return Text(preview.text) }
+        return Text(prefix) + Text(String(preview.text.dropFirst(prefix.count))).foregroundColor(RebuildTheme.secondaryText)
     }
 }

@@ -1,0 +1,30 @@
+{
+  "cleanup" : "off",
+  "fixture" : "speech_sample.wav",
+  "history" : "off",
+  "measurements" : [
+    {
+      "delivery_ms" : 1984.4864583283197,
+      "processing_ms" : 1984.4007916690316,
+      "run" : "cold"
+    },
+    {
+      "delivery_ms" : 64.05162499868311,
+      "processing_ms" : 64.016083313617855,
+      "run" : "warm-1"
+    },
+    {
+      "delivery_ms" : 55.505874974187464,
+      "processing_ms" : 55.476541660027578,
+      "run" : "warm-2"
+    }
+  ],
+  "model" : "mlx-community\/parakeet-tdt-0.6b-v2",
+  "not_measured" : [
+    "physical microphone",
+    "hotkey dispatch",
+    "external app paste",
+    "writing cleanup"
+  ],
+  "scope" : "Real pipeline, cached offline model, file validation\/conversion and clipboard callback"
+}

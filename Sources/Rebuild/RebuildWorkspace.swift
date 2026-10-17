@@ -18,7 +18,7 @@ extension RebuildPage {
         switch self {
         case .record: return "Speak naturally. Your text is copied when transcription finishes."
         case .library: return "Saved transcripts stay on this Mac. Saving is optional."
-        case .models: return "Two essentials: microphone access and a voice model."
+        case .models: return "Set up your microphone and model, then try a practice dictation."
         case .writing: return "Your vocabulary, formatting rules and optional on-device cleanup."
         case .preferences: return "Shortcuts, delivery, privacy and appearance."
         }
@@ -81,7 +81,7 @@ struct RebuildRootView: View {
                 session: session, recorder: recorder, importAudio: importAudio,
                 configureShortcut: { navigation.selection = .preferences }, readShortcut: readShortcut)
         case .library: RebuildLibraryView(history: history)
-        case .models: RebuildModelsView(session: session)
+        case .models: RebuildModelsView(session: session, recorder: recorder)
         case .writing: RebuildWritingView(session: session)
         case .preferences: RebuildPreferencesView(session: session)
         }
@@ -448,55 +448,6 @@ struct RebuildRecordView: View {
             }
             .padding(12)
             .allowsHitTesting(false)
-    }
-}
-
-/// The latest transcript, editable, with copy and original-text recovery.
-struct RebuildTranscriptCard: View {
-    @Bindable var session: RebuildSession
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("Transcript").font(.system(size: 13, weight: .semibold)).accessibilityAddTraits(.isHeader)
-                if !session.transcript.isEmpty {
-                    Text("\(UsageMetricsStore.estimatedWordCount(for: session.transcript)) words")
-                        .font(.system(size: 12)).foregroundStyle(RebuildTheme.secondaryText)
-                }
-                Spacer()
-                if !session.transcript.isEmpty {
-                    if session.canUseOriginal {
-                        Button("Use original", action: session.useOriginalTranscript)
-                            .help("Restore and copy your words before writing cleanup")
-                    }
-                    Button("Copy text") { PasteManager.copyToClipboard(session.transcript) }
-                }
-            }
-            if session.phase.isBusy {
-                RebuildContentState(
-                    title: session.phase == .recording ? "Listening…" : "Preparing your transcript…",
-                    symbol: "waveform", detail: session.phase == .recording
-                        ? "Stop when you’re done. Your final transcript will appear here."
-                        : "Processing on this Mac. You can cancel without delivering any text.", busy: true)
-            } else if session.transcript.isEmpty {
-                RebuildContentState(
-                    title: session.phase == .failed ? "No transcript yet" : "A little less typing.",
-                    symbol: session.phase == .failed ? "arrow.clockwise" : "text.bubble",
-                    detail: session.phase == .failed
-                        ? "Your recording hasn’t been delivered. Follow the recovery action above, or start again."
-                        : "Your next transcript appears here and is copied automatically. Saving to the library is optional.")
-            } else {
-                TextEditor(text: $session.transcript).font(.system(size: 14)).scrollContentBackground(.hidden)
-                    .frame(minHeight: 110, maxHeight: 240)
-                    .accessibilityLabel("Your transcript")
-                if let original = session.originalTranscript, original != session.transcript {
-                    DisclosureGroup("Compare with original") {
-                        Text(original).font(.system(size: 14)).textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 6)
-                    }.disabled(session.phase.isBusy)
-                }
-            }
-        }.rebuildCard()
     }
 }
 
