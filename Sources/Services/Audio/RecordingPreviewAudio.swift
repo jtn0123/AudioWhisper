@@ -1,4 +1,4 @@
-import AVFoundation
+import AVFAudio
 import Foundation
 
 /// A bounded copy of recent audio, independent of the final capture file.

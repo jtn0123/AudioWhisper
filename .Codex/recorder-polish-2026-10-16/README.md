@@ -69,6 +69,16 @@ with at most two nested closures. Recorder/setup, capture configuration, preview
 ownership and delivery integration checks passed: 31 cases, zero failures.
 Strict lint and the native capture run also passed after this refactor.
 
+## Analyzer follow-up
+
+CI identified the preview audio file's unused `AVFoundation` umbrella import.
+It now imports `AVFAudio`, which defines the audio file, format and buffer types
+used by PCM conversion. With CI's pinned SwiftLint 0.65.0, compiler-backed
+`unused_import` analysis of that file reports zero findings and strict lint
+reports zero violations across 481 files. The Xcode test build and all eight
+preview/audio tests pass. This import-only change leaves the captured views
+unchanged; the source hash manifest includes the corrected import.
+
 ## Visual comparison
 
 | Before | After |
