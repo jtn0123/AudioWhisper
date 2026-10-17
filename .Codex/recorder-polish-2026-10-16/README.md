@@ -60,6 +60,15 @@ LIVE_PREVIEW_PYTHON="$HOME/Library/Application Support/AudioWhisper Rebuild/pyth
 swift test --filter LivePreviewEndToEndTests
 ```
 
+## Sonar follow-up
+
+The initial gate passed at 93.2% coverage on new code. Four maintainability
+findings were addressed by extracting nested conditionals, documenting the
+recorder-free preview default, and moving TaskLocal propagation into a helper
+with at most two nested closures. Recorder/setup, capture configuration, preview
+ownership and delivery integration checks passed: 31 cases, zero failures.
+Strict lint and the native capture run also passed after this refactor.
+
 ## Visual comparison
 
 | Before | After |

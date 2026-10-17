@@ -14,7 +14,9 @@ struct RebuildSessionServices {
     var startAsync: ((UUID) async -> Bool)?
     var saveResult: ((TranscriptionResult, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void)?
     var recordedSignal: () -> RecordingSignalMeter? = { nil }
-    var configureLivePreview: (Bool) -> Void = { _ in }
+    var configureLivePreview: (Bool) -> Void = { _ in
+        // Services without a live recorder have no preview audio buffer to configure.
+    }
     var previewSnapshot: () async -> RecordingPreviewSnapshot? = { nil }
     /// Present when the user wants their clipboard back after Smart Paste.
     var clipboardKeeper: () -> ClipboardKeeper? = { AppDefaults.restoreClipboardAfterPaste ? ClipboardKeeper() : nil }
@@ -35,11 +37,7 @@ struct RebuildSessionServices {
                 return recorder.startRecording(sessionID: id)
             }, stop: { recorder.stopRecording() }, cancel: { recorder.cancelRecording() },
             transcribe: { url, config, id in
-                try await TranscriptionProgress.$sessionID.withValue(id) {
-                    try await TranscriptionProgress.$pipelineConfig.withValue(config) {
-                        try await pipeline.transcribe(audioURL: url, config: config)
-                    }
-                }
+                try await runTranscription(url, config: config, id: id, pipeline: pipeline)
             },
             copy: copy ?? PasteManager.copyToClipboard,
             save: { text, config, duration in
@@ -64,6 +62,16 @@ struct RebuildSessionServices {
                 return await Task.detached(priority: .utility) { buffer.snapshot() }.value
             }
         )
+    }
+
+    private static func runTranscription(
+        _ url: URL, config: TranscriptionPipelineConfig, id: UUID, pipeline: TranscriptionPipeline
+    ) async throws -> TranscriptionResult {
+        try await TranscriptionProgress.$sessionID.withValue(id) {
+            try await TranscriptionProgress.$pipelineConfig.withValue(config) {
+                try await pipeline.transcribe(audioURL: url, config: config)
+            }
+        }
     }
 
     private static func persist(

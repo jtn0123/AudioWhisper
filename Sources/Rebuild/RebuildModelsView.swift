@@ -48,12 +48,17 @@ struct RebuildModelsView: View {
 
     private var microphoneStep: some View {
         let granted = session.readiness.microphoneGranted
+        let status: String
+        if session.readiness.checking {
+            status = "Checking microphone access…"
+        } else {
+            status = granted ? "Microphone allowed" : "Microphone access needed"
+        }
         return VStack(alignment: .leading, spacing: 10) {
             RebuildStepHeader(number: 1, title: "Microphone access", done: granted)
             HStack(spacing: 10) {
                 RebuildStatusLabel(
-                    text: session.readiness.checking ? "Checking microphone access…"
-                        : granted ? "Microphone allowed" : "Microphone access needed",
+                    text: status,
                     tone: granted ? .success : .warning, busy: session.isRequestingMicrophone || session.readiness.checking)
                 Spacer()
                 if !granted {

@@ -9,6 +9,10 @@ struct RebuildRecorderView: View {
     static let silentInputMessage = "No sound from the microphone"
     static func size(preview: Bool) -> CGSize { CGSize(width: 380, height: preview ? 350 : 230) }
     private var silent: Bool { session.phase == .recording && recorder.inputAppearsSilent }
+    private var statusTitle: String {
+        guard session.phase == .recording else { return "Transcribing…" }
+        return silent ? Self.silentInputMessage : "Recording"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -49,7 +53,7 @@ struct RebuildRecorderView: View {
         HStack(spacing: 8) {
             Circle().fill(session.phase == .recording && !silent ? RebuildTheme.recording : RebuildTheme.warning)
                 .frame(width: 7, height: 7).accessibilityHidden(true)
-            Text(session.phase == .recording ? (silent ? Self.silentInputMessage : "Recording") : "Transcribing…")
+            Text(statusTitle)
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
