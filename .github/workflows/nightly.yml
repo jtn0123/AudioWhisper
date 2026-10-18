@@ -14,6 +14,11 @@ on:
     - cron: '0 7 * * *'
   workflow_dispatch:      # so it can be run on demand without waiting a day
     inputs:
+      runner_image:
+        description: Compare Core ML runtimes; the scheduled acceptance runner remains macos-15
+        type: choice
+        options: [macos-15, macos-26]
+        default: macos-15
       engines:
         description: Run the complete suite or isolate Whisper recognition diagnostics
         type: choice
@@ -27,7 +32,7 @@ on:
 jobs:
   parakeet-e2e:
     name: Local engines (Parakeet v2/v3, Whisper, lightweight MLX)
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner_image || 'macos-15' }}
     # Generous: a cold run downloads the model and builds the uv environment.
     timeout-minutes: 90
 
@@ -47,12 +52,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
-          restore-keys: ${{ runner.os }}-spm-
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-spm-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-spm-
 
       # The model is the expensive part. Keyed on the pinned repo id so a model
       # change busts the cache.
       - name: Cache HuggingFace models
+        if: inputs.engines != 'whisper'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
@@ -67,11 +73,12 @@ jobs:
           key: whisper-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
 
       - name: Cache uv Python environment
+        if: inputs.engines != 'whisper'
         uses: actions/cache@v4
         with:
           path: ~/Library/Application Support/AudioWhisper Rebuild/python_project
-          key: uv-rebuild-${{ runner.os }}-${{ hashFiles('Sources/Resources/uv.lock') }}
-          restore-keys: uv-rebuild-${{ runner.os }}-
+          key: uv-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-${{ hashFiles('Sources/Resources/uv.lock') }}
+          restore-keys: uv-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-
 
       - name: Prepare verified uv
         run: |

@@ -19,6 +19,25 @@ final class LocalEngineFixtureTests: XCTestCase {
         try await diagnoseCPUOnlyWhisper(audio: audio)
     }
 
+    func testWhisperGPUAllowedEncoderTranscribesSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(
+            modelFolder: path,
+            computeOptions: ModelComputeOptions(
+                melCompute: .cpuOnly, audioEncoderCompute: .cpuAndGPU, textDecoderCompute: .cpuOnly),
+            download: false))
+        print("REAL_WHISPER_COMPUTE available=\(MLModel.availableComputeDevices)")
+        try await WhisperFixtureDiagnostics.describeFeatures(engine, audio: audio)
+        let results = try await engine.transcribe(audioPath: audio.path)
+        let text = results.map { $0.text }.joined(separator: " ")
+        print("REAL_WHISPER_GPU_ALLOWED transcript=\(text)")
+        assertSpeechFixture(text)
+    }
+
     func testWhisperCompactMelInputTranscribesSpeech() async throws {
         try requireRealEngines()
         let audio = try XCTUnwrap(Bundle.module.url(
