@@ -61,14 +61,13 @@ struct RebuildLibraryView: View {
     // MARK: Parts
 
     private var historyOff: some View {
-        ContentUnavailableView {
-            Label("Your library is off", systemImage: "text.book.closed")
-        } description: {
-            Text("Recordings still become text and reach your clipboard. Turn on saving to keep future transcripts here.")
-        } actions: {
+        RebuildContentState(
+            title: "Your library is off", symbol: "text.book.closed",
+            detail: "Recordings still become text and reach your clipboard. Turn on saving to keep future transcripts here."
+        ) {
             Button("Save future transcripts") { historyEnabled = true }.buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }.rebuildCard(padding: 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var toolbar: some View {
@@ -114,21 +113,18 @@ struct RebuildLibraryView: View {
 
     @ViewBuilder private var content: some View {
         if !library.loaded && library.records.isEmpty && library.error == nil {
-            ProgressView("Loading your library…").controlSize(.small)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if library.records.isEmpty && !library.loading {
+            RebuildContentState(title: "Loading your library…", symbol: "text.book.closed",
+                                detail: "Reading saved transcripts on this Mac.", busy: true).rebuildCard(padding: 24)
+        } else if library.records.isEmpty && !library.loading && library.error == nil {
             if library.search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                ContentUnavailableView(
-                    "Room for your next idea", systemImage: "text.book.closed",
-                    description: Text("Saved transcripts appear here after your next recording."))
+                RebuildContentState(title: "Room for your next idea", symbol: "text.book.closed",
+                                    detail: "Saved transcripts appear here after your next recording.")
+                    .rebuildCard(padding: 24)
             } else {
-                ContentUnavailableView {
-                    Label("No matching transcripts", systemImage: "magnifyingglass")
-                } description: {
-                    Text("Try another search, or clear it to see your saved transcripts.")
-                } actions: {
+                RebuildContentState(title: "No matching transcripts", symbol: "magnifyingglass",
+                                    detail: "Try another search, or clear it to see your saved transcripts.") {
                     Button("Clear search") { library.search = "" }
-                }
+                }.rebuildCard(padding: 24)
             }
         } else {
             ScrollView {
@@ -138,11 +134,17 @@ struct RebuildLibraryView: View {
                             record: record, deleteDisabled: library.exporting,
                             expanded: Binding(
                                 get: { library.expanded.contains(record.id) },
-                                set: { if $0 { library.expanded.insert(record.id) } else { library.expanded.remove(record.id) } }),
+                                set: { value in
+                                    if value { library.expanded.insert(record.id) } else { library.expanded.remove(record.id) }
+                                }),
                             showOriginal: Binding(
                                 get: { library.showingOriginal.contains(record.id) },
                                 set: {
-                                    if $0 { library.showingOriginal.insert(record.id) } else { library.showingOriginal.remove(record.id) }
+                                    if $0 {
+                                        library.showingOriginal.insert(record.id)
+                                    } else {
+                                        library.showingOriginal.remove(record.id)
+                                    }
                                 })) {
                             library.pendingDelete = record
                             library.confirmDelete = true

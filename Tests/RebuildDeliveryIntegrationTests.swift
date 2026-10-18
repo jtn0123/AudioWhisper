@@ -54,7 +54,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         }
         makeSession()
         try await record()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(clipboard.string(forType: .string), "hello world")
         let records = try await history.fetchAllRecords()
         let record = try XCTUnwrap(records.first)
@@ -74,7 +74,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
     func testImportCarriesValidatedDurationIntoHistoryAndUsage() async throws {
         makeSession()
         session.importAudio(audio)
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         let records = try await history.fetchAllRecords()
         // AudioValidator's test fixture reports one second; native acceptance
         // separately checks the actual speech_sample.wav duration.
@@ -90,7 +90,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         try await waitFor { self.session.phase == .failed }
         speech.result = .success("retried import")
         session.retry()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         let records = try await history.fetchAllRecords()
         XCTAssertEqual(try XCTUnwrap(records.first?.duration), 1, accuracy: 0.001)
         XCTAssertEqual(usage.snapshot.totalDuration, 1, accuracy: 0.001)
@@ -103,7 +103,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         AppDefaults.semanticCorrectionMode = .localMLX
         makeSession(correctionFails: false)
         try await record()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(clipboard.string(forType: .string), "Hello world.")
         let records = try await history.fetchAllRecords()
         XCTAssertEqual(records.first?.text, "Hello world.")
@@ -115,7 +115,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         AppDefaults.semanticCorrectionMode = .localMLX
         makeSession(correctionFails: true)
         try await record()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(clipboard.string(forType: .string), "hello world")
         let records = try await history.fetchAllRecords()
         XCTAssertEqual(records.first?.text, "hello world")
@@ -129,7 +129,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         var deliveries = 0
         session.didDeliver = { deliveries += 1 }
         try await record()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(session.transcript, "Hello world.")
         XCTAssertEqual(session.originalTranscript, "hello world")
         let records = try await history.fetchAllRecords()
@@ -149,7 +149,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         AppDefaults.transcriptionHistoryEnabled = false
         makeSession()
         try await record()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(session.originalTranscript, "hello world")
         let records = try await history.fetchAllRecords()
         XCTAssertTrue(records.isEmpty)
@@ -159,7 +159,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         history.modelContainer = nil
         makeSession()
         try await record()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(clipboard.string(forType: .string), "hello world")
         XCTAssertEqual(usage.snapshot.totalSessions, 1)
         XCTAssertTrue(session.notice?.contains("history could not be saved") == true)
@@ -184,7 +184,7 @@ final class RebuildDeliveryIntegrationTests: IsolatedXCTestCase {
         XCTAssertNil(clipboard.string(forType: .string))
         speech.result = .success("retried words")
         session.retry()
-        try await waitFor { self.session.phase == .completed }
+        try await waitFor { self.session.phase == .completed && self.session.pendingHistoryWrites == 0 }
         XCTAssertEqual(clipboard.string(forType: .string), "retried words")
         let records = try await history.fetchAllRecords()
         XCTAssertEqual(records.map(\.text), ["retried words"])

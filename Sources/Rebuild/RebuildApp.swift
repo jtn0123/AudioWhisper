@@ -120,6 +120,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             overlay = RebuildWindowFactory.recorder(session: session, recorder: recorder)
         }
         guard let overlay else { return }
+        overlay.setContentSize(RebuildRecorderView.size(preview: session.livePreview.enabled))
         RecordingWindowStyle.moveToActiveScreen(overlay)
         overlay.orderFrontRegardless()
     }
@@ -178,6 +179,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         recorder.warmMicrophone.coolDown()
         holdMonitor?.stop()
         Task {
+            await session.waitForHistoryWrites()
             await MLDaemonManager.shared.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)
         }

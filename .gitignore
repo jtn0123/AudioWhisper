@@ -157,3 +157,6 @@ analyze.stderr.txt
 # Claude Code: per-user settings and the worktrees it creates inside the repo
 .claude/settings.local.json
 .claude/worktrees/
+.analyzer-cache/
+benchmark_files.txt
+benchmark_rules.txt

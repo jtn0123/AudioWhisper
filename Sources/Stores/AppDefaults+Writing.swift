@@ -3,6 +3,12 @@ import Foundation
 // MARK: - Writing Settings
 
 extension AppDefaults {
+    /// Display-only rolling Parakeet drafts. Off until explicitly enabled.
+    static var liveTranscriptionPreview: Bool {
+        get { bool(.liveTranscriptionPreview, default: false) }
+        set { defaults.set(newValue, forKey: Key.liveTranscriptionPreview.rawValue) }
+    }
+
     /// The user's vocabulary as typed: one term or `heard -> written` per line.
     /// Parsed by `CustomVocabulary(parsing:)`.
     static var customVocabulary: String {

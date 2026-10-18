@@ -2,7 +2,7 @@ import ApplicationServices
 import Foundation
 
 /// What Accessibility exposes about the focused text control of one app.
-struct FocusedTextState: Equatable, Sendable {
+struct FocusedTextState: Equatable {
     /// Characters in the control, when it reports a value or a count.
     var length: Int?
     /// The selection, or the insertion point when its length is 0.
@@ -10,6 +10,17 @@ struct FocusedTextState: Equatable, Sendable {
     /// Up to `FocusedTextAX.contextLength` characters before the selection.
     /// Empty at the start of the field; `nil` when unreadable.
     var preceding: String?
+    /// A different field in the same app is never a reason to retry a paste.
+    var controlIdentity: FocusedTextControlIdentity?
+}
+
+/// Retains the Accessibility reference and compares the control itself, not its hash.
+struct FocusedTextControlIdentity: Equatable {
+    private let reference: CFTypeRef
+
+    init(_ reference: CFTypeRef) { self.reference = reference }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { CFEqual(lhs.reference, rhs.reference) }
 }
 
 /// A running count of change notifications from one focused control.
@@ -102,10 +113,12 @@ enum FocusedTextAX {
         guard !AppEnvironment.isRunningTests, AXIsProcessTrusted(),
               let focused = focusedTextElement(pid: pid) else { return nil }
         let value = copy(focused, kAXValueAttribute) as? String
-        return state(
+        var result = state(
             value: value, count: copy(focused, kAXNumberOfCharactersAttribute) as? Int,
             selection: range(focused, kAXSelectedTextRangeAttribute)
         ) { location in preceding(focused, before: location, value: value) }
+        result?.controlIdentity = FocusedTextControlIdentity(focused)
+        return result
     }
 
     /// What a text control reported, as a state; `nil` when it reported nothing.

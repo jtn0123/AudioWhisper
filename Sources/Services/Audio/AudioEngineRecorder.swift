@@ -25,6 +25,9 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     private(set) var lastRecordingDuration: TimeInterval?
     var recordingSessionID: UUID?
     private(set) var lastStartError: String?
+    var livePreviewEnabled = false
+    let previewAudio = RecordingPreviewAudio()
+    private(set) var activeMicrophoneName: String?
     /// Loudness of the last stopped capture; `nil` after a cancel.
     private(set) var lastRecordingSignal: RecordingSignalMeter?
 
@@ -270,6 +273,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     // interruption surfaced through `.recordingStartFailed`.
 
     private func clearVisualizationData() {
+        previewAudio.clear()
         audioLevel = 0.0
         waveformSamples = []
         frequencyBands = Array(repeating: 0, count: 8)
@@ -308,6 +312,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
         // Write to file (on audio thread for performance)
         writeToFile(buffer, frames: frameLength)
+        previewAudio.append(monoSamples)
 
         // Use lock for thread-safe sampleBuffer access (called from audio thread).
         // `SampleRingBuffer` keeps the most recent 2048 samples (~128ms at 16kHz)
@@ -447,6 +452,7 @@ extension AudioEngineRecorder {
         do {
             let engine = prepared.engine
             let inputFormat = prepared.format
+            activeMicrophoneName = prepared.microphoneName
 
             // Map the FFT processor to the device's actual sample rate. The tap runs
             // at the device rate (often 48 kHz), not the 44.1 kHz default — without
@@ -499,6 +505,7 @@ extension AudioEngineRecorder {
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
         audioFile = try AVAudioFile(forWriting: url, settings: outputSettings)
+        previewAudio.configure(enabled: livePreviewEnabled, sampleRate: format.sampleRate)
         resetCaptureCounters()
     }
 
