@@ -33,6 +33,10 @@ on:
         description: Download Whisper assets afresh to investigate cache-dependent inference failures
         type: boolean
         default: false
+      rebuild_encoder:
+        description: Isolate recompilation of the embedded encoder specification; production inference is unchanged
+        type: boolean
+        default: false
 
 jobs:
   parakeet-e2e:
@@ -118,12 +122,14 @@ jobs:
           RUN_E2E: "1"
           OS_ACTIVITY_MODE: disable
           ENGINE_SUITE: ${{ inputs.engines || 'all' }}
+          REBUILD_WHISPER_ENCODER: ${{ inputs.rebuild_encoder || false }}
         run: |
           # RUN_E2E=1 is what lifts the XCTSkipUnless gate in
           # Tests/Integration/ParakeetEndToEndTests.swift.
           set -o pipefail
           filter="ParakeetEndToEndTests|LocalEngineFixtureTests"
           if [ "$ENGINE_SUITE" = whisper ]; then filter="LocalEngineFixtureTests/testWhisper"; fi
+          if [ "$REBUILD_WHISPER_ENCODER" = true ]; then filter="LocalEngineFixtureTests/testWhisperRecompiledEmbeddedEncoder"; fi
           swift test --no-parallel -Xswiftc -DTESTING \
             --filter "$filter" 2>&1 | tee real-engine-tests.log
 
