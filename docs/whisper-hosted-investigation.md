@@ -46,16 +46,34 @@ On hosted macOS 26, mel matches exactly and encoder RMS error is 0.042 rather th
 0.86. All complete recognition paths produce the expected sentence. The encoder
 is not numerically identical to the local reference (maximum error 4.95).
 
-This isolates the observed failure to encoder inference in the macOS 15 hosted
-environment. It does not yet distinguish OS/runtime from compiler differences or
-establish whether physical Macs running macOS 15 are affected.
+## Matched toolchain at `dc7e1dd`
+
+Both fresh-model runs below use Xcode 26.3 build `17C529`, with Swift 6.2.4
+(`swiftlang-6.2.4.1.4`, `clang-1700.6.4.2`):
+
+- [macOS 15.7.9](https://github.com/jtn0123/AudioWhisper/actions/runs/39158979383):
+  five Whisper tests fail; reference-encoded decoder replay passes.
+- [macOS 26.6.2](https://github.com/jtn0123/AudioWhisper/actions/runs/39158981078):
+  all six Whisper tests pass.
+
+All 14 compared model-file fingerprints still match. The encoder comparison and
+replay results reproduce the earlier environment difference. This rules out the
+compiler-version difference in these runs and isolates the measured failure to
+encoder inference in the macOS 15 hosted environment. It does not establish
+whether physical Macs running macOS 15 are affected or identify a production fix.
+
+The [complete macOS 26 real-engine test step](https://github.com/jtn0123/AudioWhisper/actions/runs/39161164830)
+also passes all nine fixtures: six Whisper cases, actual MLX correction and two
+Parakeet cases. These include Parakeet v2/v3 warm reuse, switching back to v2, and
+Spanish recognition without English translation. Model caching is enabled in
+that run; successful restored-cache recognition still requires verification.
 
 ## Remaining acceptance
 
-- Compare both hosted OS images with the same Xcode 26.3 build. The manual nightly
-  input pins Xcode and separates its Swift build cache from other toolchains.
 - Verify successful complete recognition with both fresh and restored model
-  caches, retaining the fixture assertions.
-- Preserve the real Parakeet v2/v3 and MLX inference checks.
+  caches, retaining the fixture assertions. Fresh-model macOS 26 recognition is
+  established; restored-cache acceptance is pending.
+- Retain the real Parakeet v2/v3 and MLX inference checks, which pass on macOS 26
+  with the matched Xcode toolchain.
 - Resolve the supported-OS behavior before treating this as a release fix. Do not
   remove the failing macOS 15 case or raise the app's minimum OS to hide it.
