@@ -14,6 +14,11 @@ on:
     - cron: '0 7 * * *'
   workflow_dispatch:      # so it can be run on demand without waiting a day
     inputs:
+      engines:
+        description: Run the complete suite or isolate Whisper recognition diagnostics
+        type: choice
+        options: [all, whisper]
+        default: all
       cold_whisper:
         description: Download Whisper assets afresh to investigate cache-dependent inference failures
         type: boolean
@@ -34,7 +39,7 @@ jobs:
         run: |
           # Newest Xcode: KeyboardShortcuts 3.x needs swift-tools-version 6.2,
           # which Xcode 16 cannot resolve. See ci.yml for the full note.
-          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
+          latest=$(find /Applications -maxdepth 1 -name 'Xcode_*.app' -print | sort -V | tail -n 1)
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
           swift --version
 
@@ -91,12 +96,15 @@ jobs:
         env:
           RUN_E2E: "1"
           OS_ACTIVITY_MODE: disable
+          ENGINE_SUITE: ${{ inputs.engines || 'all' }}
         run: |
           # RUN_E2E=1 is what lifts the XCTSkipUnless gate in
           # Tests/Integration/ParakeetEndToEndTests.swift.
           set -o pipefail
+          filter="ParakeetEndToEndTests|LocalEngineFixtureTests"
+          if [ "$ENGINE_SUITE" = whisper ]; then filter="LocalEngineFixtureTests/testWhisper"; fi
           swift test --no-parallel -Xswiftc -DTESTING \
-            --filter "ParakeetEndToEndTests|LocalEngineFixtureTests" 2>&1 | tee real-engine-tests.log
+            --filter "$filter" 2>&1 | tee real-engine-tests.log
 
       # CurrentWritingModelFixtureTests is run with scripts/test-current-models.sh
       # on a provisioned >=32 GB Apple Silicon Mac. The standard hosted runner

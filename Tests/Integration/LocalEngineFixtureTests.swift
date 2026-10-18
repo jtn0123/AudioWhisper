@@ -1,4 +1,5 @@
 import XCTest
+import CryptoKit
 import WhisperKit
 @testable import AudioWhisper
 
@@ -16,7 +17,9 @@ final class LocalEngineFixtureTests: XCTestCase {
         ))
         let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audio.path)
         let peak = samples.map { abs($0) }.max() ?? 0
-        print("REAL_WHISPER_AUDIO samples=\(samples.count) peak=\(peak)")
+        let fingerprint = samples.withUnsafeBytes { SHA256.hash(data: Data($0)).map { String(format: "%02x", $0) }.joined() }
+        print("REAL_WHISPER_AUDIO samples=\(samples.count) peak=\(peak) sha256=\(fingerprint)")
+        print("REAL_WHISPER_ENV os=\(ProcessInfo.processInfo.operatingSystemVersionString) device=\(WhisperKit.deviceName())")
         XCTAssertGreaterThan(samples.count, 16_000, "The real speech fixture must contain decoded audio")
         XCTAssertGreaterThan(peak, 0.01, "The real speech fixture must not decode as silence")
         try await ModelManager.shared.downloadModel(.base)
@@ -25,7 +28,7 @@ final class LocalEngineFixtureTests: XCTestCase {
             let start = ContinuousClock.now
             let text = try await service.transcribe(audioFileURL: audio, model: .base)
             let words = text.lowercased()
-            XCTAssertTrue(["quick", "brown", "fox", "lazy", "dog"].filter(words.contains).count >= 4, text)
+            assertSpeechFixture(text)
             print("REAL_WHISPER run=\(run) elapsed=\(start.duration(to: .now)) transcript=\(text)")
             if run == 0 && !words.contains("fox") {
                 try await diagnoseCPUOnlyWhisper(audio: audio)
@@ -45,10 +48,15 @@ final class LocalEngineFixtureTests: XCTestCase {
             verbose: true, logLevel: .debug
         )
         let reference = try await WhisperKit(config)
+        try WhisperFixtureDiagnostics.describe(reference)
+        reference.textDecoder.logitsFilters = [WhisperFixtureDiagnostics()]
         let results = try await reference.transcribe(audioPath: audio.path)
         for result in results {
             print("REAL_WHISPER_CPU_ONLY language=\(result.language) text=\(result.text)")
             print("REAL_WHISPER_CPU_ONLY tokens=\(result.segments.flatMap { $0.tokens })")
+            for segment in result.segments {
+                print("REAL_WHISPER_SEGMENT temperature=\(segment.temperature) logprob=\(segment.avgLogprob) noSpeech=\(segment.noSpeechProb)")
+            }
         }
     }
 
@@ -59,6 +67,8 @@ final class LocalEngineFixtureTests: XCTestCase {
         try await ModelManager.shared.downloadModel(.base)
         let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
         let engine = try await WhisperKit(WhisperKitConfig(modelFolder: path, download: false))
+        try WhisperFixtureDiagnostics.describe(engine)
+        engine.textDecoder.logitsFilters = [WhisperFixtureDiagnostics()]
         var options = DecodingOptions()
         options.task = .transcribe
         options.language = nil
@@ -70,9 +80,16 @@ final class LocalEngineFixtureTests: XCTestCase {
             audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental), decodeOptions: options)
         let reference = full.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
         let actual = incremental.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
-        XCTAssertFalse(reference.isEmpty)
+        assertSpeechFixture(reference)
+        assertSpeechFixture(actual)
         XCTAssertEqual(actual, reference)
         print("REAL_WHISPER_LOADING_PARITY transcript=\(actual)")
+    }
+
+    private func assertSpeechFixture(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let words = Set(text.lowercased().split { !$0.isLetter }.map(String.init))
+        XCTAssertGreaterThanOrEqual(words.intersection(["quick", "brown", "fox", "lazy", "dog"]).count,
+                                    4, text, file: file, line: line)
     }
 
     func testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse() async throws {
