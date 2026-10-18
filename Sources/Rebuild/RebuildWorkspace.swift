@@ -220,6 +220,7 @@ struct RebuildRecordView: View {
     var configureShortcut: () -> Void = {}
     private let readShortcut: @MainActor () -> String?
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
+    @AppDefault(\.savedDictationModes) private var modes
     @State private var shortcut: String?
     @State private var dropTargeted = false
 
@@ -241,6 +242,7 @@ struct RebuildRecordView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                if !modes.isEmpty { RebuildModePicker(session: session).frame(maxWidth: 360) }
                 setupBanner
                 recorderCard
                 if session.livePreview.enabled && session.phase.isBusy {

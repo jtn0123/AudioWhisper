@@ -1,6 +1,6 @@
 # Product and release tracker
 
-Last checked: 2026-10-18 against `e494a0fa54235849f889a7d9758bdd7091042cb8`.
+Last checked: 2026-10-18 against `68fee37` and the open reliability work below.
 Keep the IDs stable. Mark an item complete only when its acceptance evidence is
 linked here. Proposed product work is not an implementation commitment.
 
@@ -8,9 +8,9 @@ linked here. Proposed product work is not an implementation commitment.
 
 | ID | Priority | Status | Work and completion criteria |
 |---|---|---|---|
-| R1 | First | Open | **Whisper recognition on the hosted runner.** [Nightly 39125168286](https://github.com/jtn0123/AudioWhisper/actions/runs/39125168286) still returns `>>` on cold/warm calls and the CPU-only diagnostic. Parakeet and MLX pass. Close after unchanged meaningful-speech assertions pass with both fresh and restored model caches. Loading parity must check expected speech content as well as equality: two equal `>>` results currently pass that parity test. Preserve the other engine passes. |
+| R1 | First | Open | **Whisper recognition on the hosted runner.** [Nightly 39125168286](https://github.com/jtn0123/AudioWhisper/actions/runs/39125168286) still returns `>>` on cold/warm calls and the CPU-only diagnostic. Parakeet and MLX pass. Close after unchanged meaningful-speech assertions pass with both fresh and restored model caches. [Draft PR #49](https://github.com/jtn0123/AudioWhisper/pull/49) strengthens loading parity to require expected speech words. Its fresh-model [hosted diagnostic](https://github.com/jtn0123/AudioWhisper/actions/runs/39152435326) confirms matching audio/model fingerprints and tokenizer, with bad raw decoder logits already favoring `>>`. Feature-extraction diagnostics are the next step. Preserve the other engine passes. |
 | R2 | First | Device verification pending | **Daily dictation on actual hardware.** Identify the tested packaged commit and microphone devices. Exercise permission denial/recovery, first/last words, repeated start/stop/cancel and physical hold/release. Test built-in/USB/AirPods, input change/unplug, sleep/wake, native/browser text fields, full-screen Spaces and multiple displays. Verify exactly-once paste to the intended field, clipboard fallback and normal Preferences placement. Existing renders and audio fixtures do not close this item. |
-| R3 | Next | [PR #45](https://github.com/jtn0123/AudioWhisper/pull/45) open | **Optional warm microphone.** Review against current master and pass current-head CI. Verify first-word/pre-roll capture, ranked/default microphone change/unplug and sleep/wake on hardware. Confirm off by default, release on disable/quit, Bluetooth exclusion and safe ordinary-start fallback for stale/unavailable input. The PR's three manual checks remain unchecked. |
+| R3 | Next | [PR #45](https://github.com/jtn0123/AudioWhisper/pull/45) open | **Optional warm microphone.** Updated against current master; five reproduced lifecycle cases now cover sleep during lending, a second sleep during wake delay, permission revocation during opening, disable before lending, and a default-input change from an excluded device. Pass current-head CI. Verify first-word/pre-roll capture, ranked/default microphone change/unplug and sleep/wake on hardware. Confirm off by default, release on disable/quit, Bluetooth exclusion and safe ordinary-start fallback for stale/unavailable input. The PR's three manual checks remain unchecked. |
 | R4 | Before distribution | Acceptance pending | **Accessibility and release packaging.** Complete VoiceOver and keyboard-only setup, recording/cancel/retry, model install, vocabulary, library and Preferences journeys; verify focus, status/error announcements and Reduce Motion. For public distribution, validate the universal Developer ID build, accepted notarization/stapling, Gatekeeper on a clean quarantined install, and permission/signature behavior across relaunch and update. |
 
 ## Product gaps to consider after reliability
@@ -20,7 +20,7 @@ distinguish documented behavior, shipped-artifact observations and unknowns.
 
 | ID | Proposed increment | Bounded first outcome |
 |---|---|---|
-| P1 | Named modes/presets | Save, duplicate, select and export a named local configuration covering voice model, language, cleanup/instructions and formatting. Preserve a simple default. |
+| P1 | Named modes/presets | First increment: save/select/remove named local setups for the voice model, cleanup model/mode, vocabulary and formatting, with a Record-page picker and busy-state protection. In review; not merged. Language, custom instructions, explicit duplicate/export and per-app activation remain follow-up work. Preserve a simple default. |
 | P2 | Per-app activation | Select a preset from an explicit app rule captured at recording start; keep manual override predictable. Website rules can follow separately. Depends on P1. |
 | P3 | Opt-in context | Let a preset use explicitly selected text or copied text with visible scope and a recorded capture time. Verify behavior when focus changes. Current cursor-aware spacing remains supported. |
 | P4 | Reprocess history | Choose another local model/preset without destroying the original result. Decide separately whether audio retention is optional and how deletion works; current successful capture audio is removed. |
