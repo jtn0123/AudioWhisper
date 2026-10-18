@@ -8,17 +8,21 @@ import XCTest
 final class SavedDictationModeTests: IsolatedXCTestCase {
     private var previous: DictationModeSettings!
     private var previousModes: [SavedDictationMode] = []
+    private var previousID: UUID?
 
     override func setUp() {
         super.setUp()
         previous = AppDefaults.currentDictationSettings
         previousModes = AppDefaults.savedDictationModes
+        previousID = AppDefaults.selectedDictationModeID
+        AppDefaults.selectedDictationModeID = nil
         AppDefaults.savedDictationModes = []
     }
 
     override func tearDown() {
         AppDefaults.currentDictationSettings = previous
         AppDefaults.savedDictationModes = previousModes
+        AppDefaults.selectedDictationModeID = previousID
         super.tearDown()
     }
 
@@ -97,6 +101,20 @@ final class SavedDictationModeTests: IsolatedXCTestCase {
         XCTAssertThrowsError(try picker.select(value: mode.id.uuidString))
         XCTAssertEqual(AppDefaults.currentDictationSettings, previous)
         XCTAssertFalse(session.readiness.checking)
+    }
+
+    func testSelectingSecondIdenticalModeKeepsItsName() throws {
+        let first = try SavedDictationMode.make(name: "Work", settings: previous, existing: [])
+        let second = try SavedDictationMode.make(name: "Personal", settings: previous, existing: [first])
+        AppDefaults.savedDictationModes = [first, second]
+        let picker = try RebuildModePicker(session: nil).inspect().find(ViewType.Picker.self)
+        try picker.select(value: second.id.uuidString)
+        XCTAssertEqual(try picker.selectedValue(String.self), second.id.uuidString)
+        var changed = AppDefaults.currentDictationSettings
+        changed.removeFillers.toggle()
+        AppDefaults.currentDictationSettings = changed
+        XCTAssertNil(AppDefaults.activeDictationModeID)
+        XCTAssertEqual(try picker.selectedValue(String.self), "")
     }
 
     private func capture(_ view: some View) throws {

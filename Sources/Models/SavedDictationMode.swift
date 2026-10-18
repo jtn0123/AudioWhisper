@@ -39,6 +39,15 @@ struct SavedDictationMode: Codable, Equatable, Identifiable, Sendable {
 }
 
 extension AppDefaults {
+    static var selectedDictationModeID: UUID? {
+        get { defaults.string(forKey: Key.selectedDictationModeID.rawValue).flatMap(UUID.init(uuidString:)) }
+        set { defaults.set(newValue?.uuidString, forKey: Key.selectedDictationModeID.rawValue) }
+    }
+
+    static var activeDictationModeID: UUID? {
+        savedDictationModes.first { $0.id == selectedDictationModeID && $0.settings == currentDictationSettings }?.id
+    }
+
     static var savedDictationModes: [SavedDictationMode] {
         get {
             guard let data = defaults.data(forKey: Key.savedDictationModes.rawValue) else { return [] }
@@ -60,6 +69,7 @@ extension AppDefaults {
                 vocabulary: customVocabulary, removeFillers: removeFillerWords, spokenPunctuation: spokenPunctuation)
         }
         set {
+            selectedDictationModeID = nil
             transcriptionProvider = newValue.provider
             selectedWhisperModel = newValue.whisper
             selectedParakeetModel = newValue.parakeet

@@ -5,6 +5,7 @@ struct RebuildModePicker: View {
     let session: RebuildSession?
     @AppDefault(\.savedDictationModes) private var modes
     @AppDefault(\.currentDictationSettings) private var current
+    @AppDefault(\.selectedDictationModeID) private var selectedID
 
     private var locked: Bool {
         guard let session else { return false }
@@ -13,10 +14,11 @@ struct RebuildModePicker: View {
 
     var body: some View {
         Picker("Dictation mode", selection: Binding(
-            get: { modes.first { $0.settings == current }?.id.uuidString ?? "" },
+            get: { AppDefaults.activeDictationModeID?.uuidString ?? "" },
             set: { id in
                 guard let mode = modes.first(where: { $0.id.uuidString == id }), !locked else { return }
                 current = mode.settings
+                selectedID = mode.id
                 session?.selectionChanged()
             })) {
             Text("Custom settings").tag("").disabled(true)
@@ -75,7 +77,9 @@ struct RebuildSavedModesView: View {
     private func save() {
         guard !locked else { return }
         do {
-            modes.append(try SavedDictationMode.make(name: name, settings: AppDefaults.currentDictationSettings, existing: modes))
+            let mode = try SavedDictationMode.make(name: name, settings: AppDefaults.currentDictationSettings, existing: modes)
+            modes.append(mode)
+            AppDefaults.selectedDictationModeID = mode.id
             name = ""
             message = nil
         } catch { message = error.localizedDescription }

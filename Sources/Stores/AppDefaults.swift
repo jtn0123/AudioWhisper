@@ -72,6 +72,7 @@ enum AppDefaults {
         case selectedWhisperModel
         case selectedParakeetModel
         case savedDictationModes
+        case selectedDictationModeID
 
         // Semantic Correction
         case semanticCorrectionMode

@@ -8,12 +8,19 @@ import Observation
 final class RebuildSession {
     let writingInstaller: RebuildWritingInstaller
     let livePreview: RebuildLivePreview
-    private(set) var phase: RebuildPhase = .idle
+    private(set) var phase: RebuildPhase = .idle {
+        didSet {
+            if let message = RebuildLifecycleAnnouncement.message(phase: phase, previous: oldValue, notice: notice) {
+                services.announce(message)
+            }
+        }
+    }
     var readiness = RebuildReadiness()
     var transcript = ""
     private(set) var deliveredTranscript = ""
     private(set) var isPractice = false
     private(set) var timing = RebuildSessionTiming()
+    private(set) var deliveryStatus: RebuildDeliveryStatus = .none
     private(set) var pendingHistoryWrites = 0
     @ObservationIgnored private var historyTasks: [UUID: Task<String?, Never>] = [:]
     private(set) var originalTranscript: String?
@@ -99,12 +106,12 @@ final class RebuildSession {
             notice = "Recording was interrupted. Transcribing the audio captured before it stopped."
             transcribe(url: audio, config: config, id: id, removeAfterward: true)
         case .finished:
-            phase = .failed
             notice = "Recording was interrupted before usable audio was captured. Try again."
+            phase = .failed
             sessionID = nil
         case .failed(_, let message):
-            phase = .failed
             notice = message
+            phase = .failed
             sessionID = nil
         }
     }
@@ -145,8 +152,8 @@ final class RebuildSession {
 
     private func completeRecordingStart(_ started: Bool) {
         guard started else {
-            phase = .failed
             notice = services.startError() ?? "The microphone could not start. Check the selected input and try again."
+            phase = .failed
             sessionID = nil
             return
         }
@@ -165,8 +172,8 @@ final class RebuildSession {
         timing.stopped = ProcessInfo.processInfo.systemUptime
         duration = startedAt.map { Date().timeIntervalSince($0) }
         guard let url = services.stop() else {
-            phase = .failed
             notice = "No audio was captured. Try a different microphone."
+            phase = .failed
             sessionID = nil
             closeRecorder()
             return
@@ -183,8 +190,8 @@ final class RebuildSession {
     /// still force a transcription if the meter was wrong.
     private func rejectSilentRecording(url: URL, config: TranscriptionPipelineConfig) {
         retryAudio = RetryAudio(url: url, config: config, owned: true, duration: duration)
-        phase = .failed
         notice = "The microphone recorded only silence. Check the selected microphone, its mute switch and input level."
+        phase = .failed
         closeRecorder()
     }
 
@@ -207,6 +214,7 @@ final class RebuildSession {
         duration = nil
         isPractice = practice
         timing = RebuildSessionTiming()
+        deliveryStatus = .none
         capturedTarget = practice ? nil : services.capturePasteDestination()
         sessionID = UUID()
         notice = nil
@@ -246,19 +254,17 @@ extension RebuildSession {
                 deliveredTranscript = result.text
                 originalTranscript = result.originalText
                 timing.recognized = ProcessInfo.processInfo.systemUptime
-                // Live captures keep their measured elapsed time. Imports and
-                // imported retries use the file metadata already validated by
-                // the pipeline, without opening the audio a second time.
+                // Imports use validated file metadata; live captures keep their measured duration.
                 let deliveredDuration = duration ?? result.audioDuration
                 let loan = copyTranscript(result.text)
+                deliveryStatus = .delivering
                 if case .rejected = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup could not safely preserve your words."
                 }
                 if case .failed = result.correctionOutcome {
                     notice = "Copied the original transcript. Writing cleanup was unavailable."
                 }
-                // History is independent after a valid result is copied. A slow
-                // write must not delay paste, and a new recording must not cancel it.
+                // History must not delay paste or be cancelled by a new recording.
                 let persistence = persistInBackground(result, config: config, duration: deliveredDuration)
                 if removeAfterward { try? FileManager.default.removeItem(at: url) }
                 phase = .completed
@@ -266,6 +272,7 @@ extension RebuildSession {
                 didDeliver()
                 if AppDefaults.playCompletionSound { NSSound(named: "Pop")?.play() }
                 await pasteTranscript(result.text, sessionID: id, loan: loan)
+                if sessionID == id, !Task.isCancelled { services.announce(deliveryStatus.announcement) }
                 if let (token, task) = persistence {
                     let message = await task.value
                     if let message, sessionID == id, !Task.isCancelled {
@@ -278,8 +285,8 @@ extension RebuildSession {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
                 retainedForRetry = true
-                phase = .failed
                 notice = error.localizedDescription
+                phase = .failed
                 closeRecorder()
             }
         }
@@ -350,8 +357,7 @@ extension RebuildSession {
         let saved: ClipboardKeeper.Snapshot
     }
 
-    /// Lends the clipboard only when the user wants it back and a paste is
-    /// going to happen; otherwise the transcript simply stays on it.
+    /// Lend the clipboard only when a paste will happen.
     private func copyTranscript(_ text: String) -> ClipboardLoan? {
         guard AppDefaults.enableSmartPaste, capturedTarget != nil, let keeper = services.clipboardKeeper() else {
             services.copy(text)
@@ -366,6 +372,7 @@ extension RebuildSession {
         guard AppDefaults.enableSmartPaste, let target = capturedTarget else {
             timing.delivered = ProcessInfo.processInfo.systemUptime
             timing.delivery = "Copied to clipboard"
+            deliveryStatus = .copied
             return
         }
         let copy: (String) -> Void = loan.map { loan in { loan.keeper.copy($0, loan: loan.id) } } ?? services.copy
@@ -380,21 +387,27 @@ extension RebuildSession {
             case .failed, .cancelled: timing.delivery = "Copied; paste manually"
             }
         }
-        if let loan { await giveBack(loan, after: outcome) }
+        let restored: Bool
+        if let loan { restored = await giveBack(loan, after: outcome) } else { restored = false }
         guard !Task.isCancelled, sessionID == id else { return }
+        switch outcome {
+        case .confirmed: deliveryStatus = .pasted(clipboardRestored: restored)
+        case .unverified: deliveryStatus = .unverified(clipboardRestored: restored)
+        case .failed, .cancelled: deliveryStatus = .manual
+        }
         if outcome == .failed { notice = "Copied. Paste manually with Command V." }
     }
 
     /// A failed or abandoned paste keeps the transcript for pasting by hand.
     /// One that could not be seen landing gets a moment to be read first.
-    private func giveBack(_ loan: ClipboardLoan, after outcome: RebuildPasteDelivery.Outcome) async {
+    private func giveBack(_ loan: ClipboardLoan, after outcome: RebuildPasteDelivery.Outcome) async -> Bool {
         switch outcome {
         case .confirmed: break
         case .unverified:
-            do { try await Task.sleep(for: delivery.restoreGrace) } catch { return }
-        case .failed, .cancelled: return
+            do { try await Task.sleep(for: delivery.restoreGrace) } catch { return false }
+        case .failed, .cancelled: return false
         }
-        loan.keeper.restore(loan.saved, loan: loan.id)
+        return loan.keeper.restore(loan.saved, loan: loan.id)
     }
 
     func removeVoiceModel() async {

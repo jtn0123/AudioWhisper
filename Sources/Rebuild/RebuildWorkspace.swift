@@ -373,7 +373,7 @@ struct RebuildRecordView: View {
         case .starting: return "Connecting microphone…"
         case .recording: return "Recording"
         case .transcribing: return "Transcribing…"
-        case .completed: return "Copied to your clipboard"
+        case .completed: return session.deliveryStatus.title
         case .failed: return "Let’s try that again"
         case .idle:
             if setupBusy { return "Model setup in progress" }
@@ -388,6 +388,9 @@ struct RebuildRecordView: View {
                 .foregroundStyle(RebuildTheme.secondaryText)
         case .transcribing:
             Text("The local model is working. You can cancel.").font(.system(size: 12.5))
+                .foregroundStyle(RebuildTheme.secondaryText)
+        case .completed:
+            Text(session.deliveryStatus.detail).font(.system(size: 12.5))
                 .foregroundStyle(RebuildTheme.secondaryText)
         default:
             shortcutLine
