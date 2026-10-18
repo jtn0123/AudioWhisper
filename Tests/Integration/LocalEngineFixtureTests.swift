@@ -10,6 +10,29 @@ final class LocalEngineFixtureTests: XCTestCase {
         try XCTSkipUnless(Arch.isAppleSilicon)
     }
 
+    func testWhisperCPUOnlyTranscribesSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        try await diagnoseCPUOnlyWhisper(audio: audio)
+    }
+
+    func testWhisperCompactMelInputTranscribesSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(modelFolder: path, download: false))
+        engine.audioEncoder = CompactMelEncoderDiagnostic(base: engine.audioEncoder)
+        try await WhisperFixtureDiagnostics.describeFeatures(engine, audio: audio)
+        let results = try await engine.transcribe(audioPath: audio.path)
+        let text = results.map { $0.text }.joined(separator: " ")
+        print("REAL_WHISPER_COMPACT transcript=\(text)")
+        assertSpeechFixture(text)
+    }
+
     func testWhisperTranscribesSpeechAndReusesWarmModel() async throws {
         try requireRealEngines()
         let audio = try XCTUnwrap(Bundle.module.url(
@@ -49,8 +72,10 @@ final class LocalEngineFixtureTests: XCTestCase {
         )
         let reference = try await WhisperKit(config)
         try WhisperFixtureDiagnostics.describe(reference)
+        try await WhisperFixtureDiagnostics.describeFeatures(reference, audio: audio)
         reference.textDecoder.logitsFilters = [WhisperFixtureDiagnostics()]
         let results = try await reference.transcribe(audioPath: audio.path)
+        assertSpeechFixture(results.map { $0.text }.joined(separator: " "))
         for result in results {
             print("REAL_WHISPER_CPU_ONLY language=\(result.language) text=\(result.text)")
             print("REAL_WHISPER_CPU_ONLY tokens=\(result.segments.flatMap { $0.tokens })")

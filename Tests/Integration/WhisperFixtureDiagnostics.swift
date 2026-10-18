@@ -52,3 +52,19 @@ final class WhisperFixtureDiagnostics: LogitsFiltering {
         }
     }
 }
+
+/// A diagnostic A/B: preserve mel values while removing row padding before Core ML encoding.
+final class CompactMelEncoderDiagnostic: AudioEncoding {
+    private let base: any AudioEncoding
+    var embedSize: Int? { base.embedSize }
+
+    init(base: any AudioEncoding) { self.base = base }
+
+    func encodeFeatures(_ features: any FeatureExtractorOutputType) async throws -> (any AudioEncoderOutputType)? {
+        guard let source = features as? MLMultiArray else { return try await base.encodeFeatures(features) }
+        let compact = try MLMultiArray(shape: source.shape, dataType: source.dataType)
+        for index in 0..<source.count { compact[index] = source[index] }
+        print("REAL_WHISPER_COMPACT source=\(source.strides) compact=\(compact.strides)")
+        return try await base.encodeFeatures(compact)
+    }
+}
