@@ -68,6 +68,7 @@ final class LocalEngineFixtureTests: XCTestCase {
         let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
         let engine = try await WhisperKit(WhisperKitConfig(modelFolder: path, download: false))
         try WhisperFixtureDiagnostics.describe(engine)
+        try await WhisperFixtureDiagnostics.describeFeatures(engine, audio: audio)
         engine.textDecoder.logitsFilters = [WhisperFixtureDiagnostics()]
         var options = DecodingOptions()
         options.task = .transcribe

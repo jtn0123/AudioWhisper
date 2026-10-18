@@ -14,6 +14,28 @@ final class WhisperFixtureDiagnostics: LogitsFiltering {
         return logits
     }
 
+    static func describeFeatures(_ engine: WhisperKit, audio: URL) async throws {
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audio.path)
+        guard let padded = AudioProcessor.padOrTrimAudio(fromArray: samples),
+              let mel = try await engine.featureExtractor.logMelSpectrogram(fromAudio: padded) as? MLMultiArray,
+              let encoded = try await engine.audioEncoder.encodeFeatures(mel) as? MLMultiArray else { return }
+        for (name, array) in [("padded", padded), ("mel", mel), ("encoded", encoded)] {
+            var sum = 0.0
+            var squares = 0.0
+            var minimum = Double.infinity
+            var maximum = -Double.infinity
+            for index in 0..<array.count {
+                let value = array[index].doubleValue
+                sum += value
+                squares += value * value
+                minimum = min(minimum, value)
+                maximum = max(maximum, value)
+            }
+            let probe = stride(from: 0, to: array.count, by: max(array.count / 16, 1)).prefix(16).map { array[$0].floatValue }
+            print("REAL_WHISPER_FEATURE name=\(name) shape=\(array.shape) strides=\(array.strides) min=\(minimum) max=\(maximum) mean=\(sum / Double(array.count)) rms=\(sqrt(squares / Double(array.count))) probe=\(probe)")
+        }
+    }
+
     static func describe(_ engine: WhisperKit) throws {
         print("REAL_WHISPER_MODEL variant=\(engine.modelVariant) logits=\(engine.textDecoder.logitsSize ?? 0) embeds=\(engine.audioEncoder.embedSize ?? 0)")
         if let tokenizer = engine.tokenizer {
