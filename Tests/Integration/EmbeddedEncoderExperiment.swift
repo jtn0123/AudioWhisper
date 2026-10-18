@@ -13,11 +13,15 @@ enum EmbeddedEncoderExperiment {
         let compiled = try await MLModel.compileModel(at: package)
         defer { try? FileManager.default.removeItem(at: compiled) }
         let configuration = MLModelConfiguration()
-        configuration.computeUnits = .cpuOnly
+        let useDefaults = ProcessInfo.processInfo.environment["REBUILD_WHISPER_DEFAULT_COMPUTE"] == "true"
+        let compute = useDefaults ? ModelComputeOptions() : ModelComputeOptions(
+            melCompute: .cpuOnly, audioEncoderCompute: .cpuOnly, textDecoderCompute: .cpuOnly)
+        configuration.computeUnits = compute.audioEncoderCompute
         let model = try MLModel(contentsOf: compiled, configuration: configuration)
         let engine = try await WhisperKit(WhisperKitConfig(modelFolder: modelPath,
-            computeOptions: ModelComputeOptions(melCompute: .cpuOnly, audioEncoderCompute: .cpuOnly, textDecoderCompute: .cpuOnly),
+            computeOptions: compute,
             download: false))
+        print("REAL_WHISPER_EMBEDDED_RECOMPILE defaultCompute=\(useDefaults) encoderCompute=\(compute.audioEncoderCompute)")
         guard let encoder = engine.audioEncoder as? AudioEncoder else { throw CocoaError(.coderInvalidValue) }
         encoder.model = model
         let mel = try WhisperBoundaryReference.tensor("mel", shape: [1, 80, 1, 3000])
