@@ -20,6 +20,14 @@ final class WhisperFixtureDiagnostics: LogitsFiltering {
               let mel = try await engine.featureExtractor.logMelSpectrogram(fromAudio: padded) as? MLMultiArray,
               let encoded = try await engine.audioEncoder.encodeFeatures(mel) as? MLMultiArray else { return }
         for (name, array) in [("padded", padded), ("mel", mel), ("encoded", encoded)] {
+            if let output = ProcessInfo.processInfo.environment["WHISPER_EXPORT_BOUNDARIES"], name != "padded" {
+                let bits = (0..<array.count).map { Float16(array[$0].floatValue).bitPattern.littleEndian }
+                let data = bits.withUnsafeBytes { Data($0) }
+                let compressed = try NSData(data: data).compressed(using: .lzfse)
+                let folder = URL(fileURLWithPath: output, isDirectory: true)
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                try compressed.write(to: folder.appendingPathComponent("whisper_reference_\(name).lzfse"))
+            }
             var sum = 0.0
             var squares = 0.0
             var minimum = Double.infinity
@@ -43,9 +51,14 @@ final class WhisperFixtureDiagnostics: LogitsFiltering {
         }
         guard let folder = engine.modelFolder else { return }
         for component in ["MelSpectrogram", "AudioEncoder", "TextDecoder"] {
-            for file in ["model.mil", "weights/weight.bin"] {
+            for file in ["coremldata.bin", "model.mlmodel", "model.mil", "metadata.json", "weights/weight.bin"] {
                 let name = "\(component).mlmodelc/\(file)"
-                let data = try Data(contentsOf: folder.appendingPathComponent(name), options: .mappedIfSafe)
+                let url = folder.appendingPathComponent(name)
+                guard FileManager.default.fileExists(atPath: url.path) else {
+                    print("REAL_WHISPER_ASSET name=\(name) present=false")
+                    continue
+                }
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
                 let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
                 print("REAL_WHISPER_ASSET name=\(name) bytes=\(data.count) sha256=\(digest)")
             }

@@ -1,5 +1,6 @@
 import XCTest
 import CryptoKit
+import CoreML
 import WhisperKit
 @testable import AudioWhisper
 
@@ -30,6 +31,41 @@ final class LocalEngineFixtureTests: XCTestCase {
         let results = try await engine.transcribe(audioPath: audio.path)
         let text = results.map { $0.text }.joined(separator: " ")
         print("REAL_WHISPER_COMPACT transcript=\(text)")
+        assertSpeechFixture(text)
+    }
+
+    func testWhisperDecoderWithReferenceEncoderFeatures() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(
+            modelFolder: path,
+            computeOptions: ModelComputeOptions(
+                melCompute: .cpuOnly, audioEncoderCompute: .cpuOnly, textDecoderCompute: .cpuOnly),
+            download: false))
+        let referenceMel = try WhisperBoundaryReference.tensor("mel", shape: [1, 80, 1, 3000])
+        let referenceEncoded = try WhisperBoundaryReference.tensor("encoded", shape: [1, 512, 1, 1500])
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audio.path)
+        let padded = try XCTUnwrap(AudioProcessor.padOrTrimAudio(fromArray: samples))
+        let melOutput = try await engine.featureExtractor.logMelSpectrogram(fromAudio: padded)
+        let mel = try XCTUnwrap(melOutput as? MLMultiArray)
+        let base = engine.audioEncoder
+        let encodedOutput = try await base.encodeFeatures(mel)
+        let actual = try XCTUnwrap(encodedOutput as? MLMultiArray)
+        WhisperBoundaryReference.compare(mel, with: referenceMel, name: "mel")
+        WhisperBoundaryReference.compare(actual, with: referenceEncoded, name: "encoded")
+        if let model = (base as? AudioEncoder)?.model {
+            try WhisperBoundaryReference.compareSynchronousEncoder(model, mel: referenceMel, reference: referenceEncoded)
+        }
+        engine.audioEncoder = ReferenceBoundaryEncoder(base: base, mel: referenceMel)
+        let fromMel = try await engine.transcribe(audioPath: audio.path)
+        print("REAL_WHISPER_REPLAY boundary=mel text=\(fromMel.map { $0.text }.joined(separator: " "))")
+        engine.audioEncoder = ReferenceBoundaryEncoder(base: base, encoded: referenceEncoded)
+        let fromEncoded = try await engine.transcribe(audioPath: audio.path)
+        let text = fromEncoded.map { $0.text }.joined(separator: " ")
+        print("REAL_WHISPER_REPLAY boundary=encoded text=\(text)")
         assertSpeechFixture(text)
     }
 
