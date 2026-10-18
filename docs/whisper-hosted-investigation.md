@@ -66,14 +66,19 @@ The [complete macOS 26 real-engine test step](https://github.com/jtn0123/AudioWh
 also passes all nine fixtures: six Whisper cases, actual MLX correction and two
 Parakeet cases. These include Parakeet v2/v3 warm reuse, switching back to v2, and
 Spanish recognition without English translation. Model caching is enabled in
-that run; successful restored-cache recognition still requires verification.
+that run, and the Whisper cache is saved successfully.
+
+The [restored-cache run](https://github.com/jtn0123/AudioWhisper/actions/runs/39161787961)
+confirms an exact Whisper model-cache hit and successful restore, then passes all
+six Whisper tests. Complete app-service recognition and warm reuse produce the
+expected sentence. Fresh and restored model-cache recognition are therefore
+established on hosted macOS 26 with Xcode 26.3.
 
 ## Remaining acceptance
 
-- Verify successful complete recognition with both fresh and restored model
-  caches, retaining the fixture assertions. Fresh-model macOS 26 recognition is
-  established; restored-cache acceptance is pending.
-- Retain the real Parakeet v2/v3 and MLX inference checks, which pass on macOS 26
-  with the matched Xcode toolchain.
 - Resolve the supported-OS behavior before treating this as a release fix. Do not
   remove the failing macOS 15 case or raise the app's minimum OS to hide it.
+- Determine whether physical macOS 15 systems reproduce the hosted encoder
+  failure; the two virtual OS environments do not establish that scope.
+- Retain the meaningful complete-recognition assertions and the passing real
+  Parakeet v2/v3 and MLX checks when evaluating a fix.
