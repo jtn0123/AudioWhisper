@@ -152,9 +152,7 @@ enum AudioDeviceTransport {
     /// the main actor, so one removed in the meantime is not called.
     static let defaultInputChanged: AudioObjectPropertyListenerProc = { _, _, _, token in
         let id = Int(bitPattern: token)
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated { DefaultInputWatchers.shared.handler(for: id)?() }
-        }
+        Task { @MainActor in DefaultInputWatchers.shared.handler(for: id)?() }
         return noErr
     }
 
