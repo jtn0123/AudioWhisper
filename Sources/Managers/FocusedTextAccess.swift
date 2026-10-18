@@ -121,6 +121,22 @@ enum FocusedTextAX {
         return result
     }
 
+    /// Request only the bounded selected range, never the whole field value.
+    static func selectedText(pid: pid_t) -> String? {
+        guard !AppEnvironment.isRunningTests, AXIsProcessTrusted(),
+              let focused = focusedTextElement(pid: pid),
+              let selection = range(focused, kAXSelectedTextRangeAttribute),
+              selection.location >= 0, selection.location != NSNotFound, selection.length > 0 else { return nil }
+        var requested = CFRange(location: selection.location, length: min(selection.length, 8_192))
+        guard let parameter = AXValueCreate(.cfRange, &requested) else { return nil }
+        var result: CFTypeRef?
+        AXUIElementSetMessagingTimeout(focused, messagingTimeout)
+        guard AXUIElementCopyParameterizedAttributeValue(focused, kAXStringForRangeParameterizedAttribute as CFString,
+                                                         parameter, &result) == .success,
+              let text = result as? String else { return nil }
+        return selection.length > requested.length ? String(text.dropLast()) + "…" : text
+    }
+
     /// What a text control reported, as a state; `nil` when it reported nothing.
     /// `preceding` is only asked when there is a selection to read before.
     static func state(

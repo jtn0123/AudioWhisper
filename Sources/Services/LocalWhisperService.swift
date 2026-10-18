@@ -169,6 +169,7 @@ internal final class LocalWhisperService: Sendable {
         audioFileURL: URL,
         model: WhisperModel,
         prompt: String? = nil,
+        language: DictationLanguage = .automatic,
         progressCallback: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         // Get or create WhisperKit instance from actor-isolated cache.
@@ -187,7 +188,7 @@ internal final class LocalWhisperService: Sendable {
         let results = try await whisperKit.transcribe(
             audioPath: audioFileURL.path,
             audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental),
-            decodeOptions: Self.decodingOptions(prompt: prompt, tokenizer: whisperKit.tokenizer))
+            decodeOptions: Self.decodingOptions(prompt: prompt, tokenizer: whisperKit.tokenizer, language: language))
 
         // Combine all transcription segments into a single text
         let transcription = results.map { $0.text }.joined(separator: " ")
@@ -204,10 +205,30 @@ internal final class LocalWhisperService: Sendable {
     }
 
     /// Transcription (X→X, never translation) with the language auto-detected.
-    static func decodingOptions(prompt: String?, tokenizer: WhisperTokenizer?) -> DecodingOptions {
+    func meetingSegments(
+        audioFileURL: URL, model: WhisperModel, language: DictationLanguage,
+        source: MeetingAudioSource, offset: TimeInterval
+    ) async throws -> [MeetingSegment] {
+        let engine = try await cache.getOrCreate(model: model, maxCached: maxCachedModels, progressCallback: nil)
+        var options = Self.decodingOptions(prompt: nil, tokenizer: engine.tokenizer, language: language)
+        options.wordTimestamps = true
+        let results = try await engine.transcribe(audioPath: audioFileURL.path, decodeOptions: options)
+        try Task.checkCancellation()
+        return results.flatMap(\.segments).compactMap { segment in
+            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            return MeetingSegment(source: source, start: offset + Double(segment.start),
+                                  end: offset + Double(segment.end), text: text)
+        }
+    }
+
+    /// Explicit language is supported by Whisper; it still transcribes rather than translating.
+    static func decodingOptions(
+        prompt: String?, tokenizer: WhisperTokenizer?, language: DictationLanguage = .automatic
+    ) -> DecodingOptions {
         var options = DecodingOptions()
         options.task = .transcribe
-        options.language = nil
+        options.language = language == .automatic ? nil : language.rawValue
         if let prompt, let tokenizer {
             options.promptTokens = promptTokens(
                 for: prompt, encode: { tokenizer.encode(text: $0) },

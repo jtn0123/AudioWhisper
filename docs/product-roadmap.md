@@ -2,7 +2,8 @@
 
 Last checked: 2026-10-18 against merged master `9634ed5`. [Current graded comparison](../.Codex/ui-ux-grade-report.md).
 Keep the IDs stable. Mark an item complete only when its acceptance evidence is
-linked here. Proposed product work is not an implementation commitment.
+linked here. On October 18 the user authorized all increments below ("Let's do
+all smartly"). Keep hardware and distribution gates open until observed.
 
 ## Current work
 
@@ -13,12 +14,12 @@ linked here. Proposed product work is not an implementation commitment.
 | R3 | Next | [PR #45](https://github.com/jtn0123/AudioWhisper/pull/45) open; all 11 checks pass | **Optional warm microphone.** Five reproduced lifecycle cases are fixed and the full 3,244-test suite passes. First-word/pre-roll, ranked/default input switching/unplug, Bluetooth exclusion and sleep/wake need hardware acceptance. Confirm release on disable/quit and safe ordinary-start fallback. The three manual checks remain unchecked. |
 | R4 | Before distribution | Acceptance pending | **Accessibility and release packaging.** Complete VoiceOver and keyboard-only setup, recording/cancel/retry, model install, vocabulary, library and Preferences journeys; verify focus, status/error announcements and Reduce Motion. For public distribution, validate the universal Developer ID build, accepted notarization/stapling, Gatekeeper on a clean quarantined install, and permission/signature behavior across relaunch and update. |
 
-## Product gaps to consider after reliability
+## Authorized product increments
 
 The [fresh comparison and REA evidence](research/superwhisper-2026-10-18.md)
 distinguish documented behavior, shipped-artifact observations and unknowns.
 
-| ID | Proposed increment | Bounded first outcome |
+| ID | Increment | Bounded first outcome |
 |---|---|---|
 | P1 | Named modes/presets | First increment merged in [PR #50](https://github.com/jtn0123/AudioWhisper/pull/50), master `9634ed5`: save/select/remove local setups for voice/cleanup models, vocabulary and formatting, with Record picker and busy-state protection. Language, task instructions, edit/rename/duplicate/export remain. UI C5 tracks identical-settings name ambiguity. |
 | P2 | Per-app activation | Select a preset from an explicit app rule captured at recording start; keep manual override predictable. Website rules can follow separately. Depends on P1. |

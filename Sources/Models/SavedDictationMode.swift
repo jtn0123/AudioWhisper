@@ -11,6 +11,53 @@ struct DictationModeSettings: Codable, Equatable, Sendable {
     var vocabulary: String
     var removeFillers: Bool
     var spokenPunctuation: Bool
+    var language: DictationLanguage = .automatic
+    var writing = DictationWriting()
+
+    enum CodingKeys: String, CodingKey {
+        case provider, whisper, parakeet, cleanup, cleanupModel, vocabulary, removeFillers, spokenPunctuation, language, writing
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        provider = try values.decode(TranscriptionProvider.self, forKey: .provider)
+        whisper = try values.decode(WhisperModel.self, forKey: .whisper)
+        parakeet = try values.decode(ParakeetModel.self, forKey: .parakeet)
+        cleanup = try values.decode(SemanticCorrectionMode.self, forKey: .cleanup)
+        cleanupModel = try values.decode(String.self, forKey: .cleanupModel)
+        vocabulary = try values.decode(String.self, forKey: .vocabulary)
+        removeFillers = try values.decode(Bool.self, forKey: .removeFillers)
+        spokenPunctuation = try values.decode(Bool.self, forKey: .spokenPunctuation)
+        language = try values.decodeIfPresent(DictationLanguage.self, forKey: .language) ?? .automatic
+        writing = try values.decodeIfPresent(DictationWriting.self, forKey: .writing) ?? DictationWriting()
+    }
+
+    init(provider: TranscriptionProvider, whisper: WhisperModel, parakeet: ParakeetModel,
+         cleanup: SemanticCorrectionMode, cleanupModel: String, vocabulary: String,
+         removeFillers: Bool, spokenPunctuation: Bool, language: DictationLanguage = .automatic,
+         writing: DictationWriting = DictationWriting()) {
+        self.provider = provider
+        self.whisper = whisper
+        self.parakeet = parakeet
+        self.cleanup = cleanup
+        self.cleanupModel = cleanupModel
+        self.vocabulary = vocabulary
+        self.removeFillers = removeFillers
+        self.spokenPunctuation = spokenPunctuation
+        self.language = language
+        self.writing = writing
+    }
+
+    var formatting: TranscriptFormattingOptions {
+        TranscriptFormattingOptions(vocabulary: CustomVocabulary(parsing: vocabulary),
+                                    removeFillers: removeFillers, spokenPunctuation: spokenPunctuation)
+    }
+
+    func pipeline(sourceApp: String? = nil, context: CapturedWritingContext? = nil) -> TranscriptionPipelineConfig {
+        TranscriptionPipelineConfig(provider: provider, whisperModel: whisper, applySemanticCorrection: cleanup != .off,
+            sourceAppBundleId: sourceApp, parakeetModel: parakeet, correctionMode: cleanup,
+            correctionModelRepo: cleanupModel, formatting: formatting, language: language, writing: writing, context: context)
+    }
 }
 
 struct SavedDictationMode: Codable, Equatable, Identifiable, Sendable {
@@ -66,7 +113,8 @@ extension AppDefaults {
             DictationModeSettings(
                 provider: transcriptionProvider, whisper: selectedWhisperModel, parakeet: selectedParakeetModel,
                 cleanup: semanticCorrectionMode, cleanupModel: semanticCorrectionModelRepo,
-                vocabulary: customVocabulary, removeFillers: removeFillerWords, spokenPunctuation: spokenPunctuation)
+                vocabulary: customVocabulary, removeFillers: removeFillerWords, spokenPunctuation: spokenPunctuation,
+                language: dictationLanguage, writing: dictationWriting)
         }
         set {
             selectedDictationModeID = nil
@@ -78,6 +126,8 @@ extension AppDefaults {
             customVocabulary = newValue.vocabulary
             removeFillerWords = newValue.removeFillers
             spokenPunctuation = newValue.spokenPunctuation
+            dictationLanguage = newValue.language
+            dictationWriting = newValue.writing
         }
     }
 }

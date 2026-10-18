@@ -10,6 +10,7 @@ struct RebuildSessionServices {
     var save: (String, TranscriptionPipelineConfig, TimeInterval?) async throws -> Void
     var interruptionSource: NSObject?
     var announce: (String) -> Void = RebuildAnnouncements.post
+    var contextCapture = RebuildWritingContextCapture()
     var capturePasteDestination: () -> RebuildPasteDestination? = { .capture() }
     var startError: () -> String? = { nil }
     var startAsync: ((UUID) async -> Bool)?

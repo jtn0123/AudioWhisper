@@ -98,6 +98,15 @@ internal actor MLDaemonManager {
         )
     }
 
+    func summarize(repo: String, text: String) async throws -> String {
+        let result: MLRPCResult.Correct = try await sendRequest(
+            method: .summarize, params: MLRPCParams.Correct(repo: repo, text: text, prompt: nil))
+        guard result.success, !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw MLDaemonError.remoteError(result.error ?? "Summary was unavailable; transcript preserved")
+        }
+        return result.text
+    }
+
     func ping() async -> Bool {
         do {
             let result: MLRPCResult.Ping = try await sendRequest(

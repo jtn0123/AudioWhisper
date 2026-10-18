@@ -13,7 +13,7 @@ internal enum CorrectionIntegrity {
         If the source is already correct or an edit is uncertain, retain it. Return only the edited source.
         """
 
-    static func allows(original: String, corrected: String) -> Bool {
+    static func allows(original: String, corrected: String, allowFraming: Bool = false) -> Bool {
         guard polarity(original) == polarity(corrected) else { return false }
         let sourceNumbers = numbers(original)
         let editedNumbers = numbers(corrected)
@@ -28,6 +28,7 @@ internal enum CorrectionIntegrity {
         let editedWords = counts(matches(#"[\p{L}\p{N}_]+(?:['’][\p{L}\p{N}_]+)*"#, in: corrected))
         let sourceNames = counts(names(original))
         guard sourceNames.allSatisfy({ editedWords[$0.key, default: 0] >= $0.value }) else { return false }
+        if allowFraming { return true }
         // Formatting must not invent a recipient or sender that was never dictated.
         for pattern in [
             #"(?im)^\s*(?:hi|hello|hey|dear)\b"#,

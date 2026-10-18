@@ -18,6 +18,7 @@ extension RebuildPage {
         switch self {
         case .record: return "Speak naturally. Your text is copied when transcription finishes."
         case .library: return "Saved transcripts stay on this Mac. Saving is optional."
+        case .meetings: return "Capture microphone and system audio, then process locally."
         case .models: return "Set up your microphone and model, then try a practice dictation."
         case .writing: return "Your vocabulary, formatting rules and optional on-device cleanup."
         case .preferences: return "Shortcuts, delivery, privacy and appearance."
@@ -80,7 +81,8 @@ struct RebuildRootView: View {
             RebuildRecordView(
                 session: session, recorder: recorder, importAudio: importAudio,
                 configureShortcut: { navigation.selection = .preferences }, readShortcut: readShortcut)
-        case .library: RebuildLibraryView(history: history)
+        case .library: RebuildLibraryView(history: history, session: session)
+        case .meetings: RebuildMeetingsView(state: session.meetings)
         case .models: RebuildModelsView(session: session, recorder: recorder)
         case .writing: RebuildWritingView(session: session)
         case .preferences: RebuildPreferencesView(session: session)
@@ -243,6 +245,12 @@ struct RebuildRecordView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if !modes.isEmpty { RebuildModePicker(session: session).frame(maxWidth: 360) }
+                if let mode = session.effectiveMode, session.phase != .idle {
+                    Text("\(mode.name ?? "Custom settings")"
+                         + (mode.origin == .appRule ? " · App rule" : " · Manual settings"))
+                        .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+                }
+                RebuildWritingContextView(session: session)
                 setupBanner
                 recorderCard
                 if session.livePreview.enabled && session.phase.isBusy {
@@ -376,7 +384,7 @@ struct RebuildRecordView: View {
         case .completed: return session.deliveryStatus.title
         case .failed: return "Let’s try that again"
         case .idle:
-            if setupBusy { return "Model setup in progress" }
+            if setupBusy { return session.maintenanceLabel ?? "Model setup in progress" }
             return session.readiness.ready ? "Ready to record" : session.readiness.nextStep
         }
     }

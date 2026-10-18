@@ -73,6 +73,10 @@ enum AppDefaults {
         case selectedParakeetModel
         case savedDictationModes
         case selectedDictationModeID
+        case dictationLanguage
+        case dictationWriting
+        case automaticDictationModes
+        case appDictationRules
 
         // Semantic Correction
         case semanticCorrectionMode
