@@ -1,0 +1,224 @@
+{
+  "record_type": "Curated summary of actual REA MCP observations; not a complete Evidence bundle",
+  "checked_at_utc": "2026-10-18T17:20:00.576839+00:00",
+  "audio_whisper_commit": "e494a0fa54235849f889a7d9758bdd7091042cb8",
+  "rea": {
+    "server": "rea",
+    "version": "6.5.0",
+    "protocol_version": "2025-03-26",
+    "transport": "stdio MCP",
+    "configuration_changed": false
+  },
+  "target": {
+    "download_url": "https://builds.superwhisper.com/latest/superwhisper.dmg",
+    "version": "3.0.1",
+    "dmg_sha256": "87f9c9a5ef21fff1b293ca4e6e1de15af72720ccb2fd9ce92ab289ceb1099df2",
+    "main_executable_sha256": "6e58b3da398c104c9015079d2e6c6611e94afbff02d127d25b0cb10507767e4c",
+    "selected_architecture": {
+      "container_file_offset": 36225024,
+      "name": "arm64"
+    },
+    "bundle_tree_sha256": "64db3b02150bb7b42e9948fa7e95af3dcd53eb7e005ba33b837ef407bc5c6678"
+  },
+  "observations": [
+    {
+      "operation": "inventory_artifact",
+      "evidence_id": "ev_d83100cfbac7499d53b7d0ba77d95d49e52696a9e2a060605e0ba46c5f5fab6b",
+      "confidence": "observed",
+      "manifest": {
+        "edge_count": 332,
+        "graph_sha256": "263083f1f4b17819f3a7efe5682bf93559e2335867b439e642f15afd27084763",
+        "manifest_id": "agm_23a84538282b1444d0ab2864f3be969de4f4b81e152f515942eda1b4f673fcb4",
+        "node_count": 320,
+        "occurrence_count": 381,
+        "root_artifact_id": "art_a4eb364d306c2ecf68b6c0f58236d4ac8a40c47e7e02936495159fabb22de1af",
+        "root_format": "directory",
+        "root_sha256": "64db3b02150bb7b42e9948fa7e95af3dcd53eb7e005ba33b837ef407bc5c6678"
+      },
+      "framework_paths": [
+        "Contents/Frameworks/ArgmaxSDK.framework",
+        "Contents/Frameworks/Cmlx.framework",
+        "Contents/Frameworks/MediaRemoteAdapter.framework",
+        "Contents/Frameworks/OpusOgg.framework",
+        "Contents/Frameworks/Sentry.framework",
+        "Contents/Frameworks/Sparkle.framework",
+        "Contents/Frameworks/SuperDiarizeNative.framework",
+        "Contents/Frameworks/WhisperNative.framework",
+        "Contents/Frameworks/libggml-base.framework",
+        "Contents/Frameworks/libggml-blas.framework",
+        "Contents/Frameworks/libggml-cpu.framework",
+        "Contents/Frameworks/libggml-metal.framework",
+        "Contents/Frameworks/libggml.framework",
+        "Contents/Frameworks/libllama-common.framework",
+        "Contents/Frameworks/libllama.framework"
+      ],
+      "limitations": []
+    },
+    {
+      "operation": "inspect_plist",
+      "evidence_id": "ev_6af0754d2adfa57a9b602d9de4a04ad25a9e2075814026034b242807942c5e87",
+      "confidence": "observed",
+      "bundle": {
+        "executable": "superwhisper",
+        "identifier": "com.superduper.superwhisper",
+        "name": "Superwhisper",
+        "short_version": "3.0.1",
+        "version": "3.0.1"
+      },
+      "url_schemes": [
+        "superwhisper",
+        "superwhisper-debug"
+      ],
+      "calendar_usage_declared": true,
+      "sparkle_appcast": "https://superwhisper.com/appcast.xml",
+      "limitations": [
+        "Declarations do not prove runtime behavior."
+      ]
+    },
+    {
+      "operation": "inspect_signature",
+      "evidence_id": "ev_e2f208815fa5d544bea20ceecaa879e5634e3a355d5adc2b429354ef5a878cfd",
+      "confidence": "observed",
+      "observed": {
+        "signed": true,
+        "identifier": "com.superduper.superwhisper",
+        "team_identifier": "XDP69BYUP9",
+        "authorities": [
+          "Developer ID Application: SuperUltra, Inc. (XDP69BYUP9)",
+          "Developer ID Certification Authority",
+          "Apple Root CA"
+        ],
+        "hardened_runtime": true,
+        "entitlements": {
+          "com.apple.security.automation.apple-events": true,
+          "com.apple.security.device.audio-input": true,
+          "com.apple.security.personal-information.calendars": true
+        }
+      },
+      "limitations": [
+        "Entitlements and designated requirements require separate bounded commands.",
+        "Inspected a digest-verified Mach-O byte snapshot; filesystem-bound signing context and trust validation are not examined."
+      ]
+    },
+    {
+      "operation": "inspect_macho",
+      "evidence_id": "ev_6a82a80dedb2631889ef408c2a096f36d9732e8addf3990fefbac55016cd8fcd",
+      "confidence": "observed",
+      "dependency_observations": [
+        {
+          "compatibility_version": "1.6.0",
+          "current_version": "2.9.6",
+          "kind": "LC_LOAD_DYLIB",
+          "path": "@rpath/Sparkle.framework/Versions/B/Sparkle"
+        },
+        {
+          "compatibility_version": "1.0.0",
+          "current_version": "1934.4.9",
+          "kind": "LC_LOAD_DYLIB",
+          "path": "/System/Library/Frameworks/EventKit.framework/Versions/A/EventKit"
+        },
+        {
+          "compatibility_version": "1.0.0",
+          "current_version": "1.0.0",
+          "kind": "LC_LOAD_DYLIB",
+          "path": "/System/Library/Frameworks/ScreenCaptureKit.framework/Versions/A/ScreenCaptureKit"
+        }
+      ],
+      "import_observations": [
+        {
+          "address": null,
+          "name": "_$s9ArgmaxSDK13WhisperKitProC17makeStreamSession7optionsAA010TranscribegH0CAA015DecodingOptionsE0V_tFTj",
+          "reexport": null,
+          "source": "ArgmaxSDK",
+          "weak": null
+        },
+        {
+          "address": null,
+          "name": "_$s9ArgmaxSDK13WhisperKitProC19setCustomVocabularyyySaySSGKFTj",
+          "reexport": null,
+          "source": "ArgmaxSDK",
+          "weak": null
+        },
+        {
+          "address": null,
+          "name": "_$s9ArgmaxSDK28SortformerDiarizationOptionsVMn",
+          "reexport": null,
+          "source": "ArgmaxSDK",
+          "weak": true
+        }
+      ],
+      "limitations": [
+        "Imports and exports combine dyld_info and nm; stripped or toolchain-hidden symbols may be absent.",
+        "vtool output is retained as provenance but only otool build metadata is normalized.",
+        "Imported API names do not establish executed call paths or selected modes."
+      ]
+    },
+    {
+      "operation": "demangle_swift",
+      "evidence_id": "ev_0a6e3ce027f629ec0a662523db5a27a5b0efc6b4e1755cdac6cef5b2a001accd",
+      "confidence": "observed",
+      "symbols": [
+        {
+          "input": "$s9ArgmaxSDK13WhisperKitProC17makeStreamSession7optionsAA010TranscribegH0CAA015DecodingOptionsE0V_tFTj",
+          "output": "dispatch thunk of ArgmaxSDK.WhisperKitPro.makeStreamSession(options: ArgmaxSDK.DecodingOptionsPro) -> ArgmaxSDK.TranscribeStreamSession",
+          "status": "demangled"
+        },
+        {
+          "input": "$s9ArgmaxSDK13WhisperKitProC19setCustomVocabularyyySaySSGKFTj",
+          "output": "dispatch thunk of ArgmaxSDK.WhisperKitPro.setCustomVocabulary([Swift.String]) throws -> ()",
+          "status": "demangled"
+        },
+        {
+          "input": "$s9ArgmaxSDK28SortformerDiarizationOptionsVMn",
+          "output": "nominal type descriptor for ArgmaxSDK.SortformerDiarizationOptions",
+          "status": "demangled"
+        }
+      ],
+      "limitations": [
+        "Names decoded from observed imports; implementations and execution were not recovered."
+      ]
+    }
+  ],
+  "unresolved": {
+    "operation": "search_procedures",
+    "error_code": "provider_unavailable",
+    "provider_diagnostics": [
+      {
+        "provider_id": "ghidra",
+        "code": "not_configured",
+        "reason": "Set GHIDRA_INSTALL_DIR to an extracted Ghidra 12.1.x release directory."
+      },
+      {
+        "provider_id": "ghidra",
+        "code": "architecture_unsupported",
+        "reason": "Ghidra v1 cannot enforce the selected architecture when importing a universal Mach-O; analyze a thinned Mach-O slice instead."
+      },
+      {
+        "provider_id": "hopper",
+        "code": "executable_missing",
+        "reason": "Hopper launcher is missing or not executable: the default Hopper launcher"
+      },
+      {
+        "provider_id": "ida",
+        "code": "not_configured",
+        "reason": "Set REA_IDA_MCP_CONFIG to an upstream IDA MCP JSON registration; see docs/ida-provider.md."
+      }
+    ],
+    "unverified": [
+      "Native function bodies and call paths",
+      "Live product UI behavior",
+      "Relative accuracy and latency",
+      "Trust/notarization acceptance"
+    ]
+  },
+  "raw_local_evidence": [
+    {
+      "file": "native-evidence-bundle.json",
+      "sha256": "974f50e375735eb4376ff78fc9ff8d1681cb57475210bf9ef5498e9b0bc4d7c1"
+    },
+    {
+      "file": "final-application-evidence-bundle.json",
+      "sha256": "edece6788d64f7003bd58fc3363f836c9a6027082c3a26c52e49c95f2170c185"
+    }
+  ]
+}
