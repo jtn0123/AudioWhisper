@@ -54,19 +54,19 @@ extension WarmMicrophone {
         let sleep = workspace.addObserver(
             forName: NSWorkspace.willSleepNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.coolDown() }
+            MainActor.assumeIsolated { self?.suspend() }
         }
         let wake = workspace.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                try? await Task.sleep(for: wakeDelay)
-                self?.refresh()
-            }
+            MainActor.assumeIsolated { self?.scheduleWake(after: wakeDelay) }
         }
         return [
             Registration { workspace.removeObserver(sleep) },
-            Registration { workspace.removeObserver(wake) },
+            Registration { [weak self] in
+                workspace.removeObserver(wake)
+                Task { @MainActor in self?.cancelScheduledWake() }
+            },
             AudioDeviceTransport.watchDefaultInput { [weak self] in self?.invalidate() }
         ]
     }

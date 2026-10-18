@@ -72,9 +72,14 @@ final class WelcomeWindowTests: XCTestCase {
     private let keys: [AppDefaults.Key] = [.transcriptionProvider, .hasCompletedWelcome, .lastWelcomeVersion]
     private var saved: [AppDefaults.Key: Any] = [:]
     private var presenter: PresenterSpy!
+    private var registeredDefaults: [String: Any] = [:]
 
     override func setUp() {
         super.setUp()
+        // RebuildStartup registers Parakeet on Apple Silicon. This legacy first-run
+        // fixture must also clear the registration domain, not only persisted keys.
+        registeredDefaults = AppDefaults.defaults.volatileDomain(forName: UserDefaults.registrationDomain)
+        AppDefaults.defaults.setVolatileDomain([:], forName: UserDefaults.registrationDomain)
         presenter = PresenterSpy()
         presenter.install()
         saved = [:]
@@ -88,6 +93,7 @@ final class WelcomeWindowTests: XCTestCase {
         presenter.shown.forEach { $0.close() }
         presenter.uninstall()
         presenter = nil
+        AppDefaults.defaults.setVolatileDomain(registeredDefaults, forName: UserDefaults.registrationDomain)
         for key in keys {
             if let value = saved[key] {
                 AppDefaults.defaults.set(value, forKey: key.rawValue)

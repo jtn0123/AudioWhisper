@@ -140,9 +140,9 @@ struct RebuildPreferencesView: View {
                 Text("Set fallback order in Advanced & support.")
                     .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                 Toggle("Keep the microphone ready between recordings", isOn: $keepReady)
-                Text("Recording starts at once and keeps the moment before you pressed the shortcut. "
-                     + "The microphone stays on, so macOS shows it in use; nothing is kept until you record. "
-                     + "Bluetooth headsets are left alone.")
+                Text("Reduces startup delay and keeps a brief moment before the shortcut. "
+                     + "The microphone stays on while idle; audio stays in a short memory buffer until you record. "
+                     + "Bluetooth headsets use normal startup.")
                     .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }

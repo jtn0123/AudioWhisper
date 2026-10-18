@@ -260,6 +260,15 @@ final class WarmMicrophoneTests: XCTestCase {
         XCTAssertEqual(fake.opened.count, 2)
     }
 
+    func testInputChangeCanWarmAPreviouslyExcludedInput() async throws {
+        fake.bluetooth = ["usb"]
+        XCTAssertNil(microphone.refresh())
+        fake.bluetooth = []
+        microphone.invalidate()
+        try await waitUntil { self.microphone.isWarm }
+        XCTAssertEqual(fake.opened.count, 1)
+    }
+
     func testFailuresLeaveTheMicrophoneClosed() async {
         fake.failOpen = true
         await microphone.refresh()?.value
@@ -307,6 +316,53 @@ final class WarmMicrophoneTests: XCTestCase {
         workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
         try await waitUntil { self.microphone.isWarm }
         XCTAssertEqual(fake.opened.count, 2)
+    }
+
+    func testSleepDuringALentRecordingDoesNotReopenWhenItEnds() async throws {
+        let workspace = NotificationCenter()
+        let watchers = microphone.watchSystem(on: workspace, wakeDelay: .zero)
+        XCTAssertEqual(watchers.count, 3)
+        let input = try await warmUp()
+        let lent = try XCTUnwrap(microphone.lend(for: "usb"))
+        workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
+        microphone.reclaim(lent)
+        XCTAssertFalse(microphone.isWarm)
+        XCTAssertTrue(input.stopped)
+        let refresh = microphone.refresh()
+        await refresh?.value
+        XCTAssertNil(refresh, "settings changes while asleep must not reopen the microphone")
+    }
+
+    func testAnotherSleepCancelsAPendingWake() async throws {
+        let workspace = NotificationCenter()
+        let watchers = microphone.watchSystem(on: workspace, wakeDelay: .milliseconds(50))
+        XCTAssertEqual(watchers.count, 3)
+        _ = try await warmUp()
+        workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
+        workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
+        workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
+        try await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(microphone.isWarm)
+        XCTAssertEqual(fake.opened.count, 1)
+    }
+
+    func testPermissionRevokedDuringOpenDoesNotStartInput() async throws {
+        fake.slowOpen = true
+        let opening = microphone.refresh()
+        try await waitUntil { self.fake.pendingOpen != nil }
+        microphone.isAllowed = { false }
+        fake.pendingOpen?.resume()
+        await opening?.value
+        XCTAssertFalse(microphone.isWarm)
+        XCTAssertTrue(fake.feeds.isEmpty)
+        XCTAssertEqual(fake.opened.last?.stopped, true)
+    }
+
+    func testDisabledInputCannotBeLentBeforeSettingsNotificationArrives() async throws {
+        let input = try await warmUp()
+        enabled = false
+        XCTAssertNil(microphone.lend(for: "usb"))
+        XCTAssertTrue(input.stopped)
     }
 
     func testReleasedWatchersNoLongerFollowSleep() async throws {

@@ -41,6 +41,8 @@ final class WarmMicrophone<Input> {
     static var flowWindow: TimeInterval { 0.5 }
 
     private(set) var state: State = .cold
+    private var suspended = false
+    private var wakeTask: Task<Void, Never>?
     private let hardware: Hardware
     private let makeFeed: () -> AudioFeed
     var isEnabled: () -> Bool = { AppDefaults.keepMicrophoneReady }
@@ -62,11 +64,11 @@ final class WarmMicrophone<Input> {
     /// the user turned the setting off. Safe to call at any time.
     @discardableResult
     func refresh() -> Task<Void, Never>? {
-        guard isEnabled() else {
+        guard isEnabled(), isAllowed(), !suspended else {
             coolDown()
             return nil
         }
-        guard case .cold = state, isAllowed(), !recordingActive() else { return nil }
+        guard case .cold = state, !recordingActive() else { return nil }
         let uid = chosenUID()
         guard !hardware.isBluetooth(uid) else { return nil }
         let token = UUID()
@@ -83,7 +85,7 @@ final class WarmMicrophone<Input> {
         // A recording that started meanwhile, or a cool-down, wins. The input
         // never started, but stop it anyway: every opened input is either held
         // or stopped, never left for deallocation to release.
-        guard case .opening(token) = state, isEnabled(), !recordingActive() else {
+        guard case .opening(token) = state, isEnabled(), isAllowed(), !suspended, !recordingActive() else {
             hardware.stop(input)
             if case .opening(token) = state { state = .cold }
             return
@@ -101,6 +103,10 @@ final class WarmMicrophone<Input> {
     /// The held input, if it is the one a recording from `uid` needs. Any
     /// other held input is released so it does not compete with the cold start.
     func lend(for uid: String) -> Held? {
+        guard isEnabled(), isAllowed(), !suspended else {
+            coolDown()
+            return nil
+        }
         guard case .warm(let held) = state else {
             if case .opening = state { state = .cold }
             return nil
@@ -122,7 +128,7 @@ final class WarmMicrophone<Input> {
             hardware.stop(held.input)
             return
         }
-        guard isEnabled(), hardware.isCurrent(held.input, held.uid) else {
+        guard isEnabled(), isAllowed(), !suspended, hardware.isCurrent(held.input, held.uid) else {
             hardware.stop(held.input)
             state = .cold
             refresh()
@@ -145,9 +151,31 @@ final class WarmMicrophone<Input> {
         }
     }
 
+    /// A recording may return its borrowed input after the sleep notification.
+    /// Keep the suspension until wake so reclaim and settings changes cannot reopen it.
+    func suspend() {
+        cancelScheduledWake()
+        suspended = true
+        coolDown()
+    }
+
+    func scheduleWake(after delay: Duration) {
+        cancelScheduledWake()
+        wakeTask = Task { [weak self] in
+            do { try await Task.sleep(for: delay) } catch { return }
+            guard !Task.isCancelled, let self else { return }
+            self.suspended = false
+            self.refresh()
+        }
+    }
+
+    func cancelScheduledWake() {
+        wakeTask?.cancel()
+        wakeTask = nil
+    }
+
     /// The device under a held input changed: open it again.
     func invalidate() {
-        guard isWarm else { return }
         coolDown()
         refresh()
     }
