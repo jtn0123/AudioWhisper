@@ -6,6 +6,30 @@ import XCTest
 /// Actual app factory/service acceptance, distinct from the raw-SDK controls.
 @MainActor
 final class WhisperProductionAcceptanceTests: XCTestCase {
+    func testAInstalledPreparedCacheReportsAnExactIdentityHit() async throws {
+        _ = try await fixture()
+        guard PreparedWhisperEncoder.Environment.current.applies(to: .base) else {
+            throw XCTSkip("The prepared encoder is qualified only for Apple Silicon macOS 15")
+        }
+        let counter = PreparedCompilationCounter()
+        let folder = URL(fileURLWithPath: try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base)))
+        let preparer = PreparedWhisperEncoder(compile: { package in
+            await counter.increment()
+            return try await MLModel.compileModel(at: package)
+        })
+        let first = try await preparer.prepare(model: .base, folder: folder, compute: .cpuAndNeuralEngine)
+        _ = try XCTUnwrap(first, "Restore acceptance requires the qualified prepared encoder")
+        let firstCompilations = await counter.value
+        let second = try await preparer.prepare(model: .base, folder: folder, compute: .cpuAndNeuralEngine)
+        XCTAssertEqual(first, second)
+        let totalCompilations = await counter.value
+        XCTAssertEqual(totalCompilations, firstCompilations, "A matching validated identity must not recompile")
+        if ProcessInfo.processInfo.environment["REQUIRE_PREPARED_CACHE_HIT"] == "true" {
+            XCTAssertEqual(firstCompilations, 0, "Restored derived-cache acceptance requires zero compilations")
+        }
+        print("PRODUCTION_WHISPER_PREPARED firstCompilations=\(firstCompilations) secondCompilations=0")
+    }
+
     func testBaseServiceRecognizesColdWarmAndReloadedModel() async throws {
         let audio = try await fixture()
         let service = LocalWhisperService.shared
@@ -73,4 +97,9 @@ final class WhisperProductionAcceptanceTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(words.intersection(["quick", "brown", "fox", "lazy", "dog"]).count,
                                     4, text, file: file, line: line)
     }
+}
+
+private actor PreparedCompilationCounter {
+    private(set) var value = 0
+    func increment() { value += 1 }
 }
