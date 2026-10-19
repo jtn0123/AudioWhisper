@@ -14,15 +14,50 @@ on:
     - cron: '0 7 * * *'
   workflow_dispatch:      # so it can be run on demand without waiting a day
     inputs:
+      runner_image:
+        description: Compare Core ML runtimes; the scheduled acceptance runner remains macos-15
+        type: choice
+        options: [macos-15, macos-26]
+        default: macos-15
+      xcode_version:
+        description: Pin the shared toolchain to separate compiler and runtime differences
+        type: choice
+        options: [latest, '26.3']
+        default: latest
+      engines:
+        description: Run production engine acceptance or isolate Whisper
+        type: choice
+        options: [all, whisper]
+        default: all
+      raw_diagnostics:
+        description: Run the unchanged raw-SDK controls instead of production acceptance
+        type: boolean
+        default: false
+      require_prepared_cache_hit:
+        description: Require a restored current-identity encoder with zero compilations (macOS 15 only)
+        type: boolean
+        default: false
+      cold_prepared_encoder:
+        description: Recompile the prepared encoder instead of restoring its derived cache
+        type: boolean
+        default: false
       cold_whisper:
         description: Download Whisper assets afresh to investigate cache-dependent inference failures
+        type: boolean
+        default: false
+      rebuild_encoder:
+        description: Run only the embedded-specification experiment, separate from production acceptance
+        type: boolean
+        default: false
+      rebuild_encoder_default_compute:
+        description: Preserve the SDK default compute policy during the embedded encoder experiment
         type: boolean
         default: false
 
 jobs:
   parakeet-e2e:
     name: Local engines (Parakeet v2/v3, Whisper, lightweight MLX)
-    runs-on: macos-15
+    runs-on: ${{ inputs.runner_image || 'macos-15' }}
     # Generous: a cold run downloads the model and builds the uv environment.
     timeout-minutes: 90
 
@@ -31,23 +66,33 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Select Xcode
+        env:
+          XCODE_VERSION: ${{ inputs.xcode_version || 'latest' }}
         run: |
+          set -euo pipefail
           # Newest Xcode: KeyboardShortcuts 3.x needs swift-tools-version 6.2,
           # which Xcode 16 cannot resolve. See ci.yml for the full note.
-          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)
-          if [ -n "$latest" ]; then sudo xcode-select -s "$latest/Contents/Developer"; fi
+          if [ "$XCODE_VERSION" = latest ]; then
+            selected=$(find /Applications -maxdepth 1 -name 'Xcode_*.app' -print | sort -V | tail -n 1)
+          else
+            selected="/Applications/Xcode_${XCODE_VERSION}.app"
+          fi
+          test -d "$selected/Contents/Developer" || { echo "::error::Requested Xcode is unavailable: $selected"; exit 1; }
+          sudo xcode-select -s "$selected/Contents/Developer"
+          xcodebuild -version
           swift --version
 
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.resolved') }}
-          restore-keys: ${{ runner.os }}-spm-
+          key: ${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-${{ inputs.xcode_version || 'latest' }}-spm-${{ hashFiles('Package.resolved') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-${{ inputs.xcode_version || 'latest' }}-spm-
 
       # The model is the expensive part. Keyed on the pinned repo id so a model
       # change busts the cache.
       - name: Cache HuggingFace models
+        if: inputs.engines != 'whisper'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
@@ -61,12 +106,20 @@ jobs:
           path: ~/Library/Application Support/AudioWhisper Rebuild/Whisper
           key: whisper-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
 
+      - name: Cache prepared Whisper encoders
+        if: inputs.cold_prepared_encoder != true
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Application Support/AudioWhisper Rebuild/PreparedWhisperEncoders
+          key: prepared-whisper-${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-${{ hashFiles('Sources/Services/PreparedWhisperEncoder.swift') }}
+
       - name: Cache uv Python environment
+        if: inputs.engines != 'whisper'
         uses: actions/cache@v4
         with:
           path: ~/Library/Application Support/AudioWhisper Rebuild/python_project
-          key: uv-rebuild-${{ runner.os }}-${{ hashFiles('Sources/Resources/uv.lock') }}
-          restore-keys: uv-rebuild-${{ runner.os }}-
+          key: uv-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-${{ hashFiles('Sources/Resources/uv.lock') }}
+          restore-keys: uv-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-
 
       - name: Prepare verified uv
         run: |
@@ -91,12 +144,29 @@ jobs:
         env:
           RUN_E2E: "1"
           OS_ACTIVITY_MODE: disable
+          ENGINE_SUITE: ${{ inputs.engines || 'all' }}
+          REQUIRE_PREPARED_CACHE_HIT: ${{ inputs.require_prepared_cache_hit || false }}
+          RAW_DIAGNOSTICS: ${{ inputs.raw_diagnostics || false }}
+          REBUILD_WHISPER_ENCODER: ${{ inputs.rebuild_encoder || false }}
+          REBUILD_WHISPER_DEFAULT_COMPUTE: ${{ inputs.rebuild_encoder_default_compute || false }}
         run: |
           # RUN_E2E=1 is what lifts the XCTSkipUnless gate in
           # Tests/Integration/ParakeetEndToEndTests.swift.
-          set -o pipefail
+          set -euo pipefail
+          filter="ParakeetEndToEndTests|WhisperProductionAcceptanceTests|LocalEngineFixtureTests/testMLX"
+          if [ "$ENGINE_SUITE" = whisper ]; then filter="WhisperProductionAcceptanceTests"; fi
+          if [ "$RAW_DIAGNOSTICS" = true ]; then
+            filter="LocalEngineFixtureTests/testWhisper(CPUOnly|GPUAllowed|CompactMel|DecoderWithReference|IncrementalLoading)"
+          fi
+          if [ "$REBUILD_WHISPER_ENCODER" = true ]; then filter="LocalEngineFixtureTests/testWhisperRecompiledEmbeddedEncoder"; fi
           swift test --no-parallel -Xswiftc -DTESTING \
-            --filter "ParakeetEndToEndTests|LocalEngineFixtureTests" 2>&1 | tee real-engine-tests.log
+            --filter "$filter" 2>&1 | tee real-engine-tests.log
+          if [ "$RAW_DIAGNOSTICS" != true ] && [ "$REBUILD_WHISPER_ENCODER" != true ]; then
+            # Production acceptance installs Base first, so this installed-only
+            # meeting fixture also executes on a fresh-cache runner.
+            swift test --skip-build --no-parallel -Xswiftc -DTESTING \
+              --filter MeetingEngineFixtureTests 2>&1 | tee -a real-engine-tests.log
+          fi
 
       # CurrentWritingModelFixtureTests is run with scripts/test-current-models.sh
       # on a provisioned >=32 GB Apple Silicon Mac. The standard hosted runner

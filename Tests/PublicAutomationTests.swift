@@ -128,8 +128,11 @@ final class PublicAutomationTests: IsolatedXCTestCase {
     }
 
     func testRealExecutableKeepsStdoutAsNewlineDelimitedMCPOnly() async throws {
-        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
-        let executable = root.appendingPathComponent(".build/debug/AudioWhisper")
+        let executable = Bundle(for: Self.self).bundleURL.deletingLastPathComponent().appendingPathComponent("AudioWhisper")
+        guard FileManager.default.isExecutableFile(atPath: executable.path) else {
+            XCTFail("The current test products must include the app executable: \(executable.path)")
+            return
+        }
         let process = Process()
         process.executableURL = executable
         process.arguments = ["mcp", "--allow-directory", FileManager.default.temporaryDirectory.path]

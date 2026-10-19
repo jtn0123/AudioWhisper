@@ -11,7 +11,7 @@
 ## Implementation follow-up — 2026-10-19
 
 The original audit and grades below remain an October 18 baseline. All six bounded
-product increments were authorized and implemented in [draft PR #51](https://github.com/jtn0123/AudioWhisper/pull/51).
+product increments were authorized and implemented and merged in [PR #51](https://github.com/jtn0123/AudioWhisper/pull/51).
 The [live tracker](../docs/product-roadmap.md) and [workflow contracts](../docs/dictation-workflows.md)
 state current scope and acceptance; implementation alone does not raise these grades.
 
@@ -20,7 +20,7 @@ state current scope and acceptance; implementation alone does not raise these gr
 | C1, C2, C4, C5, H1 | Software implemented with focused regression/integration tests: complete mode editing, app rules, original-preserving writing versions, selected UUID identity and truthful delivery/restoration. Native verification is in progress. |
 | C3 | Bounded reference context implemented with consent, one-time capture, visible scope/truncation and copy-only selected-reference delivery. General voice editing of selected text is not claimed. |
 | D1 | Session-owned coarse announcements implemented and tested, including Express Mode. Actual VoiceOver acceptance remains R4. |
-| H2 / R1 | Production Base compatibility candidate passes the previously failing hosted macOS 15 environment with fresh assets and restored current-identity derived cache (zero compilations). Current-head CI and physical acceptance remain open under PR #49. |
+| H2 / R1 | Production Base compatibility candidate passes the previously failing hosted macOS 15 environment with fresh assets and restored current-identity derived cache (zero compilations). Integrated-source CI and fresh/restored hosted recognition pass at `ef49261` under PR #49. Physical acceptance remains open. |
 | G1, I1, I2 | Matched competitor performance, physical microphone/delivery and public-release acceptance remain open. |
 
 ## Summary
