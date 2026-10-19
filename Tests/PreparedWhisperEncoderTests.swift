@@ -106,18 +106,14 @@ final class PreparedWhisperEncoderTests: XCTestCase {
     func testCancelledWaiterDrainsSharedPreparationWithoutDiscardingAnotherCallersResult() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
-        let gate = PreparationGate()
+        let started = expectation(description: "Preparation entered its compiler")
+        let gate = PreparationGate(started: started)
         let prepare = fixture.preparer { _ in
             await gate.wait()
             return try fixture.compiled()
         }
         let cancelled = Task { try await prepare.prepare(model: .base, folder: fixture.folder, compute: .cpuOnly) }
-        for _ in 0..<100 {
-            if await gate.entered { break }
-            await Task.yield()
-        }
-        let entered = await gate.entered
-        XCTAssertTrue(entered)
+        await fulfillment(of: [started], timeout: 5)
         let survivor = Task { try await prepare.prepare(model: .base, folder: fixture.folder, compute: .cpuOnly) }
         cancelled.cancel()
         await gate.open()
@@ -175,11 +171,14 @@ private actor CompileCounter {
 }
 
 private actor PreparationGate {
-    private(set) var entered = false
+    let started: XCTestExpectation
+    private var opened = false
     private var continuation: CheckedContinuation<Void, Never>?
+    init(started: XCTestExpectation) { self.started = started }
     func wait() async {
-        entered = true
+        started.fulfill()
+        guard !opened else { return }
         await withCheckedContinuation { continuation = $0 }
     }
-    func open() { continuation?.resume(); continuation = nil }
+    func open() { opened = true; continuation?.resume(); continuation = nil }
 }
