@@ -122,3 +122,18 @@ upstream model-cache restoration; `cold_prepared_encoder` skips the derived-cach
 restore. OS-build keys are validated inside the cache, so restoring an encoder
 compiled for another build cannot select it. Cross-job restored prepared-cache
 acceptance is still pending.
+
+## Production qualification at 86402ea
+
+Complete scheduled engine acceptance passed on
+[macOS 15 with fresh Whisper and prepared assets](https://github.com/jtn0123/AudioWhisper/actions/runs/39235433063)
+and [macOS 26](https://github.com/jtn0123/AudioWhisper/actions/runs/39235436682).
+Both retained Parakeet v2/v3 recognition, the Spanish v3 fixture and actual MLX
+correction. All three production Whisper tests recognized the sentence, preserved
+full/incremental parity and validated persistent prepared-cache loading.
+
+The added `e7f765c` test counts actual compilations for the current runtime cache
+identity. `require_prepared_cache_hit` asserts zero first-load compilations, so an
+outer Actions cache hit containing only another OS-build identity cannot falsely
+pass restored-derived-cache acceptance. This test-only qualification is pending;
+physical macOS 15 and other Whisper model variants remain unqualified.
