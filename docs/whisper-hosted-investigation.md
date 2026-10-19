@@ -1,8 +1,8 @@
 # Hosted Whisper recognition investigation
 
-Status: open. Production Whisper inference settings and the scheduled macOS 15
-acceptance runner are unchanged. Passing static analysis or a decoder replay does
-not establish complete recognition.
+Status: production candidate under validation (2026-10-19). The scheduled
+acceptance runner remains macOS 15. Static analysis and raw-SDK diagnostic passes
+are separate from production recognition acceptance.
 
 ## Reproduction
 
@@ -82,3 +82,35 @@ established on hosted macOS 26 with Xcode 26.3.
   failure; the two virtual OS environments do not establish that scope.
 - Retain the meaningful complete-recognition assertions and the passing real
   Parakeet v2/v3 and MLX checks when evaluating a fix.
+
+## Bounded compatibility candidate (October 19)
+
+Repackaging the embedded encoder specification with its existing weights and
+compiling it on the target OS restored complete fixture recognition with the
+SDK's normal compute policy on both [macOS 15](https://github.com/jtn0123/AudioWhisper/actions/runs/39176625241)
+and [macOS 26](https://github.com/jtn0123/AudioWhisper/actions/runs/39176627132).
+The embedded specification and shipped compiled graph report different conversion
+provenance. This supports a compatibility workaround; it does not establish
+corruption, graph equivalence, or a defect in a specific Core ML operation.
+
+`WhisperEngineFactory` now prepares only the exact known Base encoder on Apple
+Silicon macOS 15. Other models, OS versions, and unknown upstream artifacts keep
+the SDK encoder. Known affected artifacts with missing or changed preparation
+sources fail clearly. Compilation uses the original SDK compute policy and never
+edits upstream assets. Prepared encoders live separately under
+`PreparedWhisperEncoders/base`, keyed by both source hashes, recipe, OS build,
+architecture and compute policy. Same-key preparation coalesces, publication is
+atomic, cached models are validated, and a damaged derived cache is rebuilt once.
+
+`WhisperProductionAcceptanceTests` exercises the actual app service and factory:
+cold/warm/cache reload, full/incremental loading, verification, and persistent
+prepared-cache validation. Nightly runs select this production suite with the
+existing Parakeet/MLX fixtures. The unchanged raw-SDK controls remain explicitly
+available through `raw_diagnostics`; their known macOS 15 failures are not
+reclassified as SDK passes. The embedded-specification experiment is another
+separate opt-in input.
+
+Current evidence: all five preparation/cache unit tests and all three
+production recognition and persistence tests passed locally on macOS 27.2. Hosted production
+acceptance, fresh-download/restored-cache runs, other Whisper variants, physical
+macOS 15, and packaged-device acceptance remain open. No matched latency claim.

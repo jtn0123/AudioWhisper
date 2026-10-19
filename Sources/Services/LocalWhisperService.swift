@@ -40,16 +40,10 @@ private actor WhisperKitCache {
         // Try to use local model path if available
         let newInstance: WhisperKit
         do {
-            if let localModelPath = getLocalModelPath(for: model) {
-                let config = WhisperKitConfig(downloadBase: RebuildStorage.whisperDownloadBase, modelFolder: localModelPath)
-                newInstance = try await WhisperKit(config)
-            } else {
-                // Fallback to model name (should work if environment variables are respected).
-                // `.whisperKitModelName` is the canonical name WhisperKit expects;
-                // see `WhisperModel.whisperKitModelName`.
-                let config = WhisperKitConfig(model: model.whisperKitModelName, downloadBase: RebuildStorage.whisperDownloadBase)
-                newInstance = try await WhisperKit(config)
+            guard let localModelPath = getLocalModelPath(for: model) else {
+                throw LocalWhisperError.modelNotDownloaded
             }
+            newInstance = try await WhisperEngineFactory.make(model: model, folder: localModelPath)
         } catch {
             // Decide whether this is a "model not downloaded" situation without
             // relying on locale-/version-fragile English substrings.
