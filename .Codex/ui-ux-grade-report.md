@@ -20,7 +20,7 @@ state current scope and acceptance; implementation alone does not raise these gr
 | C1, C2, C4, C5, H1 | Software implemented with focused regression/integration tests: complete mode editing, app rules, original-preserving writing versions, selected UUID identity and truthful delivery/restoration. Native verification is in progress. |
 | C3 | Bounded reference context implemented with consent, one-time capture, visible scope/truncation and copy-only selected-reference delivery. General voice editing of selected text is not claimed. |
 | D1 | Session-owned coarse announcements implemented and tested, including Express Mode. Actual VoiceOver acceptance remains R4. |
-| H2 / R1 | Production Base compatibility candidate now passes the previously failing hosted macOS 15 environment. Current-head, fresh/restored derived-cache and physical acceptance remain in progress under PR #49. |
+| H2 / R1 | Production Base compatibility candidate passes the previously failing hosted macOS 15 environment with fresh assets and restored current-identity derived cache (zero compilations). Current-head CI and physical acceptance remain open under PR #49. |
 | G1, I1, I2 | Matched competitor performance, physical microphone/delivery and public-release acceptance remain open. |
 
 ## Summary
