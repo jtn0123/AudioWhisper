@@ -151,7 +151,7 @@ The fixtures require no downloaded weights and do not qualify speech recognition
 
 After integration with merged #51, the local coverage export covers 94 of 109 new executable lines (86.2%),
 up from its failing hosted measurement of 63.9%. The 80% gate is unchanged;
-the next hosted analysis remains authoritative.
+hosted Sonar confirms 86.2% with zero new issues on `ef49261`.
 
 ## Integration with merged workflows
 
@@ -161,8 +161,18 @@ installed-assets policy while routing the cache through `WhisperEngineFactory`.
 The full 3,283-case local Swift suite passes, including configured opt-in skips.
 Four actual-model recognition/persistence/meeting tests pass locally; the separate
 macOS 15 prepared-cache policy test correctly skips on the newer local OS.
-Hosted macOS 15/26 integration acceptance is pending. The nightly production run
-now executes the installed-only meeting fixture after Base installation.
+Integrated acceptance passed at `ef49261` with fresh Whisper assets on
+[macOS 15](https://github.com/jtn0123/AudioWhisper/actions/runs/39246145332) and
+[macOS 26](https://github.com/jtn0123/AudioWhisper/actions/runs/39246148239).
+Both preserve Parakeet v2/v3 English/Spanish and actual MLX correction, and both
+execute the installed-only meeting fixture after Base installation. The macOS
+15-only exact-cache-identity case correctly skips on macOS 26.
+
+The [integrated restored-cache run](https://github.com/jtn0123/AudioWhisper/actions/runs/39250250114)
+passes all four production cases and the meeting fixture on macOS 15. It reports
+`firstCompilations=0 secondCompilations=0`, expected speech and clean source-labeled
+meeting segments at the requested offset. All 11 hosted checks pass at `ef49261`.
+Physical-device and public-distribution acceptance remain separate and open.
 
 The real MCP transport test locates the app beside its running test bundle,
 covering the current build with either an in-checkout or shared scratch directory.

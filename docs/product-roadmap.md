@@ -1,6 +1,6 @@
 # Product and release tracker
 
-Last checked: 2026-10-19. Merged baseline: `f92fd0b`; product increments merged in [PR #51](https://github.com/jtn0123/AudioWhisper/pull/51). [Current graded comparison](../.Codex/ui-ux-grade-report.md).
+Last checked: 2026-10-19. Workflow increments merged at `f92fd0b` in [PR #51](https://github.com/jtn0123/AudioWhisper/pull/51). [Current graded comparison](../.Codex/ui-ux-grade-report.md).
 Keep the IDs stable. Mark an item complete only when its acceptance evidence is
 linked here. On October 18 the user authorized all increments below ("Let's do
 all smartly"). Keep hardware and distribution gates open until observed.
@@ -9,7 +9,7 @@ all smartly"). Keep hardware and distribution gates open until observed.
 
 | ID | Priority | Status | Work and completion criteria |
 |---|---|---|---|
-| R1 | First | Hosted fresh/restored recognition passes; final PR gates in progress | **Whisper recognition compatibility.** [PR #49](https://github.com/jtn0123/AudioWhisper/pull/49) has a bounded production fix for the exact affected Base encoder on Apple Silicon macOS 15. Actual service/factory tests, Parakeet v2/v3 (including Spanish) and real MLX correction pass at `86402ea` on [macOS 15 with fresh Whisper assets](https://github.com/jtn0123/AudioWhisper/actions/runs/39235433063) and [macOS 26](https://github.com/jtn0123/AudioWhisper/actions/runs/39235436682). Fourteen preparation/cache/compiler-contract tests pass locally; the prior PR head passes Sonar at 86.1%. The [restored current-identity cache probe](https://github.com/jtn0123/AudioWhisper/actions/runs/39237985038) passes all four production tests at `e7f765c`, with zero encoder compilations and the expected speech. PR #49 is being revalidated after integration with merged #51: the full 3,283-case local Swift suite and pinned lint pass. Meeting-segment acceptance now runs after production recognition installs Base, including fresh-cache runners. Hosted integration gates remain pending. Other Whisper variants, physical macOS 15 and packaged-device acceptance remain open. |
+| R1 | First | Hosted acceptance complete for the bounded Base workaround | **Whisper recognition compatibility.** [PR #49](https://github.com/jtn0123/AudioWhisper/pull/49) prepares the exact affected Base encoder on Apple Silicon macOS 15. Integrated production acceptance passes at `ef49261` with fresh Whisper assets on [macOS 15](https://github.com/jtn0123/AudioWhisper/actions/runs/39246145332) and [macOS 26](https://github.com/jtn0123/AudioWhisper/actions/runs/39246148239), preserving Parakeet v2/v3 English/Spanish and actual MLX correction. The [restored-current-identity run](https://github.com/jtn0123/AudioWhisper/actions/runs/39250250114) passes all four production cases and the clean meeting-segment fixture, with zero encoder compilations. All 11 hosted checks pass on that source, including Sonar at 86.2% with zero new issues. Fourteen preparation/cache/compiler-contract tests and the full 3,283-case local Swift suite pass. Physical macOS 15, other Whisper variants and packaged-device acceptance remain open; this is a compatibility workaround, not a claim to have repaired the upstream SDK. |
 | R2 | First | Device verification pending | **Daily dictation on actual hardware.** Identify the tested packaged commit and microphone devices. Exercise permission denial/recovery, first/last words, repeated start/stop/cancel and physical hold/release. Test built-in/USB/AirPods, input change/unplug, sleep/wake, native/browser text fields, full-screen Spaces and multiple displays. Verify exactly-once paste to the intended field, clipboard fallback and normal Preferences placement. Existing renders and audio fixtures do not close this item. |
 | R3 | Next | [PR #45](https://github.com/jtn0123/AudioWhisper/pull/45) open; all 11 checks pass | **Optional warm microphone.** Five reproduced lifecycle cases are fixed and the full 3,244-test suite passes. First-word/pre-roll, ranked/default input switching/unplug, Bluetooth exclusion and sleep/wake need hardware acceptance. Confirm release on disable/quit and safe ordinary-start fallback. The three manual checks remain unchecked. |
 | R4 | Before distribution | Acceptance pending | **Accessibility and release packaging.** Complete VoiceOver and keyboard-only setup, recording/cancel/retry, model install, vocabulary, library and Preferences journeys; verify focus, status/error announcements and Reduce Motion. For public distribution, validate the universal Developer ID build, accepted notarization/stapling, Gatekeeper on a clean quarantined install, and permission/signature behavior across relaunch and update. |
@@ -33,6 +33,10 @@ behavior and Stop-to-paste latency before choosing a streaming redesign. No
 matched Superwhisper performance comparison has been run.
 
 ## Completed in this pass
+
+- [PR #49](https://github.com/jtn0123/AudioWhisper/pull/49): bounded Base compatibility
+  qualification passes at `ef49261`, including fresh/restored hosted recognition,
+  clean meeting segments and all 11 checks. See [acceptance evidence](whisper-hosted-investigation.md).
 
 - [PR #51](https://github.com/jtn0123/AudioWhisper/pull/51), merged `f92fd0b` after all 11 checks:
   six bounded workflow increments, truthful delivery and session announcements.
