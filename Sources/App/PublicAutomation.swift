@@ -63,8 +63,13 @@ struct PublicAutomationServices {
 
     static var live: Self {
         let setup = RebuildSetupServices.live
-        return .init(runtimeReady: setup.runtimeReady, modelInstalled: setup.modelInstalled,
-                     transcribe: { try await PublicAutomation.installedTranscription($0, settings: $1) })
+        return .init(runtimeReady: { selection in
+            if selection.provider == .local { return true }
+            guard Arch.isAppleSilicon else { return false }
+            return (try? await UvBootstrap.installedPython()) != nil
+        }, modelInstalled: setup.modelInstalled, transcribe: {
+            try await PublicAutomation.installedTranscription($0, settings: $1)
+        })
     }
 }
 

@@ -20,9 +20,16 @@ The populated meeting and restored-delivery body layouts are readable. Actual
 normal-window, keyboard, VoiceOver, multiple-display and hardware acceptance
 remain separate. These previews do not establish Superwhisper runtime parity.
 
-Validation for this pass: 3,253 Swift tests pass (including configured skips),
+Validation for this pass: 3,258 Swift tests pass (including configured skips),
 strict SwiftLint passes, and local new executable Swift-line coverage is
-1,710 / 2,117 (80.77%). Hosted Sonar's unchanged 80% gate remains authoritative.
+1,758 / 2,160 (81.39%). Hosted Sonar's unchanged 80% gate remains authoritative.
 Review fixes include cancellation/resource ownership, archive byte bounds,
 context selection safety, stable mode identity, truthful delivery and isolated
 parallel audio fixtures. See the product tracker for open acceptance.
+
+A signed debug bundle at `73029f2` passed local signature verification. Live native
+inspection through Computer Use twice returned `timeoutReached`; the QA process
+was stopped afterward, and the pre-existing app was left running. No microphone
+or screen permission was granted. The generic Record caption was clarified after
+these renders; subsequent fixes affect meeting stop/worker ownership and strict
+automation preflight rather than the pictured layouts.

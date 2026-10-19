@@ -4,6 +4,90 @@ import AVFAudio
 
 @MainActor
 final class MeetingWorkflowTests: IsolatedXCTestCase {
+    func testDelayedFailureFromPreviousMeetingCannotStopReplacement() async throws {
+        let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let capture = FakeMeetingCapture()
+        let session = RebuildMeetingSession(dictation: nil, store: store, capture: capture)
+        session.start()
+        try await wait { session.activity == .capturing }
+        await session.stop()
+        session.start()
+        try await wait { session.activity == .capturing }
+        let replacement = session.document?.id
+        capture.failures[0]("Delayed old stream failure")
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertEqual(session.activity, .capturing)
+        XCTAssertEqual(session.document?.id, replacement)
+        await session.stop()
+    }
+
+    func testFinishWaitsForAnAdmittedBufferBeforeClosingAndReturningChunks() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let admitted = expectation(description: "Buffer admitted before copy")
+        let release = DispatchSemaphore(value: 0)
+        let sink = MeetingAudioSink(folder: folder, source: .system, epoch: 100,
+            closed: { _ in }, failed: { _ in XCTFail("Unexpected audio failure") }, copyBuffer: { buffer in
+                admitted.fulfill()
+                _ = release.wait(timeout: .now() + 5)
+                return MeetingAudioSink.copy(buffer)
+            })
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 16_000, channels: 1))
+        let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1_600))
+        buffer.frameLength = 1_600
+        DispatchQueue.global().async { sink.append(buffer, time: 100) }
+        await fulfillment(of: [admitted], timeout: 5)
+        var finished = false
+        let stop = Task { let chunks = await sink.finish(); finished = true; return chunks }
+        try await Task.sleep(for: .milliseconds(20))
+        XCTAssertFalse(finished, "Stop must drain buffers admitted before it closed admission")
+        release.signal()
+        let chunks = await stop.value
+        XCTAssertEqual(chunks.count, 1)
+        XCTAssertEqual(chunks.first?.duration ?? 0, 0.1, accuracy: 0.001)
+    }
+
+    func testCancellationKeepsDictationReservedUntilMeetingWorkerCleanupFinishes() async throws {
+        let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let dictation = RebuildSession(services: .init(start: { _ in true }, stop: { nil }, cancel: {},
+            transcribe: { _, _, _ in .init(text: "Unused", correctionOutcome: nil) }, copy: { _ in }, save: { _, _, _ in }))
+        let started = expectation(description: "Notes generation started")
+        let draining = expectation(description: "Scoped worker cleanup started")
+        var release: CheckedContinuation<Void, Never>?
+        let services = MeetingProcessingServices(modelInstalled: { _ in true }, transcribe: { _, _, _, _, _ in
+            [.init(source: .system, start: 0, end: 1, text: "Meeting fixture")]
+        }, clearVoiceCache: {}, speakers: { document, _ in document.segments }, summaryReady: { _ in true },
+        summarize: { _, _ in
+            started.fulfill()
+            try await Task.sleep(for: .seconds(60))
+            return "Unused"
+        }, shutdown: {
+            draining.fulfill()
+            await withCheckedContinuation { release = $0 }
+        })
+        let session = RebuildMeetingSession(dictation: dictation, store: store, capture: FakeMeetingCapture()) {
+            try await MeetingProcessor(store: store, services: services).process($0, options: $1, progress: $2)
+        }
+        session.makeSummary = true
+        session.start()
+        try await wait { session.activity == .capturing }
+        await session.stop()
+        session.processCurrent()
+        await fulfillment(of: [started], timeout: 5)
+        session.cancelProcessing()
+        await fulfillment(of: [draining], timeout: 5)
+        XCTAssertTrue(session.busy)
+        XCTAssertTrue(dictation.maintenanceInProgress)
+        release?.resume()
+        try await wait { !session.busy }
+        XCTAssertFalse(dictation.maintenanceInProgress)
+        XCTAssertEqual(session.document?.status, .interrupted)
+        XCTAssertTrue(session.document?.audioRetained == true)
+    }
+
     func testStaleStartupCannotStopAReplacementCapture() async throws {
         var firstStart: CheckedContinuation<Void, Never>?
         var calls = 0
@@ -123,10 +207,12 @@ final class MeetingWorkflowTests: IsolatedXCTestCase {
 
 @MainActor
 private final class FakeMeetingCapture: MeetingCapturing {
+    var failures: [@Sendable (String) -> Void] = []
     let chunk = MeetingAudioChunk(id: UUID(), source: .system, filename: "fixture.caf", offset: 0, duration: 1)
     func start(folder: URL, microphone: Bool, system: Bool,
                closed: @escaping @Sendable (MeetingAudioChunk) -> Void,
                failed: @escaping @Sendable (String) -> Void) async throws {
+        failures.append(failed)
         try Data([1, 2, 3]).write(to: folder.appendingPathComponent(chunk.filename))
         closed(chunk)
     }

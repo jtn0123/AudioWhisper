@@ -3,6 +3,24 @@ import XCTest
 
 @MainActor
 final class MeetingProcessorTests: IsolatedXCTestCase {
+    func testLiveNotesRequireInstalledRuntimeWithoutCreatingAProject() async throws {
+        let key = "AUDIOWHISPER_APP_SUPPORT_DIR"
+        let previous = ProcessInfo.processInfo.environment[key]
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        setenv(key, root.path, 1)
+        defer {
+            if let previous { setenv(key, previous, 1) } else { unsetenv(key) }
+            try? FileManager.default.removeItem(at: root)
+        }
+        let services = MeetingProcessingServices.live(store: MeetingStore(root: root))
+        do {
+            _ = try await services.summarize("Meeting fixture", "local/fixture")
+            XCTFail("Meeting notes must require the installed runtime")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+        await services.shutdown()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.path))
+    }
+
     func testChunksAreOrderedCheckpointedAndRemovedOnlyAfterSuccess() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }

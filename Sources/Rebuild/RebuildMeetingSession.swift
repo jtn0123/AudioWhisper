@@ -99,7 +99,10 @@ final class RebuildMeetingSession {
             do {
                 try await capture.start(folder: store.folder(id), microphone: microphone, system: system,
                     closed: { [weak self] chunk in Task { @MainActor in self?.closed(chunk, id: id) } },
-                    failed: { [weak self] message in Task { @MainActor in await self?.stop(reason: message) } })
+                    failed: { [weak self] message in Task { @MainActor in
+                        guard self?.document?.id == id else { return }
+                        await self?.stop(reason: message)
+                    } })
                 guard !Task.isCancelled, document?.id == id, activity == .starting else { return }
                 activity = .capturing
                 progress = "Recording meeting audio · 30 minute limit"
@@ -126,7 +129,10 @@ final class RebuildMeetingSession {
         self.document = document
         do { try store.save(document) } catch {
             self.error = "Meeting manifest could not be saved: " + error.localizedDescription
-            Task { [weak self] in await self?.stop(reason: "Storage failed. Source audio has been kept.") }
+            Task { [weak self] in
+                guard self?.document?.id == id else { return }
+                await self?.stop(reason: "Storage failed. Source audio has been kept.")
+            }
         }
     }
 

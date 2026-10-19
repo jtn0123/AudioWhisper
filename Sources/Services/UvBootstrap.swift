@@ -269,7 +269,7 @@ internal struct UvBootstrap {
     /// Automation validates the installed lock and imports without creating a
     /// project, syncing dependencies, finding uv, or downloading Python.
     static func installedPython() async throws -> URL {
-        let project = try applicationSupportBaseDirectory().appendingPathComponent(RebuildStorage.directoryName)
+        let project = try applicationSupportBaseDirectory(create: false).appendingPathComponent(RebuildStorage.directoryName)
             .appendingPathComponent("python_project")
         guard FileManager.default.fileExists(atPath: project.path) else { throw PublicAutomationError.assets }
         for name in ["pyproject.toml", "uv.lock"] {
@@ -310,16 +310,16 @@ internal struct UvBootstrap {
     }
 
     // Allow tests to override the base Application Support directory via env var
-    private static func applicationSupportBaseDirectory() throws -> URL {
+    private static func applicationSupportBaseDirectory(create: Bool = true) throws -> URL {
         let fm = FileManager.default
         if let override = ProcessInfo.processInfo.environment["AUDIOWHISPER_APP_SUPPORT_DIR"], !override.isEmpty {
             let url = URL(fileURLWithPath: override, isDirectory: true)
-            if !fm.fileExists(atPath: url.path) {
+            if create, !fm.fileExists(atPath: url.path) {
                 try fm.createDirectory(at: url, withIntermediateDirectories: true)
             }
             return url
         }
-        return try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: create)
     }
 
     private static func uvVersion(at url: URL) throws -> String {

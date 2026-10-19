@@ -20,9 +20,11 @@ struct MeetingProcessingServices {
     var speakers: (MeetingDocument, String) async throws -> [MeetingSegment]
     var summaryReady: (String) async -> Bool
     var summarize: (String, String) async throws -> String
+    var shutdown: () async -> Void = {}
 
     static func live(store: MeetingStore) -> Self {
-        .init(modelInstalled: { WhisperKitStorage.isModelDownloaded($0) }, transcribe: {
+        let summary = MeetingSummaryWorker()
+        return .init(modelInstalled: { WhisperKitStorage.isModelDownloaded($0) }, transcribe: {
             try await LocalWhisperService.shared.meetingSegments(
                 audioFileURL: $0, model: $1, language: $2, source: $3, offset: $4)
         }, clearVoiceCache: { await LocalWhisperService.shared.clearCache() }, speakers: {
@@ -30,7 +32,7 @@ struct MeetingProcessingServices {
         }, summaryReady: { repo in
             guard Arch.isAppleSilicon, await UvBootstrap.isEnvReady() else { return false }
             return MLXModelManager.shared.isModelCachedOnDisk(repo: repo)
-        }, summarize: { try await MLDaemonManager.shared.summarize(repo: $1, text: $0) })
+        }, summarize: { try await summary.summarize(text: $0, repo: $1) }, shutdown: { await summary.shutdown() })
     }
 }
 
@@ -45,6 +47,20 @@ struct MeetingProcessor {
     }
 
     func process(
+        _ original: MeetingDocument, options: MeetingProcessingOptions,
+        progress: @escaping (MeetingDocument, String) -> Void
+    ) async throws -> MeetingDocument {
+        do {
+            let result = try await perform(original, options: options, progress: progress)
+            await services.shutdown()
+            return result
+        } catch {
+            await services.shutdown()
+            throw error
+        }
+    }
+
+    private func perform(
         _ original: MeetingDocument, options: MeetingProcessingOptions,
         progress: @escaping (MeetingDocument, String) -> Void
     ) async throws -> MeetingDocument {
@@ -161,5 +177,23 @@ struct MeetingProcessor {
             start = end
         }
         return chunks
+    }
+}
+
+@MainActor
+private final class MeetingSummaryWorker {
+    private var daemon: MLDaemonManager?
+    func summarize(text: String, repo: String) async throws -> String {
+        if daemon == nil {
+            let python = try await UvBootstrap.installedPython()
+            try Task.checkCancellation()
+            daemon = MLDaemonManager(pythonExecutable: python, allowsRuntimePreparation: false)
+        }
+        guard let daemon else { throw PublicAutomationError.assets }
+        return try await daemon.summarize(repo: repo, text: text)
+    }
+    func shutdown() async {
+        await daemon?.shutdown()
+        daemon = nil
     }
 }

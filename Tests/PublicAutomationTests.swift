@@ -3,6 +3,23 @@ import XCTest
 
 @MainActor
 final class PublicAutomationTests: IsolatedXCTestCase {
+    func testAutomationPreflightDoesNotCreateAnAbsentPythonProject() async throws {
+        let key = "AUDIOWHISPER_APP_SUPPORT_DIR"
+        let previous = ProcessInfo.processInfo.environment[key]
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        setenv(key, root.path, 1)
+        defer {
+            if let previous { setenv(key, previous, 1) } else { unsetenv(key) }
+            try? FileManager.default.removeItem(at: root)
+        }
+        let services = PublicAutomationServices.live
+        let local = await services.runtimeReady(.init(provider: .local, whisper: .base, parakeet: .v2English))
+        let python = await services.runtimeReady(.init(provider: .parakeet, whisper: .base, parakeet: .v2English))
+        XCTAssertTrue(local)
+        XCTAssertFalse(python)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: root.path))
+    }
+
     func testMCPRejectsMalformedRequestsAndReturnsExplicitToolOutcomes() async throws {
         var responses: [[String: Any]] = []
         let finished = expectation(description: "Status and inference publish their outcomes")

@@ -6,6 +6,9 @@ import Foundation
 final class MeetingAudioSink: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.audiowhisper.meeting-audio")
     private let lock = NSLock()
+    // Includes the copy-to-enqueue interval, so Stop cannot overtake an admitted buffer.
+    private let admissions = DispatchGroup()
+    private let copyBuffer: @Sendable (AVAudioPCMBuffer) -> AVAudioPCMBuffer?
     private var pending = 0
     private var stopped = false
     private var failure: String?
@@ -21,12 +24,14 @@ final class MeetingAudioSink: @unchecked Sendable {
     private let failed: @Sendable (String) -> Void
 
     init(folder: URL, source: MeetingAudioSource, epoch: TimeInterval,
-         closed: @escaping @Sendable (MeetingAudioChunk) -> Void, failed: @escaping @Sendable (String) -> Void) {
+         closed: @escaping @Sendable (MeetingAudioChunk) -> Void, failed: @escaping @Sendable (String) -> Void,
+         copyBuffer: @escaping @Sendable (AVAudioPCMBuffer) -> AVAudioPCMBuffer? = { MeetingAudioSink.copy($0) }) {
         self.folder = folder
         self.source = source
         self.epoch = epoch
         self.closed = closed
         self.failed = failed
+        self.copyBuffer = copyBuffer
     }
 
     func append(_ buffer: AVAudioPCMBuffer, time: TimeInterval) {
@@ -39,8 +44,10 @@ final class MeetingAudioSink: @unchecked Sendable {
             return
         }
         pending += 1
+        admissions.enter()
         lock.unlock()
-        guard let copy = Self.copy(buffer) else { finishPending(error: MeetingError.audio.localizedDescription); return }
+        defer { admissions.leave() }
+        guard let copy = copyBuffer(buffer) else { finishPending(error: MeetingError.audio.localizedDescription); return }
         queue.async { [weak self] in
             guard let self else { return }
             do {
@@ -104,15 +111,14 @@ final class MeetingAudioSink: @unchecked Sendable {
     func finish() async -> [MeetingAudioChunk] {
         lock.withLock { stopped = true }
         return await withCheckedContinuation { continuation in
-            queue.async { [weak self] in
-                guard let self else { continuation.resume(returning: []); return }
+            admissions.notify(queue: queue) { [self] in
                 closeChunk()
                 continuation.resume(returning: chunks)
             }
         }
     }
 
-    private static func copy(_ source: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+    static func copy(_ source: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
         guard let copy = AVAudioPCMBuffer(pcmFormat: source.format, frameCapacity: source.frameLength) else { return nil }
         copy.frameLength = source.frameLength
         let input = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: source.audioBufferList))
