@@ -3,7 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct RebuildLibraryView: View {
-    init(history: DataManagerProtocol = DataManager.shared) {
+    var session: RebuildSession?
+    init(history: DataManagerProtocol = DataManager.shared, session: RebuildSession? = nil) {
+        self.session = session
         self._library = State(initialValue: RebuildLibraryState(history: history))
     }
 
@@ -18,6 +20,7 @@ struct RebuildLibraryView: View {
     }
     @AppDefault(\.transcriptionHistoryEnabled) private var historyEnabled
     @State private var library: RebuildLibraryState
+    @State private var cleanupRecord: TranscriptionRecord?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -55,6 +58,9 @@ struct RebuildLibraryView: View {
             Button("Delete transcript", role: .destructive) {
                 Task { await library.deletePending() }
             }
+        }
+        .sheet(item: $cleanupRecord) { record in
+            RebuildHistoryCleanupView(state: RebuildHistoryCleanup(record: record, history: library.history, session: session))
         }
     }
 
@@ -132,6 +138,7 @@ struct RebuildLibraryView: View {
                     ForEach(library.records) { record in
                         RebuildLibraryRow(
                             record: record, deleteDisabled: library.exporting,
+                            onCleanup: { cleanupRecord = record },
                             expanded: Binding(
                                 get: { library.expanded.contains(record.id) },
                                 set: { value in
@@ -145,10 +152,10 @@ struct RebuildLibraryView: View {
                                     } else {
                                         library.showingOriginal.remove(record.id)
                                     }
-                                })) {
+                                }), onDelete: {
                             library.pendingDelete = record
                             library.confirmDelete = true
-                        }
+                        })
                     }
                     if library.hasMore {
                         Button("Load more") { Task { await load(reset: false) } }.disabled(library.loading)
@@ -187,6 +194,7 @@ struct RebuildLibraryView: View {
 private struct RebuildLibraryRow: View {
     let record: TranscriptionRecord
     let deleteDisabled: Bool
+    let onCleanup: () -> Void
     @Binding var expanded: Bool
     @Binding var showOriginal: Bool
     let onDelete: () -> Void
@@ -224,6 +232,12 @@ private struct RebuildLibraryRow: View {
                 .lineLimit(isLong && !expanded ? 5 : nil)
                 .frame(maxWidth: .infinity, alignment: .leading)
             actions
+            ForEach(record.cleanupVersions) { version in
+                DisclosureGroup("\(version.modeName) · \(version.createdAt.formatted(date: .abbreviated, time: .shortened))") {
+                    Text(version.text).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Copy version") { PasteManager.copyToClipboard(version.text) }.controlSize(.small)
+                }.font(.system(size: 12))
+            }
             if showOriginal, let original { originalBlock(original) }
         }.rebuildCard(padding: 14)
     }
@@ -232,6 +246,7 @@ private struct RebuildLibraryRow: View {
         HStack(spacing: 10) {
             Button("Copy") { PasteManager.copyToClipboard(record.text) }
                 .accessibilityLabel("Copy transcript from \(dateText)")
+            Button("Run writing cleanup…", action: onCleanup).disabled(deleteDisabled)
             if isLong {
                 Button(expanded ? "Show less" : "Show more") { expanded.toggle() }.buttonStyle(.rebuildLink)
             }

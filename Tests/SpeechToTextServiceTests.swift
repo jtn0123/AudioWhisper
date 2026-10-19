@@ -152,7 +152,7 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
 extension SpeechToTextServiceTests {
     private func createTestAudioFile() -> URL {
         let tempDir = FileManager.default.temporaryDirectory
-        let audioURL = tempDir.appendingPathComponent("test_audio.m4a")
+        let audioURL = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).m4a")
 
         // Create a minimal test file
         let testData = Data("test audio data".utf8)

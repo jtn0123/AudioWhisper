@@ -174,7 +174,7 @@ final class MLRPCContractTests: XCTestCase {
             return try JSONEncoder().encode(
                 MLRPCParams.Transcribe(repo: "contract-test", pcmPath: "/nonexistent.pcm")
             )
-        case .correct:
+        case .correct, .summarize:
             return try JSONEncoder().encode(
                 MLRPCParams.Correct(repo: "contract-test", text: "hi", prompt: nil)
             )

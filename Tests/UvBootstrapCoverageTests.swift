@@ -105,6 +105,34 @@ final class UvBootstrapCoverageTests: XCTestCase {
 
     // MARK: - isEnvReady
 
+    func testAutomationChecksOnlyAnExistingPinnedEnvironment() async throws {
+        do {
+            _ = try await UvBootstrap.installedPython()
+            XCTFail("Automation must not create a missing project")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+        let project = try UvBootstrap.projectDir()
+        for name in ["pyproject.toml", "uv.lock"] {
+            try FileManager.default.copyItem(at: UvBootstrap.bundledProjectFile(name),
+                                            to: project.appendingPathComponent(name))
+        }
+        let python = project.appendingPathComponent(".venv/bin/python3")
+        try FileManager.default.createDirectory(at: python.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("#!/bin/sh\nexit 1\n".utf8).write(to: python)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: python.path)
+        do {
+            _ = try await UvBootstrap.installedPython()
+            XCTFail("A broken dependency import must not be repaired by automation")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+        try Data("#!/bin/sh\nexit 0\n".utf8).write(to: python)
+        let ready = try await UvBootstrap.installedPython()
+        XCTAssertEqual(ready, python)
+        try Data("changed lock".utf8).write(to: project.appendingPathComponent("uv.lock"))
+        do {
+            _ = try await UvBootstrap.installedPython()
+            XCTFail("Automation must not sync a mismatched lock")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+    }
+
     func testIsEnvReadyFalseWhenVenvAbsent() async {
         // Fresh project dir from setUp has no .venv.
         let ready = await UvBootstrap.isEnvReady()

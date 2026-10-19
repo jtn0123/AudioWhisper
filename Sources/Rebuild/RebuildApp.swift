@@ -34,12 +34,13 @@ final class RebuildNavigation {
 }
 
 enum RebuildPage: String, CaseIterable, Identifiable {
-    case record, library, models, writing, preferences
+    case record, library, models, writing, preferences, meetings
     var id: String { rawValue }
     var title: String {
         switch self {
         case .record: return "Record"
         case .library: return "Library"
+        case .meetings: return "Meetings"
         case .models: return "Models & setup"
         case .writing: return "Writing cleanup"
         case .preferences: return "Preferences"
@@ -49,6 +50,7 @@ enum RebuildPage: String, CaseIterable, Identifiable {
         switch self {
         case .record: return "waveform"
         case .library: return "text.book.closed"
+        case .meetings: return "person.2.wave.2"
         case .models: return "shippingbox"
         case .writing: return "pencil.line"
         case .preferences: return "slider.horizontal.3"
@@ -91,6 +93,12 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.configureShortcuts() } }
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let page = urls.compactMap(RebuildDeepLink.page).first else { return }
+        navigation.selection = page
+        showWorkspace()
     }
 
     func showWorkspace() {
@@ -172,6 +180,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         session.cancel()
         holdMonitor?.stop()
         Task {
+            await session.meetings.shutdown()
             await session.waitForHistoryWrites()
             await MLDaemonManager.shared.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)

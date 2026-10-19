@@ -54,7 +54,6 @@ struct RebuildRecorderView: View {
             Circle().fill(session.phase == .recording && !silent ? RebuildTheme.recording : RebuildTheme.warning)
                 .frame(width: 7, height: 7).accessibilityHidden(true)
             Text(statusTitle)
-                .rebuildAnnouncement(statusTitle)
                 .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)

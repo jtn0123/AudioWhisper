@@ -404,6 +404,9 @@ cat >"$APP_BUNDLE/Contents/Info.plist" <<EOF
     <string>AudioWhisper needs access to your microphone to record audio for transcription.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>AudioWhisper needs accessibility access to monitor global keyboard shortcuts for quick recording.</string>
+    <key>CFBundleURLTypes</key>
+    <array><dict><key>CFBundleURLName</key><string>com.audiowhisper.navigation</string>
+    <key>CFBundleURLSchemes</key><array><string>audiowhisper</string></array></dict></array>
     <key>LSUIElement</key>
     <true/>
     <key>NSAppTransportSecurity</key>

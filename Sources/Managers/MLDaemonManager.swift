@@ -70,6 +70,12 @@ internal actor MLDaemonManager {
     private var pythonExecutable: URL?
     private var scriptLocation: URL?
     private var testResponder: ((MLRPCMethod, JSONValue) throws -> JSONValue)?
+    private let allowsRuntimePreparation: Bool
+
+    init(pythonExecutable: URL? = nil, allowsRuntimePreparation: Bool = true) {
+        self.pythonExecutable = pythonExecutable
+        self.allowsRuntimePreparation = allowsRuntimePreparation
+    }
 
     // MARK: - Public API
 
@@ -96,6 +102,15 @@ internal actor MLDaemonManager {
             method: .warmup,
             params: MLRPCParams.Warmup(type: type, repo: repo)
         )
+    }
+
+    func summarize(repo: String, text: String) async throws -> String {
+        let result: MLRPCResult.Correct = try await sendRequest(
+            method: .summarize, params: MLRPCParams.Correct(repo: repo, text: text, prompt: nil))
+        guard result.success, !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw MLDaemonError.remoteError(result.error ?? "Summary was unavailable; transcript preserved")
+        }
+        return result.text
     }
 
     func ping() async -> Bool {
@@ -285,6 +300,7 @@ internal actor MLDaemonManager {
 
     func resolvedPython() async throws -> URL {
         if let pythonExecutable { return pythonExecutable }
+        guard allowsRuntimePreparation else { throw MLDaemonError.daemonUnavailable("Installed local runtime required") }
         let url = try await UvBootstrap.ensureVenv(userPython: nil)
         pythonExecutable = url
         return url
