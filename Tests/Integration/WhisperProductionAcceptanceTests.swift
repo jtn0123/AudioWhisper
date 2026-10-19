@@ -10,6 +10,8 @@ final class WhisperProductionAcceptanceTests: XCTestCase {
         let audio = try await fixture()
         let service = LocalWhisperService.shared
         await service.clearCache()
+        let preparedRoot = PreparedWhisperEncoder().root
+        print("PRODUCTION_WHISPER preparedCachePresentBefore=\(FileManager.default.fileExists(atPath: preparedRoot.path))")
         for run in 0..<3 {
             if run == 2 { await service.clearCache() }
             let start = ContinuousClock.now

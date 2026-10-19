@@ -33,6 +33,10 @@ on:
         description: Run the unchanged raw-SDK controls instead of production acceptance
         type: boolean
         default: false
+      cold_prepared_encoder:
+        description: Recompile the prepared encoder instead of restoring its derived cache
+        type: boolean
+        default: false
       cold_whisper:
         description: Download Whisper assets afresh to investigate cache-dependent inference failures
         type: boolean
@@ -98,6 +102,13 @@ jobs:
           path: ~/Library/Application Support/AudioWhisper Rebuild/Whisper
           key: whisper-rebuild-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
 
+      - name: Cache prepared Whisper encoders
+        if: inputs.cold_prepared_encoder != true
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Application Support/AudioWhisper Rebuild/PreparedWhisperEncoders
+          key: prepared-whisper-${{ runner.os }}-${{ runner.arch }}-${{ inputs.runner_image || 'macos-15' }}-${{ hashFiles('Sources/Services/PreparedWhisperEncoder.swift') }}
+
       - name: Cache uv Python environment
         if: inputs.engines != 'whisper'
         uses: actions/cache@v4
@@ -139,7 +150,9 @@ jobs:
           set -o pipefail
           filter="ParakeetEndToEndTests|WhisperProductionAcceptanceTests|LocalEngineFixtureTests/testMLX"
           if [ "$ENGINE_SUITE" = whisper ]; then filter="WhisperProductionAcceptanceTests"; fi
-          if [ "$RAW_DIAGNOSTICS" = true ]; then filter="LocalEngineFixtureTests/testWhisper"; fi
+          if [ "$RAW_DIAGNOSTICS" = true ]; then
+            filter="LocalEngineFixtureTests/testWhisper(CPUOnly|GPUAllowed|CompactMel|DecoderWithReference|IncrementalLoading)"
+          fi
           if [ "$REBUILD_WHISPER_ENCODER" = true ]; then filter="LocalEngineFixtureTests/testWhisperRecompiledEmbeddedEncoder"; fi
           swift test --no-parallel -Xswiftc -DTESTING \
             --filter "$filter" 2>&1 | tee real-engine-tests.log

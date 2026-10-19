@@ -100,12 +100,14 @@ sources fail clearly. Compilation uses the original SDK compute policy and never
 edits upstream assets. Prepared encoders live separately under
 `PreparedWhisperEncoders/base`, keyed by both source hashes, recipe, OS build,
 architecture and compute policy. Same-key preparation coalesces, publication is
-atomic, cached models are validated, and a damaged derived cache is rebuilt once.
+atomic, cached models are load/shape validated, and an unloadable derived cache is rebuilt once.
+This validation is not a checksum of every prepared byte. A cancelled waiter drains
+shared preparation before returning, preserving other callers and staging ownership.
 
 `WhisperProductionAcceptanceTests` exercises the actual app service and factory:
 cold/warm/cache reload, full/incremental loading, verification, and persistent
 prepared-cache validation. Nightly runs select this production suite with the
-existing Parakeet/MLX fixtures. The unchanged raw-SDK controls remain explicitly
+existing Parakeet/MLX fixtures. The unchanged direct CPU/GPU, compact-input, boundary-replay and loading controls remain explicitly
 available through `raw_diagnostics`; their known macOS 15 failures are not
 reclassified as SDK passes. The embedded-specification experiment is another
 separate opt-in input.
@@ -114,3 +116,9 @@ Current evidence: all five preparation/cache unit tests and all three
 production recognition and persistence tests passed locally on macOS 27.2. Hosted production
 acceptance, fresh-download/restored-cache runs, other Whisper variants, physical
 macOS 15, and packaged-device acceptance remain open. No matched latency claim.
+
+The nightly workflow caches prepared encoders separately. `cold_whisper` skips
+upstream model-cache restoration; `cold_prepared_encoder` skips the derived-cache
+restore. OS-build keys are validated inside the cache, so restoring an encoder
+compiled for another build cannot select it. Cross-job restored prepared-cache
+acceptance is still pending.

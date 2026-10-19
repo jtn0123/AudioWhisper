@@ -67,6 +67,18 @@ final class PreparedWhisperEncoderTests: XCTestCase {
         } catch { XCTAssertEqual(error as? PreparedWhisperEncoder.PreparationError, .source) }
     }
 
+    func testPackageOnlyInstallationKeepsTheSdkPath() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let prepare = fixture.preparer { _ in XCTFail("A package-only encoder is outside the allowlist"); return fixture.folder }
+        try FileManager.default.removeItem(at: fixture.original)
+        try FileManager.default.createDirectory(at: fixture.folder.appendingPathComponent("AudioEncoder.mlpackage"),
+                                                withIntermediateDirectories: true)
+        let prepared = try await prepare.prepare(model: .base, folder: fixture.folder, compute: .cpuAndNeuralEngine)
+        XCTAssertNil(prepared)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fixture.cache.path))
+    }
+
     func testCorruptDerivedCacheRebuildsOnceAndCompileFailureCanRetry() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
@@ -89,6 +101,34 @@ final class PreparedWhisperEncoderTests: XCTestCase {
         let retried = try await fixture.preparer(build: "15B", compile: { _ in try fixture.compiled() })
             .prepare(model: .base, folder: fixture.folder, compute: .cpuOnly)
         XCTAssertNotNil(retried)
+    }
+
+    func testCancelledWaiterDrainsSharedPreparationWithoutDiscardingAnotherCallersResult() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let gate = PreparationGate()
+        let prepare = fixture.preparer { _ in
+            await gate.wait()
+            return try fixture.compiled()
+        }
+        let cancelled = Task { try await prepare.prepare(model: .base, folder: fixture.folder, compute: .cpuOnly) }
+        for _ in 0..<100 {
+            if await gate.entered { break }
+            await Task.yield()
+        }
+        let entered = await gate.entered
+        XCTAssertTrue(entered)
+        let survivor = Task { try await prepare.prepare(model: .base, folder: fixture.folder, compute: .cpuOnly) }
+        cancelled.cancel()
+        await gate.open()
+        do {
+            _ = try await cancelled.value
+            XCTFail("A cancelled caller must not receive an engine")
+        } catch is CancellationError { } catch { XCTFail("Unexpected error: \(error)") }
+        let result = try await survivor.value
+        XCTAssertNotNil(result)
+        let files = try FileManager.default.contentsOfDirectory(atPath: fixture.cache.path)
+        XCTAssertEqual(files.count, 1, "Shared preparation must publish one model and close its staging resources")
     }
 
     private struct Fixture: Sendable {
@@ -132,4 +172,14 @@ final class PreparedWhisperEncoderTests: XCTestCase {
 private actor CompileCounter {
     private(set) var value = 0
     func increment() { value += 1 }
+}
+
+private actor PreparationGate {
+    private(set) var entered = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func wait() async {
+        entered = true
+        await withCheckedContinuation { continuation = $0 }
+    }
+    func open() { continuation?.resume(); continuation = nil }
 }

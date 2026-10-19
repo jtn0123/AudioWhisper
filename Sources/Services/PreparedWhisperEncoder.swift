@@ -48,7 +48,8 @@ struct PreparedWhisperEncoder: Sendable {
     func prepare(model: WhisperModel, folder: URL, compute: MLComputeUnits) async throws -> URL? {
         guard environment.applies(to: model) else { return nil }
         let original = folder.appendingPathComponent("AudioEncoder.mlmodelc")
-        guard try ModelIntegrity.sha256(of: original.appendingPathComponent("model.mil")) == recipe.mil else { return nil }
+        guard let mil = try? ModelIntegrity.sha256(of: original.appendingPathComponent("model.mil")),
+              mil == recipe.mil else { return nil }
         guard (try? ModelIntegrity.sha256(of: original.appendingPathComponent("model.mlmodel"))) == recipe.specification,
               (try? ModelIntegrity.sha256(of: original.appendingPathComponent("weights/weight.bin"))) == recipe.weights else {
             throw PreparationError.source
@@ -73,6 +74,11 @@ struct PreparedWhisperEncoder: Sendable {
         try files.createDirectory(at: staging, withIntermediateDirectories: true)
         defer { try? files.removeItem(at: staging) }
         let package = try Self.package(original: original, staging: staging)
+        let staged = package.appendingPathComponent("Data/com.apple.CoreML")
+        guard try ModelIntegrity.sha256(of: staged.appendingPathComponent("model.mlmodel")) == recipe.specification,
+              try ModelIntegrity.sha256(of: staged.appendingPathComponent("weights/weight.bin")) == recipe.weights else {
+            throw PreparationError.source
+        }
         let compiled = try await compile(package)
         defer { try? files.removeItem(at: compiled) }
         try Task.checkCancellation()
@@ -91,9 +97,9 @@ struct PreparedWhisperEncoder: Sendable {
         let data = package.appendingPathComponent("Data/com.apple.CoreML", isDirectory: true)
         let weights = data.appendingPathComponent("weights", isDirectory: true)
         try FileManager.default.createDirectory(at: weights, withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: original.appendingPathComponent("model.mlmodel"),
+        try FileManager.default.copyItem(at: original.appendingPathComponent("model.mlmodel").resolvingSymlinksInPath(),
                                         to: data.appendingPathComponent("model.mlmodel"))
-        try FileManager.default.copyItem(at: original.appendingPathComponent("weights/weight.bin"),
+        try FileManager.default.copyItem(at: original.appendingPathComponent("weights/weight.bin").resolvingSymlinksInPath(),
                                         to: weights.appendingPathComponent("weight.bin"))
         let modelID = UUID().uuidString, weightsID = UUID().uuidString
         let manifest: [String: Any] = ["fileFormatVersion": "1.0.0", "rootModelIdentifier": modelID,
