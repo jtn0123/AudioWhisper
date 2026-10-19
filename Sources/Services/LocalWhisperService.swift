@@ -41,13 +41,15 @@ private actor WhisperKitCache {
         let newInstance: WhisperKit
         do {
             if let localModelPath = getLocalModelPath(for: model) {
-                let config = WhisperKitConfig(downloadBase: RebuildStorage.whisperDownloadBase, modelFolder: localModelPath)
+                let config = WhisperKitConfig(downloadBase: RebuildStorage.whisperDownloadBase,
+                                              modelFolder: localModelPath, download: false)
                 newInstance = try await WhisperKit(config)
             } else {
                 // Fallback to model name (should work if environment variables are respected).
                 // `.whisperKitModelName` is the canonical name WhisperKit expects;
                 // see `WhisperModel.whisperKitModelName`.
-                let config = WhisperKitConfig(model: model.whisperKitModelName, downloadBase: RebuildStorage.whisperDownloadBase)
+                let config = WhisperKitConfig(model: model.whisperKitModelName,
+                                              downloadBase: RebuildStorage.whisperDownloadBase, download: false)
                 newInstance = try await WhisperKit(config)
             }
         } catch {

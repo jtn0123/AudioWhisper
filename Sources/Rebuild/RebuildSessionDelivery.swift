@@ -73,9 +73,13 @@ extension RebuildSession {
         let saved: ClipboardKeeper.Snapshot
     }
 
+    var shouldPasteTranscript: Bool {
+        AppDefaults.enableSmartPaste && !(contextRequested && configuration?.writing.contextSource == .selectedText)
+    }
+
     /// Lend the clipboard only when a paste will happen.
     func copyTranscript(_ text: String) -> ClipboardLoan? {
-        guard AppDefaults.enableSmartPaste, capturedTarget != nil, let keeper = services.clipboardKeeper() else {
+        guard shouldPasteTranscript, capturedTarget != nil, let keeper = services.clipboardKeeper() else {
             services.copy(text)
             return nil
         }
@@ -85,7 +89,7 @@ extension RebuildSession {
     }
 
     func pasteTranscript(_ text: String, sessionID id: UUID, loan: ClipboardLoan?) async {
-        guard AppDefaults.enableSmartPaste, let target = capturedTarget else {
+        guard shouldPasteTranscript, let target = capturedTarget else {
             timing.delivered = ProcessInfo.processInfo.systemUptime
             timing.delivery = "Copied to clipboard"
             deliveryStatus = .copied
@@ -120,7 +124,7 @@ extension RebuildSession {
         switch outcome {
         case .confirmed: break
         case .unverified:
-            do { try await Task.sleep(for: delivery.restoreGrace) } catch { return false }
+            do { try await delivery.waitBeforeRestore(delivery.restoreGrace) } catch { return false }
         case .failed, .cancelled: return false
         }
         return loan.keeper.restore(loan.saved, loan: loan.id)

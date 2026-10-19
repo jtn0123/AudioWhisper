@@ -16,11 +16,7 @@ enum RebuildModeFiles {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max
-                guard size <= 1_048_576 else { throw DictationModeArchive.ArchiveError.oversized }
-                completion(.success(try Data(contentsOf: url)))
+                completion(.success(try read(url)))
             } catch { completion(.failure(error)) }
         }
     }
@@ -32,11 +28,34 @@ enum RebuildModeFiles {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             do {
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                try DictationModeArchive.export(modes).write(to: url, options: .atomic)
+                try write(modes, to: url)
                 completion(nil)
             } catch { completion(error.localizedDescription) }
         }
     }
+
+    static func read(_ url: URL) throws -> Data {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey])
+        guard values.isRegularFile == true else { throw DictationModeArchive.ArchiveError.invalid }
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var data = Data()
+        let maximum = DictationModeArchive.maximumBytes
+        while data.count <= maximum {
+            let chunk = try handle.read(upToCount: min(65_536, maximum + 1 - data.count)) ?? Data()
+            if chunk.isEmpty { break }
+            data.append(chunk)
+        }
+        guard data.count <= maximum else { throw DictationModeArchive.ArchiveError.oversized }
+        return data
+    }
+
+    static func write(_ modes: [SavedDictationMode], to url: URL) throws {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        try DictationModeArchive.export(modes).write(to: url, options: .atomic)
+    }
+
 }

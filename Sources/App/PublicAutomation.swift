@@ -56,6 +56,19 @@ enum AutomationCommand: Equatable {
 }
 
 @MainActor
+struct PublicAutomationServices {
+    var runtimeReady: (RebuildModelSelection) async -> Bool
+    var modelInstalled: (RebuildModelSelection) async -> Bool
+    var transcribe: (URL, DictationModeSettings) async throws -> TranscriptionResult
+
+    static var live: Self {
+        let setup = RebuildSetupServices.live
+        return .init(runtimeReady: setup.runtimeReady, modelInstalled: setup.modelInstalled,
+                     transcribe: { try await PublicAutomation.installedTranscription($0, settings: $1) })
+    }
+}
+
+@MainActor
 enum PublicAutomation {
     static let help = """
         AudioWhisper — local automation
@@ -68,19 +81,20 @@ enum PublicAutomation {
         Deep links: audiowhisper://open?page=record|library|meetings|models|writing|preferences
         """
 
-    static func transcribe(path: String, modeID: UUID?, allowedDirectory: URL? = nil) async throws -> PublicTranscription {
+    static func transcribe(path: String, modeID: UUID?, allowedDirectory: URL? = nil,
+                           services: PublicAutomationServices? = nil) async throws -> PublicTranscription {
         let url = try audioURL(path: path, allowedDirectory: allowedDirectory)
         let mode = modeID.flatMap { id in AppDefaults.savedDictationModes.first { $0.id == id } }
         if modeID != nil && mode == nil { throw PublicAutomationError.mode }
         var settings = mode?.settings ?? AppDefaults.currentDictationSettings
         settings.writing.contextSource = .none
         let selection = RebuildModelSelection(provider: settings.provider, whisper: settings.whisper, parakeet: settings.parakeet)
-        let setup = RebuildSetupServices.live
+        let setup = services ?? .live
         guard await setup.runtimeReady(selection), await setup.modelInstalled(selection) else {
             throw PublicAutomationError.assets
         }
         try Task.checkCancellation()
-        let result = try await TranscriptionPipeline().transcribe(audioURL: url, config: settings.pipeline())
+        let result = try await setup.transcribe(url, settings)
         try Task.checkCancellation()
         let outcome: String
         switch result.correctionOutcome {
@@ -91,6 +105,34 @@ enum PublicAutomation {
         }
         return PublicTranscription(text: result.text, originalText: result.originalText,
                                    writingOutcome: outcome, audioDuration: result.audioDuration)
+    }
+
+    static func installedTranscription(_ url: URL, settings: DictationModeSettings,
+                                       pipeline supplied: TranscriptionPipeline? = nil) async throws -> TranscriptionResult {
+        let needsPython = settings.provider == .parakeet || settings.cleanup == .localMLX
+        let python = needsPython ? try await UvBootstrap.installedPython() : nil
+        if settings.cleanup == .localMLX, !MLXModelManager.shared.isModelCachedOnDisk(repo: settings.cleanupModel) {
+            throw PublicAutomationError.assets
+        }
+        let daemon = MLDaemonManager(pythonExecutable: python, allowsRuntimePreparation: false)
+        let prepare: () async throws -> URL = {
+            guard let python else { throw PublicAutomationError.assets }
+            return python
+        }
+        let pipeline = supplied ?? TranscriptionPipeline(
+            speechService: SpeechToTextService(parakeetService: ParakeetService(daemon: daemon), preparePython: prepare),
+            correctionService: SemanticCorrectionService(
+                mlxService: MLXCorrectionService(daemon: daemon), preparePython: prepare))
+        // Hold the caller's inference reservation through actual worker cleanup.
+        // Cancellation reaps this request's private daemon; no shared app job is affected.
+        let worker = Task { try await pipeline.transcribe(audioURL: url, config: settings.pipeline()) }
+        do {
+            let result = try await withTaskCancellationHandler { try await worker.value } onCancel: {
+                Task { await daemon.shutdown() }
+            }
+            await daemon.shutdown()
+            return result
+        } catch { await daemon.shutdown(); throw error }
     }
 
     static func directory(_ path: String) throws -> URL {

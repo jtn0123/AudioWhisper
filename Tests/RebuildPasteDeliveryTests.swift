@@ -21,6 +21,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
     private var watchersStopped = 0
     private var keeper: ClipboardKeeper?
     private var announcements: [String] = []
+    private var restoreWait: ((Duration) async throws -> Void)?
 
     private let empty = FocusedTextState(length: 15, selection: NSRange(location: 15, length: 0), preceding: "I told her that")
     private let pasted = FocusedTextState(length: 28, selection: NSRange(location: 28, length: 0), preceding: "that we should go")
@@ -44,6 +45,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
         watchersStopped = 0
         keeper = nil
         announcements = []
+        restoreWait = nil
         session = makeSession()
     }
 
@@ -138,9 +140,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
     private func recordAndDeliver() async throws {
         session.toggleRecording()
         session.finishRecording()
-        try await waitFor { self.session.phase == .completed && self.events > 0 }
-        // Let confirmation and any fallback run to completion.
-        try await Task.sleep(for: .milliseconds(400))
+        try await waitFor { self.session.phase == .completed && self.session.deliveryStatus != .delivering }
     }
 
     private func makeSession() -> RebuildSession {
@@ -165,9 +165,10 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
             watchChanges: { _ in
                 FocusedTextChanges(count: { self.notifications }, stop: { self.watchersStopped += 1 })
             })
-        let delivery = RebuildPasteDelivery(
+        var delivery = RebuildPasteDelivery(
             focusedText: access, confirmationWindow: .milliseconds(120), pollInterval: .milliseconds(10),
             restoreGrace: .milliseconds(30))
+        if let restoreWait { delivery.waitBeforeRestore = restoreWait }
         let session = RebuildSession(services: services, paste: paste, delivery: delivery)
         session.readiness = RebuildReadiness(
             microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
@@ -202,6 +203,22 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
 // MARK: - Giving the clipboard back
 
 extension RebuildPasteDeliveryTests {
+    func testSelectedReferenceUsesCopyOnlyAndDoesNotReplaceTheSelection() async throws {
+        let previous = AppDefaults.currentDictationSettings
+        defer { AppDefaults.currentDictationSettings = previous }
+        var settings = previous
+        settings.cleanup = .localMLX
+        settings.writing.contextSource = .selectedText
+        AppDefaults.currentDictationSettings = settings
+        session.toggleRecording()
+        session.finishRecording()
+        try await waitFor { self.session.deliveryStatus == .copied }
+        XCTAssertEqual(events, 0)
+        XCTAssertEqual(menuPresses, 0)
+        XCTAssertEqual(copies, ["We should go"])
+        XCTAssertEqual(session.recordingDestinationName, "Clipboard")
+    }
+
     func testTheClipboardComesBackAfterAConfirmedPaste() async throws {
         let board = lendableBoard(holding: "what I had copied")
         defer { board.releaseGlobally() }
@@ -236,14 +253,18 @@ extension RebuildPasteDeliveryTests {
 
     func testUserCopyDuringDeliveryIsPreservedAndNeverReportedAsRestored() async throws {
         field = nil
+        var releaseRestore: CheckedContinuation<Void, Never>?
+        restoreWait = { _ in await withCheckedContinuation { releaseRestore = $0 } }
+        session = makeSession()
         let board = lendableBoard(holding: "before")
         defer { board.releaseGlobally() }
         session.toggleRecording()
         session.finishRecording()
-        try await waitFor { self.events > 0 }
+        try await waitFor { releaseRestore != nil }
         board.clearContents()
         board.setString("new user copy", forType: .string)
-        try await Task.sleep(for: .milliseconds(100))
+        releaseRestore?.resume()
+        try await waitFor { self.session.deliveryStatus != .delivering }
         XCTAssertEqual(board.string(forType: .string), "new user copy")
         XCTAssertEqual(session.deliveryStatus, .unverified(clipboardRestored: false))
     }

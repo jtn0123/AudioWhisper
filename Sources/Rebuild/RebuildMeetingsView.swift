@@ -118,6 +118,7 @@ struct RebuildMeetingsView: View {
     private var savedMeetings: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Saved meetings").font(.headline)
+            if let notice = state.inventoryNotice { RebuildCallout(tone: .warning, message: notice) }
             if state.documents.isEmpty { Text("Your captured meetings will appear here.").foregroundStyle(.secondary) }
             ForEach(state.documents) { document in
                 Button { state.open(document.id) } label: {

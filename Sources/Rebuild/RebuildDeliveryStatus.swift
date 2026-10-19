@@ -1,5 +1,3 @@
-import Foundation
-
 /// Delivery and clipboard restoration are separate facts. A successful paste
 /// does not mean that the transcript is still on the clipboard.
 enum RebuildDeliveryStatus: Equatable {

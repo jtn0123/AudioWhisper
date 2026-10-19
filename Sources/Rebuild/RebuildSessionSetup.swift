@@ -29,7 +29,7 @@ extension RebuildSession {
 
     var captureIdentity: UUID? { sessionID }
     var recordingDestinationName: String {
-        AppDefaults.enableSmartPaste ? (capturedTarget?.displayName ?? "Clipboard") : "Clipboard"
+        shouldPasteTranscript ? (capturedTarget?.displayName ?? "Clipboard") : "Clipboard"
     }
 
     func cancel() {

@@ -70,6 +70,12 @@ internal actor MLDaemonManager {
     private var pythonExecutable: URL?
     private var scriptLocation: URL?
     private var testResponder: ((MLRPCMethod, JSONValue) throws -> JSONValue)?
+    private let allowsRuntimePreparation: Bool
+
+    init(pythonExecutable: URL? = nil, allowsRuntimePreparation: Bool = true) {
+        self.pythonExecutable = pythonExecutable
+        self.allowsRuntimePreparation = allowsRuntimePreparation
+    }
 
     // MARK: - Public API
 
@@ -294,6 +300,7 @@ internal actor MLDaemonManager {
 
     func resolvedPython() async throws -> URL {
         if let pythonExecutable { return pythonExecutable }
+        guard allowsRuntimePreparation else { throw MLDaemonError.daemonUnavailable("Installed local runtime required") }
         let url = try await UvBootstrap.ensureVenv(userPython: nil)
         pythonExecutable = url
         return url

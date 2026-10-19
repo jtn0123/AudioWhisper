@@ -1,9 +1,44 @@
-import AVFoundation
 import XCTest
+import AVFAudio
 @testable import AudioWhisper
 
 @MainActor
 final class MeetingWorkflowTests: IsolatedXCTestCase {
+    func testStaleStartupCannotStopAReplacementCapture() async throws {
+        var firstStart: CheckedContinuation<Void, Never>?
+        var calls = 0
+        let capture = MeetingNativeCapture(startupForTesting: {
+            calls += 1
+            if calls == 1 { await withCheckedContinuation { firstStart = $0 } }
+        })
+        let first = Task {
+            try await capture.start(folder: FileManager.default.temporaryDirectory, microphone: false, system: true,
+                                    closed: { _ in }, failed: { _ in })
+        }
+        try await wait { firstStart != nil }
+        _ = await capture.stop()
+        try await capture.start(folder: FileManager.default.temporaryDirectory, microphone: false, system: true,
+                                closed: { _ in }, failed: { _ in })
+        let replacement = try XCTUnwrap(capture.identity)
+        firstStart?.resume()
+        do { try await first.value; XCTFail("Stale startup must fail") } catch is CancellationError {} catch { XCTFail("\(error)") }
+        XCTAssertEqual(capture.identity, replacement)
+        _ = await capture.stop()
+    }
+
+    func testUnfinishedFolderDoesNotHideOtherMeetings() throws {
+        let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var valid = MeetingDocument(title: "Readable")
+        valid.status = .captured
+        try store.save(valid)
+        try FileManager.default.createDirectory(at: store.folder(UUID()), withIntermediateDirectories: true)
+        let inventory = try store.list()
+        XCTAssertEqual(inventory.entries.map(\.id), [valid.id])
+        XCTAssertEqual(inventory.unreadableCount, 1)
+        XCTAssertFalse(inventory.hasMore)
+    }
+
     func testClosedCAFChunksRecoverAfterAnUnfinishedManifest() async throws {
         let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }

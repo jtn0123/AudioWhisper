@@ -55,7 +55,7 @@ final class DictationWorkflowTests: IsolatedXCTestCase {
         XCTAssertEqual(imported[1].name, "Work (imported 1)")
         XCTAssertEqual(imported[1].settings.writing.contextSource, .none)
         XCTAssertEqual(imported[1].settings.writing.instructions, configured.writing.instructions)
-        XCTAssertThrowsError(try DictationModeArchive.importing(Data(repeating: 0, count: 1_048_577), into: []))
+        XCTAssertThrowsError(try DictationModeArchive.importing(Data(repeating: 0, count: 8_388_609), into: []))
         XCTAssertThrowsError(try DictationModeArchive.importing(Data("{\"schemaVersion\":2,\"modes\":[]}".utf8), into: []))
         XCTAssertEqual(AppDefaults.savedDictationModes, [], "Import parsing must not mutate preferences")
     }
@@ -68,7 +68,20 @@ final class DictationWorkflowTests: IsolatedXCTestCase {
         XCTAssertEqual(DictationWriting().accepted(original: source, output: output), source)
         XCTAssertEqual(rewrite.accepted(original: source, output: output.replacingOccurrences(of: "42", with: "43")), source)
         XCTAssertEqual(rewrite.accepted(original: source, output: output.replacingOccurrences(of: "not ", with: "")), source)
+        let recipients = "Hi Alice,\n\(source)\nBest,\nBob"
+        XCTAssertEqual(rewrite.accepted(original: source, output: recipients), source)
         XCTAssertEqual(LocalWhisperService.decodingOptions(prompt: nil, tokenizer: nil, language: .spanish).language, "es")
+    }
+
+    func testMaximumOrdinaryModeArchiveCanBeRestored() throws {
+        var configured = settings!
+        configured.vocabulary = String(repeating: "a", count: 32_000)
+        configured.writing.instructions = String(repeating: "b", count: 4_000)
+        var modes: [SavedDictationMode] = []
+        for index in 0..<32 { modes.append(try .make(name: "Mode \(index)", settings: configured, existing: modes)) }
+        let data = try DictationModeArchive.export(modes)
+        XCTAssertGreaterThan(data.count, 1_048_576)
+        XCTAssertEqual(try DictationModeArchive.importing(data, into: []).map(\.settings), modes.map(\.settings))
     }
 
     func testRulesUseExactAppAndRespectPersistentManualOverride() throws {

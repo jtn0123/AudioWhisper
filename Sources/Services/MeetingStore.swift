@@ -1,4 +1,5 @@
-import AVFoundation
+import AVFAudio
+import Foundation
 
 /// Atomic manifests reference only files within a UUID-owned directory. Audio
 /// is retained on failure; transcript and source-audio retention are independent.
@@ -39,13 +40,24 @@ struct MeetingStore: Sendable {
         return document
     }
 
-    func list() throws -> [MeetingDocument] {
-        guard FileManager.default.fileExists(atPath: root.path) else { return [] }
+    func list() throws -> MeetingInventory {
+        guard FileManager.default.fileExists(atPath: root.path) else {
+            return MeetingInventory(entries: [], unreadableCount: 0, hasMore: false)
+        }
         let folders = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.creationDateKey])
             .filter { UUID(uuidString: $0.lastPathComponent) != nil }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-        return try folders.map { try load(UUID(uuidString: $0.lastPathComponent) ?? UUID()) }
-            .sorted { $0.startedAt > $1.startedAt }
+            .sorted {
+                ((try? $0.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast)
+                    > ((try? $1.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast)
+            }
+        var entries: [MeetingListEntry] = []
+        var unreadable = 0
+        for folder in folders.prefix(100) {
+            guard let id = UUID(uuidString: folder.lastPathComponent) else { continue }
+            do { entries.append(MeetingListEntry(try load(id))) } catch { unreadable += 1 }
+        }
+        return MeetingInventory(entries: entries.sorted { $0.startedAt > $1.startedAt },
+                                unreadableCount: unreadable, hasMore: folders.count > 100)
     }
 
     func audioURL(_ id: UUID, filename: String) throws -> URL {

@@ -29,7 +29,9 @@ only as local spelling/name reference to writing cleanup. It is never included
 in ordinary history or recaptured during retry. Practice, file import, automation
 and history reruns do not capture external context. Imported modes reset context
 to off; context consent must be enabled locally. This feature does not promise
-to replace a previously selected range in another app.
+to replace a previously selected range in another app. Selected-reference mode uses
+copy-only delivery so automatic paste cannot overwrite that reference. Mode archives
+are bounded to 8 MB; import validates the complete file before changing preferences.
 
 ## Library writing versions
 
@@ -86,13 +88,32 @@ to the session and therefore work in Express Mode without a recorder HUD. Draft
 words, waveform frames and timers do not trigger announcements. Actual VoiceOver
 acceptance remains R4.
 
+## Meetings
+
+Meetings is a separate workspace page. Choose microphone and/or system audio,
+start explicitly, then stop and process with installed local models. System audio
+uses ScreenCaptureKit audio output; no screen images are saved. Both sources share
+a host-time epoch, with their own source labels and timestamped CAF chunks. Use
+headphones to avoid microphone pickup of system playback. This first version is
+limited to 30 minutes. Closed chunks and atomic manifests support interrupted
+capture recovery; unreadable folders do not hide readable meetings.
+
+Optional local SpeakerKit models estimate clusters within each source. Labels are
+not identified people or cross-track matches. Optional local notes use the installed
+writing model and a dedicated bounded summary operation. Review speakers, decisions,
+owners and dates against the transcript. Processing checkpoints preserve recognized
+segments on later failure. Audio is retained on failure/interruption, and removed
+only after successful processing unless Keep source audio was selected. Transcripts,
+notes and retained audio are removed only by explicit meeting deletion. Export is
+an explicit text-file action; meetings never automatically paste into another app.
+
 ## Validation
 
 The identical-settings mode regression failed before the fix and passes after.
-The trust-only full suite passed 3,215 tests (including configured skips).
-`DictationWorkflowTests`, `HistoryCleanupTests` and `PublicAutomationTests`
-exercise migration, consent resets, rewrite safeguards, app-rule readiness,
-context snapshot/retry, real SwiftData version persistence and real executable
-MCP framing/EOF. These fixture checks do not close physical microphone,
-system-audio, cross-Space delivery, matched performance or public distribution
-acceptance.
+The latest full Swift run passed 3,253 tests, including configured skips. Focused
+workflow tests exercise mode/schema migration, consent resets, rewrite safeguards,
+app-rule readiness, one-time context capture/retry, real SwiftData versions,
+meeting checkpoint/ordering/retention/recovery, and real executable MCP framing/EOF.
+Coverage of new code must pass the existing 80% hosted gate before merge. Fixture
+checks do not close physical microphone, system-audio, cross-Space delivery,
+VoiceOver, matched performance or public distribution acceptance.

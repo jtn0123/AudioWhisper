@@ -16,7 +16,8 @@ final class RebuildMeetingSession {
     var speakerModelFolder: String?
     private(set) var activity: Activity = .idle
     private(set) var document: MeetingDocument?
-    private(set) var documents: [MeetingDocument] = []
+    private(set) var documents: [MeetingListEntry] = []
+    private(set) var inventoryNotice: String?
     private(set) var progress = ""
     var error: String?
     private weak var dictation: RebuildSession?
@@ -43,7 +44,17 @@ final class RebuildMeetingSession {
 
     func refresh() {
         do {
-            documents = try store.list().map { stored in document?.id == stored.id ? document ?? stored : stored }
+            let inventory = try store.list()
+            documents = inventory.entries.map { stored in
+                if let document, document.id == stored.id { return MeetingListEntry(document) }
+                return stored
+            }
+            var notices: [String] = []
+            if inventory.unreadableCount > 0 {
+                notices.append("\(inventory.unreadableCount) meeting folders could not be read. Their files have been kept.")
+            }
+            if inventory.hasMore { notices.append("Showing the 100 most recent meeting folders.") }
+            inventoryNotice = notices.isEmpty ? nil : notices.joined(separator: " ")
         } catch { self.error = error.localizedDescription }
     }
 

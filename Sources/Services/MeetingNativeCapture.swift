@@ -12,7 +12,8 @@ protocol MeetingCapturing: AnyObject {
 
 @MainActor
 final class MeetingNativeCapture: NSObject, MeetingCapturing, SCStreamDelegate {
-    private var identity: UUID?
+    private(set) var identity: UUID?
+    private let startupForTesting: (() async throws -> Void)?
     private var engine: AVAudioEngine?
     private var stream: SCStream?
     private var output: MeetingSystemAudioOutput?
@@ -21,15 +22,20 @@ final class MeetingNativeCapture: NSObject, MeetingCapturing, SCStreamDelegate {
     private var reportFailure: (@Sendable (String) -> Void)?
     private var stopTask: Task<[MeetingAudioChunk], Never>?
 
+    init(startupForTesting: (() async throws -> Void)? = nil) { self.startupForTesting = startupForTesting }
+
     func start(folder: URL, microphone: Bool, system: Bool,
                closed: @escaping @Sendable (MeetingAudioChunk) -> Void,
                failed: @escaping @Sendable (String) -> Void) async throws {
-        guard !AppEnvironment.isRunningTests, identity == nil, microphone || system else { throw MeetingError.audio }
+        guard !AppEnvironment.isRunningTests || startupForTesting != nil, identity == nil, microphone || system else {
+            throw MeetingError.audio
+        }
         let id = UUID()
         stopTask = nil
         identity = id
         reportFailure = failed
         do {
+            if let startupForTesting { try await startupForTesting(); try check(id); return }
             try await permissions(microphone: microphone, system: system)
             try check(id)
             let epoch = AVAudioTime.seconds(forHostTime: mach_absolute_time())
@@ -45,7 +51,10 @@ final class MeetingNativeCapture: NSObject, MeetingCapturing, SCStreamDelegate {
             }
             try check(id)
             observeInterruptions()
-        } catch { _ = await stop(); throw error }
+        } catch {
+            if identity == id { _ = await stop() }
+            throw error
+        }
     }
 
     private func permissions(microphone: Bool, system: Bool) async throws {
@@ -93,7 +102,7 @@ final class MeetingNativeCapture: NSObject, MeetingCapturing, SCStreamDelegate {
         configuration.height = 2
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: 1)
         let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
-        let output = MeetingSystemAudioOutput(sink: sink)
+        let output = MeetingSystemAudioOutput(sink: sink, failed: reportFailure ?? { _ in })
         try stream.addStreamOutput(output, type: .audio,
                                    sampleHandlerQueue: DispatchQueue(label: "com.audiowhisper.meeting-system"))
         self.stream = stream
@@ -126,7 +135,11 @@ final class MeetingNativeCapture: NSObject, MeetingCapturing, SCStreamDelegate {
 
     nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
         let message = error.localizedDescription
-        Task { @MainActor [weak self] in self?.interrupt("System audio stopped: " + message) }
+        let source = ObjectIdentifier(stream)
+        Task { @MainActor [weak self] in
+            guard let self, self.stream.map(ObjectIdentifier.init) == source else { return }
+            interrupt("System audio stopped: " + message)
+        }
     }
 
     func stop() async -> [MeetingAudioChunk] {
@@ -155,17 +168,27 @@ final class MeetingNativeCapture: NSObject, MeetingCapturing, SCStreamDelegate {
 
 private final class MeetingSystemAudioOutput: NSObject, SCStreamOutput, @unchecked Sendable {
     let sink: MeetingAudioSink
-    init(sink: MeetingAudioSink) { self.sink = sink }
+    let failed: @Sendable (String) -> Void
+    init(sink: MeetingAudioSink, failed: @escaping @Sendable (String) -> Void) {
+        self.sink = sink
+        self.failed = failed
+    }
 
     func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .audio, sampleBuffer.isValid, CMSampleBufferGetNumSamples(sampleBuffer) > 0,
               let description = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
         let format = AVAudioFormat(cmAudioFormatDescription: description)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format,
-                    frameCapacity: AVAudioFrameCount(CMSampleBufferGetNumSamples(sampleBuffer))) else { return }
+                    frameCapacity: AVAudioFrameCount(CMSampleBufferGetNumSamples(sampleBuffer))) else {
+            failed("System audio buffer allocation failed. Closed chunks were kept.")
+            return
+        }
         buffer.frameLength = buffer.frameCapacity
         guard CMSampleBufferCopyPCMDataIntoAudioBufferList(sampleBuffer, at: 0, frameCount: Int32(buffer.frameLength),
-                                                         into: buffer.mutableAudioBufferList) == noErr else { return }
+                                                         into: buffer.mutableAudioBufferList) == noErr else {
+            failed("System audio conversion failed. Closed chunks were kept.")
+            return
+        }
         let time = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
         sink.append(buffer, time: time)
     }

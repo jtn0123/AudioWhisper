@@ -117,8 +117,12 @@ final class PublicMCPServer {
         }
     }
 
-    func shutdown() { requests.values.forEach { $0.cancel() } }
-    func oversized() { failure(nil, -32600, "Message exceeds 1 MB"); shutdown() }
+    func shutdown() async {
+        let active = Array(requests.values)
+        active.forEach { $0.cancel() }
+        for task in active { await task.value }
+    }
+    func oversized() async { failure(nil, -32600, "Message exceeds 1 MB"); await shutdown() }
     private func result(_ id: MCPRequestID, _ value: [String: Any]) { send(["jsonrpc": "2.0", "id": id.json, "result": value]) }
     private func failure(_ id: MCPRequestID?, _ code: Int, _ message: String) {
         send(["jsonrpc": "2.0", "id": id?.json ?? NSNull(), "error": ["code": code, "message": message]])

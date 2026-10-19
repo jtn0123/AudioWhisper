@@ -13,14 +13,42 @@ struct MeetingProcessingOptions: Sendable {
 }
 
 @MainActor
+struct MeetingProcessingServices {
+    var modelInstalled: (WhisperModel) -> Bool
+    var transcribe: (URL, WhisperModel, DictationLanguage, MeetingAudioSource, TimeInterval) async throws -> [MeetingSegment]
+    var clearVoiceCache: () async -> Void
+    var speakers: (MeetingDocument, String) async throws -> [MeetingSegment]
+    var summaryReady: (String) async -> Bool
+    var summarize: (String, String) async throws -> String
+
+    static func live(store: MeetingStore) -> Self {
+        .init(modelInstalled: { WhisperKitStorage.isModelDownloaded($0) }, transcribe: {
+            try await LocalWhisperService.shared.meetingSegments(
+                audioFileURL: $0, model: $1, language: $2, source: $3, offset: $4)
+        }, clearVoiceCache: { await LocalWhisperService.shared.clearCache() }, speakers: {
+            try await MeetingProcessor.speakers($0, folder: $1, store: store)
+        }, summaryReady: { repo in
+            guard Arch.isAppleSilicon, await UvBootstrap.isEnvReady() else { return false }
+            return MLXModelManager.shared.isModelCachedOnDisk(repo: repo)
+        }, summarize: { try await MLDaemonManager.shared.summarize(repo: $1, text: $0) })
+    }
+}
+
+@MainActor
 struct MeetingProcessor {
     let store: MeetingStore
+    let services: MeetingProcessingServices
+
+    init(store: MeetingStore, services: MeetingProcessingServices? = nil) {
+        self.store = store
+        self.services = services ?? .live(store: store)
+    }
 
     func process(
         _ original: MeetingDocument, options: MeetingProcessingOptions,
         progress: @escaping (MeetingDocument, String) -> Void
     ) async throws -> MeetingDocument {
-        guard WhisperKitStorage.isModelDownloaded(options.model) else { throw MeetingError.model }
+        guard services.modelInstalled(options.model) else { throw MeetingError.model }
         guard !original.chunks.isEmpty, original.audioRetained else { throw MeetingError.audio }
         var document = original
         document.segments = []
@@ -31,23 +59,21 @@ struct MeetingProcessor {
             try Task.checkCancellation()
             if chunk.hasSignal == false { continue }
             let audio = try store.audioURL(document.id, filename: chunk.filename)
-            let segments = try await LocalWhisperService.shared.meetingSegments(
-                audioFileURL: audio, model: options.model, language: options.language, source: chunk.source, offset: chunk.offset)
+            let segments = try await services.transcribe(audio, options.model, options.language, chunk.source, chunk.offset)
             document.segments += segments
             try store.save(document)
             progress(document, "Transcribed chunk \(index + 1) of \(document.chunks.count)")
         }
-        await LocalWhisperService.shared.clearCache()
+        await services.clearVoiceCache()
         guard !document.segments.isEmpty else { throw SpeechToTextError.noSpeechDetected }
         if let folder = options.speakerModelFolder {
             progress(document, "Estimating speaker clusters locally…")
-            document.segments = try await speakers(document, folder: folder)
+            document.segments = try await services.speakers(document, folder)
             try store.save(document)
         }
         if options.summarize {
             progress(document, "Preparing local meeting notes…")
-            guard Arch.isAppleSilicon, await UvBootstrap.isEnvReady(),
-                  MLXModelManager.shared.isModelCachedOnDisk(repo: options.summaryModel) else {
+            guard await services.summaryReady(options.summaryModel) else {
                 throw PublicAutomationError.assets
             }
             document.summary = try await summarize(document.transcript, repo: options.summaryModel)
@@ -59,7 +85,7 @@ struct MeetingProcessor {
         return document
     }
 
-    private func speakers(_ document: MeetingDocument, folder: String) async throws -> [MeetingSegment] {
+    static func speakers(_ document: MeetingDocument, folder: String, store: MeetingStore) async throws -> [MeetingSegment] {
         let config = PyannoteConfig(
             modelDownloadConfig: ModelDownloadConfig(modelRepo: "argmaxinc/speakerkit-coreml", modelFolder: folder),
             download: false, verbose: false, concurrentSegmenterWorkers: 1, concurrentEmbedderWorkers: 1)
@@ -69,7 +95,7 @@ struct MeetingProcessor {
             for source in MeetingAudioSource.allCases {
                 let chunks = document.chunks.filter { $0.source == source }
                 guard !chunks.isEmpty else { continue }
-                let samples = try await trackSamples(document.id, chunks: chunks)
+                let samples = try await trackSamples(document.id, chunks: chunks, store: store)
                 let result = try await engine.diarize(audioArray: samples)
                 for index in segments.indices where segments[index].source == source {
                     segments[index].speaker = Self.speakerLabel(start: segments[index].start, end: segments[index].end,
@@ -90,7 +116,7 @@ struct MeetingProcessor {
         return labels.isEmpty ? "Unknown speaker" : "Multiple speakers"
     }
 
-    private func trackSamples(_ id: UUID, chunks: [MeetingAudioChunk]) async throws -> [Float] {
+    private static func trackSamples(_ id: UUID, chunks: [MeetingAudioChunk], store: MeetingStore) async throws -> [Float] {
         let urls = try chunks.map { (try store.audioURL(id, filename: $0.filename), $0.offset) }
         return try await Task.detached(priority: .utility) {
             var track: [Float] = []
@@ -115,7 +141,7 @@ struct MeetingProcessor {
             var summaries: [String] = []
             for chunk in level {
                 try Task.checkCancellation()
-                summaries.append(try await MLDaemonManager.shared.summarize(repo: repo, text: chunk))
+                summaries.append(try await services.summarize(chunk, repo))
             }
             if summaries.count == 1 { return summaries[0] }
             level = Self.summaryChunks(summaries.joined(separator: "\n\n"))

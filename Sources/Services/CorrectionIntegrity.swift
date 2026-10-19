@@ -28,14 +28,14 @@ internal enum CorrectionIntegrity {
         let editedWords = counts(matches(#"[\p{L}\p{N}_]+(?:['’][\p{L}\p{N}_]+)*"#, in: corrected))
         let sourceNames = counts(names(original))
         guard sourceNames.allSatisfy({ editedWords[$0.key, default: 0] >= $0.value }) else { return false }
-        if allowFraming { return true }
         // Formatting must not invent a recipient or sender that was never dictated.
-        for pattern in [
+        let recipientFrames = [
             #"(?im)^\s*(?:hi|hello|hey|dear)\b"#,
             #"(?im)^\s*(?:best(?: regards)?|kind regards|regards|sincerely|cheers)\b"#,
-            #"(?im)^\s*subject\s*:"#,
             #"(?i)\[(?:your|sender|recipient|name)\b[^\]]*\]"#
-        ] {
+        ]
+        let frames = recipientFrames + (allowFraming ? [] : [#"(?im)^\s*subject\s*:"#])
+        for pattern in frames {
             for frame in matches(pattern, in: corrected) {
                 let phrase = NSRegularExpression.escapedPattern(for: frame.trimmingCharacters(in: .whitespacesAndNewlines))
                 let existing = "(?i)(?<![\\p{L}\\p{N}_])" + phrase + "(?![\\p{L}\\p{N}_])"

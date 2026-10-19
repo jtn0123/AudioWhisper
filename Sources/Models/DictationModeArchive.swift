@@ -1,25 +1,28 @@
 import Foundation
 
 struct DictationModeArchive: Codable {
+    static let maximumBytes = 8_388_608
     let schemaVersion: Int
     let modes: [SavedDictationMode]
 
     enum ArchiveError: String, LocalizedError {
         case invalid = "This mode file is invalid or uses an unsupported version."
-        case oversized = "Mode files must be smaller than 1 MB."
+        case oversized = "Mode files must be smaller than 8 MB."
         var errorDescription: String? { rawValue }
     }
 
     static func export(_ modes: [SavedDictationMode]) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try encoder.encode(Self(schemaVersion: 1, modes: modes))
+        let data = try encoder.encode(Self(schemaVersion: 1, modes: modes))
+        guard data.count <= maximumBytes else { throw ArchiveError.oversized }
+        return data
     }
 
     /// Validate everything before committing one write. Context consent belongs
     /// to this Mac and is deliberately reset when importing a mode.
     static func importing(_ data: Data, into existing: [SavedDictationMode]) throws -> [SavedDictationMode] {
-        guard data.count <= 1_048_576 else { throw ArchiveError.oversized }
+        guard data.count <= maximumBytes else { throw ArchiveError.oversized }
         guard let archive = try? JSONDecoder().decode(Self.self, from: data), archive.schemaVersion == 1,
               !archive.modes.isEmpty else { throw ArchiveError.invalid }
         guard existing.count + archive.modes.count <= 32 else { throw SavedDictationMode.ValidationError.limit }

@@ -20,6 +20,25 @@ struct MeetingSpeakerSpan {
     let label: String
 }
 
+struct MeetingListEntry: Identifiable, Sendable {
+    let id: UUID
+    let title: String
+    let startedAt: Date
+    let status: MeetingDocument.Status
+    init(_ document: MeetingDocument) {
+        id = document.id
+        title = document.title
+        startedAt = document.startedAt
+        status = document.status
+    }
+}
+
+struct MeetingInventory {
+    let entries: [MeetingListEntry]
+    let unreadableCount: Int
+    let hasMore: Bool
+}
+
 struct MeetingSegment: Codable, Equatable, Identifiable, Sendable {
     var id = UUID()
     let source: MeetingAudioSource

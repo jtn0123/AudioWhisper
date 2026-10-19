@@ -16,7 +16,7 @@ enum RebuildWorkspaceHosting {
 extension RebuildPage {
     var subtitle: String {
         switch self {
-        case .record: return "Speak naturally. Your text is copied when transcription finishes."
+        case .record: return "Speak naturally. Review your transcript, then use it anywhere."
         case .library: return "Saved transcripts stay on this Mac. Saving is optional."
         case .meetings: return "Capture microphone and system audio, then process locally."
         case .models: return "Set up your microphone and model, then try a practice dictation."

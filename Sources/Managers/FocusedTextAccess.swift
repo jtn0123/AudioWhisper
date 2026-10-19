@@ -122,7 +122,7 @@ enum FocusedTextAX {
     }
 
     /// Request only the bounded selected range, never the whole field value.
-    static func selectedText(pid: pid_t) -> String? {
+    static func selectedText(pid: pid_t) -> WritingReference? {
         guard !AppEnvironment.isRunningTests, AXIsProcessTrusted(),
               let focused = focusedTextElement(pid: pid),
               let selection = range(focused, kAXSelectedTextRangeAttribute),
@@ -134,7 +134,7 @@ enum FocusedTextAX {
         guard AXUIElementCopyParameterizedAttributeValue(focused, kAXStringForRangeParameterizedAttribute as CFString,
                                                          parameter, &result) == .success,
               let text = result as? String else { return nil }
-        return selection.length > requested.length ? String(text.dropLast()) + "…" : text
+        return WritingReference(text: text, truncated: selection.length > requested.length)
     }
 
     /// What a text control reported, as a state; `nil` when it reported nothing.

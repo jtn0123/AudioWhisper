@@ -1,4 +1,5 @@
-import AVFoundation
+import AVFAudio
+import Foundation
 
 /// Copies tap buffers before they expire; a bounded serial writer keeps disk
 /// work off the realtime callback. Overflow fails visibly instead of hiding gaps.
@@ -101,7 +102,7 @@ final class MeetingAudioSink: @unchecked Sendable {
     }
 
     func finish() async -> [MeetingAudioChunk] {
-        lock.lock(); stopped = true; lock.unlock()
+        lock.withLock { stopped = true }
         return await withCheckedContinuation { continuation in
             queue.async { [weak self] in
                 guard let self else { continuation.resume(returning: []); return }

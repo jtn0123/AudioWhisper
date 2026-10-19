@@ -8,6 +8,21 @@
 **Artifacts:** `.Codex/ui-ux-audit/2026-10-18-regrade/` ([provenance](ui-ux-audit/2026-10-18-regrade/README.md)).
 **Previous report:** [2026-10-04](ui-ux-grade-report-2026-10-04.md). This explicit regrade resets UI IDs; use UI C1/H1 etc. Roadmap P1-P6 and R1-R4 retain their meaning.
 
+## Implementation follow-up — 2026-10-19
+
+The original audit and grades below remain an October 18 baseline. All six bounded
+product increments were authorized and implemented in [draft PR #51](https://github.com/jtn0123/AudioWhisper/pull/51).
+The [live tracker](../docs/product-roadmap.md) and [workflow contracts](../docs/dictation-workflows.md)
+state current scope and acceptance; implementation alone does not raise these grades.
+
+| Audit IDs | Current execution status |
+|---|---|
+| C1, C2, C4, C5, H1 | Software implemented with focused regression/integration tests: complete mode editing, app rules, original-preserving writing versions, selected UUID identity and truthful delivery/restoration. Native verification is in progress. |
+| C3 | Bounded reference context implemented with consent, one-time capture, visible scope/truncation and copy-only selected-reference delivery. General voice editing of selected text is not claimed. |
+| D1 | Session-owned coarse announcements implemented and tested, including Express Mode. Actual VoiceOver acceptance remains R4. |
+| H2 / R1 | Production Base compatibility candidate now passes the previously failing hosted macOS 15 environment. Current-head, fresh/restored derived-cache and physical acceptance remain in progress under PR #49. |
+| G1, I1, I2 | Matched competitor performance, physical microphone/delivery and public-release acceptance remain open. |
+
 ## Summary
 
 **Competitive product judgment: B- overall. Interface: B; workflow breadth relative to Superwhisper: C+.**
