@@ -175,7 +175,8 @@ final class RebuildMeetingSession {
                     self?.document = updated
                     self?.progress = message
                 }
-                guard !Task.isCancelled else { throw CancellationError() }
+                // A completed manifest/audio-retention commit survives cancellation during worker cleanup.
+                guard !Task.isCancelled || result.status == .complete else { throw CancellationError() }
                 self.document = result
                 progress = "Meeting transcript ready. Review estimated speakers and notes before using them."
             } catch {

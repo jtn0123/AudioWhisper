@@ -57,4 +57,4 @@ Historical implementation evidence remains in
 
 ## Current regrade
 
-[2026-10-18 comparison](../.Codex/ui-ux-grade-report.md): competitive product judgment B-, interface B, workflow breadth C+. Draft #51 implements the six bounded increments plus UI H1, D1 and C5. The full 3,258-test Swift run passes; local new Swift-code coverage is 81.39%; hosted coverage/analysis and native acceptance remain in progress. Original grades are retained pending native evidence and acceptance. These grades do not claim matched accuracy/speed or complete device/release acceptance.
+[2026-10-18 comparison](../.Codex/ui-ux-grade-report.md): competitive product judgment B-, interface B, workflow breadth C+. Draft #51 implements the six bounded increments plus UI H1, D1 and C5. The full 3,260-test Swift run passes; local new Swift-code coverage is 81.50%; hosted coverage/analysis and native acceptance remain in progress. Original grades are retained pending native evidence and acceptance. These grades do not claim matched accuracy/speed or complete device/release acceptance.

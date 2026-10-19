@@ -20,9 +20,9 @@ The populated meeting and restored-delivery body layouts are readable. Actual
 normal-window, keyboard, VoiceOver, multiple-display and hardware acceptance
 remain separate. These previews do not establish Superwhisper runtime parity.
 
-Validation for this pass: 3,258 Swift tests pass (including configured skips),
+Validation for this pass: 3,260 Swift tests pass (including configured skips),
 strict SwiftLint passes, and local new executable Swift-line coverage is
-1,758 / 2,160 (81.39%). Hosted Sonar's unchanged 80% gate remains authoritative.
+1,762 / 2,162 (81.50%). Hosted Sonar's unchanged 80% gate remains authoritative.
 Review fixes include cancellation/resource ownership, archive byte bounds,
 context selection safety, stable mode identity, truthful delivery and isolated
 parallel audio fixtures. See the product tracker for open acceptance.
@@ -33,3 +33,10 @@ was stopped afterward, and the pre-existing app was left running. No microphone
 or screen permission was granted. The generic Record caption was clarified after
 these renders; subsequent fixes affect meeting stop/worker ownership and strict
 automation preflight rather than the pictured layouts.
+
+The signed `4f47eec` bundle transcribed the public speech fixture through the actual
+CLI with cleanup off in an isolated preferences suite. Timestamped meeting ASR
+was also run with the installed Base model. It exposed decoder control tokens in
+segment text; `skipSpecialTokens` now removes them. The real fixture and the
+post-commit cancellation regression pass. Final full suite: 3,260 tests, with
+configured skips; changed Swift-line coverage: 81.50%.

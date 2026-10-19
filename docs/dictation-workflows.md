@@ -110,7 +110,7 @@ an explicit text-file action; meetings never automatically paste into another ap
 ## Validation
 
 The identical-settings mode regression failed before the fix and passes after.
-The latest full Swift run passed 3,258 tests, including configured skips. Focused
+The latest full Swift run passed 3,260 tests, including configured skips. Focused
 workflow tests exercise mode/schema migration, consent resets, rewrite safeguards,
 app-rule readiness, one-time context capture/retry, real SwiftData versions,
 meeting checkpoint/ordering/retention/recovery, and real executable MCP framing/EOF.
@@ -122,3 +122,7 @@ Meeting Stop drains buffers admitted before closing, and delayed capture failure
 are scoped to their meeting. Notes generation owns a private local worker;
 cancellation retains the dictation reservation until its process is reaped.
 Automation preflight reads installed runtime state without creating a Python project.
+
+A successful meeting commit remains complete if cancellation arrives during worker
+shutdown. A real installed-Base fixture verifies source/offset timestamps and clean
+segment text without decoder control tokens. This does not test live system capture.

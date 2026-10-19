@@ -214,6 +214,7 @@ internal final class LocalWhisperService: Sendable {
         let engine = try await cache.getOrCreate(model: model, maxCached: maxCachedModels, progressCallback: nil)
         var options = Self.decodingOptions(prompt: nil, tokenizer: engine.tokenizer, language: language)
         options.wordTimestamps = true
+        options.skipSpecialTokens = true
         let results = try await engine.transcribe(audioPath: audioFileURL.path, decodeOptions: options)
         try Task.checkCancellation()
         return results.flatMap(\.segments).compactMap { segment in

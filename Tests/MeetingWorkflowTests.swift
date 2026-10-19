@@ -4,6 +4,40 @@ import AVFAudio
 
 @MainActor
 final class MeetingWorkflowTests: IsolatedXCTestCase {
+    func testCancellationAfterCommitPreservesCompletedNotesAndDeletedAudioState() async throws {
+        let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let draining = expectation(description: "Successful worker cleanup started")
+        var release: CheckedContinuation<Void, Never>?
+        let services = MeetingProcessingServices(modelInstalled: { _ in true }, transcribe: { _, _, _, _, _ in
+            [.init(source: .system, start: 0, end: 1, text: "Meeting fixture")]
+        }, clearVoiceCache: {}, speakers: { document, _ in document.segments }, summaryReady: { _ in true },
+        summarize: { _, _ in "Completed meeting notes" }, shutdown: {
+            draining.fulfill()
+            await withCheckedContinuation { release = $0 }
+        })
+        let session = RebuildMeetingSession(dictation: nil, store: store, capture: FakeMeetingCapture()) {
+            try await MeetingProcessor(store: store, services: services).process($0, options: $1, progress: $2)
+        }
+        session.makeSummary = true
+        session.start()
+        try await wait { session.activity == .capturing }
+        await session.stop()
+        session.processCurrent()
+        await fulfillment(of: [draining], timeout: 5)
+        let id = try XCTUnwrap(session.document?.id)
+        XCTAssertEqual(try store.load(id).status, .complete)
+        XCTAssertFalse(try store.load(id).audioRetained)
+        session.cancelProcessing()
+        release?.resume()
+        try await wait { !session.busy }
+        let committed = try store.load(id)
+        XCTAssertEqual(session.document?.status, .complete)
+        XCTAssertEqual(committed.status, .complete)
+        XCTAssertEqual(committed.summary, "Completed meeting notes")
+        XCTAssertFalse(committed.audioRetained)
+    }
+
     func testDelayedFailureFromPreviousMeetingCannotStopReplacement() async throws {
         let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }
