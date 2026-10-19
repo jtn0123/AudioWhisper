@@ -9,7 +9,8 @@ enum EmbeddedEncoderExperiment {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let package = try makePackage(from: URL(fileURLWithPath: modelPath).appendingPathComponent("AudioEncoder.mlmodelc"), at: root)
+        let original = URL(fileURLWithPath: modelPath).appendingPathComponent("AudioEncoder.mlmodelc")
+        let package = try makePackage(from: original, at: root)
         let compiled = try await MLModel.compileModel(at: package)
         defer { try? FileManager.default.removeItem(at: compiled) }
         let configuration = MLModelConfiguration()

@@ -112,16 +112,16 @@ available through `raw_diagnostics`; their known macOS 15 failures are not
 reclassified as SDK passes. The embedded-specification experiment is another
 separate opt-in input.
 
-Current evidence: all five preparation/cache unit tests and all three
-production recognition and persistence tests passed locally on macOS 27.2. Hosted production
-acceptance, fresh-download/restored-cache runs, other Whisper variants, physical
-macOS 15, and packaged-device acceptance remain open. No matched latency claim.
+Local evidence: all seven preparation/cache unit tests and all three
+production recognition and persistence tests passed on macOS 27.2. Hosted
+production and cache qualification is recorded below. Other Whisper variants,
+physical macOS 15 and packaged-device acceptance remain open. No matched latency claim.
 
 The nightly workflow caches prepared encoders separately. `cold_whisper` skips
 upstream model-cache restoration; `cold_prepared_encoder` skips the derived-cache
 restore. OS-build keys are validated inside the cache, so restoring an encoder
 compiled for another build cannot select it. Cross-job restored prepared-cache
-acceptance is still pending.
+acceptance passed for the tested hosted build, as recorded below.
 
 ## Production qualification at 86402ea
 
@@ -135,5 +135,7 @@ full/incremental parity and validated persistent prepared-cache loading.
 The added `e7f765c` test counts actual compilations for the current runtime cache
 identity. `require_prepared_cache_hit` asserts zero first-load compilations, so an
 outer Actions cache hit containing only another OS-build identity cannot falsely
-pass restored-derived-cache acceptance. This test-only qualification is pending;
-physical macOS 15 and other Whisper model variants remain unqualified.
+pass restored-derived-cache acceptance. The [restored-cache run](https://github.com/jtn0123/AudioWhisper/actions/runs/39237985038)
+passed all four production tests at `e7f765c`, reporting
+`firstCompilations=0 secondCompilations=0` and the expected spoken sentence.
+Physical macOS 15 and other Whisper model variants remain unqualified.

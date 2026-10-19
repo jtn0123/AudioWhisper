@@ -23,7 +23,8 @@ final class LocalEngineFixtureTests: XCTestCase {
         try requireRealEngines()
         try XCTSkipUnless(ProcessInfo.processInfo.environment["REBUILD_WHISPER_ENCODER"] == "true",
                           "Opt in to the temporary alternate embedded-spec diagnostic")
-        let audio = try XCTUnwrap(Bundle.module.url(forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
         try await ModelManager.shared.downloadModel(.base)
         let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
         let texts = try await EmbeddedEncoderExperiment.run(modelPath: path, audio: audio)

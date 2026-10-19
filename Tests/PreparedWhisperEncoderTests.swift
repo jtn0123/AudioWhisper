@@ -1,4 +1,4 @@
-import CoreML
+import Foundation
 import XCTest
 @testable import AudioWhisper
 
