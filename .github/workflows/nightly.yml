@@ -152,7 +152,7 @@ jobs:
         run: |
           # RUN_E2E=1 is what lifts the XCTSkipUnless gate in
           # Tests/Integration/ParakeetEndToEndTests.swift.
-          set -o pipefail
+          set -euo pipefail
           filter="ParakeetEndToEndTests|WhisperProductionAcceptanceTests|LocalEngineFixtureTests/testMLX"
           if [ "$ENGINE_SUITE" = whisper ]; then filter="WhisperProductionAcceptanceTests"; fi
           if [ "$RAW_DIAGNOSTICS" = true ]; then
@@ -161,6 +161,12 @@ jobs:
           if [ "$REBUILD_WHISPER_ENCODER" = true ]; then filter="LocalEngineFixtureTests/testWhisperRecompiledEmbeddedEncoder"; fi
           swift test --no-parallel -Xswiftc -DTESTING \
             --filter "$filter" 2>&1 | tee real-engine-tests.log
+          if [ "$RAW_DIAGNOSTICS" != true ] && [ "$REBUILD_WHISPER_ENCODER" != true ]; then
+            # Production acceptance installs Base first, so this installed-only
+            # meeting fixture also executes on a fresh-cache runner.
+            swift test --skip-build --no-parallel -Xswiftc -DTESTING \
+              --filter MeetingEngineFixtureTests 2>&1 | tee -a real-engine-tests.log
+          fi
 
       # CurrentWritingModelFixtureTests is run with scripts/test-current-models.sh
       # on a provisioned >=32 GB Apple Silicon Mac. The standard hosted runner

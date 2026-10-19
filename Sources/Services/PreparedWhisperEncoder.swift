@@ -101,7 +101,8 @@ struct PreparedWhisperEncoder: Sendable {
                                         to: data.appendingPathComponent("model.mlmodel"))
         try FileManager.default.copyItem(at: original.appendingPathComponent("weights/weight.bin").resolvingSymlinksInPath(),
                                         to: weights.appendingPathComponent("weight.bin"))
-        let modelID = UUID().uuidString, weightsID = UUID().uuidString
+        let modelID = UUID().uuidString
+        let weightsID = UUID().uuidString
         let manifest: [String: Any] = ["fileFormatVersion": "1.0.0", "rootModelIdentifier": modelID,
             "itemInfoEntries": [
                 modelID: ["author": "com.apple.CoreML", "description": "CoreML Model Specification",

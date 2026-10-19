@@ -13,7 +13,7 @@ internal enum CorrectionIntegrity {
         If the source is already correct or an edit is uncertain, retain it. Return only the edited source.
         """
 
-    static func allows(original: String, corrected: String) -> Bool {
+    static func allows(original: String, corrected: String, allowFraming: Bool = false) -> Bool {
         guard polarity(original) == polarity(corrected) else { return false }
         let sourceNumbers = numbers(original)
         let editedNumbers = numbers(corrected)
@@ -29,12 +29,13 @@ internal enum CorrectionIntegrity {
         let sourceNames = counts(names(original))
         guard sourceNames.allSatisfy({ editedWords[$0.key, default: 0] >= $0.value }) else { return false }
         // Formatting must not invent a recipient or sender that was never dictated.
-        for pattern in [
+        let recipientFrames = [
             #"(?im)^\s*(?:hi|hello|hey|dear)\b"#,
             #"(?im)^\s*(?:best(?: regards)?|kind regards|regards|sincerely|cheers)\b"#,
-            #"(?im)^\s*subject\s*:"#,
             #"(?i)\[(?:your|sender|recipient|name)\b[^\]]*\]"#
-        ] {
+        ]
+        let frames = recipientFrames + (allowFraming ? [] : [#"(?im)^\s*subject\s*:"#])
+        for pattern in frames {
             for frame in matches(pattern, in: corrected) {
                 let phrase = NSRegularExpression.escapedPattern(for: frame.trimmingCharacters(in: .whitespacesAndNewlines))
                 let existing = "(?i)(?<![\\p{L}\\p{N}_])" + phrase + "(?![\\p{L}\\p{N}_])"

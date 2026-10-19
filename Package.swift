@@ -27,7 +27,8 @@ let package = Package(
             name: "AudioWhisper",
             dependencies: [
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
-                .product(name: "WhisperKit", package: "argmax-oss-swift")
+                .product(name: "WhisperKit", package: "argmax-oss-swift"),
+                .product(name: "SpeakerKit", package: "argmax-oss-swift")
             ],
             path: "Sources",
             exclude: ["VersionInfo.swift.template"],
@@ -49,7 +50,7 @@ let package = Package(
                 .product(name: "ViewInspector", package: "ViewInspector")
             ],
             path: "Tests",
-            exclude: ["README.md", "test_correction_sanitize.py", "test_hub.py", "test_rpc.py", "test_verify_scripts.py", "test_coverage_artifacts.py", "test_analyze_gate.py", "test_install_rebuild.py", "test_coverage_gate.py", "test_parakeet.py", "__pycache__", "__Snapshots__"],
+            exclude: ["README.md", "test_correction_sanitize.py", "test_meeting_summary.py", "test_hub.py", "test_rpc.py", "test_verify_scripts.py", "test_coverage_artifacts.py", "test_analyze_gate.py", "test_install_rebuild.py", "test_coverage_gate.py", "test_parakeet.py", "__pycache__", "__Snapshots__"],
             resources: [
                 .copy("Resources")
             ]

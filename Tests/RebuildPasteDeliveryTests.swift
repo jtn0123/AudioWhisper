@@ -20,6 +20,8 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
     private var notifiesTransiently = false
     private var watchersStopped = 0
     private var keeper: ClipboardKeeper?
+    private var announcements: [String] = []
+    private var restoreWait: ((Duration) async throws -> Void)?
 
     private let empty = FocusedTextState(length: 15, selection: NSRange(location: 15, length: 0), preceding: "I told her that")
     private let pasted = FocusedTextState(length: 28, selection: NSRange(location: 28, length: 0), preceding: "that we should go")
@@ -42,6 +44,8 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
         notifiesTransiently = false
         watchersStopped = 0
         keeper = nil
+        announcements = []
+        restoreWait = nil
         session = makeSession()
     }
 
@@ -56,6 +60,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
         XCTAssertEqual(events, 1)
         XCTAssertEqual(menuPresses, 0)
         XCTAssertNil(session.notice)
+        XCTAssertEqual(session.deliveryStatus, .pasted(clipboardRestored: false))
     }
 
     func testSwallowedShortcutFallsBackToTheEditMenuOnce() async throws {
@@ -90,6 +95,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
         XCTAssertEqual(watchersStopped, 0, "an unreadable field is not observed")
         XCTAssertNil(session.notice)
         XCTAssertEqual(copies, ["We should go"], "no context means no fitting")
+        XCTAssertEqual(session.deliveryStatus, .unverified(clipboardRestored: false))
     }
 
     func testChangeSeenOnlyByNotificationsCountsAsDelivered() async throws {
@@ -134,9 +140,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
     private func recordAndDeliver() async throws {
         session.toggleRecording()
         session.finishRecording()
-        try await waitFor { self.session.phase == .completed && self.events > 0 }
-        // Let confirmation and any fallback run to completion.
-        try await Task.sleep(for: .milliseconds(400))
+        try await waitFor { self.session.phase == .completed && self.session.deliveryStatus != .delivering }
     }
 
     private func makeSession() -> RebuildSession {
@@ -147,6 +151,7 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
             transcribe: { _, _, _ in TranscriptionResult(text: self.transcriptText, correctionOutcome: nil) },
             copy: { self.copies.append($0) }, save: { _, _, _ in }, interruptionSource: nil)
         services.clipboardKeeper = { self.keeper }
+        services.announce = { self.announcements.append($0) }
         services.capturePasteDestination = {
             RebuildPasteDestination(
                 processIdentifier: 111, bundleIdentifier: "fixture.destination",
@@ -160,9 +165,10 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
             watchChanges: { _ in
                 FocusedTextChanges(count: { self.notifications }, stop: { self.watchersStopped += 1 })
             })
-        let delivery = RebuildPasteDelivery(
+        var delivery = RebuildPasteDelivery(
             focusedText: access, confirmationWindow: .milliseconds(120), pollInterval: .milliseconds(10),
             restoreGrace: .milliseconds(30))
+        if let restoreWait { delivery.waitBeforeRestore = restoreWait }
         let session = RebuildSession(services: services, paste: paste, delivery: delivery)
         session.readiness = RebuildReadiness(
             microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
@@ -197,12 +203,32 @@ final class RebuildPasteDeliveryTests: IsolatedXCTestCase {
 // MARK: - Giving the clipboard back
 
 extension RebuildPasteDeliveryTests {
+    func testSelectedReferenceUsesCopyOnlyAndDoesNotReplaceTheSelection() async throws {
+        let previous = AppDefaults.currentDictationSettings
+        defer { AppDefaults.currentDictationSettings = previous }
+        var settings = previous
+        settings.cleanup = .localMLX
+        settings.writing.contextSource = .selectedText
+        AppDefaults.currentDictationSettings = settings
+        session.toggleRecording()
+        session.finishRecording()
+        try await waitFor { self.session.deliveryStatus == .copied }
+        XCTAssertEqual(events, 0)
+        XCTAssertEqual(menuPresses, 0)
+        XCTAssertEqual(copies, ["We should go"])
+        XCTAssertEqual(session.recordingDestinationName, "Clipboard")
+    }
+
     func testTheClipboardComesBackAfterAConfirmedPaste() async throws {
         let board = lendableBoard(holding: "what I had copied")
         defer { board.releaseGlobally() }
         try await recordAndDeliver()
         XCTAssertEqual(board.string(forType: .string), "what I had copied")
         XCTAssertEqual(copies, [], "a lent clipboard is written through the keeper only")
+        XCTAssertEqual(session.deliveryStatus, .pasted(clipboardRestored: true))
+        XCTAssertEqual(announcements, ["Recording started.", "Recording stopped. Transcribing.",
+                                      session.deliveryStatus.announcement])
+        XCTAssertTrue(session.deliveryStatus.detail.contains("previous clipboard was restored"))
     }
 
     func testAPasteThatCouldNotBeSeenLandingGivesTheClipboardBackAfterTheGrace() async throws {
@@ -211,6 +237,7 @@ extension RebuildPasteDeliveryTests {
         defer { board.releaseGlobally() }
         try await recordAndDeliver()
         XCTAssertEqual(board.string(forType: .string), "what I had copied")
+        XCTAssertEqual(session.deliveryStatus, .unverified(clipboardRestored: true))
     }
 
     func testAFailedPasteLeavesTheTranscriptToPasteByHand() async throws {
@@ -221,6 +248,44 @@ extension RebuildPasteDeliveryTests {
         try await recordAndDeliver()
         XCTAssertEqual(session.notice, "Copied. Paste manually with Command V.")
         XCTAssertEqual(board.string(forType: .string), " we should go", "the fitted transcript, ready to paste")
+        XCTAssertEqual(session.deliveryStatus, .manual)
+    }
+
+    func testUserCopyDuringDeliveryIsPreservedAndNeverReportedAsRestored() async throws {
+        field = nil
+        var releaseRestore: CheckedContinuation<Void, Never>?
+        restoreWait = { _ in await withCheckedContinuation { releaseRestore = $0 } }
+        session = makeSession()
+        let board = lendableBoard(holding: "before")
+        defer { board.releaseGlobally() }
+        session.toggleRecording()
+        session.finishRecording()
+        try await waitFor { releaseRestore != nil }
+        board.clearContents()
+        board.setString("new user copy", forType: .string)
+        releaseRestore?.resume()
+        try await waitFor { self.session.deliveryStatus != .delivering }
+        XCTAssertEqual(board.string(forType: .string), "new user copy")
+        XCTAssertEqual(session.deliveryStatus, .unverified(clipboardRestored: false))
+    }
+
+    func testExpressModeAnnouncesWithoutShowingTheRecorder() async throws {
+        AppDefaults.immediateRecording = true
+        defer { AppDefaults.immediateRecording = false }
+        var shows = 0
+        session.showRecorder = { shows += 1 }
+        try await recordAndDeliver()
+        XCTAssertEqual(shows, 0)
+        XCTAssertEqual(announcements.count, 3)
+        XCTAssertEqual(announcements.first, "Recording started.")
+        XCTAssertEqual(announcements.last, session.deliveryStatus.announcement)
+    }
+
+    func testCancellationHasOneSessionAnnouncement() {
+        session.toggleRecording()
+        session.cancel()
+        session.cancel()
+        XCTAssertEqual(announcements, ["Recording started.", "Dictation cancelled."])
     }
 
     private func lendableBoard(holding text: String) -> NSPasteboard {

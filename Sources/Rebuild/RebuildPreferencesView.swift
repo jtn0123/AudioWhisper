@@ -39,6 +39,8 @@ struct RebuildPreferencesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                RebuildSavedModesView(session: session)
+                RebuildAppRulesView(session: session)
                 recordingSection
                 microphoneSection
                 deliverySection

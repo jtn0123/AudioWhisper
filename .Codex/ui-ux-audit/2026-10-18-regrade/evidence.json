@@ -1,0 +1,67 @@
+{
+  "source_commit": "9634ed53eb0c774f433186177070c96c896a847c",
+  "kind": "native-offscreen-fixtures",
+  "test_result": {
+    "tests": 1,
+    "failures": 0,
+    "seconds": 5.31
+  },
+  "images": [
+    {
+      "file": "library-light.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 182102
+    },
+    {
+      "file": "preferences-light.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 460053
+    },
+    {
+      "file": "preferences-minimum.png",
+      "width": 1800,
+      "height": 1200,
+      "bytes": 367408
+    },
+    {
+      "file": "record-dark.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 219386
+    },
+    {
+      "file": "record-light.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 257259
+    },
+    {
+      "file": "record-setup-needed.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 295446
+    },
+    {
+      "file": "recording-fixture.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 243889
+    },
+    {
+      "file": "writing-dark.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 319747
+    },
+    {
+      "file": "writing-light.png",
+      "width": 2200,
+      "height": 1520,
+      "bytes": 404656
+    }
+  ],
+  "superwhisper_version": "3.0.1",
+  "comparison": "official documentation and current AudioWhisper source; no matched runtime benchmark"
+}

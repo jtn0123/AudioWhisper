@@ -149,6 +149,22 @@ staging or a published cache. Additional tests cover a peer publishing first,
 runtime environment selection, actionable repair errors and missing local assets.
 The fixtures require no downloaded weights and do not qualify speech recognition.
 
-The local coverage export covers 93 of Sonar's 108 new executable lines (86.1%),
+After integration with merged #51, the local coverage export covers 94 of 109 new executable lines (86.2%),
 up from its failing hosted measurement of 63.9%. The 80% gate is unchanged;
 the next hosted analysis remains authoritative.
+
+## Integration with merged workflows
+
+PR #51 merged as `f92fd0b` after all 11 checks. The recognition branch retains
+its language selection, clean meeting tokens, timestamp/source mapping and strict
+installed-assets policy while routing the cache through `WhisperEngineFactory`.
+The full 3,283-case local Swift suite passes, including configured opt-in skips.
+Four actual-model recognition/persistence/meeting tests pass locally; the separate
+macOS 15 prepared-cache policy test correctly skips on the newer local OS.
+Hosted macOS 15/26 integration acceptance is pending. The nightly production run
+now executes the installed-only meeting fixture after Base installation.
+
+The real MCP transport test locates the app beside its running test bundle,
+covering the current build with either an in-checkout or shared scratch directory.
+Its old fixed `.build/debug` assumption failed in the integration worktree before
+this correction; the corrected test passes without skipping the executable check.

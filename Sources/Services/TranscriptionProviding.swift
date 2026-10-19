@@ -21,6 +21,7 @@ internal protocol LocalWhisperTranscribing: Sendable {
         audioFileURL: URL,
         model: WhisperModel,
         prompt: String?,
+        language: DictationLanguage,
         progressCallback: (@Sendable (String) -> Void)?
     ) async throws -> String
 }

@@ -1,0 +1,141 @@
+import AppKit
+import SwiftUI
+import XCTest
+@testable import AudioWhisper
+
+@MainActor
+final class ProductAuditRenderTests: IsolatedXCTestCase {
+    func testRenderCurrentProductStates() async throws {
+        AppDefaults.transcriptionProvider = .parakeet
+        AppDefaults.semanticCorrectionMode = .off
+        AppDefaults.enableSmartPaste = false
+        AppDefaults.playCompletionSound = false
+        AppDefaults.transcriptionHistoryEnabled = false
+        let first = try SavedDictationMode.make(name: "Everyday", settings: AppDefaults.currentDictationSettings, existing: [])
+        var secondSettings = first.settings
+        secondSettings.spokenPunctuation.toggle()
+        let second = try SavedDictationMode.make(name: "Project notes", settings: secondSettings, existing: [first])
+        AppDefaults.savedDictationModes = [first, second]
+        let session = RebuildSession(services: RebuildSessionServices(
+            start: { _ in true }, stop: { nil }, cancel: {},
+            transcribe: { _, _, _ in TranscriptionResult(text: "Public audit fixture.", correctionOutcome: nil) },
+            copy: { _ in }, save: { _, _, _ in }, capturePasteDestination: { nil }),
+            setup: RebuildSetupServices(
+                selection: { .current }, microphoneStatus: { .authorized }, requestMicrophone: { _ in },
+                openMicrophoneSettings: {}, runtimeReady: { _ in true }, modelInstalled: { _ in true },
+                install: { _ in }, verify: { _ in ModelVerificationResult(succeeded: true, message: "Fixture") }))
+        session.readiness = RebuildReadiness(
+            microphoneGranted: true, modelInstalled: true, runtimeReady: true, checking: false)
+        AppDefaults.selectedDictationModeID = first.id
+        let meetingRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let meetingStore = MeetingStore(root: meetingRoot)
+        defer { try? FileManager.default.removeItem(at: meetingRoot) }
+        var meeting = MeetingDocument(title: "Design review")
+        meeting.status = .complete
+        meeting.audioRetained = false
+        meeting.segments = [
+            .init(source: .microphone, start: 3, end: 7, text: "We will review the draft on Tuesday.", speaker: "Cluster 0"),
+            .init(source: .system, start: 8, end: 12, text: "I can prepare the examples.", speaker: "Cluster 1")]
+        meeting.summary = "Decision: review the draft Tuesday.\nAction: prepare examples; owner not stated."
+        try meetingStore.save(meeting)
+        session.meetings = RebuildMeetingSession(dictation: session, store: meetingStore)
+        session.meetings.open(meeting.id)
+        session.meetings.refresh()
+        let history = MockDataManager()
+        let recorder = AudioEngineRecorder()
+        for page in RebuildPage.allCases {
+            try await render(page, session: session, recorder: recorder, history: history, name: page.rawValue + "-light")
+        }
+        try await render(.record, session: session, recorder: recorder, history: history, name: "record-dark", dark: true)
+        try await render(.writing, session: session, recorder: recorder, history: history, name: "writing-dark", dark: true)
+        try await render(.preferences, session: session, recorder: recorder, history: history,
+                         name: "preferences-minimum", size: NSSize(width: 900, height: 600))
+        try await renderView(RebuildModeEditor(mode: first, save: { _ in }), name: "mode-editor-light",
+                             size: NSSize(width: 600, height: 690))
+        var rewriteSettings = secondSettings
+        rewriteSettings.cleanup = .localMLX
+        rewriteSettings.writing.operation = .rewrite
+        rewriteSettings.writing.contextSource = .selectedText
+        rewriteSettings.writing.instructions = "Use short paragraphs and a clear subject."
+        let rewriteMode = SavedDictationMode(id: UUID(), name: "Project email", settings: rewriteSettings)
+        try await renderView(RebuildModeEditor(mode: rewriteMode, save: { _ in }), name: "mode-editor-dark",
+                             dark: true, size: NSSize(width: 600, height: 690))
+        let record = TranscriptionRecord(text: "Original result", provider: .local,
+                                         originalText: "We will review the draft on Tuesday.")
+        let cleanup = RebuildHistoryCleanup(record: record, history: history, session: nil)
+        cleanup.result = "Please review the draft on Tuesday."
+        try await renderView(RebuildHistoryCleanupView(state: cleanup), name: "history-version-preview",
+                             size: NSSize(width: 700, height: 600))
+        session.transcript = "Please review the draft on Tuesday."
+        session.deliveredTranscript = session.transcript
+        session.deliveryStatus = .pasted(clipboardRestored: true)
+        session.phase = .completed
+        try await render(.record, session: session, recorder: recorder, history: history, name: "record-pasted-restored")
+        session.phase = .idle
+        session.transcript = ""
+        session.writingContext = CapturedWritingContext.make(source: .selectedText,
+            text: "Project Atlas uses Core ML for local recognition.", appName: "Fixture Editor")
+        session.contextRequested = true
+        try await render(.record, session: session, recorder: recorder, history: history, name: "record-reference-context")
+        session.writingContext = nil
+        session.contextRequested = false
+        session.toggleRecording()
+        XCTAssertEqual(session.phase, .recording)
+        try await render(.record, session: session, recorder: recorder, history: history, name: "recording-fixture")
+        session.cancel()
+        session.readiness = RebuildReadiness(
+            microphoneGranted: false, modelInstalled: false, runtimeReady: false, checking: false)
+        session.notice = "Public audit fixture: the microphone could not start. Check your selected input."
+        try await render(.record, session: session, recorder: recorder, history: history, name: "record-setup-needed")
+    }
+
+    private func render(_ page: RebuildPage, session: RebuildSession, recorder: AudioEngineRecorder,
+                        history: MockDataManager, name: String, dark: Bool = false,
+                        size: NSSize = NSSize(width: 1100, height: 760)) async throws {
+        AppDefaults.defaults.set(dark ? "dark" : "light", forKey: "rebuild.appearance")
+        let navigation = RebuildNavigation()
+        navigation.selection = page
+        let root = RebuildRootView(session: session, navigation: navigation, recorder: recorder,
+                                   importAudio: {}, history: history, readShortcut: { nil })
+        let controller = RebuildWorkspaceHosting.controller(for: root)
+        let host = controller.view
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.contentViewController = controller
+        window.setContentSize(size)
+        host.frame = NSRect(origin: .zero, size: size)
+        defer { window.contentViewController = nil; window.close() }
+        try await Task.sleep(for: .milliseconds(250))
+        host.layoutSubtreeIfNeeded()
+        let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        let output = try XCTUnwrap(ProcessInfo.processInfo.environment["PRODUCT_AUDIT_OUTPUT"])
+        let folder = URL(fileURLWithPath: output)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try data.write(to: folder.appendingPathComponent(name + ".png"))
+    }
+
+    private func renderView(_ view: some View, name: String, dark: Bool = false, size: NSSize) async throws {
+        let controller = NSHostingController(rootView: view)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.contentViewController = controller
+        window.setContentSize(size)
+        let host = controller.view
+        host.frame = NSRect(origin: .zero, size: size)
+        defer { window.contentViewController = nil; window.close() }
+        try await Task.sleep(for: .milliseconds(250))
+        host.layoutSubtreeIfNeeded()
+        let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        let output = try XCTUnwrap(ProcessInfo.processInfo.environment["PRODUCT_AUDIT_OUTPUT"])
+        try data.write(to: URL(fileURLWithPath: output).appendingPathComponent(name + ".png"))
+    }
+
+}
