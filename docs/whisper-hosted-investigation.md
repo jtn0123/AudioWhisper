@@ -112,7 +112,7 @@ available through `raw_diagnostics`; their known macOS 15 failures are not
 reclassified as SDK passes. The embedded-specification experiment is another
 separate opt-in input.
 
-Local evidence: all seven preparation/cache unit tests and all three
+Local evidence: all fourteen preparation/cache/compiler-contract tests and all three
 production recognition and persistence tests passed on macOS 27.2. Hosted
 production and cache qualification is recorded below. Other Whisper variants,
 physical macOS 15 and packaged-device acceptance remain open. No matched latency claim.
@@ -139,3 +139,16 @@ pass restored-derived-cache acceptance. The [restored-cache run](https://github.
 passed all four production tests at `e7f765c`, reporting
 `firstCompilations=0 secondCompilations=0` and the expected spoken sentence.
 Physical macOS 15 and other Whisper model variants remain unqualified.
+
+## Ordinary PR coverage
+
+Normal CI now exercises real Core ML compilation and loading with two original,
+sub-200-byte sum/broadcast models. The expected encoder dimensions compile and
+persist; a different output shape and invalid specification fail without leaving
+staging or a published cache. Additional tests cover a peer publishing first,
+runtime environment selection, actionable repair errors and missing local assets.
+The fixtures require no downloaded weights and do not qualify speech recognition.
+
+The local coverage export covers 93 of Sonar's 108 new executable lines (86.1%),
+up from its failing hosted measurement of 63.9%. The 80% gate is unchanged;
+the next hosted analysis remains authoritative.

@@ -3,6 +3,13 @@ import XCTest
 @testable import AudioWhisper
 
 final class PreparedWhisperEncoderTests: XCTestCase {
+    func testCurrentEnvironmentUsesTheRunningOSAndArchitecture() {
+        let current = PreparedWhisperEncoder.Environment.current
+        XCTAssertEqual(current.major, ProcessInfo.processInfo.operatingSystemVersion.majorVersion)
+        XCTAssertEqual(current.build, ProcessInfo.processInfo.operatingSystemVersionString)
+        XCTAssertEqual(current.appleSilicon, Arch.isAppleSilicon)
+    }
+
     func testPolicyIsLimitedToBaseOnAppleSiliconMacOS15() {
         let affected = PreparedWhisperEncoder.Environment(major: 15, appleSilicon: true, build: "15A")
         XCTAssertTrue(affected.applies(to: .base))
@@ -125,6 +132,31 @@ final class PreparedWhisperEncoderTests: XCTestCase {
         XCTAssertNotNil(result)
         let files = try FileManager.default.contentsOfDirectory(atPath: fixture.cache.path)
         XCTAssertEqual(files.count, 1, "Shared preparation must publish one model and close its staging resources")
+    }
+
+    func testAnotherProcessPublishingFirstKeepsItsValidatedModelAndRemovesStaging() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let preparer = fixture.preparer { _ in try fixture.compiled() }
+        let initial = try await preparer.prepare(model: .base, folder: fixture.folder, compute: .cpuOnly)
+        let destination = try XCTUnwrap(initial)
+        try FileManager.default.removeItem(at: destination)
+        let racing = fixture.preparer { _ in
+            try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+            try Data("yes".utf8).write(to: destination.appendingPathComponent("valid"))
+            try Data("peer".utf8).write(to: destination.appendingPathComponent("owner"))
+            return try fixture.compiled()
+        }
+        let published = try await racing.prepare(model: .base, folder: fixture.folder, compute: .cpuOnly)
+        XCTAssertEqual(published, destination)
+        XCTAssertEqual(try Data(contentsOf: destination.appendingPathComponent("owner")), Data("peer".utf8))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: fixture.cache.path).count, 1)
+    }
+
+    func testPreparationFailuresExplainHowToRepairTheInstallation() {
+        for error in [PreparedWhisperEncoder.PreparationError.source, .shape] {
+            XCTAssertTrue(error.localizedDescription.contains("Reinstall Base in Models & setup"))
+        }
     }
 
     private struct Fixture: Sendable {
