@@ -75,6 +75,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         // Other audio a crashed recording left lowered.
         OutputDucker.shared.restore()
+        recorder.startWarmMicrophone()
         RebuildStartup.configure(
             session: session, navigation: navigation,
             effects: .init(initializeHistory: { try DataManager.shared.initialize() },
@@ -92,7 +93,12 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             closeRecorder: { [weak self] in self?.overlay?.orderOut(nil) }))
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.configureShortcuts() } }
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.configureShortcuts()
+                self?.recorder.warmMicrophone.refresh()
+            }
+        }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -178,6 +184,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         session.cancel()
+        recorder.warmMicrophone.coolDown()
         holdMonitor?.stop()
         Task {
             await session.meetings.shutdown()

@@ -73,6 +73,15 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
     private let outputDucker: OutputDucker
     private var otherAudioLowered = false
 
+    // MARK: - Ready Microphone (see AudioEngineRecorder+Warm.swift)
+
+    let warmMicrophone: WarmMicrophone<PreparedAudioEngine>
+    /// The held input this capture borrowed, given back when it stops.
+    var lentInput: WarmMicrophone<PreparedAudioEngine>.Held?
+    /// The feed this capture reads from, detached before the file closes.
+    var attachedFeed: AudioFeed?
+    var warmWatchers: [AnyObject] = []
+
     // MARK: - Interruption Observers
     // Registered for the lifetime of a recording session (start → stop/cancel)
     // so we can detect machine sleep and AVAudioEngine config/route changes that
@@ -88,8 +97,10 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         self.outputDucker = .shared
         self.inputRouting = .live
         self.microphoneChooser = .live
+        self.warmMicrophone = .live(routing: .live)
         self.dateProvider = { Date() }
         super.init()
+        configureWarmMicrophone()
     }
 
     init(
@@ -97,7 +108,8 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         outputDucker: OutputDucker? = nil,
         dateProvider: @escaping () -> Date = { Date() },
         inputRouting: AudioInputRouting = .live,
-        microphoneChooser: MicrophoneChooser = .live
+        microphoneChooser: MicrophoneChooser = .live,
+        warmMicrophone: WarmMicrophone<PreparedAudioEngine>? = nil
     ) {
         // A5: resolved in the body rather than as a default argument.
         // Default-argument expressions are evaluated in the CALLER's
@@ -111,7 +123,9 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         self.dateProvider = dateProvider
         self.inputRouting = inputRouting
         self.microphoneChooser = microphoneChooser
+        self.warmMicrophone = warmMicrophone ?? .live(routing: inputRouting)
         super.init()
+        configureWarmMicrophone()
     }
 
     deinit {
@@ -173,6 +187,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // Restore microphone volume if it was boosted
         scheduleVolumeRestore()
         restoreOtherAudio()
+        warmMicrophone.refresh()
 
         isRecording = false
         recordingSessionID = nil
@@ -201,6 +216,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         // Restore microphone volume
         scheduleVolumeRestore()
         restoreOtherAudio()
+        warmMicrophone.refresh()
 
         isRecording = false
         recordingSessionID = nil
@@ -230,7 +246,14 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
 
     private func stopEngine() {
         removeInterruptionObservers()
-        if let engine = audioEngine {
+        // No buffer reaches the file once the feed is detached.
+        attachedFeed?.detach()
+        attachedFeed = nil
+        if let lent = lentInput {
+            lentInput = nil
+            audioEngine = nil
+            warmMicrophone.reclaim(lent)
+        } else if let engine = audioEngine {
             engine.inputNode.removeTap(onBus: 0)
             engine.stop()
         }
@@ -380,6 +403,7 @@ extension AudioEngineRecorder {
 
     func startRecording(sessionID: UUID) -> Bool {
         guard canStartRecording() else { return false }
+        if let lent = lendWarmInput() { return startPreparedEngine(lent.input, sessionID: sessionID, lent: lent) }
         do {
             let selectedUID = microphoneChooser.choose(ranking: AppDefaults.microphoneRanking)
             let prepared = try PreparedAudioEngine.make(routing: inputRouting, selectedUID: selectedUID)
@@ -415,15 +439,18 @@ extension AudioEngineRecorder {
         return false
     }
 
-    func startPreparedEngine(_ prepared: PreparedAudioEngine, sessionID: UUID) -> Bool {
+    func startPreparedEngine(
+        _ prepared: PreparedAudioEngine, sessionID: UUID, lent: WarmMicrophone<PreparedAudioEngine>.Held? = nil
+    ) -> Bool {
         // Create recording URL
         let tempPath = FileManager.default.temporaryDirectory
         let timestamp = dateProvider().timeIntervalSince1970
         let audioFilename = tempPath.appendingPathComponent("recording_\(timestamp).m4a")
+        // Recorded before anything can throw, so a failed start still gives it back.
+        lentInput = lent
 
         do {
             let engine = prepared.engine
-            let inputNode = prepared.inputNode
             let inputFormat = prepared.format
             activeMicrophoneName = prepared.microphoneName
 
@@ -433,15 +460,11 @@ extension AudioEngineRecorder {
             fftProcessor?.updateSampleRate(Float(inputFormat.sampleRate))
 
             try beginCaptureFile(at: audioFilename, format: inputFormat)
-
-            // Install tap for real-time audio access
-            let bufferSize = AVAudioFrameCount(1024)
-            inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
-                self?.processAudioBuffer(buffer)
-            }
+            connect(prepared, lent: lent)
 
             audioEngine = engine
-            try engine.start()
+            // A held input is already running.
+            if !engine.isRunning { try engine.start() }
             currentSessionStart = dateProvider()
             lastRecordingDuration = nil
             isRecording = true

@@ -9,6 +9,7 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.playCompletionSound) private var sound
     @AppDefault(\.microphoneRanking) private var ranking
     @AppDefault(\.lowerOtherAudioWhileRecording) private var lowerOthers
+    @AppDefault(\.keepMicrophoneReady) private var keepReady
     @AppDefault(\.pressAndHoldEnabled) private var holdEnabled
     @AppDefault(\.pressAndHoldKeyIdentifier) private var holdKey
     @AppDefault(\.pressAndHoldMode) private var holdMode
@@ -85,6 +86,7 @@ struct RebuildPreferencesView: View {
                 }
             }
         }
+        .onChange(of: keepReady) { _, _ in settingsChanged() }
     }
 
     // MARK: Sections
@@ -139,6 +141,12 @@ struct RebuildPreferencesView: View {
                 RebuildPreferredMicrophonePicker(ranking: $ranking, connected: inputs.devices)
                 Text("Set fallback order in Advanced & support.")
                     .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+                Toggle("Keep the microphone ready between recordings", isOn: $keepReady)
+                Text("Reduces startup delay and keeps a brief moment before the shortcut. "
+                     + "The microphone stays on while idle; audio stays in a short memory buffer until you record. "
+                     + "Bluetooth headsets use normal startup.")
+                    .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             RebuildFormRow(label: "Sound") {
                 Toggle("Play a completion sound", isOn: $sound)

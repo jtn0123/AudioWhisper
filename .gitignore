@@ -145,6 +145,7 @@ coverage-python.xml
 .pycov/
 .mypy-venv/
 .mypy_cache/
+.pytest_cache/
 
 # CI analyzer artifacts (xcodebuild log and scripts/analyze-gate.py reports)
 xcodebuild.log
@@ -152,6 +153,10 @@ analyze.json
 analyze.stderr.txt
 
 *.xml.manifest.json
+
+# Claude Code: per-user settings and the worktrees it creates inside the repo
+.claude/settings.local.json
+.claude/worktrees/
 .analyzer-cache/
 benchmark_files.txt
 benchmark_rules.txt

@@ -30,6 +30,7 @@ struct PreparedAudioEngine: @unchecked Sendable {
 extension AudioEngineRecorder {
     func startRecordingAsync(sessionID: UUID) async -> Bool {
         guard canStartRecording() else { return false }
+        if let lent = lendWarmInput() { return startPreparedEngine(lent.input, sessionID: sessionID, lent: lent) }
         let routing = inputRouting
         let chooser = microphoneChooser
         let ranking = AppDefaults.microphoneRanking
