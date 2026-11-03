@@ -19,8 +19,6 @@ final class PresenterSpy {
             requestAttention: {},
             after: { _, body in body() },
             orderFront: { [unowned self] in shown.append($0) },
-            isStranded: { _ in false },
-            moveToActiveSpace: { _ in },
             appNotifications: NotificationCenter(),
             workspaceNotifications: NotificationCenter()
         )

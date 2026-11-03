@@ -6,15 +6,20 @@ extension RebuildSession {
     ) -> (UUID, Task<String?, Never>)? {
         guard !isPractice else { return nil }
         let token = UUID()
+        let trace = diagnosticTrace
         let task = Task { @MainActor [services] () -> String? in
+            let span = trace?.begin(.historySave)
             do {
                 if let save = services.saveResult {
                     try await save(result, config, duration)
                 } else {
                     try await services.save(result.text, config, duration)
                 }
+                if let span { trace?.end(span) }
                 return nil
             } catch {
+                if let span { trace?.end(span, outcome: .failed) }
+                trace?.failure(.history)
                 return "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
             }
         }
@@ -44,6 +49,7 @@ extension RebuildSession {
         }
         sessionID = UUID()
         timing = RebuildSessionTiming()
+        startDiagnostics(.retry)
         deliveryStatus = .none
         notice = nil
         duration = audio.duration
@@ -115,12 +121,17 @@ extension RebuildSession {
         case .unverified: deliveryStatus = .unverified(clipboardRestored: restored)
         case .failed, .cancelled: deliveryStatus = .manual
         }
-        if outcome == .failed { notice = "Copied. Paste manually with Command V." }
+        if outcome == .failed {
+            diagnosticTrace?.failure(.paste)
+            notice = "Copied. Paste manually with Command V."
+        }
     }
 
     /// A failed or abandoned paste keeps the transcript for pasting by hand.
     /// One that could not be seen landing gets a moment to be read first.
     func giveBack(_ loan: ClipboardLoan, after outcome: RebuildPasteDelivery.Outcome) async -> Bool {
+        let span = DiagnosticInstrumentation.trace?.begin(.clipboardRestore)
+        defer { if let span { DiagnosticInstrumentation.trace?.end(span) } }
         switch outcome {
         case .confirmed: break
         case .unverified:

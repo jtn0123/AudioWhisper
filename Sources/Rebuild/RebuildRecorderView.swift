@@ -22,6 +22,8 @@ struct RebuildRecorderView: View {
                     .lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
                 Label(session.recordingDestinationName, systemImage: "arrow.up.right")
+                    .accessibilityLabel("Delivery destination")
+                    .accessibilityValue(session.recordingDestinationName)
                     .lineLimit(1).truncationMode(.middle)
             }
             .font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.75))
@@ -58,7 +60,8 @@ struct RebuildRecorderView: View {
                 .lineLimit(2).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             if let start = session.recordingStartedAt {
-                RebuildElapsedTime(start: start).font(.system(size: 20, weight: .medium)).foregroundStyle(.white)
+                RebuildElapsedTime(start: start).accessibilityLabel("Recording elapsed time")
+                    .font(.system(size: 20, weight: .medium)).foregroundStyle(.white)
             } else {
                 ProgressView().controlSize(.small).accessibilityLabel("Final transcription in progress")
             }
@@ -69,7 +72,7 @@ struct RebuildRecorderView: View {
         HStack {
             Button(action: session.cancel) { Text("Cancel").frame(minWidth: 64) }
                 .buttonStyle(RebuildHUDButtonStyle())
-                .help("Cancel (Esc). Nothing is copied or saved.")
+                .help("Cancel recording. Nothing is copied or saved.")
             Spacer()
             Button(action: session.finishRecording) {
                 Label(session.phase == .recording ? "Stop & transcribe" : "Transcribing…", systemImage: "stop.fill")

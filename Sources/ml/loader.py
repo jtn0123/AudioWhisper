@@ -7,6 +7,7 @@ import gc
 from typing import Any, Dict, Tuple
 
 from .hub import cached_snapshot_path
+from .diagnostics import model_load
 
 # Keep HF from grabbing a token implicitly. (Offline is guaranteed per call by
 # `cached_snapshot_path`, and the daemon also sets it before any import.)
@@ -42,6 +43,7 @@ def _release_previous_models(cache: Dict[str, Any]) -> None:
     mx.clear_cache()
 
 
+@model_load(_PARAKEET_CACHE)
 def load_parakeet_model(repo: str) -> Any:
     cached = _PARAKEET_CACHE.get(repo)
     if cached is not None:
@@ -62,6 +64,7 @@ def load_parakeet_model(repo: str) -> Any:
     return model
 
 
+@model_load(_CORRECTION_CACHE)
 def load_correction_model(repo: str) -> Tuple[Any, Any]:
     cached = _CORRECTION_CACHE.get(repo)
     if cached is not None:

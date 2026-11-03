@@ -14,7 +14,7 @@ struct RebuildPracticeView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            RebuildStepHeader(number: 3, title: "Try your first dictation", done: completed)
+            RebuildStepHeader(number: 4, title: "Try your first dictation", done: completed)
             Text("Say a short sentence, then try pasting it here. Practice stays out of your library and other apps.")
                 .font(.system(size: 12)).foregroundStyle(RebuildTheme.secondaryText)
             if recording {

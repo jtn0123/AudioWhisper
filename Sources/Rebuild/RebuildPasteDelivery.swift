@@ -32,7 +32,9 @@ struct RebuildPasteDelivery {
         _ text: String, to target: RebuildPasteDestination, paste: PasteManager, copy: (String) -> Void,
         isValid: @escaping () -> Bool
     ) async -> Outcome {
-        let activated = await target.activateAndWait(isSessionValid: isValid)
+        let activated = await DiagnosticInstrumentation.measure(.focusActivation) {
+            await target.activateAndWait(isSessionValid: isValid)
+        }
         guard !Task.isCancelled, isValid() else { return .cancelled }
         guard activated else { return .failed }
         let pid = target.processIdentifier
@@ -50,7 +52,9 @@ struct RebuildPasteDelivery {
         }
         guard deliveryValid() else { return .cancelled }
         guard pasted else { return .failed }
-        return await confirm(pid: pid, before: before, changes: changes, isValid: deliveryValid)
+        return await DiagnosticInstrumentation.measure(.pasteConfirmation) {
+            await confirm(pid: pid, before: before, changes: changes, isValid: deliveryValid)
+        }
     }
 
     func confirm(

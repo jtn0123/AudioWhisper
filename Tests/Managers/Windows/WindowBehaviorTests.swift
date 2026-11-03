@@ -179,7 +179,7 @@ final class StandardWindowTests: XCTestCase {
 
         StandardWindow.configure(window, frameAutosaveName: nil)
 
-        XCTAssertEqual(window.collectionBehavior, [.fullScreenPrimary])
+        XCTAssertEqual(window.collectionBehavior, [.primary, .fullScreenPrimary])
         XCTAssertFalse(window.collectionBehavior.contains(.moveToActiveSpace),
                        "it must not follow the user to whichever Space is active")
         XCTAssertFalse(window.collectionBehavior.contains(.fullScreenAuxiliary),

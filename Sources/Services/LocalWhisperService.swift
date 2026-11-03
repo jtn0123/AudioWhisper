@@ -17,12 +17,14 @@ private actor WhisperKitCache {
     ) async throws -> WhisperKit {
         // Check if we have a cached instance
         if let existingInstance = instances[model] {
+            DiagnosticInstrumentation.trace?.cache(.warm)
             // Update access time for LRU tracking
             lru.touch(model)
             return existingInstance
         }
 
         // Check if model is downloaded locally before attempting to create WhisperKit instance
+        DiagnosticInstrumentation.trace?.cache(.cold)
         if !(await isModelDownloadedLocally(model)) {
             throw LocalWhisperError.modelNotDownloaded
         }
@@ -43,7 +45,9 @@ private actor WhisperKitCache {
             guard let localModelPath = getLocalModelPath(for: model) else {
                 throw LocalWhisperError.modelNotDownloaded
             }
-            newInstance = try await WhisperEngineFactory.make(model: model, folder: localModelPath)
+            newInstance = try await DiagnosticInstrumentation.measure(.voiceModelLoad) {
+                try await WhisperEngineFactory.make(model: model, folder: localModelPath)
+            }
         } catch {
             // Decide whether this is a "model not downloaded" situation without
             // relying on locale-/version-fragile English substrings.
@@ -179,10 +183,12 @@ internal final class LocalWhisperService: Sendable {
         // at silences (VADAudioChunker) into model-sized windows, so long
         // recordings never decode across a 30 s seam.
         progressCallback?("Processing audio...")
-        let results = try await whisperKit.transcribe(
+        let results = try await DiagnosticInstrumentation.measure(.voiceInference) {
+            try await whisperKit.transcribe(
             audioPath: audioFileURL.path,
             audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental),
             decodeOptions: Self.decodingOptions(prompt: prompt, tokenizer: whisperKit.tokenizer, language: language))
+        }
 
         // Combine all transcription segments into a single text
         let transcription = results.map { $0.text }.joined(separator: " ")

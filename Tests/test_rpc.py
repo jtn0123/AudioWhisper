@@ -112,7 +112,10 @@ class TestDispatch(unittest.TestCase):
         with mock.patch.object(rpc, "transcribe", return_value={"success": True, "text": "hi"}) as fake:
             result = rpc._dispatch("transcribe", {"pcm_path": "/tmp/a.raw", "repo": "org/model"})
         fake.assert_called_once_with("org/model", "/tmp/a.raw")
-        self.assertEqual(result, {"success": True, "text": "hi"})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["text"], "hi")
+        self.assertEqual(result["diagnostics"]["cache"], "unknown")
+        self.assertNotIn("/tmp/a.raw", repr(result["diagnostics"]))
 
     def test_transcribe_defaults_the_repo_when_absent_or_empty(self):
         with mock.patch.object(rpc, "transcribe", return_value={}) as fake:

@@ -13,8 +13,6 @@ import AppKit
 final class WindowPresenterTests: XCTestCase {
     private var isActive = true
     private var shown: [NSWindow] = []
-    private var moved: [NSWindow] = []
-    private var stranded: Set<ObjectIdentifier> = []
     private var activations = 0
     private var attentionRequests = 0
     private var timers: [(delay: TimeInterval, body: @MainActor () -> Void)] = []
@@ -27,8 +25,6 @@ final class WindowPresenterTests: XCTestCase {
         super.setUp()
         isActive = true
         shown = []
-        moved = []
-        stranded = []
         activations = 0
         attentionRequests = 0
         timers = []
@@ -163,38 +159,14 @@ final class WindowPresenterTests: XCTestCase {
 
     // MARK: - A late switch
 
-    func testAWindowLeftBehindByASlowSwitchFollowsIt() {
+    func testAUserSwitchingToAnotherSpaceImmediatelyAfterOpeningDoesNotDragTheWindow() {
         let dashboard = makeWindow()
         presenter.present(dashboard)
         fireTimer(after: WindowPresenter.settleDelay)   // switch slower than the wait
 
-        stranded.insert(ObjectIdentifier(dashboard))
         spaceSwitched()
 
-        XCTAssertTrue(moved.first === dashboard)
-    }
-
-    func testAWindowOnTheNewSpaceAlreadyStaysPut() {
-        presenter.present(makeWindow())
-        fireTimer(after: WindowPresenter.settleDelay)
-
-        spaceSwitched()
-
-        XCTAssertTrue(moved.isEmpty)
-    }
-
-    /// Once the window has been up a while, a Space change is the user's
-    /// doing; the window stays on its Space like any other.
-    func testAfterAWhileTheWindowNoLongerFollowsSpaceChanges() {
-        let dashboard = makeWindow()
-        presenter.present(dashboard)
-        fireTimer(after: WindowPresenter.settleDelay)
-        fireTimer(after: WindowPresenter.lateSwitchWindow)
-
-        stranded.insert(ObjectIdentifier(dashboard))
-        spaceSwitched()
-
-        XCTAssertTrue(moved.isEmpty)
+        XCTAssertEqual(shown.count, 1, "a Space notification must not order the window into the destination Space")
     }
 
     // MARK: - Helpers
@@ -206,8 +178,6 @@ final class WindowPresenterTests: XCTestCase {
             requestAttention: { [unowned self] in attentionRequests += 1 },
             after: { [unowned self] delay, body in timers.append((delay, body)) },
             orderFront: { [unowned self] in shown.append($0) },
-            isStranded: { [unowned self] in stranded.contains(ObjectIdentifier($0)) },
-            moveToActiveSpace: { [unowned self] in moved.append($0) },
             appNotifications: appNotifications,
             workspaceNotifications: workspaceNotifications
         )
@@ -270,27 +240,10 @@ final class WindowPresenterLiveEnvironmentTests: XCTestCase {
         wait(for: [done], timeout: 1)
     }
 
-    func testOrderingFrontPutsTheWindowOnScreen() {
+    func testUnitTestsCannotOrderAWindowOrActivateTheApplication() {
         live.orderFront(window)
-
-        XCTAssertTrue(window.isVisible)
-    }
-
-    func testAWindowNotOnScreenIsNotStranded() {
-        XCTAssertFalse(live.isStranded(window), "a closed window has no Space to be left behind on")
-    }
-
-    /// `.moveToActiveSpace` is only for the one move: kept, the window would
-    /// jump to whichever Space is active each time AudioWhisper is.
-    func testMovingAWindowToTheActiveSpaceDoesNotLeaveItFollowingSpaces() {
-        let behavior = window.collectionBehavior
-        let restored = expectation(description: "behaviour restored")
-
-        live.moveToActiveSpace(window)
-        DispatchQueue.main.async { restored.fulfill() }
-        wait(for: [restored], timeout: 1)
-
-        XCTAssertTrue(window.isVisible)
-        XCTAssertEqual(window.collectionBehavior, behavior)
+        XCTAssertFalse(window.isVisible)
+        live.activateApp()
+        live.requestAttention()
     }
 }

@@ -9,6 +9,7 @@ final class RebuildSessionTests: IsolatedXCTestCase {
     private var cancellations = 0
     private var copies: [String] = []
     private var saved: [String] = []
+    private var diagnostics: DiagnosticController!
     private var session: RebuildSession!
     private var captureID: UUID?
     private var interruptionSource = NSObject()
@@ -30,6 +31,7 @@ final class RebuildSessionTests: IsolatedXCTestCase {
         AppDefaults.enableSmartPaste = false
         AppDefaults.playCompletionSound = false
         transcribe = { _, _, _ in TranscriptionResult(text: "A useful transcript", correctionOutcome: nil) }
+        diagnostics = DiagnosticController(store: DiagnosticStore(file: nil))
         session = RebuildSession(
             services: RebuildSessionServices(
                 start: { id in
@@ -48,7 +50,7 @@ final class RebuildSessionTests: IsolatedXCTestCase {
                 save: { text, _, _ in self.saved.append(text) },
                 interruptionSource: interruptionSource,
                 recordedSignal: { self.signal }
-            ))
+            ), diagnostics: diagnostics)
     }
 
     override func tearDown() {
@@ -438,4 +440,30 @@ extension RebuildSessionTests {
         await settle()
         XCTAssertEqual(copies, ["A useful transcript"])
     }
+    func testDiagnosticHistorySeparatesCancelledAndCompletedCapturesWithoutText() async throws {
+        session.readiness = ready
+        session.toggleRecording()
+        let cancelled = session.captureIdentity
+        session.cancel()
+        session.readiness = ready
+        transcribe = { _, _, _ in
+            try await DiagnosticInstrumentation.measure(.voiceInference) {
+                try Task.checkCancellation()
+                return TranscriptionResult(text: "Private words never belong in diagnostics", correctionOutcome: nil)
+            }
+        }
+        session.toggleRecording()
+        session.finishRecording()
+        await settle()
+        let archive = await diagnostics.snapshot()
+        XCTAssertEqual(archive.sessions.count, 2)
+        XCTAssertEqual(archive.sessions.first?.id, cancelled)
+        XCTAssertEqual(archive.sessions.first?.outcome, .cancelled)
+        XCTAssertEqual(archive.sessions.last?.outcome, .completed)
+        XCTAssertEqual(archive.sessions.last?.delivery, .copied)
+        XCTAssertTrue(archive.sessions.last?.spans.contains { $0.stage == .voiceInference } == true)
+        let exported = try await diagnostics.export()
+        XCTAssertFalse(try XCTUnwrap(String(data: exported, encoding: .utf8)).contains("Private words"))
+    }
+
 }

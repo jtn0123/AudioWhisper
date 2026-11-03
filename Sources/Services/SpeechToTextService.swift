@@ -168,7 +168,9 @@ internal class SpeechToTextService {
             throw SpeechToTextError.transcriptionFailed("Parakeet requires an Apple Silicon Mac.")
         }
         let parakeetModel = config?.parakeetModel ?? AppDefaults.selectedParakeetModel
-        let pyURL = try await preparePython()
+        let pyURL = try await DiagnosticInstrumentation.measure(.runtimePreparation) {
+            try await self.preparePython()
+        }
         do {
             let text = try await parakeetService.transcribe(
                 audioFileURL: audioURL, pythonPath: pyURL.path, model: parakeetModel

@@ -13,6 +13,7 @@ final class RebuildWorkspaceBehaviorTests: IsolatedXCTestCase {
     private var stopAudio: URL?
 
     private func session(ready: Bool = true) -> RebuildSession {
+        AppDefaults.pressAndHoldEnabled = false
         AppDefaults.enableSmartPaste = false
         AppDefaults.playCompletionSound = false
         AppDefaults.transcriptionProvider = .local
@@ -97,7 +98,7 @@ final class RebuildWorkspaceBehaviorTests: IsolatedXCTestCase {
         AppDefaults.pressAndHoldEnabled = true
         let view = RebuildPreferencesView()
         for label in [
-            "Enable recording shortcut", "Record while holding a modifier key",
+            "Recording shortcut off", "Use a modifier key to record",
             "Express Mode · record without showing the overlay", "Boost microphone input while recording",
             "Play a completion sound", "Paste into the app I recorded from",
             "Save transcripts to my local library", "Open AudioWhisper at login"

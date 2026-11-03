@@ -17,6 +17,7 @@ struct RebuildPreferencesView: View {
     @AppDefault(\.startAtLogin) private var login
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
     @AppStorage("rebuild.appearance", store: AppDefaults.defaults) private var appearance = "system"
+    @State private var showDiagnostics = false
     @State private var inputs: RebuildMicrophoneInputs
     @State private var state: RebuildPreferencesState
     private var message: String? {
@@ -41,6 +42,8 @@ struct RebuildPreferencesView: View {
             VStack(alignment: .leading, spacing: 14) {
                 RebuildSavedModesView(session: session)
                 RebuildAppRulesView(session: session)
+                Button("Local diagnostics…") { showDiagnostics = true }
+                    .help("Review timing history and export technical metadata without transcripts.")
                 recordingSection
                 microphoneSection
                 deliverySection
@@ -55,6 +58,7 @@ struct RebuildPreferencesView: View {
             }
             .padding(.horizontal, 28).padding(.vertical, 20).frame(maxWidth: 860, alignment: .leading)
         }
+        .sheet(isPresented: $showDiagnostics) { RebuildDiagnosticHistoryView() }
         .task {
             refreshAccessibility()
             inputs.startObserving()
@@ -92,20 +96,22 @@ struct RebuildPreferencesView: View {
     private var recordingSection: some View {
         RebuildSection(
             title: "Recording",
-            caption: "Pick keys other apps aren’t using. Assigning new keys turns the shortcut on."
+            caption: "Use a key combination, or choose a single modifier key such as Globe / Fn below."
         ) {
-            RebuildFormRow(label: "Shortcut") {
+            RebuildFormRow(label: "Key combination") {
                 HStack(spacing: 12) {
                     KeyboardShortcuts.Recorder(for: .rebuildRecording) { shortcut in
                         if shortcut != nil && !shortcutEnabled { shortcutEnabled = true }
                         settingsChanged()
                     }
                     .accessibilityLabel("Recording shortcut")
-                    Toggle("Enable recording shortcut", isOn: $shortcutEnabled)
+                    Toggle(shortcutEnabled ? "Recording shortcut on" : "Recording shortcut off", isOn: $shortcutEnabled)
                 }
             }
-            RebuildFormRow(label: "Hold to record") {
-                Toggle("Record while holding a modifier key", isOn: $holdEnabled)
+            Text("The shortcut field needs a combination such as ⌃⌥Space. For Fn / Globe alone, use Single modifier key.")
+                .font(.caption).foregroundStyle(RebuildTheme.secondaryText)
+            RebuildFormRow(label: "Single modifier key") {
+                Toggle("Use a modifier key to record", isOn: $holdEnabled)
                 if holdEnabled {
                     HStack(spacing: 10) {
                         Picker("Modifier", selection: $holdKey) {
@@ -115,7 +121,10 @@ struct RebuildPreferencesView: View {
                             ForEach(PressAndHoldMode.allCases) { Text($0.displayName).tag($0.rawValue) }
                         }.fixedSize()
                     }
-                    Text("Requires Accessibility access. No access is requested automatically.")
+                    Text(holdKey == PressAndHoldKey.globe.rawValue
+                         ? "Requires Accessibility access. If Globe also opens emoji or changes language, "
+                            + "set its macOS Keyboard action to Do Nothing."
+                         : "Requires Accessibility access. No access is requested automatically.")
                         .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
                 }
             }

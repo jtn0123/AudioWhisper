@@ -84,6 +84,7 @@ internal actor MLDaemonManager {
             method: .transcribe,
             params: MLRPCParams.Transcribe(repo: repo, pcmPath: pcmPath)
         )
+        result.diagnostics?.record(writing: false)
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Transcription failed") }
         return result.text
     }
@@ -93,6 +94,7 @@ internal actor MLDaemonManager {
             method: .correct,
             params: MLRPCParams.Correct(repo: repo, text: text, prompt: prompt)
         )
+        result.diagnostics?.record(writing: true)
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Correction failed") }
         return result.text
     }

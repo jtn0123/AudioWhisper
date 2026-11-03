@@ -19,7 +19,7 @@ final class RebuildStatusMenu: NSObject {
         recordItem.action = #selector(record)
         recordItem.target = self
         menu.addItem(recordItem)
-        menu.addItem(action("Open AudioWhisper Rebuild", selector: #selector(open)))
+        menu.addItem(action("Open AudioWhisper", selector: #selector(open)))
         menu.addItem(action("Transcribe audio file…", selector: #selector(importFile)))
         menu.addItem(.separator())
         menu.addItem(action("Quit Rebuild", selector: #selector(quit)))

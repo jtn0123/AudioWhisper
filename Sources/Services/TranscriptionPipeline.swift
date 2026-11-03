@@ -70,7 +70,9 @@ internal class TranscriptionPipeline {
 
         try Task.checkCancellation()
         // Step 1: Validate audio file
-        let validationResult = await AudioValidator.validateAudioFile(at: audioURL)
+        let validationResult = await DiagnosticInstrumentation.measure(.audioValidation) {
+            await AudioValidator.validateAudioFile(at: audioURL)
+        }
         let audioDuration: TimeInterval
         switch validationResult {
         case .valid(let info):
@@ -83,8 +85,17 @@ internal class TranscriptionPipeline {
 
         try Task.checkCancellation()
         // Step 2: Transcribe, then format; cleanup and "original" both see the formatted text
-        let rawText = try await formatted(performTranscription(audioURL: audioURL, config: config), options: config.formatting)
-        logger.debug("Raw transcription completed: \(rawText.prefix(50))...")
+        let recognized = try await DiagnosticInstrumentation.measure(.voicePipeline) {
+            try await self.performTranscription(audioURL: audioURL, config: config)
+        }
+        let span = DiagnosticInstrumentation.trace?.begin(.formatting)
+        let rawText: String
+        do { rawText = try formatted(recognized, options: config.formatting) } catch {
+            if let span { DiagnosticInstrumentation.trace?.end(span, outcome: .failed) }
+            throw error
+        }
+        if let span { DiagnosticInstrumentation.trace?.end(span) }
+        logger.debug("Transcription and formatting completed")
 
         try Task.checkCancellation()
         return await cleanup(text: rawText, config: config, audioDuration: audioDuration)
@@ -99,6 +110,7 @@ internal class TranscriptionPipeline {
             return TranscriptionResult(text: rawText, correctionOutcome: nil, audioDuration: audioDuration)
         }
 
+        let cleanupSpan = DiagnosticInstrumentation.trace?.begin(.writingCleanup)
         let outcome = await correctionService.correctWithOutcome(
             text: rawText,
             providerUsed: config.provider,
@@ -108,6 +120,11 @@ internal class TranscriptionPipeline {
             writing: config.writing,
             context: config.context
         )
+        if let cleanupSpan {
+            if case .failed = outcome {
+                DiagnosticInstrumentation.trace?.end(cleanupSpan, outcome: .failed)
+            } else { DiagnosticInstrumentation.trace?.end(cleanupSpan) }
+        }
         logger.debug("Semantic correction completed")
 
         // Guard against an empty/whitespace-only correction overwriting valid

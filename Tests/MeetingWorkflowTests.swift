@@ -4,6 +4,25 @@ import AVFAudio
 
 @MainActor
 final class MeetingWorkflowTests: IsolatedXCTestCase {
+    func testMissingOrRemovedVoiceModelBlocksCaptureBeforeAnyAudioIsOpened() {
+        let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var models: [WhisperModel] = []
+        let session = RebuildMeetingSession(dictation: nil, store: store, capture: FakeMeetingCapture(),
+                                           installedModels: { models })
+        XCTAssertFalse(session.canStart)
+        session.start()
+        XCTAssertEqual(session.activity, .idle)
+        XCTAssertNil(session.document)
+        models = [.base]
+        session.refresh()
+        XCTAssertTrue(session.canStart)
+        models = []
+        session.start()
+        XCTAssertEqual(session.activity, .idle)
+        XCTAssertNil(session.document)
+    }
+
     func testCancellationAfterCommitPreservesCompletedNotesAndDeletedAudioState() async throws {
         let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }
@@ -16,9 +35,10 @@ final class MeetingWorkflowTests: IsolatedXCTestCase {
             draining.fulfill()
             await withCheckedContinuation { release = $0 }
         })
-        let session = RebuildMeetingSession(dictation: nil, store: store, capture: FakeMeetingCapture()) {
+        let session = RebuildMeetingSession(dictation: nil, store: store,
+            capture: FakeMeetingCapture(), installedModels: { [.base] }, process: {
             try await MeetingProcessor(store: store, services: services).process($0, options: $1, progress: $2)
-        }
+        })
         session.makeSummary = true
         session.start()
         try await wait { session.activity == .capturing }
@@ -42,7 +62,7 @@ final class MeetingWorkflowTests: IsolatedXCTestCase {
         let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }
         let capture = FakeMeetingCapture()
-        let session = RebuildMeetingSession(dictation: nil, store: store, capture: capture)
+        let session = RebuildMeetingSession(dictation: nil, store: store, capture: capture, installedModels: { [.base] })
         session.start()
         try await wait { session.activity == .capturing }
         await session.stop()
@@ -102,9 +122,10 @@ final class MeetingWorkflowTests: IsolatedXCTestCase {
             draining.fulfill()
             await withCheckedContinuation { release = $0 }
         })
-        let session = RebuildMeetingSession(dictation: dictation, store: store, capture: FakeMeetingCapture()) {
+        let session = RebuildMeetingSession(dictation: dictation, store: store,
+            capture: FakeMeetingCapture(), installedModels: { [.base] }, process: {
             try await MeetingProcessor(store: store, services: services).process($0, options: $1, progress: $2)
-        }
+        })
         session.makeSummary = true
         session.start()
         try await wait { session.activity == .capturing }
@@ -191,9 +212,10 @@ final class MeetingWorkflowTests: IsolatedXCTestCase {
             transcribe: { _, _, _ in TranscriptionResult(text: "", correctionOutcome: nil) },
             copy: { _ in }, save: { _, _, _ in }, capturePasteDestination: { nil }))
         let capture = FakeMeetingCapture()
-        let session = RebuildMeetingSession(dictation: dictation, store: store, capture: capture) { _, _, _ in
+        let session = RebuildMeetingSession(dictation: dictation, store: store,
+            capture: capture, installedModels: { [.base] }, process: { _, _, _ in
             throw MeetingError.model
-        }
+        })
         session.start()
         try await wait { session.activity == .capturing }
         XCTAssertTrue(dictation.maintenanceInProgress)

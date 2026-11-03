@@ -12,8 +12,8 @@ final class RebuildStatusController: NSObject, NSMenuDelegate {
         self.contents = RebuildStatusMenu(session: session, openWorkspace: openWorkspace, chooseAudio: chooseAudio)
         super.init()
         item.button?.image = NSImage(
-            systemSymbolName: "waveform.circle", accessibilityDescription: "AudioWhisper Rebuild")
-        item.button?.toolTip = "AudioWhisper Rebuild"
+            systemSymbolName: "waveform.circle", accessibilityDescription: "AudioWhisper")
+        item.button?.toolTip = "AudioWhisper"
         contents.menu.delegate = self
         item.menu = contents.menu
     }
