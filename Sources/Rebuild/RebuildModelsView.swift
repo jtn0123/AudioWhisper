@@ -9,7 +9,9 @@ struct RebuildSetupStatus {
 struct RebuildModelsView: View {
     @Bindable var session: RebuildSession
     var recorder: AudioEngineRecorder?
-    var openRecordingPreferences: () -> Void = {}
+    var openRecordingPreferences: () -> Void = {
+        // Standalone previews and test hosts may omit workspace navigation.
+    }
     @AppDefault(\.transcriptionProvider) private var provider
     @AppDefault(\.selectedWhisperModel) private var whisper
     @AppDefault(\.selectedParakeetModel) private var parakeet

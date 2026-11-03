@@ -49,8 +49,8 @@ final class RebuildSessionTests: IsolatedXCTestCase {
                 copy: { self.copies.append($0) },
                 save: { text, _, _ in self.saved.append(text) },
                 interruptionSource: interruptionSource,
-                recordedSignal: { self.signal }
-            ), diagnostics: diagnostics)
+                recordedSignal: { self.signal }, diagnostics: diagnostics
+            ))
     }
 
     override func tearDown() {

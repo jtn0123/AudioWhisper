@@ -78,11 +78,10 @@ final class RebuildSession {
     init(
         services: RebuildSessionServices, setup: RebuildSetupServices? = nil,
         verificationDefaults: UserDefaults? = nil, writingInstaller: RebuildWritingInstaller? = nil,
-        paste: PasteManager? = nil, delivery: RebuildPasteDelivery? = nil, livePreview: RebuildLivePreview? = nil,
-        diagnostics: DiagnosticController? = nil
+        paste: PasteManager? = nil, delivery: RebuildPasteDelivery? = nil, livePreview: RebuildLivePreview? = nil
     ) {
         self.services = services
-        self.diagnosticController = diagnostics ?? (AppEnvironment.isRunningTests ? nil : .shared)
+        self.diagnosticController = services.diagnostics ?? (AppEnvironment.isRunningTests ? nil : .shared)
         self.livePreview = livePreview ?? RebuildLivePreview()
         self.paste = paste ?? PasteManager()
         self.delivery = delivery ?? RebuildPasteDelivery()

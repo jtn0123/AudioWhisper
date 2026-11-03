@@ -286,14 +286,17 @@ struct RebuildRecordView: View {
             RebuildCallout(
                 tone: setupBusy ? .info : .warning,
                 message: setupBusy ? "Model setup in progress" : session.readiness.nextStep,
-                detail: setupBusy
-                    ? "Recording becomes available when setup finishes."
-                    : (session.readiness.microphoneGranted
-                        ? "Finish voice model setup to record." : "Allow microphone access, then finish voice model setup.")
+                detail: setupDetail
             ) {
                 Button("Open setup", action: session.openSetup).buttonStyle(.borderedProminent)
             }
         }
+    }
+
+    private var setupDetail: String {
+        if setupBusy { return "Recording becomes available when setup finishes." }
+        if session.readiness.microphoneGranted { return "Finish voice model setup to record." }
+        return "Allow microphone access, then finish voice model setup."
     }
 
     @ViewBuilder private var notice: some View {

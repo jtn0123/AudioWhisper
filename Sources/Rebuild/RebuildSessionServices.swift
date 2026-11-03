@@ -22,6 +22,7 @@ struct RebuildSessionServices {
     var previewSnapshot: () async -> RecordingPreviewSnapshot? = { nil }
     /// Present when the user wants their clipboard back after Smart Paste.
     var clipboardKeeper: () -> ClipboardKeeper? = { AppDefaults.restoreClipboardAfterPaste ? ClipboardKeeper() : nil }
+    var diagnostics: DiagnosticController?
     var diagnosticInput: () -> (rate: Double, channels: UInt32)? = { nil }
 
     static func live(

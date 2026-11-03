@@ -18,8 +18,14 @@ final class DiagnosticController {
             forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                NSApp.windows.filter { $0.isVisible }.forEach { self?.window(.spaceChanged, $0) }
+                self?.recordSpaceChange()
             }
+        }
+    }
+
+    private func recordSpaceChange() {
+        for visibleWindow in NSApp.windows where visibleWindow.isVisible {
+            window(.spaceChanged, visibleWindow)
         }
     }
 
