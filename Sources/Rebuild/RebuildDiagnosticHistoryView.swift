@@ -1,17 +1,16 @@
-import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 @MainActor
 struct RebuildDiagnosticHistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("diagnostics.historyEnabled", store: AppDefaults.defaults) private var enabled = true
     @AppStorage("diagnostics.resourceSampling", store: AppDefaults.defaults) private var detailed = false
-    @State private var archive = DiagnosticArchive()
-    @State private var message: String?
-    @State private var storageFailed = false
+    @State private var state: RebuildDiagnosticHistoryState
     @State private var confirmClear = false
-    private let controller = DiagnosticController.shared
+
+    init(state: RebuildDiagnosticHistoryState? = nil) {
+        _state = State(initialValue: state ?? RebuildDiagnosticHistoryState())
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -29,9 +28,9 @@ struct RebuildDiagnosticHistoryView: View {
                  + "Turning history off stops future collection. Clear removes existing diagnostics.")
                 .font(.caption).foregroundStyle(.secondary)
             Divider()
-            let summary = DiagnosticSummary(archive.sessions)
-            Text("\(summary.count) sessions · \(summary.failures) failed · \(archive.windows.count) window events")
-            if storageFailed {
+            let summary = DiagnosticSummary(state.archive.sessions)
+            Text("\(summary.count) sessions · \(summary.failures) failed · \(state.archive.windows.count) window events")
+            if state.storageFailed {
                 Text("Diagnostic storage could not be read or written. Recording is unaffected. "
                      + "The existing file is preserved; clear it to start a new history.").foregroundStyle(.orange)
             }
@@ -58,45 +57,23 @@ struct RebuildDiagnosticHistoryView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }.frame(minHeight: 160, maxHeight: 280)
-            if let message { Text(message).font(.callout).textSelection(.enabled) }
+            if let message = state.message { Text(message).font(.callout).textSelection(.enabled) }
             HStack {
-                Button("Export diagnostics…") { Task { await export() } }.disabled(storageFailed)
-                Button("Refresh") { Task { await refresh() } }
+                Button("Export diagnostics…") { Task { await state.export() } }.disabled(state.storageFailed)
+                Button("Refresh") { Task { await state.refresh() } }
                 Spacer()
                 Button("Clear…", role: .destructive) { confirmClear = true }
             }
             Text("Build \(VersionInfo.gitHash)").font(.caption.monospaced()).foregroundStyle(.secondary)
         }.padding(24).frame(width: 660, height: 620)
-            .task { await refresh() }
+            .task { await state.refresh() }
             .confirmationDialog("Clear all local diagnostic history?", isPresented: $confirmClear) {
                 Button("Clear diagnostics", role: .destructive) {
-                    Task {
-                        do {
-                            try await controller.clear()
-                            message = "Diagnostic history cleared."
-                        } catch { message = "Could not clear diagnostic history." }
-                        await refresh()
-                    }
+                    Task { await state.clear() }
                 }
             }
     }
 
-    private func refresh() async {
-        archive = await controller.snapshot()
-        storageFailed = await controller.store.storageFailed
-    }
-
-    private func export() async {
-        do {
-            let data = try await controller.export()
-            let panel = NSSavePanel()
-            panel.allowedContentTypes = [.json]
-            panel.nameFieldStringValue = "AudioWhisper-diagnostics.json"
-            guard await panel.begin() == .OK, let url = panel.url else { return }
-            try data.write(to: url, options: .atomic)
-            message = "Diagnostics exported. Review the file before sharing it."
-        } catch { message = "Could not export diagnostics." }
-    }
 }
 
 extension DiagnosticStage {

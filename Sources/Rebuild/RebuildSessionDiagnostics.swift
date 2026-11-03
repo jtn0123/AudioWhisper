@@ -1,5 +1,3 @@
-import Foundation
-
 extension RebuildSession {
     func startDiagnostics(_ entry: DiagnosticEntry) {
         guard let config = configuration, let id = sessionID else { return }

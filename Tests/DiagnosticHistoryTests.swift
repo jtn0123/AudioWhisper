@@ -51,6 +51,64 @@ final class DiagnosticHistoryTests: XCTestCase {
         }
     }
 
+    func testWindowEventRetentionAndByteLimitApplyBeforePersistence() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let file = folder.appendingPathComponent("recent.json")
+        let store = DiagnosticStore(file: file)
+        for number in 0..<105 {
+            await store.append(DiagnosticWindowEvent(date: Date(), action: .orderedFront, build: "fixture",
+                windowNumber: number, level: 0, behavior: 0, applicationPolicy: 0, applicationActive: true,
+                systemFullScreen: false, visible: true, key: true, onActiveSpace: true, frame: [0, 0, 870, 620]))
+        }
+        var oversized = record()
+        oversized.build = String(repeating: "x", count: DiagnosticStore.maximumBytes)
+        await store.append(oversized)
+        let restarted = DiagnosticStore(file: file)
+        let archive = await restarted.snapshot()
+        XCTAssertEqual(archive.windows.count, 100)
+        XCTAssertEqual(archive.windows.first?.windowNumber, 5)
+        XCTAssertTrue(archive.sessions.isEmpty, "An oversized record must not exceed the archive's disk limit")
+        XCTAssertLessThanOrEqual(try Data(contentsOf: file).count, DiagnosticStore.maximumBytes)
+    }
+
+    func testStorageWriteFailureKeepsInMemoryDiagnosticsWithoutReplacingTheBlockingFile() async throws {
+        let blocker = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: blocker) }
+        let original = Data("owned fixture file".utf8)
+        try original.write(to: blocker)
+        let store = DiagnosticStore(file: blocker.appendingPathComponent("recent.json"))
+        let originalRecord = record()
+        await store.append(originalRecord)
+        let failed = await store.storageFailed
+        let archive = await store.snapshot()
+        XCTAssertTrue(failed)
+        XCTAssertEqual(archive.sessions.first?.id, originalRecord.id)
+        XCTAssertEqual(try Data(contentsOf: blocker), original)
+    }
+
+    func testLongCaptureRetainsWorkerMetricsAndIgnoresLateMetadata() throws {
+        let trace = DiagnosticTrace(record: record())
+        trace.input(rate: 48_000, channels: 1)
+        trace.failure(.history)
+        trace.failure(.processing)
+        for _ in 0..<140 { trace.sample() }
+        DiagnosticInstrumentation.$trace.withValue(trace) {
+            DiagnosticWorkerMetrics(cache: .cold, loadMilliseconds: 10, operationMilliseconds: 20,
+                                    cpuSeconds: 0.01, peakResidentBytes: 2_048).record(writing: true)
+        }
+        let result = try XCTUnwrap(trace.finish(.completed, delivery: .copied))
+        XCTAssertTrue(result.resources.contains { $0.scope == .modelWorker })
+        XCTAssertEqual(result.writingCache, .cold)
+        XCTAssertEqual(result.sampleRate, 48_000)
+        XCTAssertEqual(result.channelCount, 1)
+        XCTAssertEqual(result.failure, .history)
+        trace.failure(.paste)
+        trace.input(rate: 16_000, channels: 2)
+        trace.workerResource(cpu: 1, peak: 99_999)
+        XCTAssertNil(trace.finish(.failed, delivery: .none))
+    }
+
     func testTraceFinishesOnceAndRejectsLateEvents() throws {
         let trace = DiagnosticTrace(record: record())
         let span = trace.begin(.voiceInference)

@@ -1,5 +1,3 @@
-import Foundation
-
 /// Optional RPC metadata keeps compatibility with workers lacking diagnostics.
 struct DiagnosticWorkerMetrics: Codable, Equatable, Sendable {
     var cache: DiagnosticCache
