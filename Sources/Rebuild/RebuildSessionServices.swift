@@ -22,6 +22,8 @@ struct RebuildSessionServices {
     var previewSnapshot: () async -> RecordingPreviewSnapshot? = { nil }
     /// Present when the user wants their clipboard back after Smart Paste.
     var clipboardKeeper: () -> ClipboardKeeper? = { AppDefaults.restoreClipboardAfterPaste ? ClipboardKeeper() : nil }
+    var diagnostics: DiagnosticController?
+    var diagnosticInput: () -> (rate: Double, channels: UInt32)? = { nil }
 
     static func live(
         recorder: AudioEngineRecorder,
@@ -62,6 +64,10 @@ struct RebuildSessionServices {
                 guard recorder.isRecording else { return nil }
                 let buffer = recorder.previewAudio
                 return await Task.detached(priority: .utility) { buffer.snapshot() }.value
+            }, diagnosticInput: {
+                guard let engine = recorder.audioEngine else { return nil }
+                let format = engine.inputNode.outputFormat(forBus: 0)
+                return (format.sampleRate, format.channelCount)
             }
         )
     }

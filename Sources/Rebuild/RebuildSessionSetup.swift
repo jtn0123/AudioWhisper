@@ -2,6 +2,9 @@ import Foundation
 
 extension RebuildSession {
     func checkResolvedMode(_ mode: ResolvedDictationMode, id: UUID) async -> Bool {
+        let trace = diagnosticTrace
+        let span = trace?.begin(.runtimePreparation)
+        defer { if let span { trace?.end(span) } }
         let selection = mode.selection
         let runtime = await setup.runtimeReady(selection)
         let installed = await setup.modelInstalled(selection)
@@ -9,6 +12,7 @@ extension RebuildSession {
         guard !Task.isCancelled, sessionID == id else { return false }
         let failure = verificationStore.failure(for: selection, assets: assets)
         guard runtime, installed, failure == nil, setup.microphoneStatus() == .authorized else {
+            trace?.failure(.voiceReadiness)
             notice = failure ?? "The mode \(mode.name ?? "Custom settings") needs its voice model, runtime and microphone access. "
                 + "Choose it manually in Models & setup to finish setup."
             phase = .failed
@@ -33,6 +37,7 @@ extension RebuildSession {
     }
 
     func cancel() {
+        finishDiagnostics(.cancelled)
         livePreview.stop(clear: true)
         discardRetry()
         sessionID = nil
@@ -63,7 +68,7 @@ extension RebuildSession {
     var recordingBlockedReason: String? {
         if phase == .recording { return nil }
         if let reason = fileBlockedReason { return reason }
-        return readiness.microphoneGranted ? nil : "Allow microphone access in Voice Models."
+        return readiness.microphoneGranted ? nil : "Allow microphone access in Models & setup."
     }
 
     var canImportAudio: Bool { fileBlockedReason == nil }
@@ -75,9 +80,9 @@ extension RebuildSession {
         if isInstalling { return "Wait for the voice model installation to finish." }
         if maintenanceInProgress { return maintenanceLabel ?? "Wait for model verification or maintenance to finish." }
         if readiness.checking { return "Wait for the setup check to finish." }
-        if !readiness.runtimeReady { return "Install the local runtime in Voice Models." }
-        if !readiness.modelInstalled { return "Install your voice model in Voice Models." }
-        if readiness.modelVerificationFailed { return "Repair or verify your voice model in Voice Models." }
+        if !readiness.runtimeReady { return "Install the local runtime in Models & setup." }
+        if !readiness.modelInstalled { return "Install your voice model in Models & setup." }
+        if readiness.modelVerificationFailed { return "Repair or verify your voice model in Models & setup." }
         return nil
     }
 

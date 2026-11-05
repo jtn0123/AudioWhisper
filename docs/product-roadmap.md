@@ -1,6 +1,6 @@
 # Product and release tracker
 
-Last checked: 2026-10-19. Workflow increments merged at `f92fd0b` in [PR #51](https://github.com/jtn0123/AudioWhisper/pull/51). [Current graded comparison](../.Codex/ui-ux-grade-report.md).
+Last checked: 2026-11-02. Workflow increments merged at `f92fd0b` in [PR #51](https://github.com/jtn0123/AudioWhisper/pull/51). [Current graded comparison](../.Codex/ui-ux-grade-report.md).
 Keep the IDs stable. Mark an item complete only when its acceptance evidence is
 linked here. On October 18 the user authorized all increments below ("Let's do
 all smartly"). Keep hardware and distribution gates open until observed.
@@ -66,3 +66,12 @@ Historical implementation evidence remains in
 ## Current regrade
 
 [2026-10-18 comparison](../.Codex/ui-ux-grade-report.md): competitive product judgment B-, interface B, workflow breadth C+. Merged #51 implements the six bounded increments plus UI H1, D1 and C5. The full 3,260-test Swift run passes; local new Swift-code coverage is 81.50%; all 11 hosted checks pass on `2306476`, with hosted Sonar coverage at 81.4%. Native and release acceptance remain open. Original grades are retained pending native evidence and acceptance. These grades do not claim matched accuracy/speed or complete device/release acceptance.
+
+
+## November 2 diagnostics and native-window follow-up
+
+The [independent Opus 5.5 medium review](../.Codex/ui-ux-audit/2026-11-02-opus/ui-ux-grade-report.md) is **B-, provisional**, based on seven native dark first-run captures. Performance, physical recording/keyboard, full-screen Spaces, light appearance and populated workflows were not runtime-graded. This is not a matched Superwhisper speed/accuracy test.
+
+The `feat/session-diagnostics` work adds [bounded local operational history](local-diagnostics.md), stage timings and cache/resource metadata, explicit export, window event snapshots and a separate QA app identity. It removes automatic reparenting after a late Space notification, gives workspace windows a primary role, and suppresses actual activation/ordering in unit tests. It also corrects product titles/setup references, adds meeting model admission/countdown and makes single-key Globe / Fn setup discoverable. These source/test changes do not close R2 or R4: native full-screen/multiple-display behavior, physical Fn/Globe, the diagnostics sheet, and public signing/notarization still need acceptance. A later native-inspection attempt timed out while the QA app awaited activation; no full-screen success is claimed.
+
+The remaining UI recommendations include selected-segment contrast, Preferences information density and first-run repetition. The grade remains provisional until a new runtime review verifies the changes.

@@ -101,6 +101,7 @@ internal actor MLDaemonManager {
             params: MLRPCParams.Transcribe(repo: repo, pcmPath: pcmPath),
             timeout: MLRequestTimeout.transcribe(pcmBytes: Self.fileSize(atPath: pcmPath))
         )
+        result.diagnostics?.record(writing: false)
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Transcription failed") }
         return result.text
     }
@@ -111,6 +112,7 @@ internal actor MLDaemonManager {
             params: MLRPCParams.Correct(repo: repo, text: text, prompt: prompt),
             timeout: MLRequestTimeout.correct(text: text)
         )
+        result.diagnostics?.record(writing: true)
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Correction failed") }
         return result.text
     }

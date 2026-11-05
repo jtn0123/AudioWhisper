@@ -9,6 +9,9 @@ struct RebuildSetupStatus {
 struct RebuildModelsView: View {
     @Bindable var session: RebuildSession
     var recorder: AudioEngineRecorder?
+    var openRecordingPreferences: () -> Void = {
+        // Standalone previews and test hosts may omit workspace navigation.
+    }
     @AppDefault(\.transcriptionProvider) private var provider
     @AppDefault(\.selectedWhisperModel) private var whisper
     @AppDefault(\.selectedParakeetModel) private var parakeet
@@ -19,6 +22,14 @@ struct RebuildModelsView: View {
             VStack(alignment: .leading, spacing: 14) {
                 microphoneStep
                 voiceModelStep
+                VStack(alignment: .leading, spacing: 10) {
+                    RebuildStepHeader(number: 3, title: "Recording key (optional)", done:
+                        AppDefaults.defaults.bool(forKey: "rebuild.shortcutEnabled") || AppDefaults.pressAndHoldEnabled)
+                    Text("Recording keys are off until you enable them. Choose a key combination, or use Globe / Fn "
+                         + "as a single key with hold or toggle behavior. You can also use the Record button.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    Button("Choose a recording key…", action: openRecordingPreferences)
+                }.rebuildCard(padding: 18)
                 RebuildPracticeView(session: session, recorder: recorder)
                 readinessRow
                 storageNote

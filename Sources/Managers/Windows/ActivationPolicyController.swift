@@ -36,7 +36,9 @@ internal final class ActivationPolicyController: NSObject {
     ///   - workspaceNotifications: Where Space changes are posted; `nil` to
     ///     call `windowsMayBeOnActiveSpace()` by hand.
     ///   - appNotifications: Where windows becoming key are posted; likewise.
-    init(applyPolicy: @escaping @MainActor (NSApplication.ActivationPolicy) -> Void = { NSApp.setActivationPolicy($0) },
+    init(applyPolicy: @escaping @MainActor (NSApplication.ActivationPolicy) -> Void = {
+             if !WindowServer.isRunningUnderTests { NSApp.setActivationPolicy($0) }
+         },
          isOnActiveSpace: @escaping @MainActor (NSWindow) -> Bool = { $0.isOnActiveSpace },
          workspaceNotifications: NotificationCenter? = nil,
          appNotifications: NotificationCenter? = nil) {

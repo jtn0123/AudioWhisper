@@ -5,8 +5,10 @@ enum RebuildStorage {
     static let directoryName = "AudioWhisper Rebuild"
 
     static var root: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent(directoryName, isDirectory: true)
+        let override = ProcessInfo.processInfo.environment["AUDIOWHISPER_APP_SUPPORT_DIR"]
+        let base = override.flatMap { $0.hasPrefix("/") ? URL(fileURLWithPath: $0, isDirectory: true) : nil }
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return base.appendingPathComponent(directoryName, isDirectory: true)
     }
 
     static var whisperDownloadBase: URL { root.appendingPathComponent("Whisper", isDirectory: true) }

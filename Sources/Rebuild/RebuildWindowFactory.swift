@@ -9,7 +9,7 @@ enum RebuildWindowFactory {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1080, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "AudioWhisper Rebuild"
+        window.title = "AudioWhisper"
         window.titlebarAppearsTransparent = true
         window.minSize = NSSize(width: 870, height: 620)
         window.contentViewController = RebuildWorkspaceHosting.controller(for: root)

@@ -88,12 +88,14 @@ internal enum MLRPCResult {
         let success: Bool
         let text: String
         let error: String?
+        var diagnostics: DiagnosticWorkerMetrics?
     }
 
     struct Correct: Codable, Equatable, Sendable {
         let success: Bool
         let text: String
         let error: String?
+        var diagnostics: DiagnosticWorkerMetrics?
     }
 
     /// `warmup` answers `{"success": true}`. Optional because a failure comes

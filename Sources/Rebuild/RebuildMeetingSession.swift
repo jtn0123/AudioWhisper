@@ -13,6 +13,8 @@ final class RebuildMeetingSession {
     var keepAudio = false
     var makeSummary = false
     var voiceModel = AppDefaults.selectedWhisperModel
+    private(set) var installedVoiceModels: [WhisperModel] = []
+    @ObservationIgnored private let readInstalledModels: () -> [WhisperModel]
     var speakerModelFolder: String?
     private(set) var activity: Activity = .idle
     private(set) var document: MeetingDocument?
@@ -28,21 +30,29 @@ final class RebuildMeetingSession {
     @ObservationIgnored private var limit: Task<Void, Never>?
     private var ownsMaintenance = false
 
-    init(dictation: RebuildSession?, store: MeetingStore = MeetingStore(), capture: MeetingCapturing? = nil,
-         process: Process? = nil) {
+    init(
+        dictation: RebuildSession?, store: MeetingStore = MeetingStore(), capture: MeetingCapturing? = nil,
+        installedModels: @escaping () -> [WhisperModel] = {
+            WhisperModel.allCases.filter { WhisperKitStorage.isModelDownloaded($0) }
+        },
+        process: Process? = nil
+    ) {
         self.dictation = dictation
         self.store = store
         self.capture = capture ?? MeetingNativeCapture()
+        readInstalledModels = installedModels
         self.process = process ?? { try await MeetingProcessor(store: store).process($0, options: $1, progress: $2) }
+        refreshModels()
     }
 
     var busy: Bool { activity != .idle }
     var canStart: Bool {
-        !busy && (microphone || systemAudio) && dictation?.phase.isBusy != true
+        !busy && installedVoiceModels.contains(voiceModel) && (microphone || systemAudio) && dictation?.phase.isBusy != true
             && dictation?.maintenanceInProgress != true && dictation?.isInstalling != true
     }
 
     func refresh() {
+        refreshModels()
         do {
             let inventory = try store.list()
             documents = inventory.entries.map { stored in
@@ -79,6 +89,7 @@ final class RebuildMeetingSession {
     }
 
     func start() {
+        refreshModels()
         guard canStart else { return }
         do {
             try reserve()
@@ -90,6 +101,11 @@ final class RebuildMeetingSession {
             progress = "Requesting capture access…"
             startCapture(document.id)
         } catch { release(); self.error = RebuildErrorText.userMessage(for: error) }
+    }
+
+    private func refreshModels() {
+        installedVoiceModels = readInstalledModels()
+        if !installedVoiceModels.contains(voiceModel), let first = installedVoiceModels.first { voiceModel = first }
     }
 
     private func startCapture(_ id: UUID) {
@@ -158,7 +174,12 @@ final class RebuildMeetingSession {
     }
 
     func processCurrent() {
+        refreshModels()
         guard !busy, let document, document.audioRetained else { return }
+        guard installedVoiceModels.contains(voiceModel) else {
+            error = "Install a Whisper model in Models & setup before processing. Captured audio has been kept."
+            return
+        }
         do { try reserve() } catch { self.error = RebuildErrorText.userMessage(for: error); return }
         let options = MeetingProcessingOptions(model: voiceModel, language: AppDefaults.dictationLanguage,
             speakerModelFolder: speakerModelFolder, summarize: makeSummary,

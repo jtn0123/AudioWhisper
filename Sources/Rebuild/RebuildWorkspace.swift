@@ -83,7 +83,8 @@ struct RebuildRootView: View {
                 configureShortcut: { navigation.selection = .preferences }, readShortcut: readShortcut)
         case .library: RebuildLibraryView(history: history, session: session)
         case .meetings: RebuildMeetingsView(state: session.meetings)
-        case .models: RebuildModelsView(session: session, recorder: recorder)
+        case .models: RebuildModelsView(session: session, recorder: recorder,
+                                      openRecordingPreferences: { navigation.selection = .preferences })
         case .writing: RebuildWritingView(session: session)
         case .preferences: RebuildPreferencesView(session: session)
         }
@@ -222,6 +223,9 @@ struct RebuildRecordView: View {
     var configureShortcut: () -> Void = {}
     private let readShortcut: @MainActor () -> String?
     @AppStorage("rebuild.shortcutEnabled", store: AppDefaults.defaults) private var shortcutEnabled = false
+    @AppDefault(\.pressAndHoldEnabled) private var modifierEnabled
+    @AppDefault(\.pressAndHoldKeyIdentifier) private var modifierKey
+    @AppDefault(\.pressAndHoldMode) private var modifierMode
     @AppDefault(\.savedDictationModes) private var modes
     @State private var shortcut: String?
     @State private var dropTargeted = false
@@ -282,13 +286,17 @@ struct RebuildRecordView: View {
             RebuildCallout(
                 tone: setupBusy ? .info : .warning,
                 message: setupBusy ? "Model setup in progress" : session.readiness.nextStep,
-                detail: setupBusy
-                    ? "Recording becomes available when setup finishes."
-                    : "Recording needs microphone access and an installed voice model."
+                detail: setupDetail
             ) {
                 Button("Open setup", action: session.openSetup).buttonStyle(.borderedProminent)
             }
         }
+    }
+
+    private var setupDetail: String {
+        if setupBusy { return "Recording becomes available when setup finishes." }
+        if session.readiness.microphoneGranted { return "Finish voice model setup to record." }
+        return "Allow microphone access, then finish voice model setup."
     }
 
     @ViewBuilder private var notice: some View {
@@ -408,15 +416,21 @@ struct RebuildRecordView: View {
     private var shortcutLine: some View {
         let recording = session.phase == .recording
         let assigned = shortcutEnabled ? shortcut : nil
+        let modifier = modifierEnabled ? PressAndHoldKey(rawValue: modifierKey) : nil
         return HStack(spacing: 6) {
-            if let assigned {
+            if let modifier {
+                Text(modifierMode == PressAndHoldMode.hold.rawValue ? "Hold" : "Press")
+                RebuildKeycap(keys: modifier.displayName)
+                Text(modifierMode == PressAndHoldMode.hold.rawValue
+                     ? "to record; release to finish." : "to start; press again to finish.")
+            } else if let assigned {
                 Text("Press")
                 RebuildKeycap(keys: assigned)
                 Text(recording ? "or click stop to finish." : "from any app to start.")
             } else {
                 Text(shortcutEnabled ? "No recording shortcut assigned." : "Recording shortcut is off.")
             }
-            Button(assigned == nil ? "Set up" : "Change", action: configureShortcut)
+            Button(assigned == nil && modifier == nil ? "Set up" : "Change", action: configureShortcut)
                 .buttonStyle(.rebuildLink)
                 .fontWeight(.medium)
                 .accessibilityLabel(assigned == nil ? "Set up recording shortcut" : "Change recording shortcut")

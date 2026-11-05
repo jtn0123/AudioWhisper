@@ -83,7 +83,7 @@ final class DictationWorkflowViewTests: IsolatedXCTestCase {
     func testMeetingsShowRecoveryRetentionAndTranscriptActionsWithoutOpeningDevices() throws {
         let store = MeetingStore(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString))
         defer { try? FileManager.default.removeItem(at: store.root) }
-        let state = RebuildMeetingSession(dictation: nil, store: store)
+        let state = RebuildMeetingSession(dictation: nil, store: store, installedModels: { [.base] })
         state.microphone = false
         state.systemAudio = false
         let view = RebuildMeetingsView(state: state)

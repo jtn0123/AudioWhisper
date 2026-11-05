@@ -12,6 +12,7 @@ import sys
 from typing import Any, Dict, Optional
 
 from .correction import correct, summarize
+from .diagnostics import operation
 from .loader import load_correction_model, load_parakeet_model
 from .parakeet import DEFAULT_PARAKEET_REPO, transcribe
 from .protocol import (
@@ -51,7 +52,7 @@ def _dispatch(method: str, params: Dict[str, Any]) -> Any:
         repo = params.get("repo") or DEFAULT_PARAKEET_REPO
         if not isinstance(repo, str):
             raise ValueError(f"{method}: 'repo' must be a string, got {type(repo).__name__}")
-        return transcribe(repo, pcm_path)
+        return operation(lambda: transcribe(repo, pcm_path))
 
     if method in ("correct", "summarize"):
         repo = require_str(params, "repo", method)
@@ -63,8 +64,8 @@ def _dispatch(method: str, params: Dict[str, Any]) -> Any:
             raise ValueError(f"{method}: 'text' must be a string, got {got}")
         prompt = optional_str(params, "prompt", method)
         if method == "summarize":
-            return summarize(repo, text, prompt)
-        return correct(repo, text, prompt)
+            return operation(lambda: summarize(repo, text, prompt))
+        return operation(lambda: correct(repo, text, prompt))
 
     if method == "warmup":
         kind = require_warmup_kind(params, method)

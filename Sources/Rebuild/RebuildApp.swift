@@ -12,7 +12,7 @@ struct RebuildApp: App {
     @NSApplicationDelegateAdaptor(RebuildDelegate.self) var delegate
 
     var body: some Scene {
-        MenuBarExtra("AudioWhisper Rebuild", systemImage: "waveform.circle", isInserted: .constant(false)) {
+        MenuBarExtra("AudioWhisper", systemImage: "waveform.circle", isInserted: .constant(false)) {
             EmptyView()
         }
         .commands {
@@ -137,6 +137,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         overlay.setContentSize(RebuildRecorderView.size(preview: session.livePreview.enabled))
         RecordingWindowStyle.moveToActiveScreen(overlay)
         overlay.orderFrontRegardless()
+        DiagnosticController.shared.window(.overlayShown, overlay)
         RebuildEscapeShortcut.recorderShown()
     }
 
@@ -198,6 +199,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             work: {
                 await session.meetings.shutdown()
                 await session.waitForHistoryWrites()
+                _ = await DiagnosticController.shared.snapshot()
                 await MLDaemonManager.shared.shutdown()
             },
             reply: { NSApp.reply(toApplicationShouldTerminate: true) })

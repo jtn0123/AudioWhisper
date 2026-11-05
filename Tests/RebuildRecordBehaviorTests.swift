@@ -12,6 +12,7 @@ final class RebuildRecordBehaviorTests: IsolatedXCTestCase {
     private func makeSession() -> RebuildSession {
         AppDefaults.transcriptionProvider = .local
         AppDefaults.selectedWhisperModel = .base
+        AppDefaults.pressAndHoldEnabled = false
         AppDefaults.enableSmartPaste = false
         AppDefaults.playCompletionSound = false
         var services = RebuildSessionServices(
@@ -124,6 +125,18 @@ final class RebuildRecordBehaviorTests: IsolatedXCTestCase {
             (try? $0.title().text().string()) == "Parakeet v3 Multilingual · on device"
         })
         XCTAssertEqual(try summary.title().text().string(), "Parakeet v3 Multilingual · on device")
+    }
+
+    func testGlobeToggleIsShownInsteadOfClaimingRecordingKeysAreOff() throws {
+        let session = makeSession()
+        AppDefaults.pressAndHoldEnabled = true
+        AppDefaults.pressAndHoldKeyIdentifier = PressAndHoldKey.globe.rawValue
+        AppDefaults.pressAndHoldMode = PressAndHoldMode.toggle.rawValue
+        let view = view(session)
+        _ = try view.inspect().find(text: "Globe / Fn (🌐)")
+        _ = try view.inspect().find(text: "to start; press again to finish.")
+        _ = try view.inspect().find(button: "Change")
+        XCTAssertThrowsError(try view.inspect().find(text: "Recording shortcut is off."))
     }
 
     private func waitFor(_ condition: () -> Bool) async throws {

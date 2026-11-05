@@ -74,19 +74,22 @@ internal final class MLXModelManager {
         MLXModel(
             repo: "mlx-community/Qwen3-4B-Instruct-2507-4bit",
             estimatedSize: "2.3 GB",
-            description: "Fast option; about 0.2s per short edit and 3 GB model memory on M5 Pro",
+            description: "Fast option; about 0.2s per short edit and 3 GB model memory"
+                + " in a 48 GB M5 Pro test; varies by Mac and text",
             name: "Qwen 3 · 4B · 4-bit"
         ),
         MLXModel(
             repo: "mlx-community/Qwen3.5-9B-4bit",
             estimatedSize: "6.0 GB",
-            description: "Recommended balance; about 0.4s per short edit and 6 GB model memory on M5 Pro",
+            description: "Recommended balance; about 0.4s per short edit and 6 GB model memory"
+                + " in a 48 GB M5 Pro test; varies by Mac and text",
             name: "Qwen 3.5 · 9B · 4-bit"
         ),
         MLXModel(
             repo: "leonsarmiento/Qwen3.8-27B-3bit-mlx",
             estimatedSize: "12.7 GB",
-            description: "Stronger grammar results; about 1.6s per short edit and 13 GB model memory on M5 Pro",
+            description: "Stronger grammar results; about 1.6s per short edit and 13 GB model memory"
+                + " in a 48 GB M5 Pro test; varies by Mac and text",
             name: "Qwen 3.8 · 27B · mixed 3-bit"
         )
     ]

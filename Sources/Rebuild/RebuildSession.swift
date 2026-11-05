@@ -13,6 +13,7 @@ final class RebuildSession {
             if let message = RebuildLifecycleAnnouncement.message(phase: phase, previous: oldValue, notice: notice) {
                 services.announce(message)
             }
+            if phase == .failed { finishDiagnostics(.failed) }
         }
     }
     var readiness = RebuildReadiness()
@@ -68,6 +69,10 @@ final class RebuildSession {
     @ObservationIgnored var verificationSelection: RebuildModelSelection?
     @ObservationIgnored var verificationAssets: String?
     @ObservationIgnored var previewRequested = false
+    @ObservationIgnored let diagnosticController: DiagnosticController?
+    @ObservationIgnored var diagnosticTrace: DiagnosticTrace?
+    @ObservationIgnored var diagnosticSampling: Task<Void, Never>?
+    @ObservationIgnored var microphoneDiagnostic: UUID?
     @ObservationIgnored var recorderRevealed = false
 
     struct RetryAudio {
@@ -83,6 +88,7 @@ final class RebuildSession {
         paste: PasteManager? = nil, delivery: RebuildPasteDelivery? = nil, livePreview: RebuildLivePreview? = nil
     ) {
         self.services = services
+        self.diagnosticController = services.diagnostics ?? (AppEnvironment.isRunningTests ? nil : .shared)
         self.livePreview = livePreview ?? RebuildLivePreview()
         self.paste = paste ?? PasteManager()
         self.delivery = delivery ?? RebuildPasteDelivery()
@@ -110,6 +116,7 @@ final class RebuildSession {
         }
         // A duplicate stop event must not delete audio already in transcription.
         guard phase == .recording, let config = configuration else { return }
+        diagnosticTrace?.interruption()
         livePreview.stop()
         closeRecorder()
         switch event {
@@ -162,6 +169,7 @@ final class RebuildSession {
     }
 
     func startPreparedRecording() {
+        microphoneDiagnostic = diagnosticTrace?.begin(.microphoneStart)
         if let startAsync = services.startAsync, let id = sessionID {
             phase = .starting
             // The microphone can take seconds to start; say so instead of
@@ -180,7 +188,12 @@ final class RebuildSession {
     }
 
     func completeRecordingStart(_ started: Bool) {
+        if let token = microphoneDiagnostic {
+            diagnosticTrace?.end(token, outcome: started ? .completed : .failed)
+            microphoneDiagnostic = nil
+        }
         guard started else {
+            diagnosticTrace?.failure(.microphoneStart)
             sessionID = nil
             presentFailure(
                 services.startError() ?? "The microphone could not start. Check the selected input and try again.")
@@ -188,6 +201,7 @@ final class RebuildSession {
         }
         startedAt = Date()
         timing.recording = ProcessInfo.processInfo.systemUptime
+        if let input = services.diagnosticInput() { diagnosticTrace?.input(rate: input.rate, channels: input.channels) }
         phase = .recording
         if previewRequested, let model = configuration?.parakeetModel {
             livePreview.start(model: model, snapshot: services.previewSnapshot)
@@ -208,7 +222,11 @@ final class RebuildSession {
         livePreview.stop()
         timing.stopped = ProcessInfo.processInfo.systemUptime
         duration = startedAt.map { Date().timeIntervalSince($0) }
-        guard let url = services.stop() else {
+        let finalization = diagnosticTrace?.begin(.audioFinalization)
+        let audio = services.stop()
+        if let finalization { diagnosticTrace?.end(finalization, outcome: audio == nil ? .failed : .completed) }
+        guard let url = audio else {
+            diagnosticTrace?.failure(.noAudio)
             sessionID = nil
             presentFailure("No audio was captured. Try a different microphone.")
             return
@@ -224,28 +242,23 @@ final class RebuildSession {
     /// silence rather than reporting none. The audio is kept, so Retry can
     /// still force a transcription if the meter was wrong.
     func rejectSilentRecording(url: URL, config: TranscriptionPipelineConfig) {
+        diagnosticTrace?.failure(.silence)
         retryAudio = RetryAudio(url: url, config: config, owned: true, duration: duration)
         presentFailure(
             "The microphone recorded only silence. Check the selected microphone, its mute switch and input level.")
     }
 
-    func importAudio(_ url: URL) {
-        guard canImportAudio else {
-            notice = fileBlockedReason
-            if phase.isBusy || isInstalling || maintenanceInProgress { return }
-            openSetup()
-            return
-        }
-        prepareSession(target: services.capturePasteDestination(),
-                       mode: AppDefaults.resolveDictationMode(app: nil, allowAppRule: false), allowContext: false)
-        guard let id = sessionID, let config = configuration else { return }
-        duration = nil
-        transcribe(url: url, config: config, id: id, removeAfterward: false)
-    }
-
     func prepareSession(
-        practice: Bool = false, target: RebuildPasteDestination?, mode: ResolvedDictationMode, allowContext: Bool
+        practice: Bool = false, target: RebuildPasteDestination?, mode: ResolvedDictationMode, allowContext: Bool,
+        entry: DiagnosticEntry = .recording
     ) {
+        if phase == .completed {
+            // Paste/history may still be draining after the result is shown.
+            // Their task owns that trace; a new capture gets a different one.
+            diagnosticSampling?.cancel()
+            diagnosticSampling = nil
+            diagnosticTrace = nil
+        } else { finishDiagnostics(.cancelled) }
         livePreview.stop(clear: true)
         discardRetry()
         clearOutcome()
@@ -264,6 +277,7 @@ final class RebuildSession {
         var settings = mode.settings
         if practice { settings.cleanup = .off; settings.writing.contextSource = .none }
         configuration = settings.pipeline(sourceApp: target?.bundleIdentifier, context: writingContext)
+        startDiagnostics(practice ? .practice : entry)
         previewRequested = AppDefaults.liveTranscriptionPreview && configuration?.provider == .parakeet
         services.configureLivePreview(previewRequested)
     }
@@ -271,15 +285,34 @@ final class RebuildSession {
 }
 
 extension RebuildSession {
+    func importAudio(_ url: URL) {
+        guard canImportAudio else {
+            notice = fileBlockedReason
+            if phase.isBusy || isInstalling || maintenanceInProgress { return }
+            openSetup()
+            return
+        }
+        prepareSession(target: services.capturePasteDestination(),
+                       mode: AppDefaults.resolveDictationMode(app: nil, allowAppRule: false), allowContext: false,
+                       entry: .fileImport)
+        guard let id = sessionID, let config = configuration else { return }
+        duration = nil
+        transcribe(url: url, config: config, id: id, removeAfterward: false)
+    }
+
     func transcribe(url: URL, config: TranscriptionPipelineConfig, id: UUID, removeAfterward: Bool) {
         if timing.stopped == nil { timing.stopped = ProcessInfo.processInfo.systemUptime }
         phase = .transcribing
+        let trace = diagnosticTrace
+        let diagnostics = diagnosticController
         job = Task { [weak self] in
             guard let self else { return }
             var retainedForRetry = false
             defer { if removeAfterward && !retainedForRetry { try? FileManager.default.removeItem(at: url) } }
             do {
-                let result = try await services.transcribe(url, config, id)
+                let result = try await DiagnosticInstrumentation.$trace.withValue(trace) {
+                    try await self.services.transcribe(url, config, id)
+                }
                 guard !Task.isCancelled, sessionID == id else { return }
                 guard !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     throw NSError(
@@ -309,7 +342,9 @@ extension RebuildSession {
                 closeRecorder()
                 didDeliver()
                 if AppDefaults.playCompletionSound { NSSound(named: "Pop")?.play() }
-                await pasteTranscript(result.text, sessionID: id, loan: loan)
+                await DiagnosticInstrumentation.$trace.withValue(trace) {
+                    await self.pasteTranscript(result.text, sessionID: id, loan: loan)
+                }
                 if sessionID == id, !Task.isCancelled { services.announce(deliveryStatus.announcement) }
                 if let (token, task) = persistence {
                     let message = await task.value
@@ -319,9 +354,13 @@ extension RebuildSession {
                     historyTasks.removeValue(forKey: token)
                     pendingHistoryWrites = historyTasks.count
                 }
+                if sessionID == id {
+                    finishDiagnostics(.completed)
+                } else { diagnostics?.finish(trace, outcome: .completed, delivery: .copied) }
             } catch {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
+                diagnosticTrace?.failure(.processing)
                 retainedForRetry = true
                 presentFailure(RebuildErrorText.userMessage(for: error))
             }

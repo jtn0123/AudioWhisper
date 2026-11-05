@@ -4,6 +4,19 @@ import XCTest
 
 @MainActor
 final class RebuildWindowFactoryTests: IsolatedXCTestCase {
+    func testStandardWindowHasAnExplicitPrimaryRoleInsteadOfOverlayEligibility() {
+        let window = NSWindow(contentRect: .zero, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        StandardWindow.configure(window, frameAutosaveName: nil)
+        XCTAssertEqual(window.collectionBehavior, [.primary, .fullScreenPrimary])
+        XCTAssertEqual(window.tabbingMode, .disallowed)
+        XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllApplications))
+        XCTAssertFalse(window.collectionBehavior.contains(.fullScreenAuxiliary))
+        XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllSpaces))
+        XCTAssertFalse(window.collectionBehavior.contains(.moveToActiveSpace))
+    }
+
     func testActualWorkspaceAndRecorderKeepTheirDistinctNativePoliciesWithoutPresentation() throws {
         _ = NSApplication.shared
         let session = RebuildSession(services: RebuildSessionServices(
@@ -23,7 +36,7 @@ final class RebuildWindowFactoryTests: IsolatedXCTestCase {
             workspace.contentViewController = nil; workspace.close()
             overlay.contentViewController = nil; overlay.close()
         }
-        XCTAssertEqual(workspace.title, "AudioWhisper Rebuild")
+        XCTAssertEqual(workspace.title, "AudioWhisper")
         XCTAssertEqual(workspace.minSize, NSSize(width: 870, height: 620))
         XCTAssertTrue(workspace.styleMask.contains([.titled, .closable, .miniaturizable, .resizable]))
         XCTAssertEqual(workspace.level, .normal)

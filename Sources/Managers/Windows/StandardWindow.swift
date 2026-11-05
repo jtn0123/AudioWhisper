@@ -11,7 +11,7 @@ import AppKit
 /// app's full-screen window — panel behaviour, on windows that are not panels.
 @MainActor
 internal enum StandardWindow {
-    static let collectionBehavior: NSWindow.CollectionBehavior = [.fullScreenPrimary]
+    static let collectionBehavior: NSWindow.CollectionBehavior = [.primary, .fullScreenPrimary]
 
     /// Applies the shared configuration. With a `frameAutosaveName`, the window
     /// reopens at the size and position it was closed at.

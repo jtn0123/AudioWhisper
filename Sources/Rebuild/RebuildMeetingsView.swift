@@ -37,6 +37,17 @@ struct RebuildMeetingsView: View {
             Text("Up to 30 minutes. System audio requires Screen & System Audio Recording permission; "
                  + "no screen images are saved. Use headphones to keep system playback out of the microphone track.")
                 .font(.caption).foregroundStyle(.secondary)
+            if state.installedVoiceModels.isEmpty {
+                Text("Install a Whisper voice model in Models & setup before starting a meeting.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            if state.activity == .capturing, let start = state.document?.startedAt {
+                TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                    let remaining = max(0, 1_800 - Int(timeline.date.timeIntervalSince(start)))
+                    Text("Recording · \(remaining / 60):\(String(format: "%02d", remaining % 60)) until automatic stop")
+                        .monospacedDigit().accessibilityLabel("Time remaining before meeting capture stops")
+                }
+            }
             HStack {
                 Button("Start meeting") { state.start() }.disabled(!state.canStart).buttonStyle(.borderedProminent)
                 if state.activity == .starting || state.activity == .capturing {
@@ -50,9 +61,11 @@ struct RebuildMeetingsView: View {
     private var processingCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Local processing").font(.headline)
-            Picker("Whisper model", selection: $state.voiceModel) {
-                ForEach(WhisperModel.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }.disabled(state.busy)
+            if !state.installedVoiceModels.isEmpty {
+                Picker("Whisper model", selection: $state.voiceModel) {
+                    ForEach(state.installedVoiceModels, id: \.self) { Text($0.rawValue).tag($0) }
+                }.disabled(state.busy)
+            }
             Text("Uses an already installed Whisper model. Language follows your dictation settings. "
                  + "Microphone and system tracks retain their own timestamps and source labels.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -77,7 +90,8 @@ struct RebuildMeetingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button("Process captured audio") { state.processCurrent() }
-                    .disabled(state.busy || state.document?.audioRetained != true || state.document?.chunks.isEmpty != false)
+                    .disabled(state.busy || state.installedVoiceModels.isEmpty
+                        || state.document?.audioRetained != true || state.document?.chunks.isEmpty != false)
                 if state.activity == .processing {
                     ProgressView().controlSize(.small)
                     Button("Cancel processing") { state.cancelProcessing() }

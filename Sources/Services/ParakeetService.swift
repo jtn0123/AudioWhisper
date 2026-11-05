@@ -52,7 +52,9 @@ internal class ParakeetService {
         }
 
         // Step 1: Process audio with Swift AudioProcessor to create raw PCM data
-        let pcmDataURL = try await processAudioToRawPCM(audioFileURL: audioFileURL)
+        let pcmDataURL = try await DiagnosticInstrumentation.measure(.audioConversion) {
+            try await self.processAudioToRawPCM(audioFileURL: audioFileURL)
+        }
 
         return try await transcribePreparedPCM(pcmDataURL, repo: model.rawValue)
     }
@@ -69,6 +71,7 @@ internal class ParakeetService {
         let pcmPath = pcmDataURL.path
         let daemonRef = daemon
         let loggerRef = logger
+        let trace = DiagnosticInstrumentation.trace
         let daemonTask = Task.detached(priority: .userInitiated) { () -> String in
             defer {
                 // Delete only after the daemon request has fully finished, so
@@ -76,7 +79,9 @@ internal class ParakeetService {
                 try? FileManager.default.removeItem(atPath: pcmPath)
             }
             do {
-                let text = try await daemonRef.transcribe(repo: repo, pcmPath: pcmPath)
+                let text = try await DiagnosticInstrumentation.$trace.withValue(trace) {
+                    try await daemonRef.transcribe(repo: repo, pcmPath: pcmPath)
+                }
                 loggerRef.info("Parakeet transcription successful")
                 return text
             } catch {
