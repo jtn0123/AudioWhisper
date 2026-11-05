@@ -1,472 +1,563 @@
 # Codebase Grade Report
 
-**Project:** AudioWhisper
-**Audited:** 2026-08-25 (full re-audit)
-**Graded:** `grade-fixes-top15` @ `53c585e` — 14 commits ahead of `master`, all committed
-**Stack:** macOS 14+ menu-bar app — Swift 5.9 tools / SwiftUI + AppKit, AVFoundation + Accelerate audio, SwiftData persistence, WhisperKit (argmax-oss-swift) + Parakeet-MLX transcription, embedded uv-managed Python for MLX correction
-**Previous report:** `.claude/grade-report-2026-08-25-preregrade.md` (overall B−, pre-work)
+**Project:** AudioWhisper (fork `jtn0123/AudioWhisper`, branch `feat/aurora-waveforms` + uncommitted Aurora work)
+**Audited:** 2026-11-03
+**Stack:** Swift 6.2 / SwiftUI + AppKit macOS menu-bar app (live UI = `Sources/Rebuild`), SwiftData, WhisperKit (Core ML), embedded uv-managed Python JSON-RPC daemon (parakeet-mlx, mlx-lm)
 
-> This is a **fresh audit with fresh item IDs**, not the previous report with
-> items struck through. Grades were re-derived from the measurements below.
-> IDs from the earlier report (A1, D2, J1 …) no longer apply.
-
-## Verified on this machine
-
-| Measure | Result | Previous |
-|---|---|---|
-| Build | clean, **0 warnings** | 0 warnings |
-| Tests | **2,890 / 2,890 pass**, `--parallel` | 2,839 |
-| Line coverage (`Sources/` only) | **30.74%** (10,466 / 34,046) | 28.33% |
-| SwiftLint `--strict` | **0 violations** in 369 files | 0 in 355 |
-| `TODO` / `FIXME` | **0** | 0 |
-| `try!` / `as!` | **0 / 0** | 0 / 0 |
-| `fatalError` | 2 (both inside `#Preview`) | 2 |
-| `URLSession` in `Sources/` | **0** (local-only by design) | 0 |
-| `static let shared` | 17 | 17 |
-| Accessibility modifiers | **135** across **31 / 70** view files | 92 across 25 / 70 |
-
-### Coverage by layer
-
-| Directory | Coverage | Covered / Total | Previous |
-|---|---|---|---|
-| Extensions | 100.0% | 11 / 11 | 100.0% |
-| Models | 92.0% | 448 / 487 | 92.0% |
-| Stores | 76.8% | 1,029 / 1,339 | 72.0% |
-| Utilities | 74.3% | 570 / 767 | 72.4% |
-| ViewModels | 68.3% | 797 / 1,167 | 59.0% |
-| Services | 51.6% | 2,284 / 4,427 | 48.1% |
-| Managers | 46.6% | 1,371 / 2,939 | 44.8% |
-| App | 39.5% | 508 / 1,287 | 39.5% |
-| **Views** | **15.9%** | **3,448 / 21,622** | 15.3% |
-| **TOTAL** | **30.74%** | **10,466 / 34,046** | 28.33% |
-
-Views are 63% of instrumented lines at 15.9%, and that single fact still sets the
-headline number. What changed is *what* is untested: the app's primary flow, its
-subprocess launching, and its provider routing have all moved out of the view
-layer and are now covered. What remains in Views is much closer to actual SwiftUI
-body code.
-
----
+**Measured:** 3,297/3,297 tests pass · SwiftLint 0 violations · clean build · coverage 55.6% overall (Rebuild 87.6%, Stores 89.5%, Services 77.9%, Managers 75.3%, App 60.8%, Views 26.5%)
 
 ## Summary
 
-| ID | Category | Grade | Prev | Items |
-|----|----------|-------|------|-------|
-| A | Architecture & Design | B+ | B− | 4 |
-| B | Backend Quality | B+ | B | 3 |
-| C | Frontend Quality | B− | C+ | 4 |
-| D | Testing & Reliability | B− | C | 5 |
-| E | Security | B | B− | 3 |
-| F | Dependencies & Tech Currency | A− | B+ | 2 |
-| G | Performance & Scalability | A− | B | 2 |
-| H | Documentation & Onboarding | A− | B− | 3 |
-| I | Developer Experience & Tooling | A | A− | 2 |
-| **Overall** | | **B+** | **B−** | **28** |
+| ID | Category | Grade | Items |
+|----|----------|-------|-------|
+| A | Architecture & Design | C+ | 4 |
+| B | Backend Quality | B | 6 |
+| C | Frontend Quality (UI/UX) | C+ | 12 |
+| D | Testing & Reliability | B− | 6 |
+| E | Security | B | 5 |
+| F | Dependencies & Tech Currency | B+ | 3 |
+| G | Performance & Scalability | B− | 4 |
+| H | Documentation & Onboarding | B− | 3 |
+| I | Developer Experience & Tooling | B+ | 4 |
+| **Overall** | | **B−** | **47** |
 
-**Top 5 highest-leverage fixes:** D1, C1, A1, E1, B1
-
-### The one-paragraph read
-
-The structural defects the last audit found are gone: no live implementation
-shadowed by a dead tested one, no dead subsystem, no layer duplicated across View
-and ViewModel. Hygiene remains close to spotless — zero warnings, zero lint
-violations across 369 files, zero TODOs, zero force unwraps — and the tooling is
-genuinely best-in-class, every CI gate carrying a written account of the failure
-that motivated it. What holds the project at B+ is concentrated in two places,
-both clearly visible now that everything around them is clean: **the SwiftUI view
-layer is 63% of the codebase at 15.9% coverage** (D1/C1), and
-**`ModelIntegrity.knownHashes` is still empty**, so the pinned-hash control ADR
-0006 describes does not run (E1) — now honestly documented rather than
-overstated, which improves integrity but not enforcement.
+**Top 5 highest-leverage fixes:** ~~C1, A1, D1, B1, E1~~ — all done 2026-11-04 (uncommitted)
 
 ---
 
-## A — Architecture & Design — B+ *(was B−)*
+## A — Architecture & Design — C+
 
-The defect that defined the last audit is resolved. `RecordingViewModel` and
-`TranscriptionCoordinator` are the live orchestration path rather than a
-tested-but-uncalled copy, and the three transcription entry points share one body
-([RecordingViewModel+Transcription.swift](Sources/ViewModels/RecordingViewModel+Transcription.swift)).
-The paste layer, which had *two live* implementations reached by different
-triggers, is collapsed onto one. `KeychainService` — 194 lines nothing called —
-is gone. Subprocess verification moved out of two view files into
-[ModelVerificationService.swift](Sources/Services/ModelVerificationService.swift),
-and the Core Audio HAL is separated from the volume policy built on it.
+The rebuild has a clean core: one `RebuildSession` owns recording, delivery and setup, and views never record or paste themselves. But about 34% of the Swift source (~12,700 of 36,918 lines, ~75 files) is the legacy shell that production never launches. `AppDelegate()` is only constructed in tests (`Tests/AppDelegateExtensionTests.swift:16`); production runs `RebuildApp.main()` (`Sources/App/AudioWhisperEntryPoint.swift:10`) with `RebuildDelegate`. Live code still reaches into the legacy folders (`RebuildRecorderView.swift:28` → `Views/.../WaveformContainer` → `App/AppStatus`), and there are 19 singletons with 185 `.shared` call sites.
 
-Layering is clean: `App` / `Views` / `ViewModels` / `Services` / `Stores` /
-`Managers` / `Models` / `Utilities`, with large types split across focused
-extension files. Concurrency primitives are custom and correct — `VenvSerializer`
-chains tasks to survive `await` points inside the critical section;
-`DiskMutationSerializer` clears failed entries synchronously so a failure is never
-re-served. Six ADRs document the load-bearing calls.
-
-B+ rather than A− because 17 singletons remain, the App and window-management
-layer has no injection seams at all (39.5% coverage is largely that), and the
-view layer still holds more than presentation.
-
-#### A1 — The App and window-management layer has no test seams
-- **Where:** [AudioWhisperApp.swift](Sources/App/AudioWhisperApp.swift) (0.0%, 72 missed), [MenuBarIcon.swift](Sources/App/MenuBarIcon.swift) (0.0%, 197), [AppDelegate+Lifecycle.swift](Sources/App/AppDelegate+Lifecycle.swift) (13.1%, 119), [WindowManager.swift](Sources/Managers/Windows/WindowManager.swift) (15.4%, 143), [WindowController.swift](Sources/Managers/Windows/WindowController.swift) (21.1%, 168), [WelcomeWindow.swift](Sources/Managers/Windows/WelcomeWindow.swift) (0.0%, 60)
-- **What's wrong:** Every one reaches `NSApp` / `NSApplication.shared` / `NSWorkspace.shared` directly. `WindowController.storedTargetApp` is a static, and the window managers are singletons built at first use. Nothing can be substituted, so App sits at 39.5% and the window managers at 15–21%. This is the same class of problem the `SpeechToTextService` seam solved last round, not yet applied here — and it is now the largest untested *non-view* surface.
-- **Fix:** Introduce a narrow `WindowHosting` protocol covering only what these use (`windows(matching:)`, `activate`, `orderOut`, `frontmostApplication`), default it to an `NSApp`-backed implementation, inject it. Start with `WindowController`, since `RecordingViewModel+Paste` depends on its static and that dependency is what makes paste tests awkward.
-- **Effort:** M
-- **Grade lift:** B+ → A− (removes the last layer with no seam at all)
-
-#### A2 — 17 singletons, and the remaining ones have no injection seam
-- **Where:** `static let shared` across 17 types — notably [ModelManager.swift](Sources/Services/ModelManager.swift), [MLXModelManager.swift](Sources/Services/MLXModelManager.swift), [MLDaemonManager.swift](Sources/Managers/MLDaemonManager.swift), [UvBootstrap.swift](Sources/Services/UvBootstrap.swift), [PermissionManager.swift](Sources/Managers/PermissionManager.swift)
-- **What's wrong:** Several are defensible — one WhisperKit cache, one Python daemon. But `SpeechToTextService`, `MicrophoneVolumeManager` and `DataManager` were each given seams last round and their coverage moved to 86.7%, 100% and 76.8%. That demonstrates the pattern works and shows what the untouched ones cost. `MLXModelManager+Downloads` at 9.0% is the clearest case.
-- **Fix:** Apply the established pattern — a protocol covering only what callers use, a `.shared` default, injection for tests. `MLXModelManager` first, since it owns the download path B1 also touches.
-- **Effort:** M
-- **Grade lift:** B+ → A− (compounds with A1)
-
-#### A3 — Two bundled Python scripts are shipped but never invoked
-- **Where:** `Sources/parakeet_transcribe_pcm.py`, `Sources/mlx_semantic_correct.py`; bundled by [Package.swift:35-36](Package.swift:35) and [scripts/build.sh:191](scripts/build.sh:191)
-- **What's wrong:** `ResourceLocator.pythonScriptURL` is the only runtime script lookup and is called for exactly three names — `ml_daemon`, `verify_parakeet`, `verify_mlx`. These two ship in the bundle and are never executed: Parakeet transcription and MLX correction both route through `MLDaemonManager` → `ml_daemon.py` → `ml/rpc.py`. Roughly 300 lines of dead Python in the shipped product.
-- **Fix:** Confirm once more against the daemon path, then remove both from `Package.swift` resources and `build.sh`, update [CLAUDE.md:132-133](CLAUDE.md:132) which still presents them as the transcription entry points, and fix the two `build.sh` warnings claiming "Parakeet functionality will not work" if absent — now false and actively misleading during a build failure. `Tests/Utilities/ResourceLocatorTests` and `Tests/MLXScriptTests` reference them and need updating.
-- **Effort:** S
-- **Grade lift:** B+ → B+ (removes dead shipped code and a misleading build warning)
-
-#### A4 — Paste-target resolution still reaches global AppKit state
-- **Where:** [RecordingViewModel+Paste.swift:78](Sources/ViewModels/RecordingViewModel+Paste.swift:78) reads `WindowController.storedTargetApp` (a static) and `NSWorkspace.shared`
-- **What's wrong:** The duplication is fixed, but the surviving implementation still reaches globals, so `findValidTargetApp` and `performUserTriggeredPaste` remain hard to test — existing tests can only assert the nil and terminated branches. This is A1 seen from the paste side.
-- **Fix:** Covered by A1's `WindowHosting` seam; no separate work if A1 lands first.
-- **Effort:** S (after A1)
-- **Grade lift:** B+ → B+ (unblocks meaningful paste tests)
-
----
-
-## B — Backend Quality — B+ *(was B)*
-
-The persistence layer is in good shape. Every fetch bounds itself — the
-whole-history load that grew without limit under "forever" retention is replaced
-by `forEachRecordPage` plus a bounded dashboard query
-([DataManager+Fetching.swift](Sources/Stores/DataManager+Fetching.swift)) — and
-`RebuildAccumulator` keeps the paged and array-taking rebuilds sharing one
-definition of the arithmetic, which is how live and rebuilt totals stay in step.
-Error types are rich and exhaustive; domain errors are deliberately preserved
-rather than flattened. Subprocess invocation is injection-safe throughout:
-`executableURL` plus an arguments array, never a shell, untrusted values as
-`argv[n]`. Model-download outcome is decided by structured stdout JSON and the
-exit code rather than by grepping `huggingface_hub`'s progress format.
-
-Stores reached 76.8%. B+ rather than A− because Services sits at 51.6% and the
-largest offender is the download path itself.
-
-#### B1 — `MLXModelManager+Downloads` is 9.0% covered with 608 missed lines
-- **Where:** [MLXModelManager+Downloads.swift](Sources/Services/MLXModelManager+Downloads.swift) (539 lines, 9.0%)
-- **What's wrong:** Event parsing was extracted and is fully covered; everything around it is not. `performDownloadModel`'s venv bootstrap and error paths, `launchDownloadProcess`'s completion handling and pipe cleanup, `recordIntegrity`, and `isModelCachedOnDisk`'s hex-revision validation and snapshot-directory matching are all untested. That last one is security-relevant — it is what stops a crafted `refs/main` steering a path.
-- **Fix:** `isModelCachedOnDisk` and `integrityFileURL` are pure filesystem logic, testable today against a fake HF cache tree (`MLXModelDownloadsCoverageTests.makeFakeHFCache` already builds one). Cover the revision-validation and snapshot-matching branches first; for the process paths, apply A2's seam.
-- **Effort:** M
-- **Grade lift:** B+ → A− (largest untested service, and part of it guards a path-traversal surface)
-
-#### B2 — `UvBootstrap` is the other large untested service
-- **Where:** [UvBootstrap.swift](Sources/Services/UvBootstrap.swift) (438 lines), [UvBootstrap+Process.swift](Sources/Services/UvBootstrap+Process.swift)
-- **What's wrong:** It resolves `uv` across four candidate locations, compares versions, verifies the bundled binary's SHA-256, creates the venv and runs `uv sync --frozen`. Version comparison and bundled-binary verification are pure functions guarding a security boundary, and neither is directly tested.
-- **Fix:** Extract `isVersion(_:greaterOrEqualThan:)` and the candidate-path resolution into testable helpers and cover them, including tampered-binary rejection with a fixture. Venv creation itself belongs to the nightly job.
-- **Effort:** M
-- **Grade lift:** B+ → A− (covers the integrity check on the one binary the app executes)
-
-#### B3 — `AppDelegate` notification and lifecycle paths are 13% covered
-- **Where:** [AppDelegate+Lifecycle.swift](Sources/App/AppDelegate+Lifecycle.swift) (13.1%, 119 missed), [AppDelegate+Notifications.swift](Sources/App/AppDelegate+Notifications.swift)
-- **What's wrong:** Hotkey trigger routing, the `isTranscriptionProcessing` mirror that gates presses while a transcription is still running, and press-and-hold activation live here. The mirror is correctness-sensitive state kept in sync by notification.
-- **Fix:** These are mostly pure state transitions on `AppDelegate` and can be driven by posting the notifications, without a window. Start with the `isTranscriptionProcessing` sync and the hotkey-ignored-while-processing branch.
-- **Effort:** M
-- **Grade lift:** B+ → B+ (covers the gate preventing overlapping transcriptions)
-
----
-
-## C — Frontend Quality — B− *(was C+)*
-
-The view layer is meaningfully better. It no longer owns the recording flow, the
-paste flow, or subprocess launching. Accessibility went from 92 modifiers across
-25 files to 135 across 31, and now covers the mandatory permission path and the
-shared Dashboard settings rows, where `Toggle("") + .labelsHidden()` had left
-VoiceOver announcing an unnamed switch. The design system, reduce-motion support,
-the `ScrollableContent` workaround for `ImageRenderer`, and the snapshot
-harness's blank-render guard were already good.
-
-B− rather than B because 15.9% coverage across 63% of the codebase is still the
-dominant fact, and the decomposition that would make it addressable has not
-started.
-
-#### C1 — Six Dashboard files hold ~4,700 uncovered lines
-- **Where:** [DashboardHome+Sections.swift](Sources/Views/Dashboard/DashboardHome+Sections.swift) (0.0%, 886 missed), [DashboardCorrection+ModelPicker.swift](Sources/Views/Dashboard/DashboardCorrection+ModelPicker.swift) (0.0%, 857), [DashboardProviders+Correction.swift](Sources/Views/Dashboard/DashboardProviders+Correction.swift) (0.0%, 829), [DashboardVisualsView.swift](Sources/Views/Dashboard/DashboardVisualsView.swift) (1.0%, 798), [DashboardRecordingView.swift](Sources/Views/Dashboard/DashboardRecordingView.swift) (1.1%, 742), [DashboardProviders+LocalWhisper.swift](Sources/Views/Dashboard/DashboardProviders+LocalWhisper.swift) (0.0%, 621)
-- **What's wrong:** Each holds several independent sections in one `body`, so there is no seam to render a piece in isolation. The subprocess logic has already been lifted out; what remains is genuinely view code, but *undecomposed* view code, which is why even a render-based test cannot reach most of it.
-- **Fix:** Continue the pattern the codebase already established with `DashboardHome+Sections` and `CategoryEditorSheet+Sections` — pull each logical section into its own small `View` struct renderable standalone. Prioritise the model-picker and provider files, which carry the most branching (availability, download state, selection).
+#### ~~A1~~ ✓ done 2026-11-04 — Delete the unreachable legacy shell
+- **Where:** `Sources/App/AppDelegate*.swift` (6 files, 831 lines), `Sources/Views/Dashboard/*` (22 files), `Sources/Views/ContentView*`, `WelcomeView`, `Sources/Views/Transcription/*`, `Sources/ViewModels/*`, `Sources/Managers/Windows/{DashboardWindowManager,HistoryWindowManager,WelcomeWindow,WindowController,WindowCoordinator}.swift`, `ErrorPresenter`, `NotificationCoordinator`, `HotKeyManager`, `KeyboardEventHandler`, `AudioRecorder`, `SoundManager`, `RecordingSetupState`, `ProviderSettingsState`, `MenuBarIcon`; plus `InkRippleView` and `UnifiedModelRow`, which nothing references.
+- **What's wrong:** docs/rebuild.md says these "remain compiled temporarily", but nothing in `Sources/Rebuild` reaches them. They inflate build time and the test count, drag Views coverage down to 26.5%, and keep features alive in two places (the Aurora picker was added to both `DashboardVisualsView` and `RebuildRecordingTuningView`).
+- **Fix:** Do A2 first. Then delete the files and their tests in staged commits (App/AppDelegate → Dashboard → Windows managers → ViewModels), running `make test` and `scripts/lint.sh` after each. Lower the analyzer's `unused_declaration` baseline to match.
 - **Effort:** L
-- **Grade lift:** B− → B+ (the only route to moving the headline coverage number)
+- **Grade lift:** C+ → B (removes a third of the codebase and its duplicate feature surface)
 
-#### C2 — Accessibility still absent from 39 of 70 view files
-- **Where:** no accessibility modifiers in e.g. [MLXModelManagementView.swift](Sources/Views/Dashboard/MLXModelManagementView.swift), [DashboardCategoriesView.swift](Sources/Views/Dashboard/DashboardCategoriesView.swift), [CategoryEditorSheet.swift](Sources/Views/Dashboard/CategoryEditorSheet.swift), [TranscriptionSearchBar.swift](Sources/Views/Transcription/TranscriptionSearchBar.swift)
-- **What's wrong:** The permission path and shared settings rows are covered, which was the blocking case. What remains is model management and category editing — usable-but-awkward rather than blocking — plus the transcript search bar, which is a plain unlabelled field.
-- **Fix:** Work outward from the shared components (`UnifiedModelRow`, `TranscriptionSearchBar`) since they are reused, then the category editor. Extend the existing `DashboardSettingsCardsAccessibilityTests` pattern.
+#### A2 — Move the live shared UI out of the legacy folders
+- **Where:** `Sources/Views/Components/Waveform/**` (used by `RebuildRecorderView.swift:28`), `Sources/App/AppStatus`, `AppSetupHelper` and `PressAndHoldKeyMonitor` (used by `RebuildDelegate`).
+- **What's wrong:** Live code depends on folders that otherwise hold dead code, so it is unclear what can be deleted.
+- **Fix:** Create `Sources/SharedUI/` (waveforms, AppStatus) and move the live pieces there. Afterwards, anything left in `Views/` and `App/` that isn't reachable can be deleted (A1).
 - **Effort:** M
-- **Grade lift:** B− → B (completes VoiceOver support beyond onboarding)
+- **Grade lift:** part of A1's lift (makes A1 safe)
 
-#### C3 — Oversized view files
-- **Where:** [WaveformContainer.swift](Sources/Views/Components/Waveform/WaveformContainer.swift) (563), [DashboardHomeView.swift](Sources/Views/Dashboard/DashboardHomeView.swift) (519), [DashboardView.swift](Sources/Views/Dashboard/DashboardView.swift) (455), [CategoryEditorSheet.swift](Sources/Views/Dashboard/CategoryEditorSheet.swift) (373)
-- **What's wrong:** All pass lint (`file_length` warns at 600) but each holds several independent subviews — the same root cause as C1 seen per-file. `WaveformContainer` is the notable one: real layout and animation logic, not just composition, sitting at 2.4%.
-- **Fix:** Same treatment as C1. `WaveformContainer` first, since its logic is the most testable once separated.
+#### A3 — Split `RebuildSession` state
+- **Where:** `Sources/Rebuild/RebuildSession.swift:8-65` (~45 stored properties shared across 5 extension files)
+- **What's wrong:** One observable object holds the state for recording, verification, installation, maintenance and meetings. Every change invalidates every observer, and the extension files are only split by file, not by state.
+- **Fix:** Extract `@Observable` sub-models: `RecordingState`, `InstallState`, `MaintenanceState` and `MeetingState`, owned by the session. Views observe only the sub-model they need.
 - **Effort:** M
-- **Grade lift:** B− → B (creates the seams C1 needs)
+- **Grade lift:** C+ → C+/B− (removes the god object, which also reduces re-renders; see G2)
 
-#### C4 — `@State` holding process-wide singletons
-- **Where:** [DashboardView.swift:158](Sources/Views/Dashboard/DashboardView.swift:158) (`@State private var metricsStore = UsageMetricsStore.shared`) and similar across the 114 `@State` declarations in `Sources/Views`
-- **What's wrong:** `@State` declares view-owned value state. Assigning a singleton works under `@Observable` but misstates ownership and re-evaluates the initializer on every `View` init. With only 11 `@Binding` against 114 `@State`, shared state is reached through singletons rather than passed — the view-side face of A2.
-- **Fix:** Use `@Environment` injection registered at the window root, or a plain `let` referencing `.shared`, reserving `@State` for genuinely view-owned state.
+#### A4 — Stop `DataManager` reaching into other stores
+- **Where:** `Sources/Stores/DataManager.swift:118` (`nonisolated(unsafe)` with `MainActor.assumeIsolated`), `:271-272` (`deleteRecord` calls `UsageMetricsStore.shared` and `SourceUsageStore.shared`)
+- **What's wrong:** It crashes if first touched off the main thread, and the persistence layer mutates metrics stores directly.
+- **Fix:** Make `shared` `@MainActor static let`. Have the metrics stores react to `HistoryRevision` (or to an injected callback) instead of being called from `DataManager`.
 - **Effort:** S
-- **Grade lift:** B− → B− (correct SwiftUI semantics; enables injecting fakes)
+- **Grade lift:** small (makes the coupling explicit and removes a crash trap)
 
 ---
 
-## D — Testing & Reliability — B− *(was C)*
+## B — Backend Quality — B
 
-The suite is now substantially honest. The tautological tests are gone — four
-files' worth that asserted on locally-declared variables, including one that set
-a `Bool` to `true` and asserted it was `true`, and one that imported a module
-which had not existed for some time and silently fell back to testing its own
-mock. The app's primary flow went from 0.0% to 88.5%. Nine new suites cover the
-LRU policy, the sample ring buffer, history paging, download events, model
-verification, provider routing, the volume state machine and real audio decoding
-— each written against extracted production logic rather than a restatement of it.
+The daemon is carefully hardened:
+- Environment allowlist and `F_SETNOSIGPIPE`.
+- One write queue per session, with the reply handler registered before the write.
+- 1 MiB payload cap and SIGTERM→SIGKILL reaping.
+- A contract test that runs the real Python daemon (`Tests/MLRPCContractTests.swift`).
 
-Infrastructure was always strong: per-process `UserDefaults` isolation keyed on
-pid makes `--parallel` genuinely safe, `IsolatedXCTestCase` offers a strict mode,
-the coverage gate measures `Sources/` only and enforces a ratchet taken from CI's
-own baseline, and the nightly job runs the true end-to-end path.
+Error hygiene is good: 0 `try!`, 0 `as!`, about 4 force unwraps, and `fatalError` only in previews. The weaknesses are in process lifecycle edge cases, which show up to the user as "Parakeet stopped working until I relaunched".
 
-B− rather than B because 30.74% is still low, the view layer is essentially
-unmeasured, and one known flake is unresolved.
-
-#### D1 — The view layer is 63% of the code at 15.9% coverage `[FE]`
-- **Where:** `Sources/Views/` — 21,622 instrumented lines, 3,448 covered
-- **What's wrong:** This is now the entire gap between 30.74% and a respectable number. Unlike last time it is no longer hiding orchestration or subprocess logic — the remaining lines really are SwiftUI bodies. But "we don't test SwiftUI" has a consequence: a view that stops rendering, a binding that stops propagating, or a state branch that never fires is caught by nothing except the local-only snapshot suite.
-- **Fix:** Two tracks, in order. (1) Decompose per C1/C3 so sections render standalone. (2) Extend the existing render-based harnesses (`WaveformViewTests`, `DashboardViewTests`) to assert on the decomposed pieces. Treat 40% overall as the next ratchet target rather than chasing the number directly.
-- **Effort:** L
-- **Grade lift:** B− → B+ (the dominant remaining coverage fact)
-
-#### D2 — `testConcurrentDuplicateEventsAreHandledCorrectly` is flaky `[both]`
-- **Where:** [PressAndHoldKeyMonitorTests+DuplicateEvents.swift:141](Tests/PressAndHoldKeyMonitorTests+DuplicateEvents.swift:141)
-- **What's wrong:** Failed once during a full `--parallel` run (`downCount` 2, expected 1), then passed 5/5 in isolation and again on two subsequent full runs. It fires 10 concurrent `processTransition(isKeyDownEvent:)` calls from `DispatchQueue.global()` and asserts the handler ran exactly once; under the load of 2,890 tests across parallel processes the dedup race can lose. Nothing in the recent 14 commits touches this code.
-- **Fix:** Determine first whether this is a *test* race or a real one in `processTransition`'s dedup guard — the assertion may be catching a genuine bug. Do not loosen it to make CI green; that discards the only signal. If the guard is sound, the test needs a deterministic barrier rather than `RunLoop.run(until:)`.
-- **Effort:** S
-- **Grade lift:** B− → B (an ignored flake is how a real failure gets dismissed later)
-
-#### D3 — Snapshot suite is local-only, so 35 baselines are unenforced `[FE]`
-- **Where:** `Tests/__Snapshots__` (35 PNG baselines), gated behind `SNAPSHOT_TESTS=1`; rationale in [ci.yml](.github/workflows/ci.yml)
-- **What's wrong:** The reasoning for excluding it is sound and documented — a GitHub runner has no usable WindowServer and produced 19–100% pixel divergence across all 34 renders measured. But the consequence stands, and given D1 it is the *only* view-layer safety net, running solely when a developer remembers.
-- **Fix:** Do not put it in CI. Add a `make snapshot-check` target wrapping the documented invocation, reference it in the CONTRIBUTING pre-PR checklist, and have `.githooks/pre-commit` print a reminder when `Sources/Views/**` is staged. Converts "remember to" into a prompt.
-- **Effort:** S
-- **Grade lift:** B− → B− (no coverage change; stops the view-layer net depending on memory)
-
-#### D4 — Python has one test file and no coverage gate `[BE]`
-- **Where:** [Tests/test_correction_sanitize.py](Tests/test_correction_sanitize.py) is the only Python test; `Sources/ml/` is 870 lines
-- **What's wrong:** `ml/correction.py` (228 lines) is covered around 31%; `ml/rpc.py`, `ml/loader.py` and `ml/parakeet.py` have no direct tests. `rpc.py` is the daemon protocol every transcription and correction crosses. The SonarCloud job uploads Python coverage now, but nothing gates on it.
-- **Fix:** `rpc.py`'s framing and dispatch are pure and importable without mlx (the mlx imports in `correction.py` are already lazy). Add a test module for it alongside the sanitize tests in the existing CI step, then consider a Python coverage floor once there is a real number.
+#### ~~B1~~ ✓ done 2026-11-04 — Daemon restart limit never resets, and every request gets the same 60-second timeout
+- **Where:** `Sources/Managers/MLDaemonManager+Process.swift:22,36`, `Sources/Managers/MLDaemonManager.swift:48,164,219`, `Sources/ml/correction.py:253`, `Sources/ml/parakeet.py:86`
+- **What's wrong:**
+  - After 3 failed starts, the counter can only be cleared by a successful reply or 10 seconds of uptime, both of which need a running process. Parakeet and cleanup then fail with `restartLimitReached` until the app is relaunched.
+  - Every method shares one 60-second timeout, and on expiry the whole daemon is killed. A 4096-token correction on the 27B model, or a long Parakeet file job, can take longer than that.
+- **Fix:**
+  - Reset the restart counter after a cool-down (e.g. 60 s) and on any user-initiated Retry.
+  - Give each method its own timeout, scaled by input (audio duration, `max_tokens`).
+  - Add tests for both behaviours.
 - **Effort:** M
-- **Grade lift:** B− → B (covers the daemon protocol crossing every ML call)
+- **Grade lift:** B → B+ (removes the main "stuck until relaunch" failure)
 
-#### D5 — Test-file naming still overstates coverage in places `[FE]`
-- **Where:** `MLXModelManagementViewTests` → subject 0.0% (585 missed); `DashboardPermissionsViewTests` → 0.0% (407); `WaveformViewTests` → 0.0% (336); `CelebrationEffectsTests` → 1.0% (601); `DashboardVisualsViewTests` → 1.0% (798)
-- **What's wrong:** Much better than last time — the two non-view offenders (`MicrophoneVolumeManager`, `AudioProcessor`) are now at 100% and covered. What remains is view files whose named tests assert on constants and enum cases rather than rendered behaviour, so a reviewer scanning `Tests/` still concludes more is covered than is.
-- **Fix:** After C1/C3 decomposition, extend these to render the extracted sections. Where a test genuinely only checks constants, rename it (`…ViewConstantsTests`) so the naming stops overclaiming.
+#### B2 — Cancelling doesn't stop Python, and each request leaves a 60-second sleep task running
+- **Where:** `Sources/Managers/MLDaemonManager.swift:201-204,212`, `Sources/ml/rpc.py:106`
+- **What's wrong:**
+  - Swift drops the pending request, but the single-threaded daemon keeps generating, so the next dictation waits behind work nobody wants.
+  - The per-request sleep task is never cancelled when a reply arrives.
+- **Fix:** Store the timeout `Task` and cancel it on reply. On user cancel while a request is in flight, either send a `cancel` RPC (and check a flag between generation steps) or restart the daemon.
 - **Effort:** M
-- **Grade lift:** B− → B (aligns apparent coverage with real coverage)
+- **Grade lift:** B+ → B+ (improves responsiveness after a cancel)
+
+#### B3 — Blocking `waitUntilExit` / `readDataToEndOfFile` on the cooperative thread pool
+- **Where:** `Sources/Services/UvBootstrap.swift:178,189`, `Sources/Services/UvBootstrap+Process.swift:49`, `Sources/Services/ModelVerificationService.swift:151-152`
+- **What's wrong:** `uv venv` / `uv sync` can block a Swift-concurrency thread for minutes with no timeout, which can starve other tasks.
+- **Fix:** Use `terminationHandler` with a continuation and `FileHandle.readabilityHandler` (the same pattern `ModelVerificationService` already uses for exit), plus a timeout.
+- **Effort:** S
+- **Grade lift:** small
+
+#### B4 — Silent meeting-save failures and repeated write-error notifications
+- **Where:** `Sources/Rebuild/RebuildMeetingSession.swift:117,185` (`try? store.save`), `Sources/Services/AudioEngineRecorder.swift:359`
+- **What's wrong:**
+  - Meeting transcripts can be lost without any message.
+  - `recordingStartFailed` is posted on every failed buffer write instead of once.
+- **Fix:** Show a save failure as a session notice, with a retry that keeps the in-memory document. Latch the write-error notification once per session.
+- **Effort:** S
+- **Grade lift:** small
+
+#### B5 — Quit can hang
+- **Where:** `Sources/Rebuild/RebuildApp.swift:180-187` (`terminateLater` has no deadline), `Sources/Managers/MLDaemonManager+Process.swift:261` (the reap loop after SIGKILL is unbounded)
+- **What's wrong:** A wedged daemon can stop the app from quitting.
+- **Fix:** Add a 3-second deadline to both paths, then reply `.terminateNow`.
+- **Effort:** S
+- **Grade lift:** small
+
+#### B6 — The correction retry repeats the identical generation
+- **Where:** `Sources/ml/correction.py:264-266`
+- **What's wrong:** The retry rebuilds the same prompt and runs generation again. That doubles latency on the failure path and can never produce a different result.
+- **Fix:** Either change the retry (a stricter prompt or a different stop rule) or remove it. Update `test_correction_sanitize.py`.
+- **Effort:** S
+- **Grade lift:** small
 
 ---
 
-## E — Security — B *(was B−)*
+## C — Frontend Quality (UI/UX) — C+
 
-Fundamentals remain strong and two process gaps closed. Every `Process` uses
-`executableURL` plus an arguments array — no shell anywhere — and untrusted
-values like model repo names are passed as `argv[n]` rather than interpolated,
-with the reasoning written at the call site. Subprocesses get a minimal
-environment allowlist rather than the inherited environment. The bundled `uv` is
-SHA-256 verified at runtime against a build-time stamp. Error messages are
-redacted before display. Hardened runtime, notarization, three entitlements.
-CodeQL covers Swift and Python. Local-only removes the exfiltration surface
-entirely — zero `URLSession` in `Sources/`.
+**Strengths:**
+- `RebuildTheme` (`Sources/Rebuild/RebuildDesign.swift:8-104`) is a real token system with light, dark and high-contrast variants, plus shared components (`RebuildSection`, `RebuildCallout`, `RebuildFormRow`).
+- Blocked actions always say why (`recordingBlockedReason`).
+- Library empty, loading and error states are thoughtful (`RebuildLibraryView.swift:27-41,121-133`).
+- Downloads show progress and offer Cancel.
+- Destructive actions are confirmed.
+- Phase changes are announced to VoiceOver.
 
-New: Dependabot watches the Python ecosystem, so the native scientific stack
-finally generates advisories; integrity records moved out of the model directory
-into app-owned storage, removing the trivial rewrite-both-files bypass;
-`SECURITY.md` establishes a private disclosure path; and ADR 0006 states plainly
-which half of it runs.
+**What holds the grade down:**
+- The user is usually *in another app* when dictating, and that experience has blind spots: errors and paste fallbacks are only shown in the workspace window, Express Mode shows nothing at all, and clicking the waveform stops recording.
+- Accessibility and typography are below the bar: 103 fixed `.font(.system(size:))` calls, and 1 `accessibilityHint` in the whole of Rebuild.
+- Copy uses internal names ("Rebuild", "runtime", "Core ML").
+- There is no localisation.
 
-B rather than B+ because the flagship control still does not execute.
-
-#### E1 — `ModelIntegrity.knownHashes` is still empty
-- **Where:** [DiskMutationSerializer.swift:97](Sources/Utilities/DiskMutationSerializer.swift:97) — `static let knownHashes: [String: String] = [:]`
-- **What's wrong:** `knownHash(for:)` returns `nil` for every model, so `verify` always takes the trust-on-first-use branch — including for app-shipped models on a first download, the exact case ADR 0006 exists to cover. It is now *documented* accurately rather than overstated, a genuine improvement in integrity, but the enforcement gap is unchanged. Deferred deliberately: populating the table needs a release build's cached download of every shipped model (~7 GB) and the audit machine had 4.7 GiB free.
-- **Fix:** On a machine with space, download each shipped model via a release build and hash the representative file each caller passes — `config.json` via `ModelManager.representativeFileURL` for WhisperKit, `refs/main` via `MLXModelManager.integrityFileURL` for MLX/Parakeet. Add a test that a corrupted fixture throws `.pinnedMismatch`, and remove the `>>> ACTION REQUIRED <<<` marker and the ADR's *Implementation status* caveat in the same change. The failure mode is closed — a wrong pin rejects every legitimate download — so verify against two independent machines before shipping.
+#### ~~C1~~ ✓ done 2026-11-04 — Show failures and paste fallbacks in the HUD, not just the workspace window
+- **Where:** `Sources/Rebuild/RebuildSession.swift:195-198,213-215,293,310-312`, `RebuildDeliveryStatus.swift:12`, `RebuildRecorderView.swift`
+- **What's wrong:**
+  - On transcription failure, silent input, no audio or interruption, the HUD closes and the message goes to the workspace window, which the user can't see.
+  - When Smart Paste fails, the status says "Paste manually with Command V", but the HUD has already closed.
+  - A sound plays only on success.
+  - Result: a full-screen user sees the HUD vanish and no text arrives.
+- **Fix:**
+  - Add HUD states `.failed(message)` and `.copiedPasteManually`, kept on screen for about 4 seconds (paused while hovered), with **Retry** and **Open** buttons.
+  - Play an error sound.
+  - Add tests in the `RebuildSession` suites for each terminal state.
 - **Effort:** M
-- **Grade lift:** B → B+ (turns the documented control into an enforced one)
+- **Grade lift:** C+ → B− (fixes the most damaging UX gap for a dictation app)
 
-#### E2 — Model cache path validation is untested
-- **Where:** [MLXModelManager+Downloads.swift](Sources/Services/MLXModelManager+Downloads.swift) — `isModelCachedOnDisk`, which reads `refs/main`, requires pure hex, then matches against the actual `snapshots/` directory listing rather than interpolating into a path
-- **What's wrong:** The defence is correct and its comment explains exactly why the path is built only from a filesystem-returned name. But it is untested, in a file at 9.0% coverage, and it is what stands between a crafted `refs/main` and a path outside the cache.
-- **Fix:** `makeFakeHFCache` already builds a cache tree. Add cases for a non-hex revision, an empty `refs/main`, a revision containing path separators, and a revision naming a nonexistent snapshot — asserting each is rejected.
+#### C2 — Express Mode has no recording indicator, and the menu bar icon never changes
+- **Where:** `Sources/Rebuild/RebuildSession.swift:186` (`showRecorder()` skipped when `immediateRecording`), `Sources/Rebuild/RebuildStatusController.swift:14-16`
+- **What's wrong:** The status item image is set once. In Express Mode the user cannot tell whether the app is recording or transcribing, which is also a privacy issue for a microphone app.
+- **Fix:** Have `RebuildStatusController` observe the session phase and swap the symbol and tint for idle, starting, recording, transcribing and failed. Update the accessibility description to match.
 - **Effort:** S
-- **Grade lift:** B → B+ (locks in a path-traversal defence currently relying on nobody editing it)
+- **Grade lift:** + (meaningful privacy and feedback gain)
 
-#### E3 — Trust-on-first-use remains fundamentally limited
-- **Where:** [DiskMutationSerializer.swift](Sources/Utilities/DiskMutationSerializer.swift) — records now under `~/Library/Application Support/AudioWhisper/model-integrity/`
-- **What's wrong:** The record moved out of the model directory, removing the trivial bypass, and the doc comment now states honestly what each mode does and does not deliver. But a local process running as the user can still reach both model and record. The app is unsandboxed by design (ADR 0001), so no boundary at this layer fixes it.
-- **Fix:** Nothing further at this layer; E1 is the real answer for shipped models. Worth surfacing the TOFU boundary in the UI when a user adds a custom repo, which ADR 0006 lists as an open consequence and which remains undone.
+#### C3 — Clicking the HUD waveform stops the recording
+- **Where:** `Sources/Rebuild/RebuildRecorderView.swift:33` (`onTap: session.toggleRecording`), `Sources/Views/Components/Waveform/WaveformContainer.swift:88` (wraps everything in a `Button`)
+- **What's wrong:** The panel is `isMovableByWindowBackground`, so trying to drag it ends the dictation. VoiceOver reads "Microphone waveform, button" with no hint of what it does.
+- **Fix:** Pass a no-op `onTap` in the HUD (it already has explicit stop and cancel buttons), or make the waveform button-free when there's no action. Add a test.
 - **Effort:** S
-- **Grade lift:** B → B (user-facing honesty about a limitation that cannot be engineered away)
+- **Grade lift:** + (removes an accidental-stop trap)
 
----
-
-## F — Dependencies & Tech Currency — A− *(was B+)*
-
-Managed with real deliberation. Three pinned dependencies, all current:
-`argmax-oss-swift` 1.0.0, `KeyboardShortcuts` 3.0.1, `swift-argument-parser`
-1.8.2. Both recent moves were made for stated, verified reasons — the
-`KeyboardShortcuts` 3.x bump after retesting the belief that it needed Swift 6
-language mode, and the WhisperKit migration after discovering an `upToNextMinor`
-pin had silently skipped four releases. `Package.resolved` is committed;
-`uv.lock` is committed *and* verified against `pyproject.toml` in CI with
-`uv lock --check`, because `uv sync --frozen` does not detect drift itself. The
-Python pins carry exclusive upper bounds and a four-step bump checklist naming
-the exact API surface to re-verify.
-
-Dependabot now covers all three ecosystems — swift, github-actions and uv —
-closing the hole where the native scientific stack generated no advisories.
-`CLAUDE.md` no longer lists three libraries that do not exist.
-
-#### F1 — No dependency-review gate on PRs
-- **Where:** `.github/workflows/` — CodeQL and Dependabot are configured; no `actions/dependency-review-action`
-- **What's wrong:** Dependabot opens PRs and CodeQL scans code, but nothing fails a PR that *introduces* a dependency with a known advisory. For a project that executes downloaded model weights and a Python runtime, the introduction path is the one worth gating.
-- **Fix:** Add `actions/dependency-review-action` to the PR workflow. A few lines, no secrets required.
+#### C4 — Esc probably doesn't cancel, despite the tooltip
+- **Where:** `Sources/Rebuild/RebuildRecorderView.swift:50,72` ("Cancel (Esc)"), `Sources/Rebuild/RebuildApp.swift:127` (non-activating panel, never key)
+- **What's wrong:** `.onExitCommand` only fires once the panel is key, which happens only after the user clicks it.
+- **Fix:** While the phase is busy, install an `NSEvent` Esc monitor scoped to the session (local plus global, if Accessibility is granted), or reword the tooltip. Verify by hand in a full-screen app.
 - **Effort:** S
-- **Grade lift:** A− → A (closes the introduce-a-vulnerable-dep path)
+- **Grade lift:** + (a promised control works)
 
-#### F2 — The Python bump checklist is documentation, not a check
-- **Where:** [Sources/Resources/pyproject.toml](Sources/Resources/pyproject.toml) — the four-step checklist for raising `mlx-lm` / `parakeet-mlx`
-- **What's wrong:** Step 3 says to re-verify the API surface `Sources/ml/` uses, naming six symbols, because these libraries break it across minors. Nothing enforces it: a bump satisfying `uv lock --check` can still break `parakeet_mlx.from_pretrained` at runtime, surfacing only in the nightly job.
-- **Fix:** Add a small import-and-`getattr` smoke script asserting each named symbol exists, run in the nightly job *before* the end-to-end test so a break is attributed to the API change rather than the model.
+#### C5 — Nothing is visible during microphone start (up to 4 s)
+- **Where:** `Sources/Rebuild/RebuildSession.swift:186`, `Sources/Rebuild/RebuildRecorderView.swift:12-13`
+- **What's wrong:** The HUD appears only after the mic is ready. If it were shown during `.starting`, it would wrongly say "Transcribing…".
+- **Fix:** Show the HUD at `.starting` with a "Connecting microphone…" title and a muted waveform.
 - **Effort:** S
-- **Grade lift:** A− → A (turns a checklist into a gate)
+- **Grade lift:** small
 
----
-
-## G — Performance & Scalability — A− *(was B)*
-
-Sampled the audio path, the hashing path and the data layer; all three are clean.
-The realtime audio thread does no allocation in steady state —
-`SampleRingBuffer` writes into preallocated storage, and the snapshot copy
-happens only on the 60 Hz publish rather than on all ~94 callbacks per second.
-FFT uses Accelerate/vDSP with a pre-computed Hann window and a single `fftSetup`.
-SHA-256 streams in 64 KB chunks so gigabyte models do not blow up memory. Every
-SwiftData fetch bounds itself and the aggregate paths page. Audio is validated
-once per transcription rather than twice. The menu bar reads a cached snapshot.
-
-#### G1 — 60 Hz `Task { @MainActor }` hop per publish
-- **Where:** [AudioEngineRecorder.swift:409](Sources/Services/Audio/AudioEngineRecorder.swift:409)
-- **What's wrong:** Each publish allocates a `Task` to hop to the main actor and assign three published properties — 60 task allocations plus three `@Observable` invalidations per second while recording. Not a correctness issue and not a dropout risk, since it is off the audio thread, but it is the largest remaining per-second allocation in the recording path.
-- **Fix:** Measure first; this may be below the noise floor. If not, coalesce the three assignments into one value type so `@Observable` invalidates once, and consider an `AsyncStream` with `.bufferingNewest(1)` instead of a task per frame.
-- **Effort:** S
-- **Grade lift:** A− → A− (only if measurement justifies it — listed for completeness, not urgency)
-
-#### G2 — `DashboardHomeView` scans the full history on every open
-- **Where:** [DashboardHomeView.swift](Sources/Views/Dashboard/DashboardHomeView.swift) — `loadDashboardData` runs `forEachRecordPage` over every record to build provider stats and daily activity
-- **What's wrong:** Memory is now bounded, which was the actual defect. But the *scan* is still O(total records) on every dashboard open, and daily activity only needs the last 28 days. With years of history that is a growing latency cost for a fixed-size display.
-- **Fix:** Bound the daily-activity scan with a date predicate for the last 28 days. Provider stats genuinely need everything, so either accept that scan or maintain running per-provider counters in `UsageMetricsStore` the way session totals already are.
-- **Effort:** S
-- **Grade lift:** A− → A (removes the last unbounded-*work* path, as distinct from unbounded memory)
-
----
-
-## H — Documentation & Onboarding — A− *(was B−)*
-
-Where this repo's documentation is fresh it is exceptional, and it is now fresh
-where it matters most. Comments explain *why*, and specifically which failure
-motivated the code — the coverage gate records that it was reading the wrong
-`awk` column and had therefore never enforced anything; the SwiftLint pin records
-the 144-vs-46 finding swing between versions; the `print()` gate records that its
-`exit 1` ran in a subshell and silently passed on every run; `run-tests.sh`
-records that an EXIT-trap cleanup leaked 4,335 plists by racing `cfprefsd`.
-
-The two entry-point documents are correct now. `CLAUDE.md` lists the actual
-dependency set and documents the CLT/`actool` trap that makes bare `swift build`
-fail with an error naming neither cause nor fix. `CONTRIBUTING.md` states the real
-Xcode floor and no longer claims an internet connection is needed for
-transcription. ADR 0001 and ADR 0006 are corrected — 0006 now states which half of
-it actually runs. `SECURITY.md` establishes disclosure.
-
-#### H1 — `CLAUDE.md` lists two Python scripts that are never executed
-- **Where:** [CLAUDE.md:132-133](CLAUDE.md:132)
-- **What's wrong:** "Python Integration" presents `parakeet_transcribe_pcm.py` as "Parakeet transcription" and `mlx_semantic_correct.py` as "MLX semantic correction". Neither is invoked — both paths go through `ml_daemon.py`. This is the file that configures agent sessions, so it points future work at the wrong entry points.
-- **Fix:** Bundled with A3. Describe the daemon path as the real one and either delete the two scripts or mark them explicitly unused.
-- **Effort:** S
-- **Grade lift:** A− → A (last inaccuracy in the highest-traffic document)
-
-#### H2 — `build.sh` warns about consequences that no longer follow
-- **Where:** [scripts/build.sh:195](scripts/build.sh:195), [:202](scripts/build.sh:202)
-- **What's wrong:** "⚠️ parakeet_transcribe_pcm.py not found, Parakeet functionality will not work" — false, since the daemon handles transcription. A warning that misstates the consequence is worse than none during a build failure, because it sends the reader down the wrong path.
-- **Fix:** Bundled with A3.
-- **Effort:** S
-- **Grade lift:** A− → A
-
-#### H3 — No architecture overview for the ML subsystem
-- **Where:** `docs/adr/` covers six decisions; nothing maps the Swift↔Python boundary end to end
-- **What's wrong:** Transcription crosses `ParakeetService` → `MLDaemonManager` → a subprocess → `ml_daemon.py` → `ml/rpc.py` → `ml/parakeet.py`, with the venv bootstrapped by `UvBootstrap` and models fetched by `MLXModelManager`. Each piece is well commented; nothing states the shape. The evidence it is needed: two scripts sat in the bundle looking like entry points (A3/H1).
-- **Fix:** One page in `docs/` with a sequence diagram for a single transcription and a note on which process owns what. It is the missing piece that would have made A3 obvious.
-- **Effort:** S
-- **Grade lift:** A− → A (makes the least-obvious subsystem legible)
-
----
-
-## I — Developer Experience & Tooling — A *(was A−)*
-
-The standout category, and it improved. Every CI gate carries a written diagnosis
-of a time it was caught failing open, and each was repaired rather than removed.
-Gate strictness is chosen deliberately: `unused_import` is enforced at zero
-because the backlog was triaged by removing each import and letting the compiler
-be the oracle, while `unused_declaration` is a ratchet because much of what
-remains is structural. The coverage ratchet was set from CI's own measured
-baseline, with the reason recorded — a dev box with cached models runs a
-different test set than a clean runner. `scripts/lib/xcode-env.sh` fixes the CLT
-trap per-process without `sudo`, and all three entry-point scripts source it.
-
-New: the SonarCloud job no longer runs the suite a second time sequentially, and
-an opt-in pre-commit hook shifts SwiftLint strict, the `print()` gate and
-`uv lock --check` left. Measured: 0 warnings, 0 violations across 369 files,
-2,890 green tests.
-
-#### I1 — The suite still runs twice per PR
-- **Where:** [ci.yml](.github/workflows/ci.yml) `build-and-test` and [sonarcloud.yml:71](.github/workflows/sonarcloud.yml:71)
-- **What's wrong:** Both run `--parallel` now, which roughly halved the Sonar job, but it is still a second full execution of 2,890 tests on a separate macOS runner purely to produce a coverage artifact the first job already generated. With the `analyze` job's `xcodebuild build-for-testing` and `bundle-smoke-test`'s `make build`, a PR still pays for four builds.
-- **Fix:** Have `build-and-test` upload its codecov JSON and `coverage.lcov` as artifacts, and have the Sonar job download and convert them. Removes the second run entirely and guarantees Sonar reports the same number the coverage gate enforced. Needs `workflow_run` plumbing or merging the workflows — a deliberate structural change, which is why it was left.
+#### C6 — Raw `localizedDescription` shown to users (37 sites)
+- **Where:** `Sources/Rebuild/RebuildSession.swift:310`, `RebuildSessionSetup.swift:180`, `RebuildLibraryState.swift:60,71,79,106`, `RebuildWritingView.swift:13`, `RebuildPreferencesView.swift:76,84`, `RebuildStartup.swift:31`
+- **What's wrong:** Errors from Python, MLX, Hugging Face and the file system appear verbatim.
+- **Fix:** Add a `RebuildErrorText.userMessage(for:)` that maps known domains (daemon timeout, restart limit, disk full, network/offline, model missing) to plain sentences with a next step. Put the raw text behind a "Details" disclosure and in the copied diagnostics.
 - **Effort:** M
-- **Grade lift:** A → A (removes the largest remaining CI cost with no loss of signal)
+- **Grade lift:** +
 
-#### I2 — The pre-commit hook is opt-in and undiscoverable
-- **Where:** [.githooks/pre-commit](.githooks/pre-commit), documented in [CONTRIBUTING.md](CONTRIBUTING.md)
-- **What's wrong:** It requires `git config core.hooksPath .githooks`, and nothing prompts for it. A contributor who does not read that section gets no benefit, which is most of them.
-- **Fix:** Add a `make setup` target that sets `core.hooksPath`, installs the pinned SwiftLint version and prints the toolchain state; point at it from the CONTRIBUTING quick start. One command instead of a paragraph.
+#### C7 — The denied-microphone state is mislabelled
+- **Where:** `Sources/Rebuild/RebuildModelsView.swift:57,67-69`, `RebuildSessionSetup.swift:166-167`
+- **What's wrong:** After a denial the button still says "Allow microphone", but it opens System Settings. The status reads the same whether access is undecided or denied.
+- **Fix:** When access is denied, show "Microphone access is off" with an "Open Privacy Settings…" button and one sentence explaining how to turn it on.
 - **Effort:** S
-- **Grade lift:** A → A (adoption, not capability)
+- **Grade lift:** small
+
+#### C8 — The waveform picker is a flat 11-item dropdown with hidden Aurora options
+- **Where:** `Sources/Rebuild/RebuildRecordingTuningView.swift:28-41`, `Sources/Views/Components/Waveform/WaveformStyle.swift:34-47` (descriptions that are never shown)
+- **What's wrong:**
+  - The picker has no preview.
+  - The descriptions are never shown.
+  - It's buried under "Advanced & support".
+  - The Horizon/Lens shape control only appears once an Aurora style is chosen.
+  - "Motion intensity" (Glow/Balanced/Burst) has no explanation.
+- **Fix:**
+  - Replace the dropdown with a grid of small live previews (`WaveformStylePreview` with a shared `LivePreviewSampler` already exists), grouped into "Classic" and "Aurora", with captions.
+  - Put the shape segmented control inside the Aurora group.
+  - Move the whole group to a visible "Recorder" section.
+- **Effort:** M
+- **Grade lift:** + (helps people find the new Aurora styles)
+
+#### C9 — Fixed type sizes and accessibility gaps
+- **Where:**
+  - Fixed sizes: 103 `.font(.system(size:))` calls in `Sources/Rebuild`, including 8.5 pt "PRIVATE DICTATION" at `RebuildWorkspace.swift:131`.
+  - No accessibility modifiers at all: `RebuildModelsView`, `RebuildMeetingsView`, `RebuildModeEditor`, `RebuildHistoryCleanupView`, `RebuildMicrophoneRankingView`, `RebuildRecordingTuningView`.
+  - `RebuildMicrophoneRankingView.swift:29-39`.
+- **What's wrong:**
+  - Nothing scales with the user's text size, and some labels are below a readable minimum.
+  - The microphone ranking buttons read "Move up" without saying which microphone.
+  - Rebuild has only 1 `accessibilityHint`.
+  - The waveform has no `accessibilityValue` (level).
+- **Fix:**
+  - Add semantic type tokens to `RebuildTheme` (`.rebuildBody`, `.rebuildCaption`, …) built on relative text styles, and replace the fixed sizes. Raise the minimum to 11 pt.
+  - Label the ranking buttons with the mic name ("Move AirPods up").
+  - Add a level value to the HUD waveform.
+- **Effort:** M
+- **Grade lift:** +
+
+#### C10 — Internal names and inconsistent terms in user-facing copy
+- **Where:**
+  - "Rebuild": `Sources/Rebuild/RebuildStatusMenu.swift:22,25`, `RebuildWindowFactory.swift:12`, `RebuildStatusController.swift:15-16`.
+  - Cleanup terms: `RebuildWritingView.swift:70,105`, `RebuildMeetingsView.swift:66,70`, `RebuildModeEditor.swift:38`.
+  - Recorder terms: `RebuildPreferencesView.swift:130-131`, `RebuildModelsView.swift:129,227,243`.
+- **What's wrong:**
+  - "AudioWhisper Rebuild" and "Quit Rebuild" are shown to users.
+  - The cleanup feature has five names: Writing cleanup, Correction model, correction weights, writing model plus a raw HF repo id, and "Local (MLX)".
+  - The recorder has three names: Overlay, Recorder style, recorder.
+  - Jargon: "runtime", "Core ML", "Cluster labels", and "Build <hash> · Development preview".
+- **Fix:**
+  - Pick "Recorder" and "Cleanup model". Show `displayName` instead of repo ids.
+  - Rename the menu and window to "AudioWhisper" (keep the bundle id).
+  - Replace string matching for status tone (`RebuildWritingView.swift:171-176`) with an enum.
+- **Effort:** S
+- **Grade lift:** small–medium
+
+#### C11 — Navigation and menu bar menu gaps
+- **Where:** `Sources/Rebuild/RebuildApp.swift:37` (Meetings comes after Preferences, so it gets ⌘6), `RebuildWorkspace.swift:93,119`, `RebuildStatusMenu.swift`, the setup checklist in `RebuildModelsView`
+- **What's wrong:**
+  - Meetings is out of order.
+  - The menu bar menu has no readiness line and no Library or Settings items.
+  - The setup checklist never covers the recording shortcut, which is off by default and is the app's main entry point.
+- **Fix:**
+  - Reorder the sidebar so Meetings sits next to Library and Preferences comes last.
+  - Add a status line plus Library and Settings items to the menu.
+  - Add checklist step 4, "Choose a recording shortcut".
+- **Effort:** S
+- **Grade lift:** small
+
+#### C12 — No localisation, and design-token gaps
+- **Where:**
+  - No `String(localized:)`, `LocalizedStringResource` or `.xcstrings` anywhere.
+  - Strings built as `String`: `RebuildReadiness.nextStep`, `RebuildDeliveryStatus`, `"Step \(number), …"`.
+  - `padding(.horizontal, 28)` and `maxWidth: 860` repeated on each page; corner radii 7, 8, 10, 12 and 20.
+  - `RebuildMeetingsView.swift:31,40,57` uses system styles instead of the theme.
+- **What's wrong:** The app can't be translated. Spacing and radius drift between pages, and Meetings looks like a different app.
+- **Fix:**
+  - Add `RebuildTheme.Spacing` and `RebuildTheme.Radius` tokens, and restyle Meetings with `RebuildSection`.
+  - Adopt a strings catalogue, starting with status and notice text.
+- **Effort:** M (tokens S, localisation M)
+- **Grade lift:** small
 
 ---
 
-## Appendix — how to use this report
+## D — Testing & Reliability — B−
 
-Item IDs are stable for the lifetime of this file, and are **new** — the previous
-report's IDs do not map onto these.
+**Strong points:**
+- 3,297 tests passing; Rebuild at 87.6% coverage and Stores at 89.5%.
+- A contract test against the real daemon (`Tests/MLRPCContractTests.swift`), about 128 Python unittests, and nightly real-engine runs (`.github/workflows/nightly.yml`).
+- The session controller and Smart Paste are well covered.
 
-```bash
-/grade-codebase D1 C1 A1
-```
+**Weak points:**
+- The snapshot suite is broken: every baseline viewed is AppKit's yellow "cannot render" placeholder, and there are no Rebuild baselines at all.
+- Some tests can never fail.
+- Negative checks are timed with sleeps.
+- The CI coverage gate is a 40% ratchet.
 
-To re-grade one category after fixes:
+#### ~~D1~~ ✓ done 2026-11-04 — Snapshot baselines are "cannot render" placeholders, and the live UI isn't covered `[FE]`
+- **Where:** `Tests/__Snapshots__/*.png` (35 files, last touched in 825cefc). `WaveformContainer-classic-recording.png`, `WaveformContainer-error.png`, `Waveform-neon-dark.png` and `DashboardView-light.png` all show the yellow fill with a red ⃠. The single-colour guard is in `assertSnapshot`.
+- **What's wrong:** CLAUDE.md forbids exactly these baselines, and the >99.5%-single-colour guard doesn't catch them. Every baseline is of a legacy view or a waveform; none covers a Rebuild screen or Aurora.
+- **Fix:**
+  - Add a placeholder detector to `assertSnapshot`: a large share of yellow (≈#E6C300) plus red pixels → fail.
+  - Re-record on a real WindowServer.
+  - Add Rebuild baselines: Record idle/recording/failed, Models with mic denied, Preferences, Library empty, the HUD, and the Aurora Horizon and Lens shapes.
+  - Delete the legacy baselines when A1 lands.
+- **Effort:** M
+- **Grade lift:** B− → B (visual regressions become detectable for the shipping UI)
 
-```bash
-/grade-codebase D
-```
+#### D2 — Remove tests that can never fail `[FE]`
+- **Where:** `Tests/Views/Dashboard/DashboardViewTests.swift:10-84` (40 `XCTAssertNotNil` calls on non-optional `Color`s), `Tests/Views/Components/CelebrationEffectsTests.swift:8-46`
+- **What's wrong:** They inflate the test count and coverage without checking anything.
+- **Fix:** Delete them, or assert on semantic output with ViewInspector, which is already a dependency.
+- **Effort:** S
+- **Grade lift:** small (an honest signal)
 
-**Suggested sequencing.** Two things gate the overall grade: the view layer
-(C1 → C3 → D1, in that order, since decomposition is what makes coverage
-reachable) and E1. A1/A2 are the structural follow-through that would take
-Architecture to A− and lift App, Managers and Services coverage with it.
-Everything marked S is a day or less and independent.
+#### D3 — Replace sleep-then-assert-nothing and fixed sleeps with polling or injected clocks `[both]`
+- **Where:** `Tests/RebuildSmartPasteTests.swift:82,100,111`, `Tests/PermissionManagerTests.swift:426,443`, `Tests/TranscriptionHistoryIntegrationTests.swift:78` (117 sleep/`asyncAfter` sites in total)
+- **What's wrong:** A negative check after a 60 ms sleep passes even when the code is just slow. Positive waits with fixed sleeps are a classic source of flaky tests.
+- **Fix:** Use the existing `waitFor` polling helper (`RebuildSmartPasteTests.swift:161`). For negative checks, expose a completion hook or inject a clock so the test asserts after the guarded path has definitely run.
+- **Effort:** M
+- **Grade lift:** small–medium (reliability)
+
+#### D4 — A missing fixture skips instead of failing `[BE]`
+- **Where:** `Tests/AudioDecodeTests.swift:22` (`XCTSkip` when `test_audio.wav` is missing), `Tests/ParakeetServiceTests.swift:93,116`, `Tests/ModelManagerCoverageTests.swift:66,87,92` (skip based on which models are on the machine)
+- **What's wrong:** A packaging mistake quietly turns tests green, and results differ between machines.
+- **Fix:** Make the missing fixture an `XCTFail`. Inject the cache root through `AUDIOWHISPER_APP_SUPPORT_DIR` with a temp directory, so the model-state tests are deterministic.
+- **Effort:** S
+- **Grade lift:** small
+
+#### D5 — Untested live types `[both]`
+- **Where:** `RebuildStatusController`, `RebuildDiagnostics` (also the MCP `status` payload), `RebuildDeliveryStatus`, `RebuildReadiness`/`RebuildPhase`, `Sources/App/RecordingDiagnostics.swift`; `PublicAutomation` path-scope checks have only one test file.
+- **What's wrong:** User-visible status text and the MCP security boundary have no direct tests.
+- **Fix:**
+  - Table-driven tests for phase → status title/tone/icon, which also covers C2.
+  - Path-scope tests for symlinks, `..`, `$HOME` and relative paths.
+- **Effort:** S
+- **Grade lift:** small
+
+#### D6 — Run the Python tests on the shipped interpreter, and raise the ratchet `[both]`
+- **Where:** `.github/workflows/ci.yml:337,367` (the runner's default `python3`, while the app ships `>=3.11,<3.12` per `Sources/Resources/pyproject.toml`), `ci.yml:191` (40% gate with 0.57 points of headroom)
+- **What's wrong:** CI tests a different Python than the one users get. The gate sits far below the actual 55.6%.
+- **Fix:** Add `actions/setup-python` with 3.11. Raise the gate to about 50% now, and higher once A1 removes the poorly covered legacy Views.
+- **Effort:** S
+- **Grade lift:** small
+
+---
+
+## E — Security — B
+
+**Good posture for an unsandboxed app (ADR 0001):**
+- Release signing uses hardened runtime and notarization.
+- The bundled `uv` is SHA-256 checked when it is prepared (`scripts/prepare-uv.sh:12-23`), and models are pinned by commit (`Sources/Models/ModelPins.swift`).
+- Every `Process` uses a fixed argv, with no shell.
+- Python stderr is logged as `.private`, and no transcript logging was found.
+- Smart Paste marks its clipboard writes as transient.
+- Deep links are validated.
+
+**Main gap:** which `uv` binary runs.
+
+#### ~~E1~~ ✓ done 2026-11-04 — An unverified `uv` from PATH or Application Support wins over the verified bundled copy
+- **Where:** `Sources/Services/UvBootstrap.swift:104-106` (prefers `which uv`; hash checked only for the bundled path), `:136` (Application Support copy runs unchecked), `:315`
+- **What's wrong:** Any user-writable `uv` earlier on PATH, or in `~/Library/Application Support/<dir>/bin`, is run, and it then installs and runs the Python environment.
+- **Fix:**
+  - Use the bundled `uv` first and always verify it.
+  - Accept other copies only if their hash matches the bundled one.
+  - Gate the `AUDIOWHISPER_APP_SUPPORT_DIR` override (`:315`) behind `#if DEBUG` or a test flag.
+  - Add tests.
+- **Effort:** S
+- **Grade lift:** B → B+
+
+#### E2 — Trim the entitlements
+- **Where:** `scripts/build.sh:70-71` (`com.apple.security.automation.apple-events`, `network.client`), `scripts/prepare-uv.sh:33` (`uv` signed with the full app entitlements)
+- **What's wrong:**
+  - Nothing sends Apple Events.
+  - `network.client` only applies to sandboxed apps.
+  - The helper binary carries entitlements it doesn't need.
+- **Fix:** Remove both entitlements, sign `uv` with no entitlements, and re-run the bundle smoke test.
+- **Effort:** S
+- **Grade lift:** small
+
+#### E3 — Ad-hoc and dev builds leave out hardened runtime
+- **Where:** `scripts/build.sh:485`
+- **What's wrong:** Local and CI builds behave differently from release (library validation, DYLD environment), so release-only failures show up late.
+- **Fix:** Add `--options runtime` to the ad-hoc path too.
+- **Effort:** S
+- **Grade lift:** small
+
+#### E4 — The notarization password is visible in the process list
+- **Where:** `scripts/build.sh:531-534`
+- **What's wrong:** `--password` on the command line can be read with `ps`.
+- **Fix:** Use `xcrun notarytool store-credentials` and `--keychain-profile`.
+- **Effort:** S
+- **Grade lift:** small
+
+#### E5 — MCP path scope and the plain-copy clipboard
+- **Where:** `Sources/App/PublicAutomation.swift:143,151-157`, `Sources/Managers/PasteManager.swift:67-71`
+- **What's wrong:**
+  - `directory()` accepts `$HOME` as a root.
+  - There is a check-then-use race between the symlink check and the read.
+  - Copy-only delivery puts transcripts into clipboard-history apps without the transient marker.
+- **Fix:** Reject `$HOME` and other overly broad roots, and open with `O_NOFOLLOW` before reading. Make transient marking a preference, defaulting to on.
+- **Effort:** S
+- **Grade lift:** small
+
+---
+
+## F — Dependencies & Tech Currency — B+
+
+- Few direct dependencies, all current: argmax-oss-swift 1.1.0, KeyboardShortcuts 3.1.0, ViewInspector 0.10.5 (pinned exactly).
+- The Python lock is enforced with `uv sync --frozen`, and Dependabot covers Swift, uv and Actions.
+- No deprecated AppKit calls were found (no `activate(ignoringOtherApps:)`, no `NSUserNotification`).
+- Remaining issues are declaration drift and supply-chain pinning.
+
+#### F1 — Declared minimums don't match reality
+- **Where:**
+  - `Package.swift:1` (tools 5.9, `.macOS(.v14)`) against `README.md:32,35` (macOS 26/27, Swift 6.2 toolchain).
+  - CLAUDE.md "Swift 5.9+" and "Only two direct SwiftPM dependencies"; ViewInspector and SpeakerKit are also used.
+- **What's wrong:** The real requirements are stated in one place and contradicted in another.
+- **Fix:** Raise `swift-tools-version` to 6.2, choose a deployment target and state it once, and update CLAUDE.md.
+- **Effort:** S
+- **Grade lift:** B+ → A−
+
+#### F2 — Pin GitHub Actions by commit SHA
+- **Where:** `.github/workflows/*.yml` (`actions/checkout@v4`, `SonarSource/sonarqube-scan-action@v7`, …)
+- **What's wrong:** A moved or compromised tag would run in CI with repository secrets.
+- **Fix:** Pin each action to a SHA with a `# vX` comment. Dependabot already updates them.
+- **Effort:** S
+- **Grade lift:** small
+
+#### F3 — Small currency nits
+- **Where:**
+  - `uv.lock` (certifi 2025.8.3).
+  - `Sources/Resources/pyproject.toml` comment "Dependabot does not manage this file", which is no longer true.
+  - `Sources/Rebuild/RebuildRecorderView.swift:115` (`Text + Text` and `.foregroundColor`, deprecated on current SDKs).
+- **What's wrong:** A stale CA bundle, a misleading comment and deprecated SwiftUI calls.
+- **Fix:** Bump certifi, fix the comment, and use `Text` interpolation with `.foregroundStyle`.
+- **Effort:** S
+- **Grade lift:** small
+
+---
+
+## G — Performance & Scalability — B−
+
+**Strengths:**
+- The audio tap uses a preallocated ring buffer, a lock, and FFT setup created once.
+- Model scans run off the main thread.
+- History is paged in bounded chunks, and search is debounced.
+
+**Weaknesses:**
+- Every SwiftData fetch runs synchronously on the main actor.
+- The audio callback allocates on every buffer and republishes three `@Published` values.
+- The new Aurora view likely never pauses and does a lot of offscreen compositing per frame (it isn't committed yet, so it's cheap to fix now).
+
+#### G1 — Aurora: make the pause real, cap the frame rate, cut per-frame work (uncommitted code)
+- **Where:**
+  - `Sources/Views/Components/Waveform/Aurora/AuroraWaveformView.swift:17,22,25`
+  - `Sources/Views/Components/Waveform/Aurora/AuroraRenderer.swift:59,76,100,122,132`
+- **What's wrong:**
+  - The pause condition `!isActive && engine.isAtRest` is only re-evaluated when `body` re-runs, and `AuroraEngine` isn't observable, so the timeline probably never pauses once the mountains settle.
+  - `.animation` without `minimumInterval` runs at 120 Hz on ProMotion.
+  - Each frame does about 13 `drawLayer` offscreen composites, rebuilds about 21 gradients and 12+ arrays, and computes the deep field twice per lobe.
+  - `@State` with a default value creates a throwaway `AuroraEngine` every time the parent view is rebuilt.
+  - It ignores the visual-intensity setting.
+- **Fix:**
+  - Make `AuroraEngine` `@Observable` with a published `atRest` that is set when the mountains settle.
+  - Use `.animation(minimumInterval: 1/60, paused:)`.
+  - Reuse the deep field per lobe, and cache `xs`, `zero` and the alpha ramps per size.
+  - Initialise the engine lazily.
+  - Map intensity to amplitude.
+  - Add a test that the view stops ticking after it settles.
+- **Effort:** S
+- **Grade lift:** B− → B (with G2)
+
+#### G2 — Audio tap allocations and broad view invalidation
+- **Where:** `Sources/Services/AudioEngineRecorder.swift:267-336`, `Sources/Services/FFTProcessor.swift:118,124,175`, `Sources/Rebuild/RebuildRecorderView.swift`
+- **What's wrong:**
+  - Each callback (about 47 per second) allocates `monoSamples` plus 3 or more FFT arrays and spawns a `Task`.
+  - The 60 Hz throttle never drops anything.
+  - Three separate `@Published` writes invalidate the whole HUD.
+- **Fix:** Reuse scratch buffers, and publish a single `MeterFrame` struct. Isolate the waveform in a child view that observes only the meter.
+- **Effort:** M
+- **Grade lift:** +
+
+#### G3 — SwiftData reads run on the main actor
+- **Where:** `Sources/Stores/DataManager+Fetching.swift:150-162` (OFFSET paging plus a `localizedStandardContains` full scan)
+- **What's wrong:** Every fetch, search and page creates a `ModelContext` on the main thread. Fine for hundreds of records, but it will stutter at thousands.
+- **Fix:** Move reads to a `@ModelActor` that returns value snapshots, and keep writes on the main actor.
+- **Effort:** M
+- **Grade lift:** +
+
+#### G4 — The Library list resets and fetches twice
+- **Where:** `Sources/Rebuild/RebuildLibraryView.swift:44-49`, `Sources/Rebuild/RebuildLibraryState.swift:70`
+- **What's wrong:** Any history change resets the list to 50 rows, so loaded pages are lost and the scroll position jumps. A delete triggers two fetches.
+- **Fix:** Apply deletes and inserts to the loaded array in place, and skip the revision-triggered reload when the change came from this view.
+- **Effort:** S
+- **Grade lift:** small
+
+---
+
+## H — Documentation & Onboarding — B−
+
+**Strengths:**
+- The README clearly states this is a local-only fork.
+- Six indexed ADRs (`docs/adr/`), plus CONTRIBUTING and SECURITY.
+- Unusually good inline rationale (`ModelPins.swift`, the comments on the `ci.yml` coverage gate, `.swiftlint.yml`).
+
+**Weaknesses:** The two docs an agent or new contributor reads first are wrong about the core of the app.
+
+#### H1 — CLAUDE.md's architecture describes the legacy shell
+- **Where:** `CLAUDE.md` "Architecture" (`Sources/App/AudioWhisperApp.swift`, which no longer exists; the AppDelegate split) and "Key Dependencies" / "Code Patterns"
+- **What's wrong:**
+  - `Sources/Rebuild/` (53 files, the whole live app) isn't mentioned, nor is the MCP/CLI automation path.
+  - New work gets steered into dead code. This already happened: the Aurora picker was added to `DashboardVisualsView`.
+- **Fix:** Rewrite the section around `AudioWhisperEntryPoint` → `RebuildApp`/`RebuildDelegate` → `RebuildSession`, list which folders are legacy, and correct the dependency and toolchain lines.
+- **Effort:** S
+- **Grade lift:** B− → B
+
+#### H2 — docs/rebuild.md and README contradictions
+- **Where:**
+  - `docs/rebuild.md` describes a "warm paper/ink palette with restrained rust accents", but the code uses slate with a teal accent (`RebuildDesign.swift:4-6`).
+  - Its intro is written as if the rebuild still lived on a separate branch and worktree.
+  - `README.md:32` disagrees with `Package.swift` on the OS minimum.
+  - ADR 0004 is still "Proposed".
+- **What's wrong:** The design and requirements docs have drifted from the code.
+- **Fix:** Update the palette and branch statements, decide ADR 0004, and state the macOS minimum in one place.
+- **Effort:** S
+- **Grade lift:** small
+
+#### H3 — Stale `mypy.ini` header
+- **Where:** `mypy.ini:1-9`
+- **What's wrong:** It says "574 lines… a single unit test" and refers to a "python-typecheck CI job". The package is now 820 lines with 10 test files, and the check is a step in the `lint` job.
+- **Fix:** Update the header or make it describe the setup without numbers.
+- **Effort:** S
+- **Grade lift:** small
+
+---
+
+## I — Developer Experience & Tooling — B+
+
+**Strengths:**
+- The Makefile covers the whole loop: build, build-dev, run, test, typecheck and release (release forces `--repo`).
+- `scripts/lib/xcode-env.sh` recovers automatically from the Command Line Tools/`actool` trap.
+- SwiftLint is pinned to 0.65.0 and runs with `--strict`, with only 20 inline disables.
+- An analyzer ratchet, `mypy --strict`, `uv lock --check`, duplicate-run preflight and job timeouts in CI.
+
+**Remaining issues:** friction and repo hygiene.
+
+#### I1 — Builds dirty tracked files
+- **Where:** `scripts/build.sh:~143-152` (rewrites the tracked `Info.plist` version fields), `Sources/Utilities/VersionInfo.swift` (tracked but listed in `.gitignore:128`)
+- **What's wrong:** Every `make build` leaves a modified `Info.plist`; this happened during the Aurora work. `VersionInfo.swift` drifts.
+- **Fix:** Stamp the copy of `Info.plist` inside the built bundle instead of the source. Run `git rm --cached Sources/Utilities/VersionInfo.swift` and generate it during the build.
+- **Effort:** S
+- **Grade lift:** B+ → A−
+
+#### I2 — 178 MB of audit evidence tracked in git
+- **Where:** `.Codex/` (644 tracked files)
+- **What's wrong:** It bloats every clone and CI checkout.
+- **Fix:** Move it to Git LFS or release artifacts, and keep only the READMEs that docs link to. Removing it from history is optional and needs a separate decision.
+- **Effort:** M
+- **Grade lift:** small
+
+#### I3 — Two overlapping pre-commit systems
+- **Where:** `.pre-commit-config.yaml` (`no-debug-print` at line 15 fails on any line-leading `print(`, even inside `#if DEBUG`), `.githooks/pre-commit`
+- **What's wrong:** It's unclear which hook runs, and the print hook contradicts its own message.
+- **Fix:** Keep one system and fix the print rule.
+- **Effort:** S
+- **Grade lift:** small
+
+#### I4 — The `lint` CI job has no timeout
+- **Where:** `.github/workflows/ci.yml:220-224`
+- **What's wrong:** A hung step would run until GitHub's 6-hour default.
+- **Fix:** Add `timeout-minutes: 15`.
+- **Effort:** S
+- **Grade lift:** small

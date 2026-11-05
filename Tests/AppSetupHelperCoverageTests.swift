@@ -1,131 +1,47 @@
 import XCTest
-import AppKit
 @testable import AudioWhisper
 
 // MARK: - AppSetupHelper Tests
-@MainActor
-final class AppSetupHelperCoverageTests: IsolatedXCTestCase {
-    // NOTE(D1): checkFirstRun reads/writes AppDefaults (UserDefaults.standard).
-    override var enforcesStandardUserDefaultsIsolation: Bool { false }
+final class AppSetupHelperCoverageTests: XCTestCase {
+    private var directory: URL!
 
-    private var originalProvider: Any?
-    private var originalCompletedWelcome: Any?
-    private var originalWelcomeVersion: Any?
-    private var originalIconSize: Any?
-
-    override func setUp() {
-        super.setUp()
-        originalProvider = AppDefaults.defaults.object(forKey: AppDefaults.Key.transcriptionProvider.rawValue)
-        originalCompletedWelcome = AppDefaults.defaults.object(forKey: AppDefaults.Key.hasCompletedWelcome.rawValue)
-        originalWelcomeVersion = AppDefaults.defaults.object(forKey: AppDefaults.Key.lastWelcomeVersion.rawValue)
-        originalIconSize = AppDefaults.defaults.object(forKey: AppDefaults.Key.menuBarIconSize.rawValue)
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AppSetupHelperCoverageTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
-    override func tearDown() {
-        restore(originalProvider, AppDefaults.Key.transcriptionProvider)
-        restore(originalCompletedWelcome, AppDefaults.Key.hasCompletedWelcome)
-        restore(originalWelcomeVersion, AppDefaults.Key.lastWelcomeVersion)
-        restore(originalIconSize, AppDefaults.Key.menuBarIconSize)
-        AppSetupHelper.resetIconSizeCache()
-        super.tearDown()
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: directory)
+        try super.tearDownWithError()
     }
 
-    private func restore(_ value: Any?, _ key: AppDefaults.Key) {
-        if let value = value {
-            AppDefaults.defaults.set(value, forKey: key.rawValue)
-        } else {
-            AppDefaults.defaults.removeObject(forKey: key.rawValue)
-        }
+    private func makeFile(_ name: String, created: Date) throws -> URL {
+        let url = directory.appendingPathComponent(name)
+        try Data("audio".utf8).write(to: url)
+        try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
+        return url
     }
 
-    // MARK: - createMenuBarIcon
+    func testCleanupRemovesOnlyStaleRecordings() throws {
+        let now = Date()
+        let stale = try makeFile("recording_1.m4a", created: now.addingTimeInterval(-25 * 3600))
+        let fresh = try makeFile("recording_2.m4a", created: now.addingTimeInterval(-3600))
+        let unrelated = try makeFile("notes_1.m4a", created: now.addingTimeInterval(-25 * 3600))
+        let otherType = try makeFile("recording_3.wav", created: now.addingTimeInterval(-25 * 3600))
 
-    func testCreateMenuBarIconReturnsTemplateImage() {
-        let icon = AppSetupHelper.createMenuBarIcon()
-        XCTAssertNotNil(icon)
-        XCTAssertTrue(icon.isTemplate)
+        AppSetupHelper.cleanupOldTemporaryFiles(in: directory, now: now)
+
+        let fileManager = FileManager.default
+        XCTAssertFalse(fileManager.fileExists(atPath: stale.path), "A day-old recording is crash debris")
+        XCTAssertTrue(fileManager.fileExists(atPath: fresh.path), "A recent recording may still be in use")
+        XCTAssertTrue(fileManager.fileExists(atPath: unrelated.path), "Only the app's own recordings are touched")
+        XCTAssertTrue(fileManager.fileExists(atPath: otherType.path), "Only the app's own recordings are touched")
     }
 
-    // MARK: - Icon Size
-
-    func testAdaptiveIconSizeWithUserOverride() {
-        AppDefaults.menuBarIconSize = 19.0
-        AppSetupHelper.resetIconSizeCache()
-        XCTAssertEqual(AppSetupHelper.getAdaptiveMenuBarIconSize(), 19.0)
-    }
-
-    func testAdaptiveIconSizeIgnoresZeroOverride() {
-        AppDefaults.menuBarIconSize = 0.0
-        AppSetupHelper.resetIconSizeCache()
-        // Zero override is rejected; falls back to a positive computed size.
-        XCTAssertGreaterThan(AppSetupHelper.getAdaptiveMenuBarIconSize(), 0)
-    }
-
-    func testAdaptiveIconSizeWithoutOverrideIsPositive() {
-        AppDefaults.menuBarIconSize = nil
-        AppSetupHelper.resetIconSizeCache()
-        XCTAssertGreaterThan(AppSetupHelper.getAdaptiveMenuBarIconSize(), 0)
-    }
-
-    func testAdaptiveIconSizeIsCachedOnSecondCall() {
-        AppDefaults.menuBarIconSize = nil
-        AppSetupHelper.resetIconSizeCache()
-        let first = AppSetupHelper.getAdaptiveMenuBarIconSize()
-        let second = AppSetupHelper.getAdaptiveMenuBarIconSize()
-        XCTAssertEqual(first, second)
-    }
-
-    func testResetIconSizeCacheDoesNotCrash() {
-        AppSetupHelper.resetIconSizeCache()
-        AppSetupHelper.resetIconSizeCache()
-    }
-
-    // MARK: - checkFirstRun
-
-    func testCheckFirstRunForBrandNewUserDefaultsToLocalProvider() {
-        AppDefaults.removeValue(for: .transcriptionProvider)
-        AppDefaults.removeValue(for: .hasCompletedWelcome)
-        AppDefaults.removeValue(for: .lastWelcomeVersion)
-
-        let shouldShowWelcome = AppSetupHelper.checkFirstRun()
-
-        XCTAssertTrue(shouldShowWelcome)
-        XCTAssertEqual(AppDefaults.transcriptionProvider, .local)
-    }
-
-    func testCheckFirstRunWhenWelcomeAlreadyCurrentReturnsFalse() {
-        AppDefaults.transcriptionProvider = .parakeet
-        AppDefaults.hasCompletedWelcome = true
-        AppDefaults.lastWelcomeVersion = "1.1"
-
-        let shouldShowWelcome = AppSetupHelper.checkFirstRun()
-
-        XCTAssertFalse(shouldShowWelcome)
-        XCTAssertEqual(AppDefaults.transcriptionProvider, .parakeet)
-    }
-
-    func testCheckFirstRunForExistingUserOnOldWelcomeVersion() {
-        AppDefaults.transcriptionProvider = .parakeet
-        AppDefaults.hasCompletedWelcome = true
-        AppDefaults.lastWelcomeVersion = "1.0"
-
-        let shouldShowWelcome = AppSetupHelper.checkFirstRun()
-
-        XCTAssertTrue(shouldShowWelcome)
-    }
-
-    // MARK: - File Helpers
-
-    func testEnsurePromptFilesDoesNotCrash() {
-        AppSetupHelper.ensurePromptFiles()
-    }
-
-    func testCleanupOldTemporaryFilesDoesNotCrash() {
-        AppSetupHelper.cleanupOldTemporaryFiles()
-    }
-
-    func testSetupLoginItemDoesNotCrash() {
-        AppSetupHelper.setupLoginItem()
+    func testCleanupToleratesAMissingDirectory() {
+        AppSetupHelper.cleanupOldTemporaryFiles(in: directory.appendingPathComponent("missing"))
     }
 }
 
@@ -152,18 +68,15 @@ final class SemanticCorrectionModelDefaultTests: XCTestCase {
         )
     }
 
-    /// The bug in one assertion: the value the correction pipeline resolves must
-    /// be the value the UI recommends.
+    /// The bug in one assertion: the model the correction pipeline defaults to
+    /// must be one the Writing page offers, or its "Recommended" badge has
+    /// nothing to attach to.
+    @MainActor
     func testRecommendedModelMatchesTheModelCorrectionActuallyUses() {
+        let offered = MLXModelManager.recommendedModels.map(\.repo)
         XCTAssertTrue(
-            DashboardCorrectionView.testableIsRecommended(
-                repo: AppDefaults.defaultSemanticCorrectionModelRepo
-            ),
-            "The Dashboard must badge the same model the correction pipeline defaults to."
-        )
-        XCTAssertEqual(
-            DashboardCorrectionView.testableDefaultModelRepo(),
-            AppDefaults.defaultSemanticCorrectionModelRepo
+            offered.contains(AppDefaults.defaultSemanticCorrectionModelRepo),
+            "The Writing page must list the model the correction pipeline defaults to."
         )
     }
 

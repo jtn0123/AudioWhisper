@@ -73,7 +73,7 @@ struct RebuildPreferencesView: View {
                 message = nil
             } catch {
                 state.messageTone = .error
-                message = "Login setting could not be updated: \(error.localizedDescription)"
+                message = "Login setting could not be updated: \(RebuildErrorText.userMessage(for: error))"
                 login = state.effects.loginEnabled()
             }
         }
@@ -81,7 +81,7 @@ struct RebuildPreferencesView: View {
             Task {
                 do { try await state.effects.cleanupRetention() } catch {
                     state.messageTone = .error
-                    message = "Retention cleanup failed: \(error.localizedDescription)"
+                    message = "Retention cleanup failed: \(RebuildErrorText.userMessage(for: error))"
                 }
             }
         }
@@ -284,7 +284,7 @@ private struct RebuildAdvancedSection: View {
         Task {
             do { try await state.effects.recalculate() } catch {
                 state.messageTone = .error
-                state.message = "Usage could not be recalculated: \(error.localizedDescription)"
+                state.message = "Usage could not be recalculated: \(RebuildErrorText.userMessage(for: error))"
             }
         }
     }

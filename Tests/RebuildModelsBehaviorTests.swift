@@ -8,6 +8,7 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
     private var requests = 0
     private var starts = 0
     private var openedSetup = 0
+    private var openedSettings = 0
     private var permission: AVAuthorizationStatus = .notDetermined
     private var installed = false
     private var runtime = true
@@ -29,7 +30,8 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
                 copy: { _ in }, save: { _, _, _ in }),
             setup: RebuildSetupServices(
                 selection: { .current }, microphoneStatus: { self.permission },
-                requestMicrophone: { self.requests += 1; self.completion = $0 }, openMicrophoneSettings: {},
+                requestMicrophone: { self.requests += 1; self.completion = $0 },
+                openMicrophoneSettings: { self.openedSettings += 1 },
                 runtimeReady: { _ in self.runtime }, modelInstalled: { _ in self.installed },
                 install: { _ in
                     self.installs += 1
@@ -79,6 +81,21 @@ final class RebuildModelsBehaviorTests: IsolatedXCTestCase {
         XCTAssertEqual(session.phase, .recording)
         XCTAssertTrue(try view.inspect().find(button: "Check installation").isDisabled())
         session.cancel()
+    }
+
+    func testDeniedMicrophoneSaysSoAndOffersSystemSettings() async throws {
+        for status in [AVAuthorizationStatus.denied, .restricted] {
+            permission = status
+            let session = makeSession()
+            await session.refreshSetup()
+            let view = RebuildModelsView(session: session)
+            _ = try view.inspect().find(text: "Microphone access is off")
+            XCTAssertThrowsError(try view.inspect().find(button: "Allow microphone"), "macOS won't ask again")
+            try view.inspect().find(button: "Open Privacy Settings…").tap()
+            XCTAssertEqual(session.readiness.nextStep, "Turn on microphone access in System Settings")
+        }
+        XCTAssertEqual(openedSettings, 2)
+        XCTAssertEqual(requests, 0, "No permission prompt after a refusal")
     }
 
     func testInstallationErrorRetryUsesTheRealButtonAndClearsTheFailure() async throws {

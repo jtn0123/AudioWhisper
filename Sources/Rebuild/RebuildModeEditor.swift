@@ -97,6 +97,6 @@ final class RebuildModeDraft {
             try save(mode.updated(name: name, settings: settings, existing: AppDefaults.savedDictationModes))
             error = nil
             return true
-        } catch { self.error = error.localizedDescription; return false }
+        } catch { self.error = RebuildErrorText.userMessage(for: error); return false }
     }
 }

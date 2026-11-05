@@ -29,8 +29,8 @@ lipo -create "$uv_tools_dir/uv-aarch64-apple-darwin/uv" \
   "$uv_tools_dir/uv-x86_64-apple-darwin/uv" -output "$uv_output"
 chmod +x "$uv_output"
 if [ -n "${SIGNING_IDENTITY:-}" ]; then
-  codesign --force --sign "$SIGNING_IDENTITY" --options runtime \
-    --entitlements "$repo_root/AudioWhisper.entitlements" "$uv_output"
+  # uv is a package manager: it needs none of the app's entitlements.
+  codesign --force --sign "$SIGNING_IDENTITY" --options runtime "$uv_output"
 else
   codesign --force --sign - "$uv_output"
 fi

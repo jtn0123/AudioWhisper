@@ -9,9 +9,13 @@ struct RebuildWritingOperations {
     static var live: Self {
         Self(verify: { selected in
             let python = try await UvBootstrap.ensureVenv()
-            return try await ModelVerificationService.verify(
+            let result = try await ModelVerificationService.verify(
                 scriptName: "verify_mlx", arguments: [selected] + ModelPins.scriptArguments(for: selected),
                 pythonPath: python.path, successFallback: "Correction model is ready")
+            // A model that verifies proves the runtime works, so let the
+            // daemon start again even if it recently hit its restart limit.
+            if result.succeeded { await MLDaemonManager.shared.resetRestartLimit() }
+            return result
         }, remove: { await MLXModelManager.shared.deleteModel($0) },
              isCached: { MLXModelManager.shared.isModelCachedOnDisk(repo: $0) })
     }

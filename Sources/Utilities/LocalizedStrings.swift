@@ -74,7 +74,7 @@ internal enum LocalizedStrings {
             comment: "Error when transcription fails with specific message")
 
         static let localTranscriptionFailed = NSLocalizedString("errors.local_transcription_failed",
-            value: "Local transcription failed: %@\n\nTry selecting a different model or switching to cloud transcription.",
+            value: "Local transcription failed: %@\n\nTry again, or choose a different voice model in Setup.",
             comment: "Error when local transcription fails")
 
         static let fileTooLarge = NSLocalizedString("errors.file_too_large",

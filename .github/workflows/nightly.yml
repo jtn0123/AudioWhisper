@@ -137,7 +137,6 @@ jobs:
               -e "s/BUNDLED_UV_SHA256_PLACEHOLDER/$UV_SHA/g" \
               -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
               -e "s/GIT_HASH_PLACEHOLDER/$(git rev-parse --short HEAD)/g" \
-              -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
               Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
 
       - name: Run all real local engine fixtures

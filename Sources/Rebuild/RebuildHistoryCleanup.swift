@@ -55,7 +55,7 @@ final class RebuildHistoryCleanup {
                 result = outcome.text
                 version = TranscriptionCleanupVersion(id: UUID(), createdAt: Date(), modeName: mode?.name ?? "Current settings",
                     text: outcome.text, writing: settings.writing, modelRepo: settings.cleanupModel)
-            case .failed(let failure, _): error = "Writing cleanup failed: \(failure.localizedDescription)"
+            case .failed(let failure, _): error = "Writing cleanup failed: \(RebuildErrorText.userMessage(for: failure))"
             default: error = "No safe writing change was produced. Your original is unchanged."
             }
         }
@@ -69,7 +69,7 @@ final class RebuildHistoryCleanup {
             try await history.appendCleanupVersion(recordID: recordID, version: version)
             saved = true
             error = nil
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     func cancel() { task?.cancel() }

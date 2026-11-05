@@ -1,11 +1,10 @@
 import Foundation
 @testable import AudioWhisper
 
-/// Stub provider for driving `RecordingViewModel`'s transcription flow end to
-/// end without WhisperKit or Parakeet.
+/// Stub provider for driving the transcription flow end to end without
+/// WhisperKit or Parakeet.
 ///
-/// `SpeechToTextService` is a non-final class and `RecordingViewModel` injects
-/// it, so overriding the transcription entry point is a legitimate seam.
+/// `SpeechToTextService` is a non-final class and the session injects it, so overriding the transcription entry point is a legitimate seam.
 ///
 /// The override is on `transcribeValidated(...)`, not `transcribeRaw(...)`:
 /// after audit item A4 the pipeline validates the audio itself as step 1 and

@@ -10,7 +10,7 @@ struct RebuildWritingStatus: Equatable {
         Self(message: result.message, tone: result.succeeded ? .success : .error)
     }
 
-    static func failure(_ error: Error) -> Self { Self(message: error.localizedDescription, tone: .error) }
+    static func failure(_ error: Error) -> Self { Self(message: RebuildErrorText.userMessage(for: error), tone: .error) }
 
     static func removal(stillOnDisk: Bool) -> Self {
         stillOnDisk

@@ -30,7 +30,7 @@ enum RebuildModeFiles {
             do {
                 try write(modes, to: url)
                 completion(nil)
-            } catch { completion(error.localizedDescription) }
+            } catch { completion(RebuildErrorText.userMessage(for: error)) }
         }
     }
 
