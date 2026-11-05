@@ -77,6 +77,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         OutputDucker.shared.restore()
         // Audio files a crashed recording left behind.
         Task.detached(priority: .utility) { AppSetupHelper.cleanupOldTemporaryFiles() }
+        recorder.startWarmMicrophone()
         RebuildStartup.configure(
             session: session, navigation: navigation,
             effects: .init(initializeHistory: { try DataManager.shared.initialize() },
@@ -98,7 +99,12 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         RebuildEscapeShortcut.install(session: session)
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.configureShortcuts() } }
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.configureShortcuts()
+                self?.recorder.warmMicrophone.refresh()
+            }
+        }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -186,6 +192,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         session.cancel()
+        recorder.warmMicrophone.coolDown()
         holdMonitor?.stop()
         let session = session
         RebuildTermination.run(
