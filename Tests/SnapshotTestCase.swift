@@ -4,7 +4,7 @@ import AppKit
 import CoreGraphics
 @testable import AudioWhisper
 
-/// Lightweight snapshot helper built on XCTest + ImageRenderer.
+/// Lightweight snapshot helper built on XCTest and an off-screen NSHostingView.
 ///
 /// **Baselines are environment-specific.** Comparison is exact-match on RGBA
 /// bytes (modulo the per-call `tolerance:`), and SwiftUI rendering differs
@@ -57,7 +57,7 @@ class SnapshotTestCase: XCTestCase {
     /// - Parameter tolerance: maximum fraction of pixels (0...1) allowed to
     ///   differ before the assertion fails. Defaults to `0` — exact match.
     ///
-    ///   Most views render deterministically: the large majority of the 35
+    ///   Most views render deterministically: the large majority of the
     ///   snapshots are byte-identical across back-to-back recording runs on the
     ///   same machine.
     ///   The waveform views are not. They animate, and `WaveformBars.updateLevels`
@@ -77,39 +77,45 @@ class SnapshotTestCase: XCTestCase {
         let content = view
             .frame(width: size.width, height: size.height)
             .environment(\.colorScheme, colorScheme)
-            // ImageRenderer draws ScrollView content as a flat rectangle, which
-            // is what made 13 baselines blank. ScrollableContent honours this by
-            // dropping the ScrollView wrapper so the content is actually drawn.
+            // ScrollableContent drops its ScrollView wrapper when this is set.
             .environment(\.flattensScrollViews, true)
             .environmentObject(WindowCoordinator.shared)
             .environment(MLXModelManager.shared)
             .environment(PermissionManager.shared)
         
-        let renderer = ImageRenderer(content: content)
-        renderer.scale = scale
-        
-        guard let image = renderer.nsImage,
-              let actualData = image.pngData() else {
+        guard let actualData = Self.renderPNG(content, size: size, colorScheme: colorScheme, scale: scale) else {
             XCTFail("Failed to render snapshot \(name)", file: file, line: line)
+            return
+        }
+
+        // ImageRenderer cannot draw AppKit-backed controls (a SwiftUI Button,
+        // Toggle or Picker on macOS) and substitutes a yellow panel with a red
+        // "no entry" sign. Every waveform and dashboard baseline was recorded
+        // like that, on a real Mac, and passed for months because a picture
+        // of a placeholder matches itself. Rendering now goes through a real
+        // NSHostingView, so this should never fire; it stays as a tripwire.
+        if let placeholder = placeholderFraction(pngData: actualData), placeholder > 0.03 {
+            XCTFail(
+                "Snapshot \(name) contains the \"cannot render\" placeholder "
+                    + "(\(String(format: "%.1f", placeholder * 100))% of pixels). Some control was not drawn.",
+                file: file, line: line)
             return
         }
         
         // A render that is one flat colour is not a regression test — it will
         // match its own baseline forever no matter what the view does. 13 of the
-        // 39 committed baselines were exactly this (10 of them a SINGLE colour)
-        // because `ImageRenderer` does not draw `ScrollView` content, and every
-        // one of them had been passing since it was recorded.
+        // 39 baselines once were exactly this, because the old `ImageRenderer`
+        // path did not draw `ScrollView` content, and every one of them had been
+        // passing since it was recorded.
         //
         // Checked before the recording branch too, so a blank baseline can never
         // be written in the first place.
         if let flat = dominantColorFraction(pngData: actualData), flat > 0.995 {
             XCTFail(
                 "Snapshot \(name) rendered as a flat colour (\(String(format: "%.2f", flat * 100))% "
-                    + "of pixels are one colour). Either nothing was drawn — ImageRenderer cannot "
-                    + "draw ScrollView content, so snapshot the scrollable content rather than the "
-                    + "view wrapping it — or the view really is this sparse, in which case the "
-                    + "snapshot is not worth keeping: it would match its own baseline no matter "
-                    + "what changed.",
+                    + "of pixels are one colour). Either nothing was drawn, or the view really is "
+                    + "this sparse, in which case the snapshot is not worth keeping: it would match "
+                    + "its own baseline no matter what changed.",
                 file: file,
                 line: line
             )
@@ -171,6 +177,50 @@ class SnapshotTestCase: XCTestCase {
         }
     }
     
+    /// Draws `view` the way a window would: through an NSHostingView inside
+    /// an off-screen window, so AppKit-backed controls render for real.
+    static func renderPNG<V: View>(_ view: V, size: CGSize, colorScheme: ColorScheme, scale: CGFloat) -> Data? {
+        let host = NSHostingView(rootView: view)
+        host.frame = CGRect(origin: .zero, size: size)
+        host.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = host.appearance
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        // One run-loop turn lets SwiftUI commit its first layout and drawing.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        defer { window.close() }
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        rep.size = size
+        host.cacheDisplay(in: host.bounds, to: rep)
+        return rep.representation(using: .png, properties: [:])
+    }
+
+    /// Fraction of pixels in ImageRenderer's "cannot render" placeholder: an
+    /// ochre fill (blue ≈ 0, green ≈ 0.8 × red) under a red no-entry sign.
+    func placeholderFraction(pngData: Data) -> Double? {
+        guard let image = NSImage(data: pngData), let bytes = image.normalizedRGBABytes(), !bytes.isEmpty else {
+            return nil
+        }
+        var ochre = 0, signRed = 0
+        let pixels = bytes.count / 4
+        bytes.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let px = raw.bindMemory(to: UInt8.self)
+            for pixel in 0..<pixels {
+                let red = Int(px[pixel * 4]), green = Int(px[pixel * 4 + 1]), blue = Int(px[pixel * 4 + 2])
+                if blue <= 3, red > 120, green * 100 >= red * 77, green * 100 <= red * 83 { ochre += 1 }
+                if (200...222).contains(red), (40...56).contains(green), (44...60).contains(blue) { signRed += 1 }
+            }
+        }
+        // Both colours together; either alone is just a warm palette.
+        guard signRed * 200 >= pixels else { return 0 }
+        return Double(ochre + signRed) / Double(pixels)
+    }
+
     private func makeSnapshotURL(for name: String, file: StaticString) -> URL {
         var url = URL(fileURLWithPath: String(describing: file))
         while url.lastPathComponent != "Tests" && url.pathComponents.count > 1 {
@@ -259,14 +309,6 @@ class SnapshotTestCase: XCTestCase {
 }
 
 private extension NSImage {
-    func pngData() -> Data? {
-        guard let tiffData = tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else {
-            return nil
-        }
-        return bitmap.representation(using: .png, properties: [:])
-    }
-
     func normalizedRGBABytes() -> Data? {
         var proposedRect = NSRect(origin: .zero, size: size)
         guard let cgImage = cgImage(forProposedRect: &proposedRect, context: nil, hints: nil) else {
