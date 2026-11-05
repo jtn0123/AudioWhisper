@@ -73,9 +73,13 @@ internal class AppSetupHelper {
         return exists && isDirectory.boolValue
     }
 
-    static func cleanupOldTemporaryFiles() {
-        let tempDirectory = FileManager.default.temporaryDirectory
-
+    /// Deletes recordings a crashed or force-quit dictation left in the
+    /// temporary directory. A finished dictation removes its own audio; this
+    /// catches the ones that never got the chance, so spoken audio doesn't
+    /// linger on disk. Runs at launch.
+    static func cleanupOldTemporaryFiles(
+        in tempDirectory: URL = FileManager.default.temporaryDirectory, now: Date = Date()
+    ) {
         do {
             let files = try FileManager.default.contentsOfDirectory(
                 at: tempDirectory,
@@ -84,7 +88,7 @@ internal class AppSetupHelper {
             )
             let audioFiles = files.filter { $0.lastPathComponent.hasPrefix("recording_") && $0.pathExtension == "m4a" }
 
-            let cutoffDate = Date().addingTimeInterval(-24 * 60 * 60) // 24 hours ago
+            let cutoffDate = now.addingTimeInterval(-24 * 60 * 60) // 24 hours ago
 
             for file in audioFiles {
                 do {
@@ -100,51 +104,4 @@ internal class AppSetupHelper {
             Logger.app.error("Failed to clean up temporary files: \(error.localizedDescription)")
         }
     }
-
-    // MARK: - Prompt Files
-    /// Ensure default prompt files exist for advanced customization
-    static func ensurePromptFiles() {
-        do {
-            let base = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            ).appendingPathComponent("AudioWhisper/prompts", isDirectory: true)
-            if !FileManager.default.fileExists(atPath: base.path) {
-                try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-            }
-
-            // A4: cloud_openai_prompt.txt / cloud_gemini_prompt.txt used to be
-            // written here too. The cloud providers were removed
-            // (TranscriptionProvider has only .local and .parakeet), so nothing
-            // ever read them — they were two junk files created in the user's
-            // Application Support directory on every launch.
-            let files: [(name: String, content: String)] = [
-                ("local_mlx_prompt.txt", defaultLocalMLXPrompt)
-            ]
-
-            for promptFile in files {
-                let url = base.appendingPathComponent(promptFile.name)
-                if !FileManager.default.fileExists(atPath: url.path) {
-                    try promptFile.content.write(to: url, atomically: true, encoding: .utf8)
-                }
-            }
-        } catch {
-            Logger.app.error("Failed to ensure prompt files: \(error.localizedDescription)")
-        }
-    }
-
-    /// Shared correction prompt. Named `defaultCorrectionPrompt` since A4 —
-    /// it was `defaultCloudPrompt` back when cloud providers existed.
-    private static let defaultCorrectionPrompt = """
-        You are a transcription corrector. Fix grammar, casing, punctuation, \
-        and obvious mis-hearings that do not change meaning. Remove filler \
-        words and transcribed pauses that add no meaning (e.g., 'um', 'uh', \
-        'erm', 'you know', 'like' as filler; '[pause]', '(pause)', ellipses \
-        for hesitations). Do not remove meaningful words. Do not summarize \
-        or add content. Output only the corrected text.
-        """
-
-    private static let defaultLocalMLXPrompt = defaultCorrectionPrompt
 }

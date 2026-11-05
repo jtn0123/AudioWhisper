@@ -3,12 +3,45 @@ import XCTest
 
 // MARK: - AppSetupHelper Tests
 final class AppSetupHelperCoverageTests: XCTestCase {
-    func testEnsurePromptFilesDoesNotCrash() {
-        AppSetupHelper.ensurePromptFiles()
+    private var directory: URL!
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AppSetupHelperCoverageTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
-    func testCleanupOldTemporaryFilesDoesNotCrash() {
-        AppSetupHelper.cleanupOldTemporaryFiles()
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: directory)
+        try super.tearDownWithError()
+    }
+
+    private func makeFile(_ name: String, created: Date) throws -> URL {
+        let url = directory.appendingPathComponent(name)
+        try Data("audio".utf8).write(to: url)
+        try FileManager.default.setAttributes([.creationDate: created], ofItemAtPath: url.path)
+        return url
+    }
+
+    func testCleanupRemovesOnlyStaleRecordings() throws {
+        let now = Date()
+        let stale = try makeFile("recording_1.m4a", created: now.addingTimeInterval(-25 * 3600))
+        let fresh = try makeFile("recording_2.m4a", created: now.addingTimeInterval(-3600))
+        let unrelated = try makeFile("notes_1.m4a", created: now.addingTimeInterval(-25 * 3600))
+        let otherType = try makeFile("recording_3.wav", created: now.addingTimeInterval(-25 * 3600))
+
+        AppSetupHelper.cleanupOldTemporaryFiles(in: directory, now: now)
+
+        let fileManager = FileManager.default
+        XCTAssertFalse(fileManager.fileExists(atPath: stale.path), "A day-old recording is crash debris")
+        XCTAssertTrue(fileManager.fileExists(atPath: fresh.path), "A recent recording may still be in use")
+        XCTAssertTrue(fileManager.fileExists(atPath: unrelated.path), "Only the app's own recordings are touched")
+        XCTAssertTrue(fileManager.fileExists(atPath: otherType.path), "Only the app's own recordings are touched")
+    }
+
+    func testCleanupToleratesAMissingDirectory() {
+        AppSetupHelper.cleanupOldTemporaryFiles(in: directory.appendingPathComponent("missing"))
     }
 }
 
