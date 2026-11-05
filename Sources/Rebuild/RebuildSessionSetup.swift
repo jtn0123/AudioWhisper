@@ -43,6 +43,7 @@ extension RebuildSession {
         notice = nil
         writingContext = nil
         contextRequested = false
+        clearOutcome()
         closeRecorder()
     }
     var recordingActionTitle: String {

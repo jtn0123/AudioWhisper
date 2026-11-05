@@ -15,6 +15,24 @@ struct RebuildRecorderView: View {
     }
 
     var body: some View {
+        Group {
+            if let outcome = session.recorderOutcome {
+                RebuildRecorderOutcomeView(session: session, outcome: outcome)
+            } else {
+                capture
+            }
+        }
+        .padding(16)
+        .frame(width: Self.size(preview: session.livePreview.enabled).width,
+               height: Self.size(preview: session.livePreview.enabled).height)
+        .background(RebuildTheme.hudBackground.opacity(0.98), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(RebuildTheme.hudBorder))
+        .environment(\.colorScheme, .dark)
+        .tint(RebuildTheme.hudAccent)
+        .onExitCommand(perform: session.recorderOutcome == nil ? session.cancel : session.dismissOutcome)
+    }
+
+    private var capture: some View {
         VStack(alignment: .leading, spacing: 10) {
             statusRow
             HStack(spacing: 8) {
@@ -39,14 +57,6 @@ struct RebuildRecorderView: View {
             Spacer(minLength: 0)
             controls
         }
-        .padding(16)
-        .frame(width: Self.size(preview: session.livePreview.enabled).width,
-               height: Self.size(preview: session.livePreview.enabled).height)
-        .background(RebuildTheme.hudBackground.opacity(0.98), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(RebuildTheme.hudBorder))
-        .environment(\.colorScheme, .dark)
-        .tint(RebuildTheme.hudAccent)
-        .onExitCommand(perform: session.cancel)
     }
 
     private var statusRow: some View {
