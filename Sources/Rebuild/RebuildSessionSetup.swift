@@ -145,10 +145,12 @@ extension RebuildSession {
                 verificationAssets = assets
                 verificationMessage = failure
             }
+            let microphone = setup.microphoneStatus()
             readiness = RebuildReadiness(
-                microphoneGranted: setup.microphoneStatus() == .authorized,
+                microphoneGranted: microphone == .authorized,
                 modelInstalled: installed, runtimeReady: runtime, checking: false,
-                modelVerificationFailed: failure != nil
+                modelVerificationFailed: failure != nil,
+                microphoneDenied: microphone == .denied || microphone == .restricted
             )
         }
     }
