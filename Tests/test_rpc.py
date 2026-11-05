@@ -98,7 +98,7 @@ class TestContractConstants(unittest.TestCase):
     def test_methods_match_what_dispatch_handles(self):
         # Swift's MLRPCMethod must list these same four; MLRPCContractTests
         # checks that side. This checks the Literal and the dispatcher agree.
-        self.assertEqual(protocol.METHODS, ("ping", "transcribe", "correct", "warmup"))
+        self.assertEqual(protocol.METHODS, ("ping", "transcribe", "correct", "summarize", "warmup"))
 
     def test_warmup_kinds(self):
         self.assertEqual(protocol.WARMUP_KINDS, ("parakeet", "mlx", "correction"))
@@ -141,6 +141,12 @@ class TestDispatch(unittest.TestCase):
         with mock.patch.object(rpc, "correct", return_value={}) as fake:
             rpc._dispatch("correct", {"repo": "org/m", "text": ""})
         fake.assert_called_once_with("org/m", "", None)
+
+    def test_summary_dispatch_is_separate_from_cleanup(self):
+        with mock.patch.object(rpc, "summarize", return_value={}) as summary, mock.patch.object(rpc, "correct") as cleanup:
+            rpc._dispatch("summarize", {"repo": "org/m", "text": "Meeting excerpt"})
+        summary.assert_called_once_with("org/m", "Meeting excerpt", None)
+        cleanup.assert_not_called()
 
     def test_correct_rejects_missing_or_mistyped_text(self):
         with mock.patch.object(rpc, "correct") as fake:

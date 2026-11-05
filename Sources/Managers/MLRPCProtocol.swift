@@ -28,6 +28,7 @@ internal enum MLRPCMethod: String, Codable, CaseIterable, Sendable {
     case ping
     case transcribe
     case correct
+    case summarize
     case warmup
 }
 

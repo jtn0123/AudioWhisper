@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 import Observation
 
 internal struct SourceAppInfo: Equatable {
@@ -7,37 +6,6 @@ internal struct SourceAppInfo: Equatable {
     let displayName: String
     let iconData: Data?
     let fallbackSymbolName: String?
-
-    static var unknown: SourceAppInfo {
-        SourceAppInfo(
-            bundleIdentifier: "unknown",
-            displayName: "Background trigger",
-            iconData: nil,
-            fallbackSymbolName: "questionmark.app"
-        )
-    }
-
-    static func from(app: NSRunningApplication) -> SourceAppInfo? {
-        guard let bundleId = app.bundleIdentifier else {
-            return nil
-        }
-        let name = app.localizedName ?? bundleId
-        let iconData = SourceAppInfo.pngData(from: app.icon)
-        return SourceAppInfo(
-            bundleIdentifier: bundleId,
-            displayName: name,
-            iconData: iconData,
-            fallbackSymbolName: nil
-        )
-    }
-
-    private static func pngData(from image: NSImage?) -> Data? {
-        guard let tiffData = image?.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData) else {
-            return nil
-        }
-        return bitmap.representation(using: .png, properties: [:])
-    }
 }
 
 internal struct SourceUsageStats: Codable, Identifiable, Equatable {
@@ -51,34 +19,13 @@ internal struct SourceUsageStats: Codable, Identifiable, Equatable {
     var fallbackSymbolName: String?
 
     // iconData is NOT stored in UserDefaults (excluded from Codable) to avoid 4MB+ storage limit
-    // Icons are loaded dynamically from bundle when needed
+    // It is kept in memory only.
     var iconData: Data?
 
     // Exclude iconData from encoding to prevent UserDefaults overflow
     private enum CodingKeys: String, CodingKey {
         case bundleIdentifier, displayName, totalWords, totalCharacters
         case sessionCount, lastUsed, fallbackSymbolName
-    }
-
-    var initials: String {
-        let components = displayName.split(separator: " ")
-        let chars: [Character] = components.prefix(2).compactMap { $0.first }
-        if chars.isEmpty, let first = displayName.first {
-            return String(first)
-        }
-        return String(chars)
-    }
-
-    func nsImage() -> NSImage? {
-        // First try cached iconData
-        if let iconData = iconData {
-            return NSImage(data: iconData)
-        }
-        // Fallback: load from bundle
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) else {
-            return nil
-        }
-        return NSWorkspace.shared.icon(forFile: url.path)
     }
 }
 
@@ -278,9 +225,5 @@ internal final class SourceUsageStore {
 
         refreshOrderedStats()
         persist()
-    }
-
-    func resetForTesting() {
-        reset()
     }
 }

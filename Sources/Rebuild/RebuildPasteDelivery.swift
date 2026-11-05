@@ -24,6 +24,7 @@ struct RebuildPasteDelivery {
     /// How long a paste that could not be confirmed may still be reading the
     /// clipboard before the user's own contents go back on it.
     var restoreGrace: Duration = .seconds(1)
+    var waitBeforeRestore: (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     /// Read at delivery time, so the Preferences toggle applies to the next paste.
     var matchContext: () -> Bool = { AppDefaults.matchCursorContext }
 

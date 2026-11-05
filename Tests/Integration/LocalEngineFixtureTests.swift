@@ -1,4 +1,6 @@
 import XCTest
+import CryptoKit
+import CoreML
 import WhisperKit
 @testable import AudioWhisper
 
@@ -9,6 +11,96 @@ final class LocalEngineFixtureTests: XCTestCase {
         try XCTSkipUnless(Arch.isAppleSilicon)
     }
 
+    func testWhisperCPUOnlyTranscribesSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        try await diagnoseCPUOnlyWhisper(audio: audio)
+    }
+
+    func testWhisperRecompiledEmbeddedEncoder() async throws {
+        try requireRealEngines()
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["REBUILD_WHISPER_ENCODER"] == "true",
+                          "Opt in to the temporary alternate embedded-spec diagnostic")
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let texts = try await EmbeddedEncoderExperiment.run(modelPath: path, audio: audio)
+        XCTAssertEqual(texts.count, 2)
+        for text in texts { assertSpeechFixture(text) }
+    }
+
+    func testWhisperGPUAllowedEncoderTranscribesSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(
+            modelFolder: path,
+            computeOptions: ModelComputeOptions(
+                melCompute: .cpuOnly, audioEncoderCompute: .cpuAndGPU, textDecoderCompute: .cpuOnly),
+            download: false))
+        print("REAL_WHISPER_COMPUTE available=\(MLModel.availableComputeDevices)")
+        try await WhisperFixtureDiagnostics.describeFeatures(engine, audio: audio)
+        let results = try await engine.transcribe(audioPath: audio.path)
+        let text = results.map { $0.text }.joined(separator: " ")
+        print("REAL_WHISPER_GPU_ALLOWED transcript=\(text)")
+        assertSpeechFixture(text)
+    }
+
+    func testWhisperCompactMelInputTranscribesSpeech() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(modelFolder: path, download: false))
+        engine.audioEncoder = CompactMelEncoderDiagnostic(base: engine.audioEncoder)
+        try await WhisperFixtureDiagnostics.describeFeatures(engine, audio: audio)
+        let results = try await engine.transcribe(audioPath: audio.path)
+        let text = results.map { $0.text }.joined(separator: " ")
+        print("REAL_WHISPER_COMPACT transcript=\(text)")
+        assertSpeechFixture(text)
+    }
+
+    func testWhisperDecoderWithReferenceEncoderFeatures() async throws {
+        try requireRealEngines()
+        let audio = try XCTUnwrap(Bundle.module.url(
+            forResource: "speech_sample", withExtension: "wav", subdirectory: "Resources"))
+        try await ModelManager.shared.downloadModel(.base)
+        let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
+        let engine = try await WhisperKit(WhisperKitConfig(
+            modelFolder: path,
+            computeOptions: ModelComputeOptions(
+                melCompute: .cpuOnly, audioEncoderCompute: .cpuOnly, textDecoderCompute: .cpuOnly),
+            download: false))
+        let referenceMel = try WhisperBoundaryReference.tensor("mel", shape: [1, 80, 1, 3000])
+        let referenceEncoded = try WhisperBoundaryReference.tensor("encoded", shape: [1, 512, 1, 1500])
+        let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audio.path)
+        let padded = try XCTUnwrap(AudioProcessor.padOrTrimAudio(fromArray: samples))
+        let melOutput = try await engine.featureExtractor.logMelSpectrogram(fromAudio: padded)
+        let mel = try XCTUnwrap(melOutput as? MLMultiArray)
+        let base = engine.audioEncoder
+        let encodedOutput = try await base.encodeFeatures(mel)
+        let actual = try XCTUnwrap(encodedOutput as? MLMultiArray)
+        WhisperBoundaryReference.compare(mel, with: referenceMel, name: "mel")
+        WhisperBoundaryReference.compare(actual, with: referenceEncoded, name: "encoded")
+        if let model = (base as? AudioEncoder)?.model {
+            try WhisperBoundaryReference.compareSynchronousEncoder(model, mel: referenceMel, reference: referenceEncoded)
+        }
+        engine.audioEncoder = ReferenceBoundaryEncoder(base: base, mel: referenceMel)
+        let fromMel = try await engine.transcribe(audioPath: audio.path)
+        print("REAL_WHISPER_REPLAY boundary=mel text=\(fromMel.map { $0.text }.joined(separator: " "))")
+        engine.audioEncoder = ReferenceBoundaryEncoder(base: base, encoded: referenceEncoded)
+        let fromEncoded = try await engine.transcribe(audioPath: audio.path)
+        let text = fromEncoded.map { $0.text }.joined(separator: " ")
+        print("REAL_WHISPER_REPLAY boundary=encoded text=\(text)")
+        assertSpeechFixture(text)
+    }
+
     func testWhisperTranscribesSpeechAndReusesWarmModel() async throws {
         try requireRealEngines()
         let audio = try XCTUnwrap(Bundle.module.url(
@@ -16,7 +108,9 @@ final class LocalEngineFixtureTests: XCTestCase {
         ))
         let samples = try AudioProcessor.loadAudioAsFloatArray(fromPath: audio.path)
         let peak = samples.map { abs($0) }.max() ?? 0
-        print("REAL_WHISPER_AUDIO samples=\(samples.count) peak=\(peak)")
+        let fingerprint = samples.withUnsafeBytes { SHA256.hash(data: Data($0)).map { String(format: "%02x", $0) }.joined() }
+        print("REAL_WHISPER_AUDIO samples=\(samples.count) peak=\(peak) sha256=\(fingerprint)")
+        print("REAL_WHISPER_ENV os=\(ProcessInfo.processInfo.operatingSystemVersionString) device=\(WhisperKit.deviceName())")
         XCTAssertGreaterThan(samples.count, 16_000, "The real speech fixture must contain decoded audio")
         XCTAssertGreaterThan(peak, 0.01, "The real speech fixture must not decode as silence")
         try await ModelManager.shared.downloadModel(.base)
@@ -25,7 +119,7 @@ final class LocalEngineFixtureTests: XCTestCase {
             let start = ContinuousClock.now
             let text = try await service.transcribe(audioFileURL: audio, model: .base)
             let words = text.lowercased()
-            XCTAssertTrue(["quick", "brown", "fox", "lazy", "dog"].filter(words.contains).count >= 4, text)
+            assertSpeechFixture(text)
             print("REAL_WHISPER run=\(run) elapsed=\(start.duration(to: .now)) transcript=\(text)")
             if run == 0 && !words.contains("fox") {
                 try await diagnoseCPUOnlyWhisper(audio: audio)
@@ -45,10 +139,17 @@ final class LocalEngineFixtureTests: XCTestCase {
             verbose: true, logLevel: .debug
         )
         let reference = try await WhisperKit(config)
+        try WhisperFixtureDiagnostics.describe(reference)
+        try await WhisperFixtureDiagnostics.describeFeatures(reference, audio: audio)
+        reference.textDecoder.logitsFilters = [WhisperFixtureDiagnostics()]
         let results = try await reference.transcribe(audioPath: audio.path)
+        assertSpeechFixture(results.map { $0.text }.joined(separator: " "))
         for result in results {
             print("REAL_WHISPER_CPU_ONLY language=\(result.language) text=\(result.text)")
             print("REAL_WHISPER_CPU_ONLY tokens=\(result.segments.flatMap { $0.tokens })")
+            for segment in result.segments {
+                print("REAL_WHISPER_SEGMENT temperature=\(segment.temperature) logprob=\(segment.avgLogprob) noSpeech=\(segment.noSpeechProb)")
+            }
         }
     }
 
@@ -59,6 +160,9 @@ final class LocalEngineFixtureTests: XCTestCase {
         try await ModelManager.shared.downloadModel(.base)
         let path = try XCTUnwrap(WhisperKitStorage.localModelPath(for: .base))
         let engine = try await WhisperKit(WhisperKitConfig(modelFolder: path, download: false))
+        try WhisperFixtureDiagnostics.describe(engine)
+        try await WhisperFixtureDiagnostics.describeFeatures(engine, audio: audio)
+        engine.textDecoder.logitsFilters = [WhisperFixtureDiagnostics()]
         var options = DecodingOptions()
         options.task = .transcribe
         options.language = nil
@@ -70,9 +174,16 @@ final class LocalEngineFixtureTests: XCTestCase {
             audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental), decodeOptions: options)
         let reference = full.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
         let actual = incremental.map { $0.text }.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
-        XCTAssertFalse(reference.isEmpty)
+        assertSpeechFixture(reference)
+        assertSpeechFixture(actual)
         XCTAssertEqual(actual, reference)
         print("REAL_WHISPER_LOADING_PARITY transcript=\(actual)")
+    }
+
+    private func assertSpeechFixture(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let words = Set(text.lowercased().split { !$0.isLetter }.map(String.init))
+        XCTAssertGreaterThanOrEqual(words.intersection(["quick", "brown", "fox", "lazy", "dog"]).count,
+                                    4, text, file: file, line: line)
     }
 
     func testMLXCorrectionPerformsActualInferenceAndWarmRuntimeReuse() async throws {

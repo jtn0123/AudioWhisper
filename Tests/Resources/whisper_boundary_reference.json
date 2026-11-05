@@ -1,0 +1,31 @@
+{
+  "purpose": "Diagnostic component replay only; real-audio end-to-end recognition remains required.",
+  "model": "openai_whisper-base",
+  "sdk": "argmax-oss-swift 1.1.0",
+  "compute": "cpuOnly for all three models",
+  "source_os": "macOS 27.2",
+  "fixture": "speech_sample.wav",
+  "audio_float32_sha256": "b8abdc504d66c57ac487b2b019da11f52edc0e0f6f0f393353cd38cfd17ae135",
+  "recognized_text": "The quick brown fox jumps over the lazy dog.",
+  "format": "LZFSE compressed little-endian IEEE float16, logical row-major order",
+  "tensors": {
+    "mel": {
+      "shape": [
+        1,
+        80,
+        1,
+        3000
+      ],
+      "sha256": "3e7fca7497e0163fbbceb5a218ddd0cc63bc2bd02490731949ef483ddb2ed16c"
+    },
+    "encoded": {
+      "shape": [
+        1,
+        512,
+        1,
+        1500
+      ],
+      "sha256": "9d8a1fba788beb0e05b098ad35f775f32a256d87135fc86a9b3e5881468690bb"
+    }
+  }
+}

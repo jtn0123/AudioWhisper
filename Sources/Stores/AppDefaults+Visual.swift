@@ -18,6 +18,20 @@ extension AppDefaults {
         }
     }
 
+    /// Silhouette for the Aurora styles (Neon Dusk, Molten, Electric).
+    static var auroraShape: AuroraShape {
+        get {
+            guard let rawValue = defaults.string(forKey: Key.auroraShape.rawValue),
+                  let shape = AuroraShape(rawValue: rawValue) else {
+                return .horizon
+            }
+            return shape
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: Key.auroraShape.rawValue)
+        }
+    }
+
     static var visualIntensity: VisualIntensity {
         get {
             guard let rawValue = defaults.string(forKey: Key.visualIntensity.rawValue),

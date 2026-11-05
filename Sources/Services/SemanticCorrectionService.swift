@@ -71,7 +71,9 @@ internal final class SemanticCorrectionService {
         providerUsed: TranscriptionProvider,
         sourceAppBundleId: String? = nil,
         mode: SemanticCorrectionMode? = nil,
-        modelRepo: String? = nil
+        modelRepo: String? = nil,
+        writing: DictationWriting = DictationWriting(),
+        context: CapturedWritingContext? = nil
     ) async -> CorrectionOutcome {
         let mode = mode ?? AppDefaults.semanticCorrectionMode
         let modelRepo = modelRepo ?? AppDefaults.semanticCorrectionModelRepo
@@ -83,7 +85,8 @@ internal final class SemanticCorrectionService {
             // Allow local MLX correction regardless of STT provider
             logger.info("Running local MLX correction")
             do {
-                return try await correctLocallyWithMLXThrowing(text: text, modelRepo: modelRepo)
+                return try await correctLocallyWithMLXThrowing(
+                    text: text, modelRepo: modelRepo, writing: writing, context: context)
             } catch {
                 logger.error("MLX correction failed: \(error.localizedDescription)")
                 return .failed(error, fallback: text)
@@ -96,7 +99,7 @@ internal final class SemanticCorrectionService {
     /// hosts this returns the input unchanged (treated as a successful no-op,
     /// not a failure — there's nothing to recover from).
     private func correctLocallyWithMLXThrowing(
-        text: String, modelRepo: String
+        text: String, modelRepo: String, writing: DictationWriting, context: CapturedWritingContext?
     ) async throws -> CorrectionOutcome {
         guard Arch.isAppleSilicon else { return .applied(text) }
         // B1: honour `AppDefaults.semanticCorrectionModelRepo` unconditionally.
@@ -106,13 +109,9 @@ internal final class SemanticCorrectionService {
         // Existing installs are pinned to the legacy model by
         // `AppSetupHelper.migrateSemanticCorrectionModelDefault()`.
         let pyURL = try await preparePython()
-        let prompt = CorrectionIntegrity.instruction + "\n\n" + CorrectionPrompt.template
+        let prompt = writing.systemPrompt + (context?.prompt ?? "")
         let output = try await mlxService.correct(text: text, modelRepo: modelRepo, pythonPath: pyURL.path, systemPrompt: prompt)
-        let merged = Self.safeMerge(
-            original: text,
-            corrected: output,
-            maxChangeRatio: Self.maxChangeRatio
-        )
+        let merged = writing.accepted(original: text, output: output)
         if merged == text {
             logger.info("MLX correction produced no accepted change (kept original)")
         } else {

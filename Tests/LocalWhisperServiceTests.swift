@@ -21,7 +21,7 @@ class LocalWhisperServiceTests: IsolatedXCTestCase {
         
         // Create a temporary test audio file
         let tempDir = FileManager.default.temporaryDirectory
-        testAudioURL = tempDir.appendingPathComponent("test_audio.m4a")
+        testAudioURL = tempDir.appendingPathComponent("test_audio_\(UUID().uuidString).m4a")
         
         // Create empty file for testing
         FileManager.default.createFile(atPath: testAudioURL.path, contents: Data(), attributes: nil)

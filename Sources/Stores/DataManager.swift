@@ -70,6 +70,7 @@ internal protocol DataManagerProtocol {
 
     func initialize() throws
     func saveTranscription(_ record: TranscriptionRecord) async throws
+    func appendCleanupVersion(recordID: UUID, version: TranscriptionCleanupVersion) async throws
     /// Fetches every record. Reserved for export / counter-rebuild flows; list
     /// views should use `fetchRecords(limit:offset:search:)` to avoid loading
     /// the whole history into memory.

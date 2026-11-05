@@ -18,7 +18,7 @@ from typing import Any, Dict, Literal, Optional, TypedDict, get_args
 
 JSONRPC_VERSION = "2.0"
 
-Method = Literal["ping", "transcribe", "correct", "warmup"]
+Method = Literal["ping", "transcribe", "correct", "summarize", "warmup"]
 METHODS: tuple[str, ...] = get_args(Method)
 
 # "correction" is a synonym for "mlx" that predates the Swift enum. Swift only

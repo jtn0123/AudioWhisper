@@ -14,6 +14,7 @@ private final class FakeLocalWhisper: LocalWhisperTranscribing, @unchecked Senda
         audioFileURL: URL,
         model: WhisperModel,
         prompt: String?,
+        language: DictationLanguage,
         progressCallback: (@Sendable (String) -> Void)?
     ) async throws -> String {
         callCount += 1

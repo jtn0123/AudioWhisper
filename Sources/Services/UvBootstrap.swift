@@ -8,6 +8,7 @@ internal enum UvError: Error, LocalizedError {
     case venvCreationFailed(String)
     case syncFailed(String)
     case bundledBinaryTampered(expected: String, actual: String)
+    case uvUnverified
 
     var errorDescription: String? {
         switch self {
@@ -21,6 +22,9 @@ internal enum UvError: Error, LocalizedError {
             return "Failed to create venv: \(msg)"
         case .syncFailed(let msg):
             return "Failed to sync Python deps: \(msg)"
+        case .uvUnverified:
+            return "The uv found on this Mac doesn't match the copy AudioWhisper ships with, "
+                + "so it wasn't used. Reinstall AudioWhisper."
         case let .bundledBinaryTampered(expected, actual):
             return "Bundled uv binary failed integrity check.\n  expected sha256: \(expected)\n  actual sha256:   \(actual)\nReinstall AudioWhisper from a trusted source."
         }
@@ -97,52 +101,75 @@ internal struct UvBootstrap {
         return proj
     }
 
-    // Find uv or throw precise error (too old vs not found)
+    /// The uv this app runs. Only the copy whose SHA-256 matches the one
+    /// recorded at build time is trusted: the bundled binary first, then a copy
+    /// on PATH or in Application Support only if it is byte-identical. Anything
+    /// else is skipped, because a user-writable `uv` would otherwise install and
+    /// run arbitrary Python on the app's behalf.
     static func findUv() throws -> URL {
-        var foundButOld: (URL, String)?
-        // PATH
-        if let pathUv = which("uv") {
-            let url = URL(fileURLWithPath: pathUv)
-            if isBundledUv(url) { try verifyUv(at: url, expected: VersionInfo.bundledUvSha256) }
-            if let ver = try? uvVersion(at: url) {
-                if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
-                foundButOld = (url, ver)
+        #if DEBUG
+        // Test seam: lets unit tests drive ensureVenv with a stub. Compiled out
+        // of release builds, so it cannot redirect a shipped app.
+        if let stub = ProcessInfo.processInfo.environment[testUvEnvironmentKey], !stub.isEmpty {
+            let url = URL(fileURLWithPath: stub)
+            let version = try uvVersion(at: url)
+            guard isVersion(version, greaterOrEqualThan: minUvVersion) else {
+                throw UvError.uvTooOld(found: version, required: minUvVersion)
             }
+            return url
         }
-        // Bundled uv - check multiple locations for different build methods
-        // Release build (build.sh): Contents/Resources/bin/uv
-        // Xcode/SPM build: AudioWhisper_AudioWhisper.bundle/Contents/Resources/Resources/bin/uv
-        let bundleCandidates: [URL] = [
-            Bundle.main.resourceURL,
-            ResourceLocator.moduleBundle?.resourceURL
-        ].compactMap { $0 }
+        #endif
+        return try selectUv(bundled: bundledUvCandidates(), fallbacks: fallbackUvCandidates(),
+                            expectedSha256: VersionInfo.bundledUvSha256)
+    }
 
-        for resURL in bundleCandidates {
-            let paths = [
-                resURL.appendingPathComponent("bin/uv"),
-                resURL.appendingPathComponent("Resources/bin/uv")
-            ]
-            for url in paths where FileManager.default.isExecutableFile(atPath: url.path) {
-                try verifyUv(at: url, expected: VersionInfo.bundledUvSha256)
-                if let ver = try? uvVersion(at: url) {
-                    if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
-                    foundButOld = foundButOld ?? (url, ver)
-                }
+    #if DEBUG
+    static let testUvEnvironmentKey = "AUDIOWHISPER_TEST_UV"
+    #endif
+
+    /// Picks the first trusted uv. A bundled copy that fails its checksum is an
+    /// error (the install is damaged); a fallback that fails is skipped.
+    static func selectUv(bundled: [URL], fallbacks: [URL], expectedSha256: String) throws -> URL {
+        let fileManager = FileManager.default
+        var foundButOld: String?
+        var skippedUnverified = false
+        for url in bundled where fileManager.isExecutableFile(atPath: url.path) {
+            try verifyUv(at: url, expected: expectedSha256)
+            if let version = try? uvVersion(at: url) {
+                if isVersion(version, greaterOrEqualThan: minUvVersion) { return url }
+                foundButOld = foundButOld ?? version
             }
         }
-        // Per-user tools dir
-        if let toolsURL = try? applicationSupportBaseDirectory()
-            .appendingPathComponent("\(RebuildStorage.directoryName)/bin", isDirectory: true) {
-            let url = toolsURL.appendingPathComponent("uv")
-            if FileManager.default.isExecutableFile(atPath: url.path) {
-                if let ver = try? uvVersion(at: url) {
-                    if isVersion(ver, greaterOrEqualThan: minUvVersion) { return url }
-                    foundButOld = foundButOld ?? (url, ver)
-                }
+        for url in fallbacks where fileManager.isExecutableFile(atPath: url.path) {
+            guard (try? verifyUv(at: url, expected: expectedSha256)) != nil else {
+                skippedUnverified = true
+                continue
+            }
+            if let version = try? uvVersion(at: url) {
+                if isVersion(version, greaterOrEqualThan: minUvVersion) { return url }
+                foundButOld = foundButOld ?? version
             }
         }
-        if let (_, ver) = foundButOld { throw UvError.uvTooOld(found: ver, required: minUvVersion) }
-        throw UvError.uvNotFound
+        if let foundButOld { throw UvError.uvTooOld(found: foundButOld, required: minUvVersion) }
+        throw skippedUnverified ? UvError.uvUnverified : UvError.uvNotFound
+    }
+
+    /// Release build (build.sh): Contents/Resources/bin/uv.
+    /// Xcode/SPM build: AudioWhisper_AudioWhisper.bundle/Contents/Resources/Resources/bin/uv.
+    private static func bundledUvCandidates() -> [URL] {
+        [Bundle.main.resourceURL, ResourceLocator.moduleBundle?.resourceURL]
+            .compactMap { $0 }
+            .flatMap { [$0.appendingPathComponent("bin/uv"), $0.appendingPathComponent("Resources/bin/uv")] }
+    }
+
+    private static func fallbackUvCandidates() -> [URL] {
+        var urls: [URL] = []
+        if let pathUv = which("uv") { urls.append(URL(fileURLWithPath: pathUv)) }
+        if let tools = try? applicationSupportBaseDirectory()
+            .appendingPathComponent("\(RebuildStorage.directoryName)/bin/uv") {
+            urls.append(tools)
+        }
+        return urls
     }
 
     // Ensure project exists and dependencies are synced with uv. Returns path to project .venv python.
@@ -175,7 +202,8 @@ internal struct UvBootstrap {
             let changedPython = previousSpecifier.map { $0 != pythonSpecifier } ?? (userPython != nil)
             if !fm.fileExists(atPath: venvDir.path) || changedPython {
                 log?("Creating project .venv with Python \(pythonSpecifier)…")
-                let venvResult = runInDir(uv.path, ["venv", "--clear", "--python", pythonSpecifier], cwd: proj)
+                let venvResult = await runInDir(
+                    uv.path, ["venv", "--clear", "--python", pythonSpecifier], cwd: proj, timeout: .seconds(600))
                 if venvResult.status != 0 {
                     throw UvError.venvCreationFailed(
                         venvResult.stderr.isEmpty ? venvResult.stdout : venvResult.stderr
@@ -186,7 +214,8 @@ internal struct UvBootstrap {
             // Install only the shipped lock. A failed sync stays actionable;
             // retrying against an unlocked dependency tree changes the product.
             log?("Syncing project dependencies via uv sync…")
-            let syncResult = runInDir(uv.path, ["sync", "--frozen"], cwd: proj)
+            // Generous: the first sync downloads several hundred MB of MLX wheels.
+            let syncResult = await runInDir(uv.path, ["sync", "--frozen"], cwd: proj, timeout: .seconds(1800))
 
             if syncResult.status != 0 {
                 throw UvError.syncFailed(
@@ -201,7 +230,7 @@ internal struct UvBootstrap {
             ]
             for candidate in candidates where fm.isExecutableFile(atPath: candidate) {
                 let python = URL(fileURLWithPath: candidate)
-                guard environmentImportsWork(python: python, project: proj) else {
+                guard await environmentImportsWork(python: python, project: proj) else {
                     throw UvError.pythonNotUsable("runtime dependencies could not be imported; reinstall dependencies in Setup")
                 }
                 try pythonSpecifier.write(to: specFile, atomically: true, encoding: .utf8)
@@ -229,25 +258,6 @@ internal struct UvBootstrap {
         return try uvVersion(at: url)
     }
 
-    /// Returns true if the given uv URL points at the binary we bundle inside
-    /// the app — used to scope SHA verification to our own copy only.
-    private static func isBundledUv(_ url: URL) -> Bool {
-        let bundleCandidates: [URL] = [
-            Bundle.main.resourceURL,
-            ResourceLocator.moduleBundle?.resourceURL
-        ].compactMap { $0 }
-        for resURL in bundleCandidates {
-            let paths = [
-                resURL.appendingPathComponent("bin/uv"),
-                resURL.appendingPathComponent("Resources/bin/uv")
-            ]
-            if paths.contains(where: { $0.standardizedFileURL.path == url.standardizedFileURL.path }) {
-                return true
-            }
-        }
-        return false
-    }
-
     // Copy pyproject.toml and uv.lock from bundle to per-user project dir
     /// Check if the Python environment is ready (venv exists with python executable)
     static func isEnvReady() async -> Bool {
@@ -261,9 +271,26 @@ internal struct UvBootstrap {
                     guard try bundledHash == fileHash(proj.appendingPathComponent(name)) else { return false }
                 }
                 let python = proj.appendingPathComponent(".venv/bin/python3")
-                return environmentImportsWork(python: python, project: proj)
+                return await environmentImportsWork(python: python, project: proj)
             }
         } catch { return false }
+    }
+
+    /// Automation validates the installed lock and imports without creating a
+    /// project, syncing dependencies, finding uv, or downloading Python.
+    static func installedPython() async throws -> URL {
+        let project = try applicationSupportBaseDirectory(create: false).appendingPathComponent(RebuildStorage.directoryName)
+            .appendingPathComponent("python_project")
+        guard FileManager.default.fileExists(atPath: project.path) else { throw PublicAutomationError.assets }
+        for name in ["pyproject.toml", "uv.lock"] {
+            guard try fileHash(bundledProjectFile(name)) == fileHash(project.appendingPathComponent(name)) else {
+                throw PublicAutomationError.assets
+            }
+        }
+        let python = project.appendingPathComponent(".venv/bin/python3")
+        let ready = await environmentImportsWork(python: python, project: project)
+        guard ready else { throw PublicAutomationError.assets }
+        return python
     }
 
     /// Copies `pyproject.toml` AND `uv.lock` from the bundle into the per-user
@@ -292,17 +319,20 @@ internal struct UvBootstrap {
         return path.isEmpty ? nil : path
     }
 
-    // Allow tests to override the base Application Support directory via env var
-    private static func applicationSupportBaseDirectory() throws -> URL {
+    /// Debug builds let tests redirect Application Support via an env var;
+    /// release builds always use the real per-user directory.
+    private static func applicationSupportBaseDirectory(create: Bool = true) throws -> URL {
         let fm = FileManager.default
+        #if DEBUG
         if let override = ProcessInfo.processInfo.environment["AUDIOWHISPER_APP_SUPPORT_DIR"], !override.isEmpty {
             let url = URL(fileURLWithPath: override, isDirectory: true)
-            if !fm.fileExists(atPath: url.path) {
+            if create, !fm.fileExists(atPath: url.path) {
                 try fm.createDirectory(at: url, withIntermediateDirectories: true)
             }
             return url
         }
-        return try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        #endif
+        return try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: create)
     }
 
     private static func uvVersion(at url: URL) throws -> String {

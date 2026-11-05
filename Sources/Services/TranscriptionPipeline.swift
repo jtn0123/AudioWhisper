@@ -87,7 +87,14 @@ internal class TranscriptionPipeline {
         logger.debug("Raw transcription completed: \(rawText.prefix(50))...")
 
         try Task.checkCancellation()
-        // Step 3: Apply semantic correction if enabled
+        return await cleanup(text: rawText, config: config, audioDuration: audioDuration)
+    }
+
+    /// History reruns enter here, after formatting, without decoding audio or
+    /// applying potentially non-idempotent vocabulary replacements again.
+    func cleanup(
+        text rawText: String, config: TranscriptionPipelineConfig, audioDuration: TimeInterval? = nil
+    ) async -> TranscriptionResult {
         guard config.applySemanticCorrection else {
             return TranscriptionResult(text: rawText, correctionOutcome: nil, audioDuration: audioDuration)
         }
@@ -97,7 +104,9 @@ internal class TranscriptionPipeline {
             providerUsed: config.provider,
             sourceAppBundleId: config.sourceAppBundleId,
             mode: config.correctionMode,
-            modelRepo: config.correctionModelRepo
+            modelRepo: config.correctionModelRepo,
+            writing: config.writing,
+            context: config.context
         )
         logger.debug("Semantic correction completed")
 

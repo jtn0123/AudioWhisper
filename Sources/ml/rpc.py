@@ -11,7 +11,7 @@ import json
 import sys
 from typing import Any, Dict, Optional
 
-from .correction import correct
+from .correction import correct, summarize
 from .loader import load_correction_model, load_parakeet_model
 from .parakeet import DEFAULT_PARAKEET_REPO, transcribe
 from .protocol import (
@@ -53,7 +53,7 @@ def _dispatch(method: str, params: Dict[str, Any]) -> Any:
             raise ValueError(f"{method}: 'repo' must be a string, got {type(repo).__name__}")
         return transcribe(repo, pcm_path)
 
-    if method == "correct":
+    if method in ("correct", "summarize"):
         repo = require_str(params, "repo", method)
         # `text` may legitimately be empty — an empty transcript is not an
         # error — so it is checked for type without the non-empty rule.
@@ -62,6 +62,8 @@ def _dispatch(method: str, params: Dict[str, Any]) -> Any:
             got = type(text).__name__ if "text" in params else "nothing"
             raise ValueError(f"{method}: 'text' must be a string, got {got}")
         prompt = optional_str(params, "prompt", method)
+        if method == "summarize":
+            return summarize(repo, text, prompt)
         return correct(repo, text, prompt)
 
     if method == "warmup":

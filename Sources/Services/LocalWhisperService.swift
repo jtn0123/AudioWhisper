@@ -40,16 +40,10 @@ private actor WhisperKitCache {
         // Try to use local model path if available
         let newInstance: WhisperKit
         do {
-            if let localModelPath = getLocalModelPath(for: model) {
-                let config = WhisperKitConfig(downloadBase: RebuildStorage.whisperDownloadBase, modelFolder: localModelPath)
-                newInstance = try await WhisperKit(config)
-            } else {
-                // Fallback to model name (should work if environment variables are respected).
-                // `.whisperKitModelName` is the canonical name WhisperKit expects;
-                // see `WhisperModel.whisperKitModelName`.
-                let config = WhisperKitConfig(model: model.whisperKitModelName, downloadBase: RebuildStorage.whisperDownloadBase)
-                newInstance = try await WhisperKit(config)
+            guard let localModelPath = getLocalModelPath(for: model) else {
+                throw LocalWhisperError.modelNotDownloaded
             }
+            newInstance = try await WhisperEngineFactory.make(model: model, folder: localModelPath)
         } catch {
             // Decide whether this is a "model not downloaded" situation without
             // relying on locale-/version-fragile English substrings.
@@ -169,6 +163,7 @@ internal final class LocalWhisperService: Sendable {
         audioFileURL: URL,
         model: WhisperModel,
         prompt: String? = nil,
+        language: DictationLanguage = .automatic,
         progressCallback: (@Sendable (String) -> Void)? = nil
     ) async throws -> String {
         // Get or create WhisperKit instance from actor-isolated cache.
@@ -187,7 +182,7 @@ internal final class LocalWhisperService: Sendable {
         let results = try await whisperKit.transcribe(
             audioPath: audioFileURL.path,
             audioInputOptions: AudioInputOptions(audioLoadingMode: .incremental),
-            decodeOptions: Self.decodingOptions(prompt: prompt, tokenizer: whisperKit.tokenizer))
+            decodeOptions: Self.decodingOptions(prompt: prompt, tokenizer: whisperKit.tokenizer, language: language))
 
         // Combine all transcription segments into a single text
         let transcription = results.map { $0.text }.joined(separator: " ")
@@ -204,10 +199,31 @@ internal final class LocalWhisperService: Sendable {
     }
 
     /// Transcription (X→X, never translation) with the language auto-detected.
-    static func decodingOptions(prompt: String?, tokenizer: WhisperTokenizer?) -> DecodingOptions {
+    func meetingSegments(
+        audioFileURL: URL, model: WhisperModel, language: DictationLanguage,
+        source: MeetingAudioSource, offset: TimeInterval
+    ) async throws -> [MeetingSegment] {
+        let engine = try await cache.getOrCreate(model: model, maxCached: maxCachedModels, progressCallback: nil)
+        var options = Self.decodingOptions(prompt: nil, tokenizer: engine.tokenizer, language: language)
+        options.wordTimestamps = true
+        options.skipSpecialTokens = true
+        let results = try await engine.transcribe(audioPath: audioFileURL.path, decodeOptions: options)
+        try Task.checkCancellation()
+        return results.flatMap(\.segments).compactMap { segment in
+            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            return MeetingSegment(source: source, start: offset + Double(segment.start),
+                                  end: offset + Double(segment.end), text: text)
+        }
+    }
+
+    /// Explicit language is supported by Whisper; it still transcribes rather than translating.
+    static func decodingOptions(
+        prompt: String?, tokenizer: WhisperTokenizer?, language: DictationLanguage = .automatic
+    ) -> DecodingOptions {
         var options = DecodingOptions()
         options.task = .transcribe
-        options.language = nil
+        options.language = language == .automatic ? nil : language.rawValue
         if let prompt, let tokenizer {
             options.promptTokens = promptTokens(
                 for: prompt, encode: { tokenizer.encode(text: $0) },

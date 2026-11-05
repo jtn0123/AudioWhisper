@@ -71,6 +71,12 @@ enum AppDefaults {
         case transcriptionProvider
         case selectedWhisperModel
         case selectedParakeetModel
+        case savedDictationModes
+        case selectedDictationModeID
+        case dictationLanguage
+        case dictationWriting
+        case automaticDictationModes
+        case appDictationRules
 
         // Semantic Correction
         case semanticCorrectionMode
@@ -92,6 +98,7 @@ enum AppDefaults {
 
         // Visual
         case waveformStyle
+        case auroraShape
         case visualIntensity
         case menuBarIconSize
 
@@ -131,17 +138,6 @@ enum AppDefaults {
     /// Remove a value from UserDefaults
     static func removeValue(for key: Key) {
         defaults.removeObject(forKey: key.rawValue)
-    }
-
-    /// Registers built-in default values for keys that should default to a non-nil value
-    /// when the user has never set them. Called once at app launch.
-    static func registerDefaults() {
-        defaults.register(defaults: [
-            Key.enableSmartPaste.rawValue: true,
-            Key.immediateRecording.rawValue: true,
-            Key.startAtLogin.rawValue: true,
-            Key.playCompletionSound.rawValue: true
-        ])
     }
 }
 

@@ -91,9 +91,13 @@ struct RebuildSetupServices {
                 succeeded: true, message: "The selected Whisper model loaded successfully on this Mac.")
         }
         let python = try await UvBootstrap.ensureVenv()
-        return try await ModelVerificationService.verify(
+        let result = try await ModelVerificationService.verify(
             scriptName: "verify_parakeet",
             arguments: [selection.parakeet.rawValue] + ModelPins.scriptArguments(for: selection.parakeet.rawValue),
             pythonPath: python.path, successFallback: "Parakeet is ready")
+        // A model that verifies proves the runtime works, so let the daemon
+        // start again even if it recently hit its restart limit.
+        if result.succeeded { await MLDaemonManager.shared.resetRestartLimit() }
+        return result
     }
 }

@@ -57,7 +57,7 @@ final class RebuildLibraryState {
             loaded = true
         } catch {
             guard !Task.isCancelled, query == search, revision == history.historyRevision.value else { return }
-            self.error = error.localizedDescription
+            self.error = RebuildErrorText.userMessage(for: error)
             loaded = true
         }
     }
@@ -68,7 +68,7 @@ final class RebuildLibraryState {
         do {
             try await history.deleteRecord(record)
             await load(reset: true, enabled: AppDefaults.transcriptionHistoryEnabled)
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     func clear() async {
@@ -76,7 +76,7 @@ final class RebuildLibraryState {
         do {
             try await history.deleteAllRecords()
             await load(reset: true, enabled: AppDefaults.transcriptionHistoryEnabled)
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     func startExport(to url: URL) {
@@ -103,7 +103,7 @@ final class RebuildLibraryState {
                 exportStatus = "Exported \(count) transcripts."
             } catch is CancellationError {
                 exportStatus = "Export cancelled. Your existing file was kept."
-            } catch { self.error = error.localizedDescription }
+            } catch { self.error = RebuildErrorText.userMessage(for: error) }
         }
     }
 

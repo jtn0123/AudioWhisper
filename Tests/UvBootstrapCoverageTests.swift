@@ -59,8 +59,8 @@ final class UvBootstrapCoverageTests: XCTestCase {
         XCTAssertFalse(result.stderr.isEmpty, "Launch failure should surface in stderr")
     }
 
-    func testRunInDirUsesProvidedWorkingDirectory() throws {
-        let result = UvBootstrap.runInDir("/bin/pwd", [], cwd: tempRoot)
+    func testRunInDirUsesProvidedWorkingDirectory() async throws {
+        let result = await UvBootstrap.runInDir("/bin/pwd", [], cwd: tempRoot, timeout: .seconds(10))
         XCTAssertEqual(result.status, 0)
         let printed = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         // pwd may resolve symlinks (e.g. /var -> /private/var); compare resolved paths.
@@ -68,6 +68,30 @@ final class UvBootstrapCoverageTests: XCTestCase {
             URL(fileURLWithPath: printed).resolvingSymlinksInPath().path,
             tempRoot.resolvingSymlinksInPath().path
         )
+    }
+
+    func testRunInDirStopsAChildThatOutlivesItsTimeout() async {
+        let started = ContinuousClock.now
+        let result = await UvBootstrap.runInDir("/bin/sleep", ["30"], cwd: tempRoot, timeout: .milliseconds(200))
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.stderr.contains("Timed out"), result.stderr)
+        XCTAssertLessThan(ContinuousClock.now - started, .seconds(10))
+    }
+
+    func testRunInDirReportsALaunchFailure() async {
+        let result = await UvBootstrap.runInDir("/nonexistent/binary", [], cwd: tempRoot, timeout: .seconds(5))
+        XCTAssertEqual(result.status, 1)
+        XCTAssertFalse(result.stderr.isEmpty)
+    }
+
+    func testRunInDirDrainsOutputLargerThanAPipeBuffer() async {
+        // 200 KB on stdout would deadlock a child whose pipe nobody reads.
+        let result = await UvBootstrap.runInDir(
+            "/bin/sh", ["-c", "head -c 200000 /dev/zero | tr '\\0' x; echo oops >&2"],
+            cwd: tempRoot, timeout: .seconds(20))
+        XCTAssertEqual(result.status, 0)
+        XCTAssertEqual(result.stdout.count, 200_000)
+        XCTAssertEqual(result.stderr, "oops\n")
     }
 
     // MARK: - isVersion
@@ -104,6 +128,34 @@ final class UvBootstrapCoverageTests: XCTestCase {
     }
 
     // MARK: - isEnvReady
+
+    func testAutomationChecksOnlyAnExistingPinnedEnvironment() async throws {
+        do {
+            _ = try await UvBootstrap.installedPython()
+            XCTFail("Automation must not create a missing project")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+        let project = try UvBootstrap.projectDir()
+        for name in ["pyproject.toml", "uv.lock"] {
+            try FileManager.default.copyItem(at: UvBootstrap.bundledProjectFile(name),
+                                            to: project.appendingPathComponent(name))
+        }
+        let python = project.appendingPathComponent(".venv/bin/python3")
+        try FileManager.default.createDirectory(at: python.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("#!/bin/sh\nexit 1\n".utf8).write(to: python)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: python.path)
+        do {
+            _ = try await UvBootstrap.installedPython()
+            XCTFail("A broken dependency import must not be repaired by automation")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+        try Data("#!/bin/sh\nexit 0\n".utf8).write(to: python)
+        let ready = try await UvBootstrap.installedPython()
+        XCTAssertEqual(ready, python)
+        try Data("changed lock".utf8).write(to: project.appendingPathComponent("uv.lock"))
+        do {
+            _ = try await UvBootstrap.installedPython()
+            XCTFail("Automation must not sync a mismatched lock")
+        } catch { XCTAssertEqual(error as? PublicAutomationError, .assets) }
+    }
 
     func testIsEnvReadyFalseWhenVenvAbsent() async {
         // Fresh project dir from setUp has no .venv.

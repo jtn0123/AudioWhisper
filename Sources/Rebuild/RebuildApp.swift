@@ -34,12 +34,13 @@ final class RebuildNavigation {
 }
 
 enum RebuildPage: String, CaseIterable, Identifiable {
-    case record, library, models, writing, preferences
+    case record, library, models, writing, preferences, meetings
     var id: String { rawValue }
     var title: String {
         switch self {
         case .record: return "Record"
         case .library: return "Library"
+        case .meetings: return "Meetings"
         case .models: return "Models & setup"
         case .writing: return "Writing cleanup"
         case .preferences: return "Preferences"
@@ -49,6 +50,7 @@ enum RebuildPage: String, CaseIterable, Identifiable {
         switch self {
         case .record: return "waveform"
         case .library: return "text.book.closed"
+        case .meetings: return "person.2.wave.2"
         case .models: return "shippingbox"
         case .writing: return "pencil.line"
         case .preferences: return "slider.horizontal.3"
@@ -73,6 +75,8 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         // Other audio a crashed recording left lowered.
         OutputDucker.shared.restore()
+        // Audio files a crashed recording left behind.
+        Task.detached(priority: .utility) { AppSetupHelper.cleanupOldTemporaryFiles() }
         recorder.startWarmMicrophone()
         RebuildStartup.configure(
             session: session, navigation: navigation,
@@ -88,7 +92,11 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             configureShortcuts: { [weak self] in self?.configureShortcuts() },
             showWorkspace: { [weak self] in self?.showWorkspace() },
             showRecorder: { [weak self] in self?.showOverlay() },
-            closeRecorder: { [weak self] in self?.overlay?.orderOut(nil) }))
+            closeRecorder: { [weak self] in
+                self?.overlay?.orderOut(nil)
+                RebuildEscapeShortcut.recorderClosed()
+            }))
+        RebuildEscapeShortcut.install(session: session)
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
         ) { [weak self] _ in
@@ -97,6 +105,12 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
                 self?.recorder.warmMicrophone.refresh()
             }
         }
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let page = urls.compactMap(RebuildDeepLink.page).first else { return }
+        navigation.selection = page
+        showWorkspace()
     }
 
     func showWorkspace() {
@@ -123,6 +137,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         overlay.setContentSize(RebuildRecorderView.size(preview: session.livePreview.enabled))
         RecordingWindowStyle.moveToActiveScreen(overlay)
         overlay.orderFrontRegardless()
+        RebuildEscapeShortcut.recorderShown()
     }
 
     func chooseAudio() {
@@ -178,11 +193,14 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         session.cancel()
         recorder.warmMicrophone.coolDown()
         holdMonitor?.stop()
-        Task {
-            await session.waitForHistoryWrites()
-            await MLDaemonManager.shared.shutdown()
-            NSApp.reply(toApplicationShouldTerminate: true)
-        }
+        let session = session
+        RebuildTermination.run(
+            work: {
+                await session.meetings.shutdown()
+                await session.waitForHistoryWrites()
+                await MLDaemonManager.shared.shutdown()
+            },
+            reply: { NSApp.reply(toApplicationShouldTerminate: true) })
         return .terminateLater
     }
 }

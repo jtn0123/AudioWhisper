@@ -10,6 +10,7 @@ internal final class TranscriptionRecord {
     @Attribute(.unique) var id: UUID
     var text: String
     var originalText: String?
+    var cleanupVersionsData: Data?
     var date: Date
     var provider: String // TranscriptionProvider.rawValue
     var duration: TimeInterval?

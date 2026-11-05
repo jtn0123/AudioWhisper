@@ -6,7 +6,7 @@ Branch `rebuild/native-v2`, isolated worktree outside Documents. The installed a
 
 A new SwiftUI workspace, one session controller, one setup checklist, explicit permission actions, and an unobtrusive recorder. A warm paper/ink palette with restrained rust accents, native controls, keyboard navigation, readable typography, and reduced-motion support. Normal windows stay on desktops. Only the recorder can appear over full-screen apps.
 
-The existing CoreAudio and model engines are reusable infrastructure, not the new app's state or navigation. The obsolete SwiftUI app entry is removed. Legacy view/controller implementations remain compiled temporarily for regression tests; the rebuild never launches their shell.
+The existing CoreAudio and model engines are reusable infrastructure, not the new app's state or navigation. The obsolete SwiftUI app entry is removed, and so is the legacy shell it launched (AppDelegate, Dashboard, ContentView, the history and welcome windows, and their view models).
 
 ## Required feature parity
 

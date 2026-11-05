@@ -10,6 +10,7 @@ struct RebuildRecordingTuningView: View {
     @AppDefault(\.enableSmartPaste) private var smartPaste
     @AppDefault(\.waveformStyle) private var waveform
     @AppDefault(\.visualIntensity) private var intensity
+    @AppDefault(\.auroraShape) private var auroraShape
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,6 +28,11 @@ struct RebuildRecordingTuningView: View {
                 Picker("Recorder visual", selection: $waveform) {
                     ForEach(WaveformStyle.allCases) { Text($0.rawValue).tag($0) }
                 }.labelsHidden().fixedSize()
+                if waveform.auroraPalette != nil {
+                    Picker("Aurora shape", selection: $auroraShape) {
+                        ForEach(AuroraShape.allCases) { Text($0.rawValue).tag($0) }
+                    }.pickerStyle(.segmented).labelsHidden().fixedSize()
+                }
                 Picker("Motion intensity", selection: $intensity) {
                     ForEach(VisualIntensity.allCases) { Text($0.rawValue).tag($0) }
                 }.labelsHidden().fixedSize()
