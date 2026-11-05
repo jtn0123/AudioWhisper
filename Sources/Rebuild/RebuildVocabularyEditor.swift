@@ -140,7 +140,7 @@ struct RebuildRememberCorrectionView: View {
                         vocabulary = try RebuildVocabularyDocument(source: vocabulary).saving(draft)
                         saved()
                         dismiss()
-                    } catch { self.error = error.localizedDescription }
+                    } catch { self.error = RebuildErrorText.userMessage(for: error) }
                 }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
             }
         }.padding(24).frame(width: 440)

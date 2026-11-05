@@ -323,7 +323,7 @@ extension RebuildSession {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
                 retainedForRetry = true
-                presentFailure(error.localizedDescription)
+                presentFailure(RebuildErrorText.userMessage(for: error))
             }
         }
     }

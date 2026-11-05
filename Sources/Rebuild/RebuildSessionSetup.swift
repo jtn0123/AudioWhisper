@@ -24,7 +24,7 @@ extension RebuildSession {
         do {
             try await setup.remove(setup.selection())
             await refreshSetup()
-        } catch { modelRemovalError = error.localizedDescription }
+        } catch { modelRemovalError = RebuildErrorText.userMessage(for: error) }
     }
 
     var captureIdentity: UUID? { sessionID }
@@ -109,7 +109,7 @@ extension RebuildSession {
         do {
             result = try await setup.verify(selection)
         } catch {
-            result = ModelVerificationResult(succeeded: false, message: "Verification failed: \(error.localizedDescription)")
+            result = ModelVerificationResult(succeeded: false, message: "Verification failed: \(RebuildErrorText.userMessage(for: error))")
         }
         let currentAssets = await setup.assetIdentity(selection)
         guard !Task.isCancelled, selection == setup.selection(), assets == currentAssets else {
@@ -180,7 +180,7 @@ extension RebuildSession {
         let selection = setup.selection()
         do {
             try await setup.install(selection)
-        } catch { setupError = error.localizedDescription }
+        } catch { setupError = RebuildErrorText.userMessage(for: error) }
         await refreshSetup()
     }
 

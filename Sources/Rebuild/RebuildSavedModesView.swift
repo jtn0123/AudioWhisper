@@ -112,7 +112,7 @@ struct RebuildSavedModesView: View {
             AppDefaults.selectedDictationModeID = mode.id
             name = ""
             message = nil
-        } catch { message = error.localizedDescription }
+        } catch { message = RebuildErrorText.userMessage(for: error) }
     }
 
     private func summary(_ settings: DictationModeSettings) -> String {
@@ -130,7 +130,7 @@ struct RebuildSavedModesView: View {
         }
         do {
             modes.append(try SavedDictationMode.make(name: name, settings: mode.settings, existing: modes))
-        } catch { message = error.localizedDescription }
+        } catch { message = RebuildErrorText.userMessage(for: error) }
     }
 
     private func importModes() {
@@ -139,7 +139,7 @@ struct RebuildSavedModesView: View {
             do {
                 modes = try DictationModeArchive.importing(result.get(), into: modes)
                 message = nil
-            } catch { message = error.localizedDescription }
+            } catch { message = RebuildErrorText.userMessage(for: error) }
         }
     }
 }

@@ -15,7 +15,7 @@ extension RebuildSession {
                 }
                 return nil
             } catch {
-                return "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
+                return "Copied your transcript, but history could not be saved: \(RebuildErrorText.userMessage(for: error))"
             }
         }
         historyTasks[token] = task

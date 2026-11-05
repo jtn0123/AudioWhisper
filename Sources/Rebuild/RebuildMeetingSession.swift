@@ -55,12 +55,12 @@ final class RebuildMeetingSession {
             }
             if inventory.hasMore { notices.append("Showing the 100 most recent meeting folders.") }
             inventoryNotice = notices.isEmpty ? nil : notices.joined(separator: " ")
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     func open(_ id: UUID) {
         guard !busy else { return }
-        do { document = try store.load(id); error = nil } catch { self.error = error.localizedDescription }
+        do { document = try store.load(id); error = nil } catch { self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     private func reserve() throws {
@@ -89,7 +89,7 @@ final class RebuildMeetingSession {
             error = nil
             progress = "Requesting capture access…"
             startCapture(document.id)
-        } catch { release(); self.error = error.localizedDescription }
+        } catch { release(); self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     private func startCapture(_ id: UUID) {
@@ -113,9 +113,9 @@ final class RebuildMeetingSession {
             } catch {
                 guard document?.id == id, activity == .starting else { return }
                 document?.status = .failed
-                document?.note = error.localizedDescription
+                document?.note = RebuildErrorText.userMessage(for: error)
                 if let document { try? store.save(document) }
-                self.error = error.localizedDescription
+                self.error = RebuildErrorText.userMessage(for: error)
                 activity = .idle
                 release()
                 refresh()
@@ -128,7 +128,7 @@ final class RebuildMeetingSession {
         document.chunks.append(chunk)
         self.document = document
         do { try store.save(document) } catch {
-            self.error = "Meeting manifest could not be saved: " + error.localizedDescription
+            self.error = "Meeting manifest could not be saved: " + RebuildErrorText.userMessage(for: error)
             Task { [weak self] in
                 guard self?.document?.id == id else { return }
                 await self?.stop(reason: "Storage failed. Source audio has been kept.")
@@ -149,7 +149,7 @@ final class RebuildMeetingSession {
             document.note = reason
             if document.chunks.isEmpty { document.status = .failed; document.note = "No usable audio was captured." }
             self.document = document
-            do { try store.save(document) } catch { self.error = error.localizedDescription }
+            do { try store.save(document) } catch { self.error = RebuildErrorText.userMessage(for: error) }
         }
         activity = .idle
         progress = "Audio kept on this Mac. Process when ready."
@@ -159,7 +159,7 @@ final class RebuildMeetingSession {
 
     func processCurrent() {
         guard !busy, let document, document.audioRetained else { return }
-        do { try reserve() } catch { self.error = error.localizedDescription; return }
+        do { try reserve() } catch { self.error = RebuildErrorText.userMessage(for: error); return }
         let options = MeetingProcessingOptions(model: voiceModel, language: AppDefaults.dictationLanguage,
             speakerModelFolder: speakerModelFolder, summarize: makeSummary,
             summaryModel: AppDefaults.semanticCorrectionModelRepo, keepAudio: keepAudio)
@@ -181,7 +181,8 @@ final class RebuildMeetingSession {
                 progress = "Meeting transcript ready. Review estimated speakers and notes before using them."
             } catch {
                 self.document?.status = error is CancellationError ? .interrupted : .failed
-                self.document?.note = "Processing stopped. Transcript and source audio were kept: " + error.localizedDescription
+                self.document?.note = "Processing stopped. Transcript and source audio were kept: "
+                    + RebuildErrorText.userMessage(for: error)
                 if let document = self.document { try? store.save(document) }
                 self.error = self.document?.note
             }
@@ -192,7 +193,11 @@ final class RebuildMeetingSession {
 
     func deleteCurrent() {
         guard !busy, let document else { return }
-        do { try store.delete(document.id); self.document = nil; refresh() } catch { self.error = error.localizedDescription }
+        do {
+            try store.delete(document.id)
+            self.document = nil
+            refresh()
+        } catch { self.error = RebuildErrorText.userMessage(for: error) }
     }
 
     func shutdown() async {
