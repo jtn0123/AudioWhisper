@@ -1,5 +1,6 @@
 // swiftlint:disable:next unused_import - verified required: pow/exp/tanh fail to resolve without it under SwiftPM
 import Darwin
+import Observation
 
 /// Signal maths shared by the Aurora engine.
 enum AuroraSignal {
@@ -53,21 +54,26 @@ enum AuroraLobes {
 /// texture. The extra state is either a time-constant follower of that signal
 /// (reflection afterglow) or the colour crawl, which idles slowly and speeds up
 /// with the voice. Reduce Motion removes texture, afterglow lag, crawl and glint.
+@Observable
 final class AuroraEngine {
     /// Shaped level with fast attack and controlled release.
-    private(set) var level = 0.0
+    @ObservationIgnored private(set) var level = 0.0
     /// Per-bucket smoothed heights in 0…1, all three mountains concatenated.
-    private(set) var values = [Double](repeating: 0, count: AuroraLobes.valueCount)
+    @ObservationIgnored private(set) var values = [Double](repeating: 0, count: AuroraLobes.valueCount)
     /// Slower-release copy of `values` that drives the Horizon reflection.
-    private(set) var glow = [Double](repeating: 0, count: AuroraLobes.valueCount)
+    @ObservationIgnored private(set) var glow = [Double](repeating: 0, count: AuroraLobes.valueCount)
     /// Colour-field phase, in palette cycles. Advances left → right.
-    private(set) var crawl = 0.0
+    @ObservationIgnored private(set) var crawl = 0.0
     /// Position of the travelling rim glint (0…1.4, wraps).
-    private(set) var glint = 0.0
+    @ObservationIgnored private(set) var glint = 0.0
+    /// The only observed property: flips when the mountains settle or rise,
+    /// so the view can pause its timeline instead of drawing a still frame
+    /// at full rate. Per-frame values stay unobserved to keep frames cheap.
+    private(set) var settled = true
 
-    private var texture = [Double](repeating: 1, count: AuroraLobes.valueCount)
-    private var lastTime: Double?
-    private var reduceMotion = false
+    @ObservationIgnored private var texture = [Double](repeating: 1, count: AuroraLobes.valueCount)
+    @ObservationIgnored private var lastTime: Double?
+    @ObservationIgnored private var reduceMotion = false
 
     /// True once nothing is left to animate: silent, flat and not crawling.
     var isAtRest: Bool {
@@ -91,6 +97,7 @@ final class AuroraEngine {
         fillTexture(samples)
         stepValues(target: target, dt: dt)
         stepGlow(dt: dt)
+        if isAtRest != settled { settled = isAtRest }
         guard !reduceMotion else { return }
         crawl += dt * (0.045 + 0.22 * level)
         glint += dt * (0.22 + 0.55 * level)

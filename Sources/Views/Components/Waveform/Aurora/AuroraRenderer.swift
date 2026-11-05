@@ -16,6 +16,14 @@ enum AuroraRenderer {
     static let fullBand: Band = (0.0, 4.0)
     static let margin: CGFloat = 12
 
+    // Masks are the same every frame; build them once.
+    static let reflectionMask = alphaRamp([(0.48, 0), (0.13, 0.5), (0, 1)])
+    static let crestMask = alphaRamp([(0.50, 0), (0.10, 1)])
+    static let baseMask = alphaRamp([(0.06, 0), (0.30, 1)])
+    static let edgeMask = alphaRamp([(0.44, 0), (0.06, 0.4), (0, 0.5), (0.06, 0.6), (0.44, 1)])
+    static let coreMask = alphaRamp([(0.04, 0), (0.24, 0.34), (0.14, 0.5), (0.24, 0.66), (0.04, 1)])
+    static let axisMask = alphaRamp([(0, 0), (1, 0.14), (1, 0.86), (0, 1)])
+
     static func draw(_ shape: AuroraShape, palette: AuroraPalette, engine: AuroraEngine,
                      in context: inout GraphicsContext, size: CGSize) {
         switch shape {
@@ -100,7 +108,7 @@ enum AuroraRenderer {
         context.drawLayer { layer in
             layer.fill(Path(rect), with: across(field, size))
             layer.blendMode = .destinationIn
-            layer.fill(Path(rect), with: across(alphaRamp([(0, 0), (1, 0.14), (1, 0.86), (0, 1)]), size))
+            layer.fill(Path(rect), with: across(axisMask, size))
         }
     }
 }
@@ -116,11 +124,11 @@ extension AuroraRenderer {
         let upMax = size.height * 0.52, downMax = size.height * 0.30
         let xs = Geo.xs(size, margin: margin), crawl = engine.crawl
         let zero = [CGFloat](repeating: 0, count: Geo.steps + 1)
-        let reflectionMask = alphaRamp([(0.48, 0), (0.13, 0.5), (0, 1)])
+        // Each mountain's deep field serves both its reflection and its body.
+        let deep = (0..<3).map { across(field(palette.deep, crawl: crawl, band: lobeBands[$0], alpha: 1), size) }
         for lobe in 0..<3 {
             let down = Geo.scaled(Geo.profile(engine.glow, lobe: lobe), downMax)
-            let deep = across(field(palette.deep, crawl: crawl, band: lobeBands[lobe], alpha: 1), size)
-            fill2D(&context, Geo.lens(xs, mid: mid, up: zero, down: down), field: deep,
+            fill2D(&context, Geo.lens(xs, mid: mid, up: zero, down: down), field: deep[lobe],
                    mask: reflectionMask, rows: mid...(mid + downMax))
         }
         axis(&context, size, mid: mid, field: field(palette.crest, crawl: crawl, band: fullBand, alpha: 0.55))
@@ -129,9 +137,8 @@ extension AuroraRenderer {
             let peak = max(1, up.max() ?? 1)
             let shape = Geo.lens(xs, mid: mid, up: up, down: zero)
             let crest = across(field(palette.crest, crawl: crawl, band: lobeBands[lobe], alpha: 1), size)
-            let deep = across(field(palette.deep, crawl: crawl, band: lobeBands[lobe], alpha: 1), size)
-            fill2D(&context, shape, field: crest, mask: alphaRamp([(0.50, 0), (0.10, 1)]), rows: (mid - peak)...mid)
-            fill2D(&context, shape, field: deep, mask: alphaRamp([(0.06, 0), (0.30, 1)]), rows: (mid - peak)...mid)
+            fill2D(&context, shape, field: crest, mask: crestMask, rows: (mid - peak)...mid)
+            fill2D(&context, shape, field: deep[lobe], mask: baseMask, rows: (mid - peak)...mid)
             rim(&context, Geo.edge(xs, mid: mid, offsets: up), field: crest, size: size, lobe: lobe)
             guard peak > 6 else { continue }
             let inset = up.map { max(0, $0 - min(3.0, $0 * 0.2)) }
@@ -146,8 +153,6 @@ extension AuroraRenderer {
                          _ context: inout GraphicsContext, _ size: CGSize) {
         let mid = size.height / 2, maxHalf = size.height * 0.44
         let xs = Geo.xs(size, margin: margin), crawl = engine.crawl
-        let edgeMask = alphaRamp([(0.44, 0), (0.06, 0.4), (0, 0.5), (0.06, 0.6), (0.44, 1)])
-        let coreMask = alphaRamp([(0.04, 0), (0.24, 0.34), (0.14, 0.5), (0.24, 0.66), (0.04, 1)])
         axis(&context, size, mid: mid, field: field(palette.crest, crawl: crawl, band: fullBand, alpha: 0.32))
         for lobe in 0..<3 {
             let half = Geo.scaled(Geo.profile(engine.values, lobe: lobe), maxHalf)
