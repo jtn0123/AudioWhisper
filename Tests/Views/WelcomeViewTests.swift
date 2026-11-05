@@ -28,10 +28,10 @@ final class WelcomeViewLayoutTests: XCTestCase {
     }
 
     func testStyleGridColumns() {
-        // The consolidated welcome shows the 8 waveform styles in a 4-column grid.
+        // The consolidated welcome shows the 11 waveform styles in a 4-column grid.
         let columnCount = 4
         XCTAssertEqual(columnCount, 4)
-        XCTAssertEqual(WaveformStyle.allCases.count, 8)
+        XCTAssertEqual(WaveformStyle.allCases.count, 11)
     }
 }
 

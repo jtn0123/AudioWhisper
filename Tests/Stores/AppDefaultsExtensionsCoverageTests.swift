@@ -16,7 +16,7 @@ final class AppDefaultsExtensionsCoverageTests: IsolatedXCTestCase {
         .autoBoostMicrophoneVolume, .enableSmartPaste, .playCompletionSound,
         .startAtLogin, .hasSetupParakeet, .hasSetupLocalLLM,
         .hasCompletedWelcome, .lastWelcomeVersion, .hasShownFirstModelUseHint,
-        .hasCleanedWindowState, .waveformStyle, .visualIntensity,
+        .hasCleanedWindowState, .waveformStyle, .auroraShape, .visualIntensity,
         .menuBarIconSize, .semanticCorrectionModelRepo, .maxModelStorageGB
     ]
 
@@ -133,6 +133,20 @@ final class AppDefaultsExtensionsCoverageTests: IsolatedXCTestCase {
     func testWaveformStyleInvalidValueFallsBack() {
         AppDefaults.defaults.set("not-a-style", forKey: AppDefaults.Key.waveformStyle.rawValue)
         XCTAssertEqual(AppDefaults.waveformStyle, .classic)
+    }
+
+    func testAuroraShapeDefaultsToHorizonAndRoundTrips() {
+        AppDefaults.defaults.removeObject(forKey: AppDefaults.Key.auroraShape.rawValue)
+        XCTAssertEqual(AppDefaults.auroraShape, .horizon)
+        for shape in AuroraShape.allCases {
+            AppDefaults.auroraShape = shape
+            XCTAssertEqual(AppDefaults.auroraShape, shape)
+        }
+    }
+
+    func testAuroraShapeInvalidValueFallsBack() {
+        AppDefaults.defaults.set("Triangle", forKey: AppDefaults.Key.auroraShape.rawValue)
+        XCTAssertEqual(AppDefaults.auroraShape, .horizon)
     }
 
     func testVisualIntensityInvalidValueFallsBack() {

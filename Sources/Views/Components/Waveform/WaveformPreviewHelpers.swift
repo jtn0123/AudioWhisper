@@ -160,6 +160,13 @@ internal struct WaveformStylePreview: View {
                 audioLevel: sampler.audioLevel,
                 isActive: true
             )
+        case .neonDusk, .molten, .electric:
+            AuroraWaveformView(
+                palette: style.auroraPalette ?? .neonDusk,
+                waveformSamples: sampler.samples,
+                audioLevel: sampler.audioLevel,
+                isActive: true
+            )
         }
     }
 }

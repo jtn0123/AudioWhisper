@@ -97,6 +97,7 @@ enum AppDefaults {
 
         // Visual
         case waveformStyle
+        case auroraShape
         case visualIntensity
         case menuBarIconSize
 

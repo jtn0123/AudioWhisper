@@ -6,6 +6,7 @@ import SwiftUI
 internal struct DashboardVisualsView: View {
     @AppDefault(\.waveformStyle) private var waveformStyle
     @AppDefault(\.visualIntensity) private var visualIntensity
+    @AppDefault(\.auroraShape) private var auroraShape
 
     @StateObject private var sampler: LivePreviewSampler
     @StateObject private var micCapture: MicTestCapture
@@ -44,7 +45,7 @@ internal struct DashboardVisualsView: View {
                 .tracking(-0.5)
                 .foregroundStyle(DashboardTheme.ink)
 
-            Text("Eight live previews — pick whichever feels right.")
+            Text("Live previews of every style — pick whichever feels right.")
                 .font(DashboardTheme.Fonts.sans(13, weight: .regular))
                 .foregroundStyle(DashboardTheme.inkLight)
         }
@@ -74,7 +75,30 @@ internal struct DashboardVisualsView: View {
                     }
                 }
             }
+
+            if waveformStyle.auroraPalette != nil {
+                auroraShapePicker
+            }
         }
+    }
+
+    /// Neon Dusk, Molten and Electric share a silhouette setting.
+    private var auroraShapePicker: some View {
+        HStack(spacing: DashboardTheme.Spacing.sm) {
+            Text("Shape")
+                .font(DashboardTheme.Fonts.sans(12, weight: .medium))
+                .foregroundStyle(DashboardTheme.inkMuted)
+            Picker("Aurora shape", selection: $auroraShape) {
+                ForEach(AuroraShape.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            Text(auroraShape.description)
+                .font(DashboardTheme.Fonts.sans(12, weight: .regular))
+                .foregroundStyle(DashboardTheme.inkLight)
+        }
+        .padding(.top, DashboardTheme.Spacing.xs)
     }
 
     // MARK: - Big preview window

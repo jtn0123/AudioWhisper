@@ -254,6 +254,13 @@ struct WaveformContainer: View {
                 audioLevel: audioLevel,
                 isActive: isRecording
             )
+        case .neonDusk, .molten, .electric:
+            AuroraWaveformView(
+                palette: style.auroraPalette ?? .neonDusk,
+                waveformSamples: waveformSamples,
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
         }
     }
 
