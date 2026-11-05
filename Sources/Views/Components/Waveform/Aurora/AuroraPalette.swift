@@ -69,11 +69,4 @@ enum AuroraShape: String, CaseIterable, Identifiable, Codable {
     case lens = "Lens"
 
     var id: String { rawValue }
-
-    var description: String {
-        switch self {
-        case .horizon: return "Mountains over a glowing horizon"
-        case .lens: return "Mirrored glass lenses"
-        }
-    }
 }

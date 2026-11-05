@@ -164,26 +164,6 @@ internal class PermissionManager {
         }
     }
 
-    /// Handle response from AccessibilityPermissionModal
-    func handleAccessibilityModalResponse(allowed: Bool) {
-        guard !permissionRequestInProgress else { return }
-        showAccessibilityModal = false
-
-        if allowed {
-            // User wants to grant permission - open System Settings
-            accessibilityPermissionState = .requesting
-            accessibilityManager.requestPermissionDirect { [weak self] granted in
-                Task { @MainActor [weak self] in
-                    self?.accessibilityPermissionState = granted ? .granted : .denied
-                }
-            }
-        } else {
-            // User chose "Don't Allow" - permanently disable SmartPaste
-            AppDefaults.enableSmartPaste = false
-            // No longer need accessibility permission since SmartPaste is disabled
-        }
-    }
-
     private func beginMicrophoneRequest(includeAccessibility: Bool) {
         if microphonePermissionState.needsRequest {
             // Reserve the request before yielding, including in the simulated
@@ -236,18 +216,5 @@ internal class PermissionManager {
               !permissionRequestInProgress,
               !permissionModalIsPresented else { return }
         showAccessibilityModal = true
-    }
-
-    func openSystemSettings() {
-        // Skip actual system settings in test environment
-        if isTestEnvironment {
-            return
-        }
-
-        // Open the main Privacy & Security preferences
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security") else {
-            return
-        }
-        NSWorkspace.shared.open(url)
     }
 }

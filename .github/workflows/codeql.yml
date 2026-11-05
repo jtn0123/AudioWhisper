@@ -58,7 +58,6 @@ jobs:
             -e "s/BUNDLED_UV_SHA256_PLACEHOLDER//g" \
             -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
             -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
-            -e "s/BUILD_DATE_PLACEHOLDER/$(date -u +%Y-%m-%d)/g" \
             Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
 
     - name: Initialize CodeQL

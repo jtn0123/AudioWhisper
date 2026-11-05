@@ -1,4 +1,5 @@
-import Foundation
+// swiftlint:disable:next unused_import - verified required: pow/exp/tanh fail to resolve without it under SwiftPM
+import Darwin
 
 /// Signal maths shared by the Aurora engine.
 enum AuroraSignal {

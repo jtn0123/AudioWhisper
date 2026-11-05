@@ -1,5 +1,3 @@
-import Foundation
-
 /// How long to wait for each daemon request before giving up and restarting
 /// the daemon. One fixed 60-second limit used to kill legitimate work: a
 /// 4,096-token cleanup on the 27B model, or a long Parakeet file, runs for

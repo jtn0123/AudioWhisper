@@ -1,5 +1,4 @@
 import SwiftUI
-import XCTest
 @testable import AudioWhisper
 
 // The non-classic styles, split out of WaveformSnapshotTests to keep each type
