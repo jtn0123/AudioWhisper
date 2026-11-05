@@ -38,6 +38,14 @@ internal actor MLDaemonManager {
     // `private` is file-scoped, so a cross-file extension cannot see it.
     struct PendingRequest {
         let completion: (Result<Data, Error>) -> Void
+        /// The request's deadline. Cancelled on completion so a finished
+        /// request doesn't leave a sleeping task behind for the full timeout.
+        var timeout: Task<Void, Never>?
+
+        func complete(_ result: Result<Data, Error>) {
+            timeout?.cancel()
+            completion(result)
+        }
     }
 
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
@@ -212,8 +220,8 @@ internal actor MLDaemonManager {
                     Task { await self?.handleWriteFailure(requestID: requestID, error: error, sessionID: session) }
                 }
             }
-            Task { [weak self] in
-                try? await Task.sleep(nanoseconds: timeoutNanos)
+            self.pending[requestID]?.timeout = Task { [weak self] in
+                guard (try? await Task.sleep(nanoseconds: timeoutNanos)) != nil else { return }
                 await self?.requestTimedOut(requestID, sessionID: session)
             }
             }
@@ -223,7 +231,7 @@ internal actor MLDaemonManager {
     }
 
     func cancelRequest(_ id: Int) {
-        pending.removeValue(forKey: id)?.completion(.failure(CancellationError()))
+        pending.removeValue(forKey: id)?.complete(.failure(CancellationError()))
     }
 
     private func requestTimedOut(_ id: Int, sessionID: UUID) async {
@@ -286,12 +294,12 @@ internal actor MLDaemonManager {
         }
 
         if let message = envelope.error?.message {
-            pendingRequest.completion(.failure(MLDaemonError.remoteError(message)))
+            pendingRequest.complete(.failure(MLDaemonError.remoteError(message)))
             return
         }
 
         guard let result = envelope.result, !result.isNull else {
-            pendingRequest.completion(.failure(MLDaemonError.invalidResponse("Missing result")))
+            pendingRequest.complete(.failure(MLDaemonError.invalidResponse("Missing result")))
             return
         }
 
@@ -305,9 +313,9 @@ internal actor MLDaemonManager {
                 restartAttempts = 0
             }
             restartLimitHitAt = nil
-            pendingRequest.completion(.success(resultData))
+            pendingRequest.complete(.success(resultData))
         } catch {
-            pendingRequest.completion(.failure(MLDaemonError.invalidResponse(error.localizedDescription)))
+            pendingRequest.complete(.failure(MLDaemonError.invalidResponse(error.localizedDescription)))
         }
     }
 
@@ -361,10 +369,10 @@ internal extension MLDaemonManager {
 
     /// Inserts a pending request directly so tests can drive `handle(line:)`
     /// and `completeAllPending(with:)` without a live subprocess.
-    func injectPending(id: Int, completion: @escaping (Result<Data, Error>) -> Void) {
-        pending[id] = PendingRequest(
-            completion: completion
-        )
+    func injectPending(
+        id: Int, timeout: Task<Void, Never>? = nil, completion: @escaping (Result<Data, Error>) -> Void
+    ) {
+        pending[id] = PendingRequest(completion: completion, timeout: timeout)
     }
 
     /// Number of currently pending requests — test introspection only.

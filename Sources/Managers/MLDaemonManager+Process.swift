@@ -299,7 +299,7 @@ internal extension MLDaemonManager {
 
     func completeAllPending(with error: Error) {
         for (_, pendingRequest) in pending {
-            pendingRequest.completion(.failure(error))
+            pendingRequest.complete(.failure(error))
         }
         pending.removeAll()
     }
