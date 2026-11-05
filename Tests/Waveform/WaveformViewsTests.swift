@@ -99,8 +99,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .ready,
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0, count: 8)
         )
 
         XCTAssertNotNil(container)
@@ -111,8 +110,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0.5, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0.5, count: 8)
         )
 
         XCTAssertNotNil(container)
@@ -123,8 +121,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .processing( "Transcribing..."),
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
 
         XCTAssertNotNil(container)
@@ -135,8 +132,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .success,
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
 
         XCTAssertNotNil(container)
@@ -147,8 +143,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .error( "Failed"),
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
 
         XCTAssertNotNil(container)

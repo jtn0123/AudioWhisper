@@ -48,7 +48,7 @@ struct RebuildRecorderView: View {
                 audioLevel: recorder.audioLevel, waveformSamples: recorder.waveformSamples,
                 frequencyBands: recorder.frequencyBands, showsStatusRow: false,
                 showsGlassBackground: false, backgroundColor: RebuildTheme.hudWaveformBackground,
-                waveformColor: RebuildTheme.hudWaveformForeground, onTap: session.toggleRecording
+                waveformColor: RebuildTheme.hudWaveformForeground
             )
             .frame(height: 70)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
