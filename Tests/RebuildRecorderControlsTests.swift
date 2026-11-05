@@ -1,11 +1,13 @@
 import XCTest
 @testable import AudioWhisper
 
-/// The recorder HUD's controls: it appears while the microphone starts (C5).
+/// The recorder HUD's controls: it appears while the microphone starts (C5)
+/// and Esc does what its tooltip promises (C4).
 @MainActor
 final class RebuildRecorderControlsTests: IsolatedXCTestCase {
     private var session: RebuildSession!
     private var shown = 0
+    private var cancels = 0
     private var release: CheckedContinuation<Bool, Never>?
 
     override func setUp() {
@@ -14,10 +16,11 @@ final class RebuildRecorderControlsTests: IsolatedXCTestCase {
         AppDefaults.playCompletionSound = false
         AppDefaults.immediateRecording = false
         shown = 0
+        cancels = 0
         var services = RebuildSessionServices(
             start: { _ in true },
             stop: { FileManager.default.temporaryDirectory.appendingPathComponent("controls-\(UUID()).wav") },
-            cancel: {},
+            cancel: { self.cancels += 1 },
             transcribe: { _, _, _ in TranscriptionResult(text: "Words", correctionOutcome: nil) },
             copy: { _ in }, save: { _, _, _ in }, interruptionSource: nil)
         services.startAsync = { _ in await withCheckedContinuation { self.release = $0 } }
@@ -53,5 +56,38 @@ final class RebuildRecorderControlsTests: IsolatedXCTestCase {
         session.toggleRecording()
         try await waitForStart()
         XCTAssertEqual(shown, 0)
+    }
+
+    func testEscapeCancelsWhileTheMicrophoneStarts() async throws {
+        session.toggleRecording()
+        try await waitForStart()
+        session.handleEscape()
+        XCTAssertEqual(session.phase, .idle)
+        XCTAssertEqual(cancels, 1)
+    }
+
+    func testEscapeCancelsARecording() async throws {
+        session.toggleRecording()
+        try await waitForStart()
+        release?.resume(returning: true)
+        release = nil
+        for _ in 0..<200 where session.phase != .recording { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(session.phase, .recording)
+        session.handleEscape()
+        XCTAssertEqual(session.phase, .idle)
+    }
+
+    func testEscapeDismissesAnOutcomeInsteadOfCancelling() {
+        session.presentFailure("Something broke")
+        XCTAssertNotNil(session.recorderOutcome)
+        session.handleEscape()
+        XCTAssertNil(session.recorderOutcome)
+        XCTAssertEqual(session.phase, .failed, "Dismissing doesn't reset the failed dictation")
+    }
+
+    func testEscapeDoesNothingWhenIdle() {
+        session.handleEscape()
+        XCTAssertEqual(session.phase, .idle)
+        XCTAssertEqual(cancels, 0)
     }
 }

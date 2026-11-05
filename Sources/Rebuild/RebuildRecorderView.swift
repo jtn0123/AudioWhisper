@@ -46,7 +46,7 @@ struct RebuildRecorderView: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(RebuildTheme.hudBorder))
         .environment(\.colorScheme, .dark)
         .tint(RebuildTheme.hudAccent)
-        .onExitCommand(perform: session.recorderOutcome == nil ? session.cancel : session.dismissOutcome)
+        .onExitCommand(perform: session.handleEscape)
     }
 
     private var capture: some View {
