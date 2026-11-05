@@ -27,6 +27,11 @@ enum RebuildRecorderOutcome: Equatable {
         }
     }
 
+    var isFailure: Bool {
+        if case .failed = self { return true }
+        return false
+    }
+
     /// Failures carry more to read than the paste hint.
     var displaySeconds: Double {
         switch self {
