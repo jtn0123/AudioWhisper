@@ -479,18 +479,27 @@ if [ "$NOTARIZE" = true ]; then
   echo ""
   echo "🔐 Starting notarization process..."
 
-  # Check for required environment variables
-  if [ -z "$AUDIO_WHISPER_APPLE_ID" ] || [ -z "$AUDIO_WHISPER_APPLE_PASSWORD" ] || [ -z "$AUDIO_WHISPER_TEAM_ID" ]; then
-    echo "❌ Notarization requires the following environment variables:"
-    echo "   AUDIO_WHISPER_APPLE_ID - Your Apple ID email"
-    echo "   AUDIO_WHISPER_APPLE_PASSWORD - App-specific password for notarization"
-    echo "   AUDIO_WHISPER_TEAM_ID - Your Apple Developer Team ID"
-    echo ""
-    echo "To create an app-specific password:"
-    echo "1. Go to https://appleid.apple.com/account/manage"
-    echo "2. Sign in and go to Security > App-Specific Passwords"
-    echo "3. Generate a new password for AudioWhisper notarization"
-    echo ""
+  # Credentials never go on the command line, where `ps` would show them.
+  # Either a notarytool keychain profile (local) or an App Store Connect API
+  # key file (CI). Create the profile once with:
+  #   xcrun notarytool store-credentials AudioWhisper --apple-id <email> --team-id <TEAM>
+  NOTARY_AUTH=()
+  if [ -n "${AUDIO_WHISPER_NOTARY_PROFILE:-}" ]; then
+    NOTARY_AUTH=(--keychain-profile "$AUDIO_WHISPER_NOTARY_PROFILE")
+  elif [ -n "${AUDIO_WHISPER_NOTARY_KEY:-}" ] && [ -n "${AUDIO_WHISPER_NOTARY_KEY_ID:-}" ] \
+    && [ -n "${AUDIO_WHISPER_NOTARY_ISSUER:-}" ]; then
+    NOTARY_AUTH=(--key "$AUDIO_WHISPER_NOTARY_KEY" --key-id "$AUDIO_WHISPER_NOTARY_KEY_ID"
+      --issuer "$AUDIO_WHISPER_NOTARY_ISSUER")
+  else
+    echo "❌ Notarization needs credentials, set one of:"
+    echo "   AUDIO_WHISPER_NOTARY_PROFILE - a notarytool keychain profile name. Create it once with:"
+    echo "     xcrun notarytool store-credentials AudioWhisper --apple-id <email> --team-id <TEAM_ID>"
+    echo "   or, for CI, an App Store Connect API key:"
+    echo "   AUDIO_WHISPER_NOTARY_KEY (path to the .p8), AUDIO_WHISPER_NOTARY_KEY_ID, AUDIO_WHISPER_NOTARY_ISSUER"
+    if [ -n "${AUDIO_WHISPER_APPLE_PASSWORD:-}" ]; then
+      echo ""
+      echo "   AUDIO_WHISPER_APPLE_PASSWORD is no longer used: passing it to notarytool exposed it in the process list."
+    fi
     exit 1
   fi
 
@@ -507,11 +516,7 @@ if [ "$NOTARIZE" = true ]; then
 
   # Submit for notarization
   echo "📤 Submitting to Apple for notarization..."
-  xcrun notarytool submit AudioWhisper.zip \
-    --apple-id "$AUDIO_WHISPER_APPLE_ID" \
-    --password "$AUDIO_WHISPER_APPLE_PASSWORD" \
-    --team-id "$AUDIO_WHISPER_TEAM_ID" \
-    --wait 2>&1 | tee notarization.log
+  xcrun notarytool submit AudioWhisper.zip "${NOTARY_AUTH[@]}" --wait 2>&1 | tee notarization.log
 
   # Check if notarization was successful
   if grep -q "status: Accepted" notarization.log; then
@@ -529,8 +534,7 @@ if [ "$NOTARIZE" = true ]; then
     echo ""
     echo "Common issues:"
     echo "- Ensure your Apple ID has accepted all developer agreements"
-    echo "- Check that your app-specific password is correct"
-    echo "- Verify your Team ID is correct"
+    echo "- Check the keychain profile or API key still works: xcrun notarytool history ${NOTARY_AUTH[*]:0:2}"
     exit 1
   fi
 
