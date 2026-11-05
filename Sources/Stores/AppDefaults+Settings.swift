@@ -158,6 +158,13 @@ extension AppDefaults {
         set { defaults.set(newValue, forKey: Key.lowerOtherAudioWhileRecording.rawValue) }
     }
 
+    /// Keeps the microphone running between recordings. Off by default: the
+    /// microphone stays on, and macOS shows that it is in use.
+    static var keepMicrophoneReady: Bool {
+        get { defaults.bool(forKey: Key.keepMicrophoneReady.rawValue) }
+        set { defaults.set(newValue, forKey: Key.keepMicrophoneReady.rawValue) }
+    }
+
     /// Output volumes `OutputDucker` lowered and has not yet put back, by
     /// device UID.
     static var loweredOutputVolumes: [String: OutputDucker.Lowered] {
