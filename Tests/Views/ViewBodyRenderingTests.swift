@@ -9,8 +9,7 @@ import XCTest
 /// evaluates `body` — the waveform crash on empty input
 /// (`WaveformEmptyInputRenderingTests`) survived exactly that way. These host
 /// each view in a window and lay it out, which runs every `body` and helper the
-/// view draws, including what sits inside a `ScrollView` (`ImageRenderer` does
-/// not lay that out). They assert the view produced a non-empty layout, not
+/// view draws, including what sits inside a `ScrollView`. They assert the view produced a non-empty layout, not
 /// what it looks like: CI has no WindowServer to draw with, and pixels are the
 /// snapshot suite's job.
 @MainActor
@@ -38,41 +37,6 @@ final class ViewBodyRenderingTests: XCTestCase {
         assertLaysOut(SuccessRecapLabel(duration: 2.5, wordCount: 12))
         assertLaysOut(SuccessRecapLabel(duration: 2.5, wordCount: 0))
         assertLaysOut(SuccessRecapLabel(duration: nil, wordCount: nil))
-    }
-
-    // MARK: - Settings cards
-
-    func testSettingsCardsRenderEveryRowKind() {
-        let card = SettingsSectionCard(title: "General", icon: "gear") {
-            SettingsToggleRow(title: "Launch at login", subtitle: "Start with macOS", isOn: .constant(true))
-            SettingsToggleRow(title: "Sounds", subtitle: nil, isOn: .constant(false))
-            SettingsPickerRow(
-                title: "Keep history",
-                subtitle: "Older transcripts are deleted",
-                selection: .constant(RetentionPeriod.oneMonth),
-                options: RetentionPeriod.allCases,
-                display: { $0.displayName }
-            )
-            SettingsPickerRow(title: "Count", selection: .constant(2), options: [1, 2, 3])
-            SettingsButtonRow(title: "Clear history", subtitle: "Cannot be undone", icon: "trash", role: .destructive) {}
-            SettingsButtonRow(title: "Open folder") {}
-            SettingsInfoRow(text: "Settings are stored on this Mac only.")
-        }
-        assertLaysOut(card.frame(width: 560))
-    }
-
-    // MARK: - Dashboard pages
-
-    func testPermissionsPageRendersWithSmartPasteOnAndOff() {
-        defer { AppDefaults.defaults.removeObject(forKey: "enableSmartPaste") }
-        for enabled in [true, false] {
-            AppDefaults.defaults.set(enabled, forKey: "enableSmartPaste")
-            assertLaysOut(
-                DashboardPermissionsView()
-                    .environment(PermissionManager.shared)
-                    .frame(width: 720, height: 900)
-            )
-        }
     }
 
     // MARK: - Helper

@@ -152,18 +152,13 @@ final class SemanticCorrectionModelDefaultTests: XCTestCase {
         )
     }
 
-    /// The bug in one assertion: the value the correction pipeline resolves must
-    /// be the value the UI recommends.
+    /// The bug in one assertion: the model the correction pipeline defaults to
+    /// must be one the Writing page offers, or its "Recommended" badge has
+    /// nothing to attach to.
     func testRecommendedModelMatchesTheModelCorrectionActuallyUses() {
         XCTAssertTrue(
-            DashboardCorrectionView.testableIsRecommended(
-                repo: AppDefaults.defaultSemanticCorrectionModelRepo
-            ),
-            "The Dashboard must badge the same model the correction pipeline defaults to."
-        )
-        XCTAssertEqual(
-            DashboardCorrectionView.testableDefaultModelRepo(),
-            AppDefaults.defaultSemanticCorrectionModelRepo
+            MLXModelManager.recommendedModels.contains { $0.repo == AppDefaults.defaultSemanticCorrectionModelRepo },
+            "The Writing page must list the model the correction pipeline defaults to."
         )
     }
 

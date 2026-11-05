@@ -14,16 +14,3 @@ internal class ChromelessWindow: NSPanel {
     override var canBecomeMain: Bool { false }
     override var acceptsFirstResponder: Bool { true }
 }
-
-internal class RecordingWindowDelegate: NSObject, NSWindowDelegate {
-    private let onClose: () -> Void
-
-    init(onClose: @escaping () -> Void) {
-        self.onClose = onClose
-        super.init()
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        onClose()
-    }
-}

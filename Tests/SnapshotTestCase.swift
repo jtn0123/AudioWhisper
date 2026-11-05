@@ -77,9 +77,6 @@ class SnapshotTestCase: XCTestCase {
         let content = view
             .frame(width: size.width, height: size.height)
             .environment(\.colorScheme, colorScheme)
-            // ScrollableContent drops its ScrollView wrapper when this is set.
-            .environment(\.flattensScrollViews, true)
-            .environmentObject(WindowCoordinator.shared)
             .environment(MLXModelManager.shared)
             .environment(PermissionManager.shared)
         
