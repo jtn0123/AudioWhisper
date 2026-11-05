@@ -87,25 +87,6 @@ final class StringProcessingPerformanceTests: XCTestCase {
     }
 }
 
-// MARK: - Layout Metrics Performance Tests
-final class LayoutMetricsPerformanceTests: XCTestCase {
-
-    func testLayoutMetricsAccessPerformance() {
-        measure {
-            for _ in 0..<10000 {
-                _ = LayoutMetrics.RecordingWindow.size
-                _ = LayoutMetrics.RecordingWindow.cornerRadius
-                _ = LayoutMetrics.DashboardWindow.initialSize
-                _ = LayoutMetrics.DashboardWindow.minimumSize
-                _ = LayoutMetrics.DashboardWindow.sidebarWidth
-                _ = LayoutMetrics.TranscriptionHistory.minimumSize
-                _ = LayoutMetrics.Welcome.windowSize
-            }
-        }
-    }
-}
-
-// MARK: - Localized Strings Performance Tests
 final class LocalizedStringsPerformanceTests: XCTestCase {
 
     func testLocalizedStringsAccessPerformance() {

@@ -121,8 +121,8 @@ internal enum ModelVerificationService {
         process.standardOutput = out
         process.standardError = err
 
-        var stdoutTask: Task<Data, Never>?
-        var stderrTask: Task<Data, Never>?
+        var stdoutReader: PipeReader?
+        var stderrReader: PipeReader?
         var timeoutTask: Task<Void, Error>?
         defer {
             timeoutTask?.cancel()
@@ -148,8 +148,10 @@ internal enum ModelVerificationService {
 
                 // Drain concurrently while the child runs so full pipes cannot
                 // deadlock it. Decode complete output after exit and stream EOF.
-                stdoutTask = Task.detached { out.fileHandleForReading.readDataToEndOfFile() }
-                stderrTask = Task.detached { err.fileHandleForReading.readDataToEndOfFile() }
+                // Read on dispatch threads: a blocking read inside a Task would
+                // hold a cooperative-pool thread for the whole verification.
+                stdoutReader = PipeReader(handle: out.fileHandleForReading)
+                stderrReader = PipeReader(handle: err.fileHandleForReading)
 
                 timeoutTask = Task {
                     try await Task.sleep(for: timeout)
@@ -166,8 +168,8 @@ internal enum ModelVerificationService {
         }
         timeoutTask?.cancel()
 
-        let stdoutData = await stdoutTask?.value ?? Data()
-        let stderrData = await stderrTask?.value ?? Data()
+        let stdoutData = await stdoutReader?.read() ?? Data()
+        let stderrData = await stderrReader?.read() ?? Data()
         var collector = VerificationOutputCollector()
         if let stdout = String(data: stdoutData, encoding: .utf8) {
             collector.ingestStdout(stdout)

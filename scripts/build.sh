@@ -66,10 +66,6 @@ cat >AudioWhisper.entitlements <<'EOF'
 <dict>
     <key>com.apple.security.device.audio-input</key>
     <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
 </dict>
 </plist>
 EOF
@@ -120,7 +116,6 @@ bash "$SCRIPT_DIR/prepare-uv.sh" || exit 1
 
 # Generate version info
 GIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-BUILD_DATE=$(date '+%Y-%m-%d')
 
 # Capture bundled uv version (best effort — empty string if uv missing)
 BUNDLED_UV_VERSION=""
@@ -174,7 +169,6 @@ if [ -f "Sources/VersionInfo.swift.template" ]; then
     -e "s/BUNDLED_UV_SHA256_PLACEHOLDER/$BUNDLED_UV_SHA256/g" \
     -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
     -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
-    -e "s/BUILD_DATE_PLACEHOLDER/$BUILD_DATE/g" \
     Sources/VersionInfo.swift.template >Sources/Utilities/VersionInfo.swift
   echo "Generated VersionInfo.swift from template"
 else
@@ -185,7 +179,6 @@ import Foundation
 struct VersionInfo {
     static let version = "$VERSION"
     static let gitHash = "$GIT_HASH"
-    static let buildDate = "$BUILD_DATE"
     static let bundledUvVersion = "$BUNDLED_UV_VERSION"
     static let bundledUvSha256 = "$BUNDLED_UV_SHA256"
 
@@ -195,18 +188,6 @@ struct VersionInfo {
             return "\(version) (\(shortHash))"
         }
         return version
-    }
-
-    static var fullVersionInfo: String {
-        var info = "AudioWhisper \(version)"
-        if gitHash != "unknown" && !gitHash.isEmpty {
-            let shortHash = String(gitHash.prefix(7))
-            info += " • \(shortHash)"
-        }
-        if buildDate.count > 0 {
-            info += " • \(buildDate)"
-        }
-        return info
     }
 }
 EOF
@@ -402,8 +383,6 @@ cat >"$APP_BUNDLE/Contents/Info.plist" <<EOF
     <string>14.0</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>AudioWhisper needs access to your microphone to record audio for transcription.</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>AudioWhisper needs accessibility access to monitor global keyboard shortcuts for quick recording.</string>
     <key>CFBundleURLTypes</key>
     <array><dict><key>CFBundleURLName</key><string>com.audiowhisper.navigation</string>
     <key>CFBundleURLSchemes</key><array><string>audiowhisper</string></array></dict></array>
@@ -500,18 +479,27 @@ if [ "$NOTARIZE" = true ]; then
   echo ""
   echo "🔐 Starting notarization process..."
 
-  # Check for required environment variables
-  if [ -z "$AUDIO_WHISPER_APPLE_ID" ] || [ -z "$AUDIO_WHISPER_APPLE_PASSWORD" ] || [ -z "$AUDIO_WHISPER_TEAM_ID" ]; then
-    echo "❌ Notarization requires the following environment variables:"
-    echo "   AUDIO_WHISPER_APPLE_ID - Your Apple ID email"
-    echo "   AUDIO_WHISPER_APPLE_PASSWORD - App-specific password for notarization"
-    echo "   AUDIO_WHISPER_TEAM_ID - Your Apple Developer Team ID"
-    echo ""
-    echo "To create an app-specific password:"
-    echo "1. Go to https://appleid.apple.com/account/manage"
-    echo "2. Sign in and go to Security > App-Specific Passwords"
-    echo "3. Generate a new password for AudioWhisper notarization"
-    echo ""
+  # Credentials never go on the command line, where `ps` would show them.
+  # Either a notarytool keychain profile (local) or an App Store Connect API
+  # key file (CI). Create the profile once with:
+  #   xcrun notarytool store-credentials AudioWhisper --apple-id <email> --team-id <TEAM>
+  NOTARY_AUTH=()
+  if [ -n "${AUDIO_WHISPER_NOTARY_PROFILE:-}" ]; then
+    NOTARY_AUTH=(--keychain-profile "$AUDIO_WHISPER_NOTARY_PROFILE")
+  elif [ -n "${AUDIO_WHISPER_NOTARY_KEY:-}" ] && [ -n "${AUDIO_WHISPER_NOTARY_KEY_ID:-}" ] \
+    && [ -n "${AUDIO_WHISPER_NOTARY_ISSUER:-}" ]; then
+    NOTARY_AUTH=(--key "$AUDIO_WHISPER_NOTARY_KEY" --key-id "$AUDIO_WHISPER_NOTARY_KEY_ID"
+      --issuer "$AUDIO_WHISPER_NOTARY_ISSUER")
+  else
+    echo "❌ Notarization needs credentials, set one of:"
+    echo "   AUDIO_WHISPER_NOTARY_PROFILE - a notarytool keychain profile name. Create it once with:"
+    echo "     xcrun notarytool store-credentials AudioWhisper --apple-id <email> --team-id <TEAM_ID>"
+    echo "   or, for CI, an App Store Connect API key:"
+    echo "   AUDIO_WHISPER_NOTARY_KEY (path to the .p8), AUDIO_WHISPER_NOTARY_KEY_ID, AUDIO_WHISPER_NOTARY_ISSUER"
+    if [ -n "${AUDIO_WHISPER_APPLE_PASSWORD:-}" ]; then
+      echo ""
+      echo "   AUDIO_WHISPER_APPLE_PASSWORD is no longer used: passing it to notarytool exposed it in the process list."
+    fi
     exit 1
   fi
 
@@ -528,11 +516,7 @@ if [ "$NOTARIZE" = true ]; then
 
   # Submit for notarization
   echo "📤 Submitting to Apple for notarization..."
-  xcrun notarytool submit AudioWhisper.zip \
-    --apple-id "$AUDIO_WHISPER_APPLE_ID" \
-    --password "$AUDIO_WHISPER_APPLE_PASSWORD" \
-    --team-id "$AUDIO_WHISPER_TEAM_ID" \
-    --wait 2>&1 | tee notarization.log
+  xcrun notarytool submit AudioWhisper.zip "${NOTARY_AUTH[@]}" --wait 2>&1 | tee notarization.log
 
   # Check if notarization was successful
   if grep -q "status: Accepted" notarization.log; then
@@ -550,8 +534,7 @@ if [ "$NOTARIZE" = true ]; then
     echo ""
     echo "Common issues:"
     echo "- Ensure your Apple ID has accepted all developer agreements"
-    echo "- Check that your app-specific password is correct"
-    echo "- Verify your Team ID is correct"
+    echo "- Check the keychain profile or API key still works: xcrun notarytool history ${NOTARY_AUTH[*]:0:2}"
     exit 1
   fi
 

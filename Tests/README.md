@@ -63,11 +63,10 @@ file covers behaviour.
 
 | Directory | Contents |
 |---|---|
-| `AppDelegate/` | the app delegate's extensions: hotkeys, lifecycle, menu, notifications, recording window |
 | `Integration/` | multi-component flows, plus the opt-in `ParakeetEndToEndTests` |
 | `Mocks/` | test doubles for audio, model managers, data, speech-to-text, uv, windows |
-| `Views/`, `Waveform/`, `Design/` | SwiftUI view logic and layout |
-| `Stores/`, `Models/`, `ViewModels/`, `Utilities/` | as named |
+| `Views/`, `Waveform/` | SwiftUI view logic and layout |
+| `Stores/`, `Models/`, `Utilities/` | as named |
 | `Resources/` | `speech_sample.wav` (a spoken sentence, for the end-to-end test) and `test_audio.wav` (a 0.1 s tone, for audio decoding) |
 | `__Snapshots__/` | UI snapshot baselines (local-only; see below) |
 
@@ -86,13 +85,13 @@ it) is also type-checked with `make typecheck` (mypy `--strict`).
 ## Snapshot tests (local only)
 
 ```bash
-SNAPSHOT_TESTS=1  swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # check
-SNAPSHOT_RECORD=1 swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # re-record
+SNAPSHOT_TESTS=1  swift test --no-parallel -Xswiftc -DTESTING --filter "RebuildSnapshotTests|WaveformSnapshotTests"   # check
+SNAPSHOT_RECORD=1 swift test --no-parallel -Xswiftc -DTESTING --filter "RebuildSnapshotTests|WaveformSnapshotTests"   # re-record
 ```
 
 They are skipped unless opted in, and never run in CI: a GitHub runner has no
 usable WindowServer, so its renders are placeholders. CLAUDE.md lists the rules
-for adding one (`ScrollableContent` instead of `ScrollView`, pinned dates).
+for adding one (no `ImageRenderer`, pinned dates).
 
 ## End-to-end (opt-in, nightly)
 

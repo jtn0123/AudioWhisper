@@ -99,8 +99,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .ready,
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0, count: 8)
         )
 
         XCTAssertNotNil(container)
@@ -111,8 +110,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0.5, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0.5, count: 8)
         )
 
         XCTAssertNotNil(container)
@@ -123,8 +121,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .processing( "Transcribing..."),
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
 
         XCTAssertNotNil(container)
@@ -135,8 +132,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .success,
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
 
         XCTAssertNotNil(container)
@@ -147,8 +143,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
             status: .error( "Failed"),
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
 
         XCTAssertNotNil(container)
@@ -159,7 +154,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
     func testWaveformStyleAllCases() {
         let styles = WaveformStyle.allCases
 
-        XCTAssertEqual(styles.count, 8)
+        XCTAssertEqual(styles.count, 11)
         XCTAssertTrue(styles.contains(.classic))
         XCTAssertTrue(styles.contains(.neon))
         XCTAssertTrue(styles.contains(.spectrum))
@@ -168,6 +163,7 @@ final class WaveformViewsTests: IsolatedXCTestCase {
         XCTAssertTrue(styles.contains(.halo))
         XCTAssertTrue(styles.contains(.dial))
         XCTAssertTrue(styles.contains(.heartbeat))
+        for aurora in [WaveformStyle.neonDusk, .molten, .electric] { XCTAssertTrue(styles.contains(aurora)) }
     }
 
     func testWaveformStyleRawValues() {

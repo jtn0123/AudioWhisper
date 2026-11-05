@@ -50,30 +50,36 @@ struct RebuildModelsView: View {
 
     private var microphoneStep: some View {
         let granted = session.readiness.microphoneGranted
-        let status: String
-        if session.readiness.checking {
-            status = "Checking microphone access…"
-        } else {
-            status = granted ? "Microphone allowed" : "Microphone access needed"
-        }
+        let denied = session.readiness.microphoneDenied
         return VStack(alignment: .leading, spacing: 10) {
             RebuildStepHeader(number: 1, title: "Microphone access", done: granted)
             HStack(spacing: 10) {
                 RebuildStatusLabel(
-                    text: status,
-                    tone: granted ? .success : .warning, busy: session.isRequestingMicrophone || session.readiness.checking)
+                    text: microphoneStatus, tone: granted ? .success : .warning,
+                    busy: session.isRequestingMicrophone || session.readiness.checking)
                 Spacer()
                 if !granted {
-                    Button(
-                        session.isRequestingMicrophone ? "Waiting for macOS…" : "Allow microphone",
-                        action: session.requestMicrophone
-                    )
-                    .disabled(session.isRequestingMicrophone).buttonStyle(.borderedProminent)
+                    Button(microphoneButtonTitle, action: session.requestMicrophone)
+                        .disabled(session.isRequestingMicrophone).buttonStyle(.borderedProminent)
                 }
             }
-            Text("Requested only when you click Allow. The recording shortcut never opens a permission dialog.")
+            Text(denied
+                 ? "In Privacy & Security → Microphone, switch on AudioWhisper, then come back here."
+                 : "Requested only when you click Allow. The recording shortcut never opens a permission dialog.")
                 .font(.system(size: 11.5)).foregroundStyle(RebuildTheme.secondaryText)
         }.rebuildCard()
+    }
+
+    private var microphoneStatus: String {
+        if session.readiness.checking { return "Checking microphone access…" }
+        if session.readiness.microphoneGranted { return "Microphone allowed" }
+        return session.readiness.microphoneDenied ? "Microphone access is off" : "Microphone access needed"
+    }
+
+    /// After a refusal macOS won't ask again, so the button says where it goes.
+    private var microphoneButtonTitle: String {
+        if session.isRequestingMicrophone { return "Waiting for macOS…" }
+        return session.readiness.microphoneDenied ? "Open Privacy Settings…" : "Allow microphone"
     }
 
     // MARK: Step 2

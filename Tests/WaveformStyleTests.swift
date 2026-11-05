@@ -25,7 +25,7 @@ final class WaveformStyleTests: IsolatedXCTestCase {
 
     func testAllCasesExist() {
         let allCases = WaveformStyle.allCases
-        XCTAssertEqual(allCases.count, 8)
+        XCTAssertEqual(allCases.count, 11)
         XCTAssertTrue(allCases.contains(.classic))
         XCTAssertTrue(allCases.contains(.neon))
         XCTAssertTrue(allCases.contains(.spectrum))
@@ -34,6 +34,9 @@ final class WaveformStyleTests: IsolatedXCTestCase {
         XCTAssertTrue(allCases.contains(.halo))
         XCTAssertTrue(allCases.contains(.dial))
         XCTAssertTrue(allCases.contains(.heartbeat))
+        XCTAssertTrue(allCases.contains(.neonDusk))
+        XCTAssertTrue(allCases.contains(.molten))
+        XCTAssertTrue(allCases.contains(.electric))
     }
 
     func testRawValues() {
@@ -45,6 +48,9 @@ final class WaveformStyleTests: IsolatedXCTestCase {
         XCTAssertEqual(WaveformStyle.halo.rawValue, "Halo")
         XCTAssertEqual(WaveformStyle.dial.rawValue, "Dial")
         XCTAssertEqual(WaveformStyle.heartbeat.rawValue, "Heartbeat")
+        XCTAssertEqual(WaveformStyle.neonDusk.rawValue, "Neon Dusk")
+        XCTAssertEqual(WaveformStyle.molten.rawValue, "Molten")
+        XCTAssertEqual(WaveformStyle.electric.rawValue, "Electric")
     }
 
     func testIdentifiable() {
@@ -139,6 +145,9 @@ final class WaveformStyleTests: IsolatedXCTestCase {
         XCTAssertTrue(WaveformStyle.halo.isNew)
         XCTAssertTrue(WaveformStyle.dial.isNew)
         XCTAssertTrue(WaveformStyle.heartbeat.isNew)
+        XCTAssertTrue(WaveformStyle.neonDusk.isNew)
+        XCTAssertTrue(WaveformStyle.molten.isNew)
+        XCTAssertTrue(WaveformStyle.electric.isNew)
 
         XCTAssertFalse(WaveformStyle.classic.isNew)
         XCTAssertFalse(WaveformStyle.neon.isNew)
@@ -229,7 +238,7 @@ final class WaveformStyleTests: IsolatedXCTestCase {
             set.insert(style)
         }
 
-        XCTAssertEqual(set.count, 8)
+        XCTAssertEqual(set.count, 11)
         for style in WaveformStyle.allCases {
             XCTAssertTrue(set.contains(style))
         }

@@ -111,7 +111,7 @@ class SpeechToTextServiceTests: IsolatedXCTestCase {
             // The test can fail either due to invalid audio (which is expected since we create a fake file)
             // or due to invalid Python path. Both are acceptable test outcomes
             let errorMessage = error.localizedDescription
-            let hasExpectedError = errorMessage.contains("Parakeet error") ||
+            let hasExpectedError = errorMessage.contains("Local transcription failed") ||
                                  errorMessage.contains("Python") ||
                                  errorMessage.contains("not found") ||
                                  errorMessage.contains("corrupted") ||

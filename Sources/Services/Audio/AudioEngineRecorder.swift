@@ -9,7 +9,7 @@ import os.log
 /// Audio recorder using AVAudioEngine for real-time sample access.
 /// Provides raw waveform samples and frequency data for enhanced visualizations.
 @MainActor
-final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
+final class AudioEngineRecorder: NSObject, ObservableObject {
     // MARK: - Published Properties
 
     @Published var isRecording = false
@@ -149,7 +149,7 @@ final class AudioEngineRecorder: NSObject, ObservableObject, AudioRecording {
         }
     }
 
-    // MARK: - AudioRecording Protocol
+    // MARK: - Recording
 
     func stopRecording() -> URL? {
         let now = dateProvider()

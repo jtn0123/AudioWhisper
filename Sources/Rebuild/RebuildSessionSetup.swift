@@ -24,7 +24,7 @@ extension RebuildSession {
         do {
             try await setup.remove(setup.selection())
             await refreshSetup()
-        } catch { modelRemovalError = error.localizedDescription }
+        } catch { modelRemovalError = RebuildErrorText.userMessage(for: error) }
     }
 
     var captureIdentity: UUID? { sessionID }
@@ -43,6 +43,7 @@ extension RebuildSession {
         notice = nil
         writingContext = nil
         contextRequested = false
+        clearOutcome()
         closeRecorder()
     }
     var recordingActionTitle: String {
@@ -108,7 +109,7 @@ extension RebuildSession {
         do {
             result = try await setup.verify(selection)
         } catch {
-            result = ModelVerificationResult(succeeded: false, message: "Verification failed: \(error.localizedDescription)")
+            result = ModelVerificationResult(succeeded: false, message: "Verification failed: \(RebuildErrorText.userMessage(for: error))")
         }
         let currentAssets = await setup.assetIdentity(selection)
         guard !Task.isCancelled, selection == setup.selection(), assets == currentAssets else {
@@ -144,10 +145,12 @@ extension RebuildSession {
                 verificationAssets = assets
                 verificationMessage = failure
             }
+            let microphone = setup.microphoneStatus()
             readiness = RebuildReadiness(
-                microphoneGranted: setup.microphoneStatus() == .authorized,
+                microphoneGranted: microphone == .authorized,
                 modelInstalled: installed, runtimeReady: runtime, checking: false,
-                modelVerificationFailed: failure != nil
+                modelVerificationFailed: failure != nil,
+                microphoneDenied: microphone == .denied || microphone == .restricted
             )
         }
     }
@@ -177,7 +180,7 @@ extension RebuildSession {
         let selection = setup.selection()
         do {
             try await setup.install(selection)
-        } catch { setupError = error.localizedDescription }
+        } catch { setupError = RebuildErrorText.userMessage(for: error) }
         await refreshSetup()
     }
 

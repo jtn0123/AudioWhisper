@@ -69,6 +69,7 @@ final class RebuildSmartPasteTests: IsolatedXCTestCase {
         record()
         try await waitFor { self.events == 1 }
         XCTAssertEqual(events, 1)
+        XCTAssertNil(session.recorderOutcome, "A confirmed paste needs no follow-up message")
     }
 
     func testActivationTimeoutLeavesClipboardAndManualPasteNotice() async throws {
@@ -77,6 +78,7 @@ final class RebuildSmartPasteTests: IsolatedXCTestCase {
         XCTAssertEqual(events, 0)
         XCTAssertEqual(copies, ["Captured words"])
         XCTAssertEqual(session.notice, "Copied. Paste manually with Command V.")
+        XCTAssertEqual(session.recorderOutcome, .pasteManually, "The recorder must say the paste didn't land")
         XCTAssertEqual(session.phase, .completed)
         foreground = 111
         try await Task.sleep(for: .milliseconds(60))

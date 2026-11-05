@@ -50,8 +50,9 @@ extension UvBootstrap {
             + "\(values[.systemFileNumber] ?? 0)"
     }
 
-    static func environmentImportsWork(python: URL, project: URL) -> Bool {
+    static func environmentImportsWork(python: URL, project: URL) async -> Bool {
         guard FileManager.default.isExecutableFile(atPath: python.path) else { return false }
-        return runInDir(python.path, ["-c", "import mlx.core, mlx_lm, parakeet_mlx"], cwd: project).status == 0
+        let check = ["-c", "import mlx.core, mlx_lm, parakeet_mlx"]
+        return await runInDir(python.path, check, cwd: project, timeout: .seconds(120)).status == 0
     }
 }

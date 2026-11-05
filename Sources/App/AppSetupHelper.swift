@@ -1,20 +1,7 @@
 import Foundation
-import ServiceManagement
-import AppKit
 import os.log
 
 internal class AppSetupHelper {
-    static func setupApp() {
-        // Only set activation policy if NSApp is available (not in unit tests)
-        if Thread.isMainThread && NSApplication.shared.delegate != nil {
-            NSApplication.shared.setActivationPolicy(.accessory)
-        }
-        setupLoginItem()
-        ensurePromptFiles()
-        cleanupOldTemporaryFiles()
-        migrateSemanticCorrectionModelDefault()
-    }
-
     // MARK: - Semantic-correction model migration (audit item B1)
 
     /// One-time migration that pins existing installs to the pre-2.0 correction
@@ -86,138 +73,13 @@ internal class AppSetupHelper {
         return exists && isDirectory.boolValue
     }
 
-    static func setupLoginItem() {
-        let startAtLogin = AppDefaults.startAtLogin
-
-        if startAtLogin {
-            // Only try to register if we're in a real app context, not in tests
-            if Bundle.main.bundleIdentifier != nil && !AppEnvironment.isRunningTests {
-                try? SMAppService.mainApp.register()
-            }
-        }
-    }
-
-    static func createMenuBarIcon() -> NSImage {
-        let iconSize = getAdaptiveMenuBarIconSize()
-        let config = NSImage.SymbolConfiguration(pointSize: iconSize, weight: .medium)
-        let image = NSImage(
-            systemSymbolName: "microphone.circle",
-            accessibilityDescription: LocalizedStrings.Accessibility.microphoneIcon
-        )?.withSymbolConfiguration(config)
-        image?.isTemplate = true // This makes it adapt to menu bar appearance
-        return image ?? NSImage()
-    }
-
-    private static let standardIconSize: CGFloat = 16.0  // For regular displays
-    private static let notchedIconSize: CGFloat = 20.0   // For notched displays (taller menu bar)
-
-    // Cache for icon size to avoid repeated calculations
-    // Thread-safe access via lock to prevent data races
-    private static let cacheLock = NSLock()
-    private static var _cachedIconSize: CGFloat?
-    private static var _lastMainScreenFrame: NSRect?
-
-    /// Reset the cached icon size - useful when display configuration changes
-    static func resetIconSizeCache() {
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
-        _cachedIconSize = nil
-        _lastMainScreenFrame = nil
-    }
-
-    static func getAdaptiveMenuBarIconSize() -> CGFloat {
-        // Check for user override first
-        if let overrideSize = AppDefaults.menuBarIconSize,
-           overrideSize > 0 {
-            return CGFloat(overrideSize)
-        }
-
-        // For menu bar items, we should use the screen where the status item is located
-        // not necessarily the main screen
-        guard let statusItemScreen = getStatusItemScreen() else {
-            // Fallback to standard size if we can't detect the screen
-            return standardIconSize
-        }
-
-        // Check if screen configuration has changed by comparing frame
-        let currentFrame = statusItemScreen.frame
-
-        // Thread-safe cache access
-        cacheLock.lock()
-        if let cached = _cachedIconSize,
-           let lastFrame = _lastMainScreenFrame,
-           lastFrame == currentFrame {
-            cacheLock.unlock()
-            return cached
-        }
-        cacheLock.unlock()
-
-        // Detect if display has notch (taller menu bar) on the correct screen
-        let hasNotch = detectDisplayNotchForScreen(statusItemScreen)
-
-        // Adaptive sizing based on menu bar height
-        let iconSize: CGFloat = hasNotch ? notchedIconSize : standardIconSize
-
-        // Cache the result (thread-safe)
-        cacheLock.lock()
-        _cachedIconSize = iconSize
-        _lastMainScreenFrame = currentFrame
-        cacheLock.unlock()
-
-        return iconSize
-    }
-
-    private static func getStatusItemScreen() -> NSScreen? {
-        // Try to get the screen where the menu bar is displayed
-        // In most cases, this is the screen with menu bar
-        // The screen with the menu bar typically has y origin at 0
-        for screen in NSScreen.screens where screen.frame.origin.y == 0 {
-            return screen
-        }
-        // Fallback to main screen
-        return NSScreen.main
-    }
-
-    private static func detectDisplayNotchForScreen(_ screen: NSScreen) -> Bool {
-        // Check safe area insets (macOS 12+) - most reliable method
-        // Notched displays have safe area insets at the top for the notch
-        if #available(macOS 12.0, *) {
-            return screen.safeAreaInsets.top > 0
-        }
-
-        // For older macOS versions, assume no notch
-        return false
-    }
-
-    /// The welcome screen's version. Bump it to show the welcome again to
-    /// existing users. "1.1" is the version that introduced SmartPaste.
-    static let currentWelcomeVersion = "1.1"
-
-    static func checkFirstRun() -> Bool {
-        let hasExistingProvider = AppDefaults.hasValue(for: .transcriptionProvider)
-        let hasCompletedWelcome = AppDefaults.hasCompletedWelcome
-        let lastWelcomeVersion = AppDefaults.lastWelcomeVersion
-
-        // Show welcome for new users OR existing users who haven't seen the current welcome
-        let shouldShowWelcome = (!hasExistingProvider && !hasCompletedWelcome) || (lastWelcomeVersion != currentWelcomeVersion)
-
-        if shouldShowWelcome {
-            if !hasExistingProvider {
-                // First run - default to LocalWhisper
-                AppDefaults.transcriptionProvider = .local
-            }
-            return true
-        } else if !hasExistingProvider {
-            // Provider was somehow reset - default to LocalWhisper
-            AppDefaults.transcriptionProvider = .local
-        }
-
-        return false
-    }
-
-    static func cleanupOldTemporaryFiles() {
-        let tempDirectory = FileManager.default.temporaryDirectory
-
+    /// Deletes recordings a crashed or force-quit dictation left in the
+    /// temporary directory. A finished dictation removes its own audio; this
+    /// catches the ones that never got the chance, so spoken audio doesn't
+    /// linger on disk. Runs at launch.
+    static func cleanupOldTemporaryFiles(
+        in tempDirectory: URL = FileManager.default.temporaryDirectory, now: Date = Date()
+    ) {
         do {
             let files = try FileManager.default.contentsOfDirectory(
                 at: tempDirectory,
@@ -226,7 +88,7 @@ internal class AppSetupHelper {
             )
             let audioFiles = files.filter { $0.lastPathComponent.hasPrefix("recording_") && $0.pathExtension == "m4a" }
 
-            let cutoffDate = Date().addingTimeInterval(-24 * 60 * 60) // 24 hours ago
+            let cutoffDate = now.addingTimeInterval(-24 * 60 * 60) // 24 hours ago
 
             for file in audioFiles {
                 do {
@@ -242,51 +104,4 @@ internal class AppSetupHelper {
             Logger.app.error("Failed to clean up temporary files: \(error.localizedDescription)")
         }
     }
-
-    // MARK: - Prompt Files
-    /// Ensure default prompt files exist for advanced customization
-    static func ensurePromptFiles() {
-        do {
-            let base = try FileManager.default.url(
-                for: .applicationSupportDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            ).appendingPathComponent("AudioWhisper/prompts", isDirectory: true)
-            if !FileManager.default.fileExists(atPath: base.path) {
-                try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-            }
-
-            // A4: cloud_openai_prompt.txt / cloud_gemini_prompt.txt used to be
-            // written here too. The cloud providers were removed
-            // (TranscriptionProvider has only .local and .parakeet), so nothing
-            // ever read them — they were two junk files created in the user's
-            // Application Support directory on every launch.
-            let files: [(name: String, content: String)] = [
-                ("local_mlx_prompt.txt", defaultLocalMLXPrompt)
-            ]
-
-            for promptFile in files {
-                let url = base.appendingPathComponent(promptFile.name)
-                if !FileManager.default.fileExists(atPath: url.path) {
-                    try promptFile.content.write(to: url, atomically: true, encoding: .utf8)
-                }
-            }
-        } catch {
-            Logger.app.error("Failed to ensure prompt files: \(error.localizedDescription)")
-        }
-    }
-
-    /// Shared correction prompt. Named `defaultCorrectionPrompt` since A4 —
-    /// it was `defaultCloudPrompt` back when cloud providers existed.
-    private static let defaultCorrectionPrompt = """
-        You are a transcription corrector. Fix grammar, casing, punctuation, \
-        and obvious mis-hearings that do not change meaning. Remove filler \
-        words and transcribed pauses that add no meaning (e.g., 'um', 'uh', \
-        'erm', 'you know', 'like' as filler; '[pause]', '(pause)', ellipses \
-        for hesitations). Do not remove meaningful words. Do not summarize \
-        or add content. Output only the corrected text.
-        """
-
-    private static let defaultLocalMLXPrompt = defaultCorrectionPrompt
 }

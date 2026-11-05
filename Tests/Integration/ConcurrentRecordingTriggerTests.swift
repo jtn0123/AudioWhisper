@@ -7,12 +7,6 @@ import XCTest
 @MainActor
 final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
 
-    // Deferred(D2): This test currently writes "immediateRecording" to
-    // UserDefaults.standard because AppDelegate.handleHotkey reads it directly
-    // from `.standard`. Refactor (alongside A1 PreferencesService) so the
-    // hotkey path can take an injected UserDefaults, then re-enable isolation.
-    override var enforcesStandardUserDefaultsIsolation: Bool { false }
-
     // MARK: - PressAndHoldKeyMonitor Concurrent Trigger Tests
 
     func testConcurrentKeyDownEventsOnlyTriggerHandlerOnce() async {
@@ -138,82 +132,6 @@ final class ConcurrentRecordingTriggerTests: IsolatedXCTestCase {
         XCTAssertEqual(mockRecorder.startRecordingCallCount, 1,
                        "@MainActor serialization prevents multiple recording starts")
         XCTAssertTrue(mockRecorder.isRecording)
-    }
-
-    // MARK: - AppDelegate Hotkey Handler Tests
-
-    func testHandleHotkeyWithImmediateRecordingTogglesBehavior() async {
-        let appDelegate = AppDelegate()
-        defer {
-            appDelegate.pressAndHoldMonitor?.stop()
-            appDelegate.pressAndHoldMonitor = nil
-        }
-
-        AppDefaults.defaults.set(true, forKey: "immediateRecording")
-        defer { AppDefaults.defaults.removeObject(forKey: "immediateRecording") }
-
-        // Without a recorder, handleHotkey falls through to toggleRecordWindow
-        // This verifies the nil-recorder guard path doesn't crash
-        appDelegate.handleHotkey(source: .standardHotkey)
-        appDelegate.handleHotkey(source: .pressAndHold)
-
-        await Task.yield()
-
-        // No crash = success; the nil audioRecorder guard handles both sources
-    }
-
-    func testRapidHotkeySourceAlternation() async {
-        let appDelegate = AppDelegate()
-        defer {
-            appDelegate.pressAndHoldMonitor?.stop()
-            appDelegate.pressAndHoldMonitor = nil
-        }
-
-        AppDefaults.defaults.set(true, forKey: "immediateRecording")
-        defer { AppDefaults.defaults.removeObject(forKey: "immediateRecording") }
-
-        // Alternate between hotkey sources rapidly
-        for index in 0..<20 {
-            let source: AppDelegate.HotkeyTriggerSource = index % 2 == 0 ? .standardHotkey : .pressAndHold
-            appDelegate.handleHotkey(source: source)
-        }
-
-        await Task.yield()
-
-        // No crash = success; verifies rapid alternation is safe
-    }
-
-    // MARK: - Hold Recording State Guard Tests
-
-    func testIsHoldRecordingActiveGuardsStopPath() {
-        let appDelegate = AppDelegate()
-
-        // isHoldRecordingActive starts false
-        XCTAssertFalse(appDelegate.isHoldRecordingActive)
-
-        // Setting it true then false simulates a hold cycle
-        appDelegate.isHoldRecordingActive = true
-        XCTAssertTrue(appDelegate.isHoldRecordingActive)
-
-        appDelegate.isHoldRecordingActive = false
-        XCTAssertFalse(appDelegate.isHoldRecordingActive)
-    }
-
-    func testConcurrentIsHoldRecordingActiveAccess() async {
-        let appDelegate = AppDelegate()
-
-        // Rapid state changes on @MainActor are serialized
-        await withTaskGroup(of: Void.self) { group in
-            for index in 0..<100 {
-                group.addTask { @MainActor in
-                    appDelegate.isHoldRecordingActive = (index % 2 == 0)
-                }
-            }
-        }
-
-        // Final state should be deterministic (last write wins, serialized)
-        // 100 iterations, last is i=99 which is odd, so false
-        XCTAssertFalse(appDelegate.isHoldRecordingActive)
     }
 
     // MARK: - Failed Start Recovery Tests
