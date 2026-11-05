@@ -10,8 +10,25 @@ struct RebuildRecorderView: View {
     static func size(preview: Bool) -> CGSize { CGSize(width: 380, height: preview ? 350 : 230) }
     private var silent: Bool { session.phase == .recording && recorder.inputAppearsSilent }
     private var statusTitle: String {
-        guard session.phase == .recording else { return "Transcribing…" }
-        return silent ? Self.silentInputMessage : "Recording"
+        switch session.phase {
+        case .starting: return "Connecting microphone…"
+        case .recording: return silent ? Self.silentInputMessage : "Recording"
+        default: return "Transcribing…"
+        }
+    }
+    private var waveformStatus: AppStatus {
+        switch session.phase {
+        case .starting: return .ready
+        case .recording: return .recording
+        default: return .processing("Transcribing")
+        }
+    }
+    private var stopTitle: String {
+        switch session.phase {
+        case .starting: return "Starting…"
+        case .recording: return "Stop & transcribe"
+        default: return "Transcribing…"
+        }
     }
 
     var body: some View {
@@ -44,7 +61,7 @@ struct RebuildRecorderView: View {
             }
             .font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.75))
             WaveformContainer(
-                status: session.phase == .recording ? .recording : .processing("Transcribing"),
+                status: waveformStatus,
                 audioLevel: recorder.audioLevel, waveformSamples: recorder.waveformSamples,
                 frequencyBands: recorder.frequencyBands, showsStatusRow: false,
                 showsGlassBackground: false, backgroundColor: RebuildTheme.hudWaveformBackground,
@@ -70,7 +87,8 @@ struct RebuildRecorderView: View {
             if let start = session.recordingStartedAt {
                 RebuildElapsedTime(start: start).font(.system(size: 20, weight: .medium)).foregroundStyle(.white)
             } else {
-                ProgressView().controlSize(.small).accessibilityLabel("Final transcription in progress")
+                ProgressView().controlSize(.small).accessibilityLabel(
+                    session.phase == .starting ? "Microphone starting" : "Final transcription in progress")
             }
         }.frame(height: 28)
     }
@@ -82,7 +100,7 @@ struct RebuildRecorderView: View {
                 .help("Cancel (Esc). Nothing is copied or saved.")
             Spacer()
             Button(action: session.finishRecording) {
-                Label(session.phase == .recording ? "Stop & transcribe" : "Transcribing…", systemImage: "stop.fill")
+                Label(stopTitle, systemImage: "stop.fill")
                     .frame(minWidth: 140)
             }
             .buttonStyle(RebuildHUDButtonStyle(prominent: true))
