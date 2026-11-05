@@ -42,6 +42,12 @@ final class RebuildSession {
     var hasRetryAudio: Bool { phase == .failed && retryAudio != nil }
     var canRetry: Bool { hasRetryAudio && retryBlockedReason == nil }
     var openSetup: () -> Void = {}
+    var openWorkspace: () -> Void = {}
+    /// Set while the recorder lingers to explain a failure or a manual paste.
+    var recorderOutcome: RebuildRecorderOutcome?
+    @ObservationIgnored var outcomeDismissal: Task<Void, Never>?
+    /// Scales the recorder outcome's display time; tests shorten it.
+    @ObservationIgnored var outcomeTimeScale = 1.0
     var showRecorder: () -> Void = {}
     var closeRecorder: () -> Void = {}
     var didDeliver: () -> Void = {}
@@ -111,13 +117,11 @@ final class RebuildSession {
             notice = "Recording was interrupted. Transcribing the audio captured before it stopped."
             transcribe(url: audio, config: config, id: id, removeAfterward: true)
         case .finished:
-            notice = "Recording was interrupted before usable audio was captured. Try again."
-            phase = .failed
             sessionID = nil
+            presentFailure("Recording was interrupted before usable audio was captured. Try again.")
         case .failed(_, let message):
-            notice = message
-            phase = .failed
             sessionID = nil
+            presentFailure(message)
         }
     }
 
@@ -172,9 +176,9 @@ final class RebuildSession {
 
     func completeRecordingStart(_ started: Bool) {
         guard started else {
-            notice = services.startError() ?? "The microphone could not start. Check the selected input and try again."
-            phase = .failed
             sessionID = nil
+            presentFailure(
+                services.startError() ?? "The microphone could not start. Check the selected input and try again.")
             return
         }
         startedAt = Date()
@@ -192,10 +196,8 @@ final class RebuildSession {
         timing.stopped = ProcessInfo.processInfo.systemUptime
         duration = startedAt.map { Date().timeIntervalSince($0) }
         guard let url = services.stop() else {
-            notice = "No audio was captured. Try a different microphone."
-            phase = .failed
             sessionID = nil
-            closeRecorder()
+            presentFailure("No audio was captured. Try a different microphone.")
             return
         }
         guard services.recordedSignal()?.isSilent != true else {
@@ -210,9 +212,8 @@ final class RebuildSession {
     /// still force a transcription if the meter was wrong.
     func rejectSilentRecording(url: URL, config: TranscriptionPipelineConfig) {
         retryAudio = RetryAudio(url: url, config: config, owned: true, duration: duration)
-        notice = "The microphone recorded only silence. Check the selected microphone, its mute switch and input level."
-        phase = .failed
-        closeRecorder()
+        presentFailure(
+            "The microphone recorded only silence. Check the selected microphone, its mute switch and input level.")
     }
 
     func importAudio(_ url: URL) {
@@ -234,6 +235,7 @@ final class RebuildSession {
     ) {
         livePreview.stop(clear: true)
         discardRetry()
+        clearOutcome()
         duration = nil
         isPractice = practice
         timing = RebuildSessionTiming()
@@ -307,9 +309,7 @@ extension RebuildSession {
                 guard sessionID == id, !Task.isCancelled else { return }
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
                 retainedForRetry = true
-                notice = error.localizedDescription
-                phase = .failed
-                closeRecorder()
+                presentFailure(error.localizedDescription)
             }
         }
     }

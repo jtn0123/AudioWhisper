@@ -71,8 +71,8 @@ make clean
 UI snapshots are a **local-only** tool and are skipped unless opted into:
 
 ```bash
-SNAPSHOT_TESTS=1  swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # check
-SNAPSHOT_RECORD=1 swift test --no-parallel -Xswiftc -DTESTING --filter UISnapshotTests   # re-record
+SNAPSHOT_TESTS=1  swift test --no-parallel -Xswiftc -DTESTING --filter "RebuildSnapshotTests|WaveformSnapshotTests"   # check
+SNAPSHOT_RECORD=1 swift test --no-parallel -Xswiftc -DTESTING --filter "RebuildSnapshotTests|WaveformSnapshotTests"   # re-record
 ```
 
 They do not run in CI, deliberately: a GitHub runner has no usable WindowServer,
@@ -81,11 +81,13 @@ whole views as flat rectangles. Never adopt a CI-rendered image as a baseline.
 
 Two things to know before adding one:
 
-* `ImageRenderer` cannot draw `ScrollView` content — it renders a flat
-  rectangle. Use `ScrollableContent` (Sources/Views/Dashboard) instead, which
-  the test harness flattens. 13 baselines were silently blank before this.
+* Don't render with `ImageRenderer`. It draws AppKit-backed controls (any
+  SwiftUI `Button`, `Toggle` or `Picker` on macOS) as a yellow placeholder and
+  `ScrollView` content as a flat rectangle, locally too, and every legacy
+  baseline was recorded that way. `SnapshotTestCase` renders through an
+  off-screen `NSHostingView` and fails any image containing the placeholder.
 * Anything time-dependent must be pinned. Records stamped with `Date()` produce
-  a different image every run; see `sampleHistoryRecords()`.
+  a different image every run.
 
 `assertSnapshot` fails any render that is >99.5% a single colour, so a snapshot
 that quietly stops drawing cannot pass by matching an equally blank baseline.
@@ -105,13 +107,18 @@ open /Applications/AudioWhisper.app
 ## Architecture
 
 ### App Entry Point
-- `Sources/App/AudioWhisperApp.swift` - SwiftUI app entry, menu bar app with no main window
-- `Sources/App/AppDelegate.swift` - Core app delegate split across extensions:
-  - `AppDelegate+Hotkeys.swift` - Global hotkey handling
-  - `AppDelegate+Lifecycle.swift` - App lifecycle events
-  - `AppDelegate+Menu.swift` - Menu bar setup
-  - `AppDelegate+Notifications.swift` - System notifications
-  - `AppDelegate+RecordingWindow.swift` - Recording UI management
+- `Sources/App/AudioWhisperEntryPoint.swift` - `@main`. With no arguments it
+  launches `RebuildApp`; with arguments it runs the automation CLI
+  (`PublicAutomation`).
+
+### UI (`Sources/Rebuild/`)
+The whole shipping UI. `RebuildApp` / `RebuildStartup` wire the menu bar item,
+workspace window and recorder overlay; `RebuildSession` (split across
+`RebuildSession*.swift`) owns one dictation from hotkey to delivery;
+`RebuildRecorderView` is the floating recorder, and `RebuildRecorderOutcome`
+keeps it on screen to explain a failed dictation or a manual paste. The
+waveform styles it draws live in `Sources/Views/Components/Waveform/`. See
+`docs/rebuild.md`.
 
 ### Transcription Services (`Sources/Services/`)
 - `SpeechToTextService.swift` - Main transcription orchestrator, routes to appropriate provider
@@ -123,7 +130,6 @@ open /Applications/AudioWhisper.app
 ### State Management (`Sources/Stores/`)
 - `DataManager.swift` - SwiftData persistence for transcription history
 - `UsageMetricsStore.swift` - Session stats (words, WPM, time saved)
-- `CategoryStore.swift` - App-aware category definitions
 - `SourceUsageStore.swift` - Provider usage tracking
 
 ### Managers (`Sources/Managers/`)

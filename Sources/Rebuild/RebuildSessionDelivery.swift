@@ -116,6 +116,7 @@ extension RebuildSession {
         case .failed, .cancelled: deliveryStatus = .manual
         }
         if outcome == .failed { notice = "Copied. Paste manually with Command V." }
+        if deliveryStatus == .manual, !isPractice { presentOutcome(.pasteManually) }
     }
 
     /// A failed or abandoned paste keeps the transcript for pasting by hand.

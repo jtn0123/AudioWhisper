@@ -19,22 +19,49 @@ internal extension MLDaemonManager {
         }
         if let process, process.isRunning { return }
         guard !isShuttingDown else { throw MLDaemonError.daemonUnavailable("shutting down") }
+        liftRestartLimitIfCooledDown()
         guard restartAttempts < maxRestartAttempts else { throw MLDaemonError.restartLimitReached }
         try await startProcess(isRestart: false)
+    }
+
+    /// Once `restartCooldown` has passed since the last allowed spawn, permit
+    /// exactly one more attempt. A daemon that is permanently broken therefore
+    /// retries at most once per cool-down instead of hammering the CPU, and a
+    /// transient failure no longer needs an app relaunch to recover.
+    func liftRestartLimitIfCooledDown(now: ContinuousClock.Instant = .now) {
+        guard restartAttempts >= maxRestartAttempts else { return }
+        guard let hitAt = restartLimitHitAt else {
+            restartLimitHitAt = now
+            return
+        }
+        guard now - hitAt >= restartCooldown else { return }
+        logger.info("ml_daemon restart cool-down elapsed; allowing another attempt")
+        restartAttempts = maxRestartAttempts - 1
+        restartLimitHitAt = nil
+    }
+
+    /// Clears the crash-loop guard after an explicit user action (for example
+    /// a successful model verification) shows the runtime is usable again.
+    func resetRestartLimit() {
+        restartAttempts = 0
+        restartLimitHitAt = nil
     }
 
     /// Spawns the daemon process.
     ///
     /// Crash-loop guard (audit #8): `restartAttempts` is *never* reset here.
     /// It only counts up — both on `processTerminated`-driven restarts AND on
-    /// fresh `ensureDaemonRunning` spawns. It is reset to 0 only once the
-    /// daemon has proven STABLE (see `markDaemonStableIfHealthy()`), so a
-    /// daemon that crashes on every request eventually trips
-    /// `restartLimitReached` instead of being respawned forever.
+    /// fresh `ensureDaemonRunning` spawns. It is reset to 0 once the daemon has
+    /// proven STABLE (see `markDaemonStableIfHealthy()`) or a user action shows
+    /// the runtime works (`resetRestartLimit()`), so a daemon that crashes on
+    /// every request trips `restartLimitReached` instead of being respawned
+    /// forever. `liftRestartLimitIfCooledDown()` then allows one attempt per
+    /// cool-down so recovery never needs a relaunch.
     func startProcess(isRestart: Bool) async throws {
         // Count every spawn attempt, restart or not, against the limit.
         restartAttempts += 1
         if restartAttempts > maxRestartAttempts { throw MLDaemonError.restartLimitReached }
+        if restartAttempts == maxRestartAttempts { restartLimitHitAt = .now }
 
         // H6: mark spawn-in-progress so concurrent `ensureDaemonRunning`
         // callers wait rather than racing us to launch a second daemon.
@@ -128,6 +155,7 @@ internal extension MLDaemonManager {
             logger.info("ml_daemon stable; resetting restart counter")
         }
         restartAttempts = 0
+        restartLimitHitAt = nil
     }
 
     /// Builds a minimal, allowlisted environment for the Python daemon instead

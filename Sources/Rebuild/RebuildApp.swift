@@ -75,6 +75,8 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         // Other audio a crashed recording left lowered.
         OutputDucker.shared.restore()
+        // Audio files a crashed recording left behind.
+        Task.detached(priority: .utility) { AppSetupHelper.cleanupOldTemporaryFiles() }
         RebuildStartup.configure(
             session: session, navigation: navigation,
             effects: .init(initializeHistory: { try DataManager.shared.initialize() },

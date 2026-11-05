@@ -2,6 +2,10 @@ import Foundation
 
 /// Available waveform visualization styles.
 ///
+/// Neon Dusk, Molten and Electric are the Aurora styles: three overlapping
+/// mountains, each in its own hue, with colour that crawls left → right. Their
+/// silhouette is a separate setting (`AppDefaults.auroraShape`).
+///
 /// What changed: the three "current" styles (Classic, Neon, Spectrum) are
 /// kept but their palettes are refined. The three older "decorative" styles
 /// (Circular, Pulse Rings, Particles) are replaced by five new ones that all
@@ -20,6 +24,9 @@ enum WaveformStyle: String, CaseIterable, Identifiable, Codable {
     case halo          = "Halo"
     case dial          = "Dial"
     case heartbeat     = "Heartbeat"
+    case neonDusk      = "Neon Dusk"
+    case molten        = "Molten"
+    case electric      = "Electric"
 
     var id: String { rawValue }
 
@@ -34,6 +41,9 @@ enum WaveformStyle: String, CaseIterable, Identifiable, Codable {
         case .halo:          return "Rotating gradient ring"
         case .dial:          return "Audio energy dial"
         case .heartbeat:     return "Dramatic single rings"
+        case .neonDusk:      return "Cyan, magenta and amber mountains"
+        case .molten:        return "Gold, rose and violet mountains"
+        case .electric:      return "Teal, blue and magenta mountains"
         }
     }
 
@@ -59,8 +69,20 @@ enum WaveformStyle: String, CaseIterable, Identifiable, Codable {
     /// small "NEW" badge.
     var isNew: Bool {
         switch self {
-        case .stream, .constellation, .halo, .dial, .heartbeat: return true
+        case .stream, .constellation, .halo, .dial, .heartbeat,
+             .neonDusk, .molten, .electric: return true
         default: return false
+        }
+    }
+
+    /// The Aurora palette for the three multi-hue mountain styles; nil otherwise.
+    /// These styles also follow the Aurora shape setting (Horizon or Lens).
+    var auroraPalette: AuroraPalette? {
+        switch self {
+        case .neonDusk: return .neonDusk
+        case .molten: return .molten
+        case .electric: return .electric
+        default: return nil
         }
     }
 }

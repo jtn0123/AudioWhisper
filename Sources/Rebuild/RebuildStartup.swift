@@ -35,6 +35,7 @@ enum RebuildStartup {
             navigation.selection = .models
             showWorkspace()
         }
+        session.openWorkspace = showWorkspace
         session.showRecorder = effects.showRecorder
         session.closeRecorder = effects.closeRecorder
         effects.installMenu()
