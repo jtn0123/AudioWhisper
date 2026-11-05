@@ -66,10 +66,6 @@ cat >AudioWhisper.entitlements <<'EOF'
 <dict>
     <key>com.apple.security.device.audio-input</key>
     <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
-    <key>com.apple.security.automation.apple-events</key>
-    <true/>
 </dict>
 </plist>
 EOF
@@ -387,8 +383,6 @@ cat >"$APP_BUNDLE/Contents/Info.plist" <<EOF
     <string>14.0</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>AudioWhisper needs access to your microphone to record audio for transcription.</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>AudioWhisper needs accessibility access to monitor global keyboard shortcuts for quick recording.</string>
     <key>CFBundleURLTypes</key>
     <array><dict><key>CFBundleURLName</key><string>com.audiowhisper.navigation</string>
     <key>CFBundleURLSchemes</key><array><string>audiowhisper</string></array></dict></array>
