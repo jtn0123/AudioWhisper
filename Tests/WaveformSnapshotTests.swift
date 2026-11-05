@@ -25,8 +25,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             status: .recording,
             audioLevel: 0.6,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0.5, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0.5, count: 8)
         )
         .frame(width: 280, height: 160)
 
@@ -46,8 +45,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             status: .ready,
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0, count: 8)
         )
         .frame(width: 280, height: 160)
 
@@ -67,8 +65,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             status: .success,
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
         .frame(width: 280, height: 160)
 
@@ -90,8 +87,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             audioLevel: 0,
             waveformSamples: [],
             frequencyBands: [],
-            processingAnimated: false,
-            onTap: {}
+            processingAnimated: false
         )
         .frame(width: 280, height: 160)
 
@@ -111,8 +107,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             status: .error( "Failed"),
             audioLevel: 0,
             waveformSamples: [],
-            frequencyBands: [],
-            onTap: {}
+            frequencyBands: []
         )
         .frame(width: 280, height: 160)
 
@@ -135,8 +130,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0.5, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0.5, count: 8)
         )
         .frame(width: 280, height: 160)
 
@@ -157,8 +151,7 @@ final class WaveformSnapshotTests: SnapshotTestCase {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0.5, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0.5, count: 8)
         )
         .frame(width: 280, height: 160)
 

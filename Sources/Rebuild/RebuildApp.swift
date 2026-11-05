@@ -91,7 +91,11 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             configureShortcuts: { [weak self] in self?.configureShortcuts() },
             showWorkspace: { [weak self] in self?.showWorkspace() },
             showRecorder: { [weak self] in self?.showOverlay() },
-            closeRecorder: { [weak self] in self?.overlay?.orderOut(nil) }))
+            closeRecorder: { [weak self] in
+                self?.overlay?.orderOut(nil)
+                RebuildEscapeShortcut.recorderClosed()
+            }))
+        RebuildEscapeShortcut.install(session: session)
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.configureShortcuts() } }
@@ -127,6 +131,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         overlay.setContentSize(RebuildRecorderView.size(preview: session.livePreview.enabled))
         RecordingWindowStyle.moveToActiveScreen(overlay)
         overlay.orderFrontRegardless()
+        RebuildEscapeShortcut.recorderShown()
     }
 
     func chooseAudio() {
@@ -181,12 +186,14 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         session.cancel()
         holdMonitor?.stop()
-        Task {
-            await session.meetings.shutdown()
-            await session.waitForHistoryWrites()
-            await MLDaemonManager.shared.shutdown()
-            NSApp.reply(toApplicationShouldTerminate: true)
-        }
+        let session = session
+        RebuildTermination.run(
+            work: {
+                await session.meetings.shutdown()
+                await session.waitForHistoryWrites()
+                await MLDaemonManager.shared.shutdown()
+            },
+            reply: { NSApp.reply(toApplicationShouldTerminate: true) })
         return .terminateLater
     }
 }

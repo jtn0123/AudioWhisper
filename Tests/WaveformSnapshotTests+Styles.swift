@@ -29,8 +29,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: Self.sampleWaveformSamples,
-            frequencyBands: Self.sampleFrequencyBands,
-            onTap: {}
+            frequencyBands: Self.sampleFrequencyBands
         )
         .frame(width: 280, height: 160)
 
@@ -51,8 +50,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: Self.sampleWaveformSamples,
-            frequencyBands: Self.sampleFrequencyBands,
-            onTap: {}
+            frequencyBands: Self.sampleFrequencyBands
         )
         .frame(width: 280, height: 160)
 
@@ -76,8 +74,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: Self.sampleWaveformSamples,
-            frequencyBands: Self.sampleFrequencyBands,
-            onTap: {}
+            frequencyBands: Self.sampleFrequencyBands
         )
         .frame(width: 280, height: 160)
 
@@ -98,8 +95,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: Self.sampleWaveformSamples,
-            frequencyBands: Self.sampleFrequencyBands,
-            onTap: {}
+            frequencyBands: Self.sampleFrequencyBands
         )
         .frame(width: 280, height: 160)
 
@@ -120,8 +116,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: Self.sampleWaveformSamples,
-            frequencyBands: Self.sampleFrequencyBands,
-            onTap: {}
+            frequencyBands: Self.sampleFrequencyBands
         )
         .frame(width: 280, height: 160)
 
@@ -144,8 +139,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: Self.sampleWaveformSamples,
-            frequencyBands: Self.sampleFrequencyBands,
-            onTap: {}
+            frequencyBands: Self.sampleFrequencyBands
         )
         .frame(width: 280, height: 160)
 
@@ -168,8 +162,7 @@ extension WaveformSnapshotTests {
             status: .recording,
             audioLevel: 0.5,
             waveformSamples: [],
-            frequencyBands: Array(repeating: 0.5, count: 8),
-            onTap: {}
+            frequencyBands: Array(repeating: 0.5, count: 8)
         )
         .frame(width: 280, height: 160)
 

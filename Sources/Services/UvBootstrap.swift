@@ -202,7 +202,8 @@ internal struct UvBootstrap {
             let changedPython = previousSpecifier.map { $0 != pythonSpecifier } ?? (userPython != nil)
             if !fm.fileExists(atPath: venvDir.path) || changedPython {
                 log?("Creating project .venv with Python \(pythonSpecifier)…")
-                let venvResult = runInDir(uv.path, ["venv", "--clear", "--python", pythonSpecifier], cwd: proj)
+                let venvResult = await runInDir(
+                    uv.path, ["venv", "--clear", "--python", pythonSpecifier], cwd: proj, timeout: .seconds(600))
                 if venvResult.status != 0 {
                     throw UvError.venvCreationFailed(
                         venvResult.stderr.isEmpty ? venvResult.stdout : venvResult.stderr
@@ -213,7 +214,8 @@ internal struct UvBootstrap {
             // Install only the shipped lock. A failed sync stays actionable;
             // retrying against an unlocked dependency tree changes the product.
             log?("Syncing project dependencies via uv sync…")
-            let syncResult = runInDir(uv.path, ["sync", "--frozen"], cwd: proj)
+            // Generous: the first sync downloads several hundred MB of MLX wheels.
+            let syncResult = await runInDir(uv.path, ["sync", "--frozen"], cwd: proj, timeout: .seconds(1800))
 
             if syncResult.status != 0 {
                 throw UvError.syncFailed(
@@ -228,7 +230,7 @@ internal struct UvBootstrap {
             ]
             for candidate in candidates where fm.isExecutableFile(atPath: candidate) {
                 let python = URL(fileURLWithPath: candidate)
-                guard environmentImportsWork(python: python, project: proj) else {
+                guard await environmentImportsWork(python: python, project: proj) else {
                     throw UvError.pythonNotUsable("runtime dependencies could not be imported; reinstall dependencies in Setup")
                 }
                 try pythonSpecifier.write(to: specFile, atomically: true, encoding: .utf8)
@@ -269,7 +271,7 @@ internal struct UvBootstrap {
                     guard try bundledHash == fileHash(proj.appendingPathComponent(name)) else { return false }
                 }
                 let python = proj.appendingPathComponent(".venv/bin/python3")
-                return environmentImportsWork(python: python, project: proj)
+                return await environmentImportsWork(python: python, project: proj)
             }
         } catch { return false }
     }
@@ -286,7 +288,7 @@ internal struct UvBootstrap {
             }
         }
         let python = project.appendingPathComponent(".venv/bin/python3")
-        let ready = await Task.detached(priority: .utility) { environmentImportsWork(python: python, project: project) }.value
+        let ready = await environmentImportsWork(python: python, project: project)
         guard ready else { throw PublicAutomationError.assets }
         return python
     }

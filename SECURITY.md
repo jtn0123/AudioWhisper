@@ -36,8 +36,8 @@ target a report:
   Push-to-talk needs `CGEventTap`, Smart Paste posts synthetic `⌘V` via
   `CGEvent.postToPid`, and prompt overrides read the filesystem directly — none
   of which the App Sandbox permits. It ships Developer ID–signed, notarized,
-  with hardened runtime and three entitlements (audio input, network client,
-  Apple events).
+  with hardened runtime and a single entitlement (audio input). The bundled
+  `uv` is signed with none.
 - **It requests Accessibility permission**, which grants synthetic event
   injection. That is the highest-value capability the app holds.
 - **It executes downloaded model weights** and runs an **embedded Python

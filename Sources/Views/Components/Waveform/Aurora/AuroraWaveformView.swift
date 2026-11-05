@@ -18,8 +18,12 @@ struct AuroraWaveformView: View {
 
     var body: some View {
         // Keep ticking while recording, and afterwards only until the
-        // mountains have settled onto the horizon.
-        TimelineView(.animation(paused: !isActive && engine.isAtRest)) { timeline in
+        // mountains have settled onto the horizon. `settled` is observed, so
+        // the body re-runs (and pauses) when it flips. 60 fps is plenty for
+        // this motion and halves the work on a 120 Hz display.
+        let schedule = AnimationTimelineSchedule.animation(
+            minimumInterval: Self.frameInterval, paused: Self.paused(isActive: isActive, engine: engine))
+        return TimelineView(schedule) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
             Canvas { context, size in
                 engine.advance(to: time, rawLevel: isActive ? audioLevel : 0,
@@ -30,4 +34,8 @@ struct AuroraWaveformView: View {
         }
         .accessibilityHidden(true)
     }
+
+    static let frameInterval = 1.0 / 60
+
+    static func paused(isActive: Bool, engine: AuroraEngine) -> Bool { !isActive && engine.settled }
 }
