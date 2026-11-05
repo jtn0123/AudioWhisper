@@ -188,7 +188,8 @@ internal class SpeechToTextService {
             if let se = error as? SpeechToTextError {
                 throw se
             }
-            throw SpeechToTextError.transcriptionFailed("Parakeet error: \(error.localizedDescription)")
+            // Keep the underlying error so the UI can explain it (C6).
+            throw SpeechToTextError.localTranscriptionFailed(error)
         }
     }
 

@@ -43,6 +43,12 @@ final class RebuildSession {
     var hasRetryAudio: Bool { phase == .failed && retryAudio != nil }
     var canRetry: Bool { hasRetryAudio && retryBlockedReason == nil }
     var openSetup: () -> Void = {}
+    var openWorkspace: () -> Void = {}
+    /// Set while the recorder lingers to explain a failure or a manual paste.
+    var recorderOutcome: RebuildRecorderOutcome?
+    @ObservationIgnored var outcomeDismissal: Task<Void, Never>?
+    /// Scales the recorder outcome's display time; tests shorten it.
+    @ObservationIgnored var outcomeTimeScale = 1.0
     var showRecorder: () -> Void = {}
     var closeRecorder: () -> Void = {}
     var didDeliver: () -> Void = {}
@@ -67,6 +73,7 @@ final class RebuildSession {
     @ObservationIgnored var diagnosticTrace: DiagnosticTrace?
     @ObservationIgnored var diagnosticSampling: Task<Void, Never>?
     @ObservationIgnored var microphoneDiagnostic: UUID?
+    @ObservationIgnored var recorderRevealed = false
 
     struct RetryAudio {
         let url: URL
@@ -118,13 +125,11 @@ final class RebuildSession {
             notice = "Recording was interrupted. Transcribing the audio captured before it stopped."
             transcribe(url: audio, config: config, id: id, removeAfterward: true)
         case .finished:
-            notice = "Recording was interrupted before usable audio was captured. Try again."
-            phase = .failed
             sessionID = nil
+            presentFailure("Recording was interrupted before usable audio was captured. Try again.")
         case .failed(_, let message):
-            notice = message
-            phase = .failed
             sessionID = nil
+            presentFailure(message)
         }
     }
 
@@ -153,6 +158,7 @@ final class RebuildSession {
         prepareSession(practice: practice, target: target, mode: mode, allowContext: !practice)
         if mode.selection != setup.selection(), let id = sessionID {
             phase = .starting
+            revealRecorder()
             job = Task { [weak self] in
                 guard let self, await checkResolvedMode(mode, id: id) else { return }
                 startPreparedRecording()
@@ -166,6 +172,9 @@ final class RebuildSession {
         microphoneDiagnostic = diagnosticTrace?.begin(.microphoneStart)
         if let startAsync = services.startAsync, let id = sessionID {
             phase = .starting
+            // The microphone can take seconds to start; say so instead of
+            // showing nothing until it's ready (C5).
+            revealRecorder()
             job = Task { [weak self] in
                 guard let self else { return }
                 let started = await startAsync(id)
@@ -185,9 +194,9 @@ final class RebuildSession {
         }
         guard started else {
             diagnosticTrace?.failure(.microphoneStart)
-            notice = services.startError() ?? "The microphone could not start. Check the selected input and try again."
-            phase = .failed
             sessionID = nil
+            presentFailure(
+                services.startError() ?? "The microphone could not start. Check the selected input and try again.")
             return
         }
         startedAt = Date()
@@ -197,7 +206,15 @@ final class RebuildSession {
         if previewRequested, let model = configuration?.parakeetModel {
             livePreview.start(model: model, snapshot: services.previewSnapshot)
         }
-        if !isPractice && !AppDefaults.immediateRecording { showRecorder() }
+        revealRecorder()
+    }
+
+    /// Practice has its own view and Express Mode hides the HUD by choice.
+    /// Once per dictation: it opens while starting and stays for recording.
+    func revealRecorder() {
+        guard !recorderRevealed, !isPractice, !AppDefaults.immediateRecording else { return }
+        recorderRevealed = true
+        showRecorder()
     }
 
     func finishRecording() {
@@ -210,10 +227,8 @@ final class RebuildSession {
         if let finalization { diagnosticTrace?.end(finalization, outcome: audio == nil ? .failed : .completed) }
         guard let url = audio else {
             diagnosticTrace?.failure(.noAudio)
-            notice = "No audio was captured. Try a different microphone."
-            phase = .failed
             sessionID = nil
-            closeRecorder()
+            presentFailure("No audio was captured. Try a different microphone.")
             return
         }
         guard services.recordedSignal()?.isSilent != true else {
@@ -229,9 +244,8 @@ final class RebuildSession {
     func rejectSilentRecording(url: URL, config: TranscriptionPipelineConfig) {
         diagnosticTrace?.failure(.silence)
         retryAudio = RetryAudio(url: url, config: config, owned: true, duration: duration)
-        notice = "The microphone recorded only silence. Check the selected microphone, its mute switch and input level."
-        phase = .failed
-        closeRecorder()
+        presentFailure(
+            "The microphone recorded only silence. Check the selected microphone, its mute switch and input level.")
     }
 
     func prepareSession(
@@ -247,6 +261,8 @@ final class RebuildSession {
         } else { finishDiagnostics(.cancelled) }
         livePreview.stop(clear: true)
         discardRetry()
+        clearOutcome()
+        recorderRevealed = false
         duration = nil
         isPractice = practice
         timing = RebuildSessionTiming()
@@ -346,9 +362,7 @@ extension RebuildSession {
                 retryAudio = RetryAudio(url: url, config: config, owned: removeAfterward, duration: duration)
                 diagnosticTrace?.failure(.processing)
                 retainedForRetry = true
-                notice = error.localizedDescription
-                phase = .failed
-                closeRecorder()
+                presentFailure(RebuildErrorText.userMessage(for: error))
             }
         }
     }

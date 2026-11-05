@@ -164,7 +164,9 @@ struct RebuildMeetingsView: View {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             let text = document.title + "\n\n" + (document.summary.map { $0 + "\n\n" } ?? "") + document.transcript
-            do { try Data(text.utf8).write(to: url, options: .atomic) } catch { state.error = error.localizedDescription }
+            do {
+                try Data(text.utf8).write(to: url, options: .atomic)
+            } catch { state.error = RebuildErrorText.userMessage(for: error) }
         }
     }
 }

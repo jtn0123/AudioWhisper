@@ -18,13 +18,71 @@ extension UvBootstrap {
         return runProcess(process)
     }
 
-    @discardableResult
-    static func runInDir(_ cmd: String, _ args: [String], cwd: URL) -> ProcessResult {
+    /// Async variant for the slow commands (`uv venv`, `uv sync`, import
+    /// checks). It never blocks a Swift-concurrency thread: exit arrives via
+    /// `terminationHandler` and the pipes drain on dispatch threads. A child
+    /// still running at `timeout` is terminated and reported as failed.
+    static func runInDir(_ cmd: String, _ args: [String], cwd: URL, timeout: Duration) async -> ProcessResult {
         let process = Process()
         process.currentDirectoryURL = cwd
         process.executableURL = URL(fileURLWithPath: cmd)
         process.arguments = args
-        return runProcess(process)
+        return await runProcess(process, timeout: timeout)
+    }
+
+    private static func runProcess(_ process: Process, timeout: Duration) async -> ProcessResult {
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        process.standardOutput = outPipe
+        process.standardError = errPipe
+        defer {
+            try? outPipe.fileHandleForReading.close()
+            try? errPipe.fileHandleForReading.close()
+        }
+        let watchdog = Task { () -> Bool in
+            guard (try? await Task.sleep(for: timeout)) != nil, process.isRunning else { return false }
+            process.terminate()
+            return true
+        }
+        let launched = await launch(process, out: outPipe, err: errPipe)
+        watchdog.cancel()
+        switch launched {
+        case .failure(let error):
+            return ProcessResult(stdout: "", stderr: String(describing: error), status: 1)
+        case .success(let run):
+            let stdout = String(bytes: await run.out.read(), encoding: .utf8) ?? ""
+            var stderr = String(bytes: await run.err.read(), encoding: .utf8) ?? ""
+            if await watchdog.value { stderr += "\nTimed out after \(timeout); the process was stopped." }
+            return ProcessResult(stdout: stdout, stderr: stderr, status: run.status)
+        }
+    }
+
+    private struct Launched {
+        let status: Int32
+        let out: PipeReader
+        let err: PipeReader
+    }
+
+    /// Starts `process` and suspends until it exits. Both pipes drain in
+    /// parallel from the start, so a child filling one can't stall.
+    private static func launch(
+        _ process: Process, out: Pipe, err: Pipe
+    ) async -> Result<Launched, Error> {
+        let outReader = PipeReader(handle: out.fileHandleForReading)
+        let errReader = PipeReader(handle: err.fileHandleForReading)
+        let status: Result<Int32, Error> = await withCheckedContinuation { continuation in
+            process.terminationHandler = { continuation.resume(returning: .success($0.terminationStatus)) }
+            do {
+                try process.run()
+            } catch {
+                process.terminationHandler = nil
+                // No child holds the write ends, so closing ours lets the readers finish.
+                try? out.fileHandleForWriting.close()
+                try? err.fileHandleForWriting.close()
+                continuation.resume(returning: .failure(error))
+            }
+        }
+        return status.map { Launched(status: $0, out: outReader, err: errReader) }
     }
 
     /// Launches a configured process, captures stdout/stderr, and cleans up handles.
@@ -58,22 +116,26 @@ extension UvBootstrap {
     }
 }
 
-/// Reads a `FileHandle` to EOF on a background queue; `value` blocks until done.
-/// Used by `runProcess` (H8) so stdout and stderr are drained in parallel with
-/// process execution rather than after `waitUntilExit`.
-private final class PipeReader {
+/// Reads a `FileHandle` to EOF on a dispatch thread, so stdout and stderr
+/// drain in parallel with the child (H8). `value` blocks; `read()` suspends
+/// and is the one to use from async code.
+final class PipeReader: @unchecked Sendable {
     private let group = DispatchGroup()
-    private var data = Data()
+    private var buffer = Data()
     init(handle: FileHandle) {
         group.enter()
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let buffer = handle.readDataToEndOfFile()
-            self?.data = buffer
-            self?.group.leave()
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
+            buffer = handle.readDataToEndOfFile()
+            group.leave()
         }
     }
     var value: Data {
         group.wait()
-        return data
+        return buffer
+    }
+    func read() async -> Data {
+        await withCheckedContinuation { continuation in
+            group.notify(queue: .global(qos: .userInitiated)) { [self] in continuation.resume(returning: buffer) }
+        }
     }
 }

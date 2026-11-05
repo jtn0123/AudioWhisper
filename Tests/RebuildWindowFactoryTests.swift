@@ -9,7 +9,8 @@ final class RebuildWindowFactoryTests: IsolatedXCTestCase {
         window.isReleasedWhenClosed = false
         defer { window.close() }
         StandardWindow.configure(window, frameAutosaveName: nil)
-        XCTAssertTrue(window.collectionBehavior.contains(.primary))
+        XCTAssertEqual(window.collectionBehavior, [.primary, .fullScreenPrimary])
+        XCTAssertEqual(window.tabbingMode, .disallowed)
         XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllApplications))
         XCTAssertFalse(window.collectionBehavior.contains(.fullScreenAuxiliary))
         XCTAssertFalse(window.collectionBehavior.contains(.canJoinAllSpaces))

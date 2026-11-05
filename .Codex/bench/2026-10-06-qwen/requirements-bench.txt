@@ -30,7 +30,7 @@ mlx-lm==0.32.0
 mlx-metal==0.32.3
 numpy==2.4.6
 packaging==26.3
-pillow==12.3.0
+pillow==13.0.0
 pluggy==1.6.0
 protobuf==7.36.2
 psutil==7.2.2

@@ -1,4 +1,3 @@
-import Foundation
 import Observation
 
 @MainActor
@@ -55,7 +54,7 @@ final class RebuildVocabularyEditorState {
 
     private func failed(_ error: Error) -> String? {
         isError = true
-        message = error.localizedDescription
+        message = RebuildErrorText.userMessage(for: error)
         return nil
     }
 }

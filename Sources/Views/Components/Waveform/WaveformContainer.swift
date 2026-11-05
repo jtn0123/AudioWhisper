@@ -30,7 +30,6 @@ struct WaveformContainer: View {
     let showsGlassBackground: Bool
     let backgroundColor: Color
     let waveformColor: Color
-    let onTap: () -> Void
 
     init(
         status: AppStatus,
@@ -42,8 +41,7 @@ struct WaveformContainer: View {
         showsStatusRow: Bool = true,
         showsGlassBackground: Bool = true,
         backgroundColor: Color = WaveformPalette.background,
-        waveformColor: Color = WaveformPalette.bar,
-        onTap: @escaping () -> Void
+        waveformColor: Color = WaveformPalette.bar
     ) {
         self.status = status
         self.audioLevel = audioLevel
@@ -55,7 +53,6 @@ struct WaveformContainer: View {
         self.showsGlassBackground = showsGlassBackground
         self.backgroundColor = backgroundColor
         self.waveformColor = waveformColor
-        self.onTap = onTap
     }
 
     @AppDefault(\.waveformStyle) private var waveformStyle
@@ -85,58 +82,57 @@ struct WaveformContainer: View {
     private let cornerRadius: CGFloat = 22
 
     var body: some View {
-        Button(action: onTap) {
-            ZStack {
-                // Solid base
-                backgroundColor
+        // Display only. The HUD is dragged by its background, so a tappable
+        // waveform turned every attempt to move it into a stop (C3); the
+        // HUD's own buttons are the controls.
+        ZStack {
+            // Solid base
+            backgroundColor
 
-                // Glass background (expressive / bold intensities only)
-                if showsGlassBackground && intensity.showGlass {
-                    GlassBackground(intensity: intensity, cornerRadius: cornerRadius)
-                        .opacity(0.85)
-                }
-
-                // Inner vignette — pulls focus to the waveform
-                vignette
-
-                // Main visualization (bars / shimmer / glyph swap by state)
-                stateVisual
-
-                // Particle overlay for neon style while recording
-                if style == .neon && isRecording {
-                    ParticleOverlay(audioLevel: audioLevel, isActive: true, reduceMotion: reduceMotion)
-                        .opacity(intensity.particleMultiplier)
-                }
-
-                // State transition flourish. While processing, the transition
-                // animation is non-deterministic; tests suppress it via
-                // processingAnimated.
-                if processingAnimated || !isProcessing {
-                    StatusTransitionOverlay(
-                        fromStatus: previousStatus,
-                        toStatus: status,
-                        intensity: intensity,
-                        reduceMotion: reduceMotion
-                    )
-                }
-
-                // Success celebration
-                if isSuccess {
-                    SuccessCelebration(
-                        intensity: intensity,
-                        isActive: true,
-                        successColor: successColor,
-                        reduceMotion: reduceMotion
-                    )
-                    .opacity(0.7)
-                }
-
-                // Status row — floats, no chrome
-                if showsStatusRow { statusRow }
+            // Glass background (expressive / bold intensities only)
+            if showsGlassBackground && intensity.showGlass {
+                GlassBackground(intensity: intensity, cornerRadius: cornerRadius)
+                    .opacity(0.85)
             }
+
+            // Inner vignette — pulls focus to the waveform
+            vignette
+
+            // Main visualization (bars / shimmer / glyph swap by state)
+            stateVisual
+
+            // Particle overlay for neon style while recording
+            if style == .neon && isRecording {
+                ParticleOverlay(audioLevel: audioLevel, isActive: true, reduceMotion: reduceMotion)
+                    .opacity(intensity.particleMultiplier)
+            }
+
+            // State transition flourish. While processing, the transition
+            // animation is non-deterministic; tests suppress it via
+            // processingAnimated.
+            if processingAnimated || !isProcessing {
+                StatusTransitionOverlay(
+                    fromStatus: previousStatus,
+                    toStatus: status,
+                    intensity: intensity,
+                    reduceMotion: reduceMotion
+                )
+            }
+
+            // Success celebration
+            if isSuccess {
+                SuccessCelebration(
+                    intensity: intensity,
+                    isActive: true,
+                    successColor: successColor,
+                    reduceMotion: reduceMotion
+                )
+                .opacity(0.7)
+            }
+
+            // Status row — floats, no chrome
+            if showsStatusRow { statusRow }
         }
-        .buttonStyle(.plain)
-        .disabled(isProcessing)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         // Outer soft shadow — always on
         .shadow(color: .black.opacity(0.55), radius: 30, x: 0, y: 16)
@@ -159,7 +155,7 @@ struct WaveformContainer: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityAction)
+        .accessibilityLabel(accessibilityDescription)
         .accessibilityValue(status.message)
     }
 
@@ -251,6 +247,13 @@ struct WaveformContainer: View {
             )
         case .heartbeat:
             HeartbeatPulseView(
+                audioLevel: audioLevel,
+                isActive: isRecording
+            )
+        case .neonDusk, .molten, .electric:
+            AuroraWaveformView(
+                palette: style.auroraPalette ?? .neonDusk,
+                waveformSamples: waveformSamples,
                 audioLevel: audioLevel,
                 isActive: isRecording
             )
@@ -414,14 +417,14 @@ extension WaveformContainer {
         }
     }
 
-    private var accessibilityAction: String {
+    private var accessibilityDescription: String {
         switch status {
-        case .recording: return "Stop recording"
+        case .recording: return "Recording"
         case .processing: return "Transcribing recording"
         case .success: return "Transcript copied"
-        case .permissionRequired, .setupRequired: return "Open recording setup"
-        case .error: return "Try recording again"
-        case .ready: return "Start recording"
+        case .permissionRequired, .setupRequired: return "Recording setup required"
+        case .error: return "Recording failed"
+        case .ready: return "Ready to record"
         }
     }
 
@@ -452,8 +455,7 @@ extension WaveformContainer {
         status: .recording,
         audioLevel: 0.6,
         waveformSamples: [],
-        frequencyBands: Array(repeating: 0.5, count: 8),
-        onTap: {}
+        frequencyBands: Array(repeating: 0.5, count: 8)
     )
     .frame(width: 280, height: 160)
     .padding(40)
@@ -465,8 +467,7 @@ extension WaveformContainer {
         status: .ready,
         audioLevel: 0,
         waveformSamples: [],
-        frequencyBands: Array(repeating: 0, count: 8),
-        onTap: {}
+        frequencyBands: Array(repeating: 0, count: 8)
     )
     .frame(width: 280, height: 160)
     .padding(40)

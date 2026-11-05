@@ -28,13 +28,14 @@ enum RebuildStartup {
         ])
         effects.migrateSettings()
         do { try effects.initializeHistory() } catch {
-            session.notice = "The local library could not open: \(error.localizedDescription)"
+            session.notice = "The local library could not open: \(RebuildErrorText.userMessage(for: error))"
         }
         let showWorkspace = effects.showWorkspace
         session.openSetup = {
             navigation.selection = .models
             showWorkspace()
         }
+        session.openWorkspace = showWorkspace
         session.showRecorder = effects.showRecorder
         session.closeRecorder = effects.closeRecorder
         effects.installMenu()

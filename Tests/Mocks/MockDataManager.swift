@@ -232,30 +232,4 @@ final class MockDataManager: DataManagerProtocol {
         let cutoffDate = Date().addingTimeInterval(-timeInterval)
         recordsToReturn.removeAll { $0.date < cutoffDate }
     }
-
-    // MARK: - Test Helpers
-
-    func reset() {
-        isHistoryEnabled = true
-        retentionPeriod = .oneMonth
-        sharedModelContainer = nil
-        recordsToReturn = []
-        shouldThrowOnSave = false
-        shouldThrowOnFetch = false
-        shouldThrowOnDelete = false
-
-        initializeCallCount = 0
-        saveTranscriptionCallCount = 0
-        saveTranscriptionLastRecord = nil
-        fetchAllRecordsCallCount = 0
-        fetchRecordsCallCount = 0
-        fetchRecordsLastQuery = nil
-        deleteRecordCallCount = 0
-        deleteRecordLastRecord = nil
-        deleteAllRecordsCallCount = 0
-        cleanupExpiredRecordsCallCount = 0
-        saveTranscriptionQuietlyCallCount = 0
-        fetchAllRecordsQuietlyCallCount = 0
-        cleanupExpiredRecordsQuietlyCallCount = 0
-    }
 }

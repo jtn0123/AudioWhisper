@@ -38,6 +38,14 @@ internal actor MLDaemonManager {
     // `private` is file-scoped, so a cross-file extension cannot see it.
     struct PendingRequest {
         let completion: (Result<Data, Error>) -> Void
+        /// The request's deadline. Cancelled on completion so a finished
+        /// request doesn't leave a sleeping task behind for the full timeout.
+        var timeout: Task<Void, Never>?
+
+        func complete(_ result: Result<Data, Error>) {
+            timeout?.cancel()
+            completion(result)
+        }
     }
 
     let logger = Logger(subsystem: "com.audiowhisper.app", category: "MLDaemon")
@@ -45,7 +53,15 @@ internal actor MLDaemonManager {
     /// Uptime a daemon must accumulate before it's treated as "stable" and the
     /// crash-loop restart counter is reset. See `markDaemonStableIfHealthy`.
     static let stableUptimeSeconds: UInt64 = 10
-    var requestTimeoutSeconds: UInt64 = 60
+    /// After hitting the restart limit, wait this long before allowing one
+    /// more spawn, so a transient failure doesn't disable Parakeet and cleanup
+    /// until the app is relaunched.
+    var restartCooldown: Duration = .seconds(60)
+    /// When the last allowed spawn attempt was made; nil while under the limit.
+    var restartLimitHitAt: ContinuousClock.Instant?
+    /// Fixed timeout for every request, set only by tests; production sizes
+    /// each request's timeout with `MLRequestTimeout`.
+    var requestTimeoutOverride: UInt64?
     /// Hard cap on a single JSON-RPC request payload (M6). Picked at 1 MiB —
     /// large enough for the longest realistic correction/transcription input
     /// but small enough that an oversize string can't DoS the Python daemon
@@ -82,7 +98,8 @@ internal actor MLDaemonManager {
     func transcribe(repo: String, pcmPath: String) async throws -> String {
         let result: MLRPCResult.Transcribe = try await sendRequest(
             method: .transcribe,
-            params: MLRPCParams.Transcribe(repo: repo, pcmPath: pcmPath)
+            params: MLRPCParams.Transcribe(repo: repo, pcmPath: pcmPath),
+            timeout: MLRequestTimeout.transcribe(pcmBytes: Self.fileSize(atPath: pcmPath))
         )
         result.diagnostics?.record(writing: false)
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Transcription failed") }
@@ -92,7 +109,8 @@ internal actor MLDaemonManager {
     func correct(repo: String, text: String, prompt: String?) async throws -> String {
         let result: MLRPCResult.Correct = try await sendRequest(
             method: .correct,
-            params: MLRPCParams.Correct(repo: repo, text: text, prompt: prompt)
+            params: MLRPCParams.Correct(repo: repo, text: text, prompt: prompt),
+            timeout: MLRequestTimeout.correct(text: text)
         )
         result.diagnostics?.record(writing: true)
         guard result.success else { throw MLDaemonError.remoteError(result.error ?? "Correction failed") }
@@ -102,13 +120,15 @@ internal actor MLDaemonManager {
     func warmup(type: MLWarmupKind, repo: String) async throws {
         let _: MLRPCResult.Warmup = try await sendRequest(
             method: .warmup,
-            params: MLRPCParams.Warmup(type: type, repo: repo)
+            params: MLRPCParams.Warmup(type: type, repo: repo),
+            timeout: MLRequestTimeout.warmup
         )
     }
 
     func summarize(repo: String, text: String) async throws -> String {
         let result: MLRPCResult.Correct = try await sendRequest(
-            method: .summarize, params: MLRPCParams.Correct(repo: repo, text: text, prompt: nil))
+            method: .summarize, params: MLRPCParams.Correct(repo: repo, text: text, prompt: nil),
+            timeout: MLRequestTimeout.summarize(text: text))
         guard result.success, !result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw MLDaemonError.remoteError(result.error ?? "Summary was unavailable; transcript preserved")
         }
@@ -119,7 +139,8 @@ internal actor MLDaemonManager {
         do {
             let result: MLRPCResult.Ping = try await sendRequest(
                 method: .ping,
-                params: MLRPCParams.Empty?.none
+                params: MLRPCParams.Empty?.none,
+                timeout: MLRequestTimeout.ping
             )
             return result.pong
         } catch {
@@ -132,7 +153,8 @@ internal actor MLDaemonManager {
 
     private func sendRequest<Params: Encodable, Response: Decodable>(
         method: MLRPCMethod,
-        params: Params?
+        params: Params?,
+        timeout: UInt64
     ) async throws -> Response {
         if testResponder != nil {
             return try respondFromTestStub(method: method, params: params)
@@ -163,7 +185,7 @@ internal actor MLDaemonManager {
         let queue = writerQueue
 
         // Use withCheckedThrowingContinuation with timeout via Task
-        let timeoutNanos = requestTimeoutSeconds * 1_000_000_000
+        let timeoutNanos = (requestTimeoutOverride ?? timeout) * 1_000_000_000
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Response, Error>) in
@@ -200,8 +222,8 @@ internal actor MLDaemonManager {
                     Task { await self?.handleWriteFailure(requestID: requestID, error: error, sessionID: session) }
                 }
             }
-            Task { [weak self] in
-                try? await Task.sleep(nanoseconds: timeoutNanos)
+            self.pending[requestID]?.timeout = Task { [weak self] in
+                guard (try? await Task.sleep(nanoseconds: timeoutNanos)) != nil else { return }
                 await self?.requestTimedOut(requestID, sessionID: session)
             }
             }
@@ -211,7 +233,7 @@ internal actor MLDaemonManager {
     }
 
     func cancelRequest(_ id: Int) {
-        pending.removeValue(forKey: id)?.completion(.failure(CancellationError()))
+        pending.removeValue(forKey: id)?.complete(.failure(CancellationError()))
     }
 
     private func requestTimedOut(_ id: Int, sessionID: UUID) async {
@@ -274,12 +296,12 @@ internal actor MLDaemonManager {
         }
 
         if let message = envelope.error?.message {
-            pendingRequest.completion(.failure(MLDaemonError.remoteError(message)))
+            pendingRequest.complete(.failure(MLDaemonError.remoteError(message)))
             return
         }
 
         guard let result = envelope.result, !result.isNull else {
-            pendingRequest.completion(.failure(MLDaemonError.invalidResponse("Missing result")))
+            pendingRequest.complete(.failure(MLDaemonError.invalidResponse("Missing result")))
             return
         }
 
@@ -292,13 +314,18 @@ internal actor MLDaemonManager {
                 logger.info("ml_daemon answered a request; resetting restart counter")
                 restartAttempts = 0
             }
-            pendingRequest.completion(.success(resultData))
+            restartLimitHitAt = nil
+            pendingRequest.complete(.success(resultData))
         } catch {
-            pendingRequest.completion(.failure(MLDaemonError.invalidResponse(error.localizedDescription)))
+            pendingRequest.complete(.failure(MLDaemonError.invalidResponse(error.localizedDescription)))
         }
     }
 
     // MARK: - Helpers
+
+    static func fileSize(atPath path: String) -> Int {
+        ((try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber)?.intValue ?? 0
+    }
 
     func resolvedPython() async throws -> URL {
         if let pythonExecutable { return pythonExecutable }
@@ -336,6 +363,7 @@ internal extension MLDaemonManager {
         pythonExecutable = nil
         scriptLocation = nil
         restartAttempts = 0
+        restartLimitHitAt = nil
         isShuttingDown = false
         isStarting = false
         testResponder = nil
@@ -343,16 +371,18 @@ internal extension MLDaemonManager {
 
     /// Inserts a pending request directly so tests can drive `handle(line:)`
     /// and `completeAllPending(with:)` without a live subprocess.
-    func injectPending(id: Int, completion: @escaping (Result<Data, Error>) -> Void) {
-        pending[id] = PendingRequest(
-            completion: completion
-        )
+    func injectPending(
+        id: Int, timeout: Task<Void, Never>? = nil, completion: @escaping (Result<Data, Error>) -> Void
+    ) {
+        pending[id] = PendingRequest(completion: completion, timeout: timeout)
     }
 
     /// Number of currently pending requests — test introspection only.
     func pendingCountForTesting() -> Int { pending.count }
 
-    func setRequestTimeoutForTesting(_ seconds: UInt64) { requestTimeoutSeconds = seconds }
+    func setRequestTimeoutForTesting(_ seconds: UInt64) { requestTimeoutOverride = seconds }
+
+    func setRestartCooldownForTesting(_ cooldown: Duration) { restartCooldown = cooldown }
 
     /// Whether a process handle is currently running — test introspection only.
     func isProcessRunningForTesting() -> Bool { process?.isRunning ?? false }

@@ -1,10 +1,9 @@
 import Foundation
-@testable import AudioWhisper
 
 /// Mock AudioEngineRecorder for testing recording operations
 @MainActor
-final class MockAudioEngineRecorder: ObservableObject, AudioRecording {
-    // MARK: - Published Properties (AudioRecording Protocol)
+final class MockAudioEngineRecorder: ObservableObject {
+    // MARK: - Published Properties
 
     @Published var isRecording = false
     @Published var audioLevel: Float = 0.0
@@ -47,7 +46,7 @@ final class MockAudioEngineRecorder: ObservableObject, AudioRecording {
         stopRecordingResult = tempPath.appendingPathComponent("mock_recording_\(timestamp).m4a")
     }
 
-    // MARK: - AudioRecording Protocol
+    // MARK: - Recording
 
     func startRecording() -> Bool {
         startRecordingCalled = true
@@ -95,28 +94,6 @@ final class MockAudioEngineRecorder: ObservableObject, AudioRecording {
 
         currentSessionStart = nil
         lastRecordingDuration = nil
-    }
-
-    // MARK: - Test Helpers
-
-    func reset() {
-        isRecording = false
-        audioLevel = 0.0
-        waveformSamples = []
-        frequencyBands = Array(repeating: 0, count: 8)
-        currentSessionStart = nil
-        lastRecordingDuration = nil
-
-        startRecordingCalled = false
-        startRecordingCallCount = 0
-        stopRecordingCalled = false
-        stopRecordingCallCount = 0
-        cancelRecordingCalled = false
-        cancelRecordingCallCount = 0
-        cleanupRecordingCalled = false
-        cleanupRecordingCallCount = 0
-
-        startRecordingResult = true
     }
 
     private func clearVisualizationData() {

@@ -20,7 +20,7 @@ extension RebuildSession {
             } catch {
                 if let span { trace?.end(span, outcome: .failed) }
                 trace?.failure(.history)
-                return "Copied your transcript, but history could not be saved: \(error.localizedDescription)"
+                return "Copied your transcript, but history could not be saved: \(RebuildErrorText.userMessage(for: error))"
             }
         }
         historyTasks[token] = task
@@ -125,6 +125,7 @@ extension RebuildSession {
             diagnosticTrace?.failure(.paste)
             notice = "Copied. Paste manually with Command V."
         }
+        if deliveryStatus == .manual, !isPractice { presentOutcome(.pasteManually) }
     }
 
     /// A failed or abandoned paste keeps the transcript for pasting by hand.

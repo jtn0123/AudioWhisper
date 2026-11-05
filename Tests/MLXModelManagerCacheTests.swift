@@ -28,6 +28,7 @@ final class MLXModelManagerCacheTests: XCTestCase {
 
     override func tearDownWithError() throws {
         if let savedPath { setenv("PATH", savedPath, 1) }
+        unsetenv(UvBootstrap.testUvEnvironmentKey)
         if let savedAppSupport {
             setenv("AUDIOWHISPER_APP_SUPPORT_DIR", savedAppSupport, 1)
         } else {
@@ -336,9 +337,8 @@ private extension MLXModelManagerCacheTests {
         return modelDir
     }
 
-    /// Puts a stub `uv` first on PATH and points UvBootstrap's project dir into
-    /// the temp root. `uv` on PATH is preferred over a bundled one, so this is
-    /// what `ensureVenv` runs.
+    /// Points UvBootstrap at a stub `uv` (through its debug-only test override)
+    /// and its project dir into the temp root, so this is what `ensureVenv` runs.
     func installStubUv(venvSucceeds: Bool) throws {
         let bin = tempRoot.appendingPathComponent("bin", isDirectory: true)
         try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
@@ -353,6 +353,7 @@ private extension MLXModelManagerCacheTests {
             exit 1
             """, to: bin.appendingPathComponent("uv"))
         setenv("PATH", "\(bin.path):/usr/bin:/bin", 1)
+        setenv(UvBootstrap.testUvEnvironmentKey, bin.appendingPathComponent("uv").path, 1)
         setenv("AUDIOWHISPER_APP_SUPPORT_DIR", tempRoot.appendingPathComponent("AppSupport").path, 1)
     }
 

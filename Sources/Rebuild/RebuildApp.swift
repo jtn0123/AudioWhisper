@@ -75,6 +75,8 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         guard !AppEnvironment.isRunningTests else { return }
         // Other audio a crashed recording left lowered.
         OutputDucker.shared.restore()
+        // Audio files a crashed recording left behind.
+        Task.detached(priority: .utility) { AppSetupHelper.cleanupOldTemporaryFiles() }
         RebuildStartup.configure(
             session: session, navigation: navigation,
             effects: .init(initializeHistory: { try DataManager.shared.initialize() },
@@ -89,7 +91,11 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
             configureShortcuts: { [weak self] in self?.configureShortcuts() },
             showWorkspace: { [weak self] in self?.showWorkspace() },
             showRecorder: { [weak self] in self?.showOverlay() },
-            closeRecorder: { [weak self] in self?.overlay?.orderOut(nil) }))
+            closeRecorder: { [weak self] in
+                self?.overlay?.orderOut(nil)
+                RebuildEscapeShortcut.recorderClosed()
+            }))
+        RebuildEscapeShortcut.install(session: session)
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .rebuildSettingsChanged, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.configureShortcuts() } }
@@ -126,6 +132,7 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
         RecordingWindowStyle.moveToActiveScreen(overlay)
         overlay.orderFrontRegardless()
         DiagnosticController.shared.window(.overlayShown, overlay)
+        RebuildEscapeShortcut.recorderShown()
     }
 
     func chooseAudio() {
@@ -180,13 +187,15 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         session.cancel()
         holdMonitor?.stop()
-        Task {
-            await session.meetings.shutdown()
-            await session.waitForHistoryWrites()
-            _ = await DiagnosticController.shared.snapshot()
-            await MLDaemonManager.shared.shutdown()
-            NSApp.reply(toApplicationShouldTerminate: true)
-        }
+        let session = session
+        RebuildTermination.run(
+            work: {
+                await session.meetings.shutdown()
+                await session.waitForHistoryWrites()
+                _ = await DiagnosticController.shared.snapshot()
+                await MLDaemonManager.shared.shutdown()
+            },
+            reply: { NSApp.reply(toApplicationShouldTerminate: true) })
         return .terminateLater
     }
 }

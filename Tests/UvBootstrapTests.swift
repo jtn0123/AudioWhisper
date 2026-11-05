@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import XCTest
 @testable import AudioWhisper
@@ -42,6 +43,7 @@ final class UvBootstrapTests: XCTestCase {
         } else {
             unsetenv("AUDIOWHISPER_APP_SUPPORT_DIR")
         }
+        unsetenv(UvBootstrap.testUvEnvironmentKey)
         if let tempHome {
             try? FileManager.default.removeItem(at: tempHome)
         }
@@ -49,20 +51,9 @@ final class UvBootstrapTests: XCTestCase {
     }
 
     func testFindUvThrowsWhenUvTooOld() throws {
-        let uvURL = try writeUvStub(version: "0.8.4")
-        XCTAssertTrue(FileManager.default.isExecutableFile(atPath: uvURL.path))
-        XCTAssertEqual(whichUVPath(), uvURL.path)
-
-        // In the test environment, Bundle.main may contain a valid bundled uv
-        // which would be found before the too-old PATH version. If findUv succeeds,
-        // it means a valid bundled uv was found, which is acceptable behavior.
-        do {
-            let foundUv = try UvBootstrap.findUv()
-            // A bundled uv was found - verify it's not our too-old stub
-            XCTAssertNotEqual(foundUv.path, uvURL.path, "Should not return the too-old stub when bundled uv exists")
-        } catch let error as UvError {
-            // No bundled uv - should get uvTooOld error
-            guard case let .uvTooOld(found, required) = error else {
+        try writeUvStub(version: "0.8.4")
+        XCTAssertThrowsError(try UvBootstrap.findUv()) { error in
+            guard case let .uvTooOld(found, required)? = error as? UvError else {
                 return XCTFail("Expected uvTooOld, got \(error)")
             }
             XCTAssertEqual(found, "0.8.4")
@@ -70,22 +61,54 @@ final class UvBootstrapTests: XCTestCase {
         }
     }
 
-    func testFindUvFallsBackToUserToolsDirectory() throws {
-        // No uv on PATH; add one under Application Support/AudioWhisper/bin/uv
-        let toolsDir = tempAppSupport.appendingPathComponent("\(RebuildStorage.directoryName)/bin", isDirectory: true)
-        try FileManager.default.createDirectory(at: toolsDir, withIntermediateDirectories: true)
+    // MARK: - Trusted uv selection
 
-        let uvURL = toolsDir.appendingPathComponent("uv")
-        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23'\n", to: uvURL)
+    func testUnverifiedFallbacksAreNeverRun() throws {
+        let marker = tempHome.appendingPathComponent("executed")
+        let rogue = tempBin.appendingPathComponent("uv")
+        try writeExecutable("#!/bin/bash\ntouch '\(marker.path)'\necho 'uv 0.12.23'\n", to: rogue)
+        let expected = String(repeating: "a", count: 64)
+        XCTAssertThrowsError(try UvBootstrap.selectUv(bundled: [], fallbacks: [rogue], expectedSha256: expected)) {
+            guard case .uvUnverified? = $0 as? UvError else { return XCTFail("Expected uvUnverified, got \($0)") }
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "An unverified uv must not even be probed")
+    }
 
-        let found = try UvBootstrap.findUv()
-        // In test environment, Bundle.main may contain a valid bundled uv which takes precedence.
-        // If our user tools uv is found, great. If bundled uv is found, that's also valid behavior.
-        // Just verify we found a valid uv (either bundled or user tools).
-        XCTAssertTrue(
-            found == uvURL || FileManager.default.isExecutableFile(atPath: found.path),
-            "Should find either user tools uv or bundled uv"
-        )
+    func testFallbackIdenticalToTheShippedBinaryIsAccepted() throws {
+        let copy = tempBin.appendingPathComponent("uv")
+        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23'\n", to: copy)
+        let found = try UvBootstrap.selectUv(bundled: [], fallbacks: [copy], expectedSha256: try sha256(copy))
+        XCTAssertEqual(found, copy)
+    }
+
+    func testBundledCopyWinsOverAFallbackOnPath() throws {
+        let bundled = tempHome.appendingPathComponent("bundled-uv")
+        let onPath = tempBin.appendingPathComponent("uv")
+        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23'\n", to: bundled)
+        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23'\n", to: onPath)
+        let found = try UvBootstrap.selectUv(bundled: [bundled], fallbacks: [onPath], expectedSha256: try sha256(bundled))
+        XCTAssertEqual(found, bundled)
+    }
+
+    func testTamperedBundledCopyFailsInsteadOfFallingBack() throws {
+        let bundled = tempHome.appendingPathComponent("bundled-uv")
+        let onPath = tempBin.appendingPathComponent("uv")
+        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23'\n", to: onPath)
+        try writeExecutable("#!/bin/bash\necho 'uv 0.12.23' # modified\n", to: bundled)
+        XCTAssertThrowsError(try UvBootstrap.selectUv(bundled: [bundled], fallbacks: [onPath],
+                                                      expectedSha256: try sha256(onPath))) {
+            guard case .bundledBinaryTampered? = $0 as? UvError else {
+                return XCTFail("Expected bundledBinaryTampered, got \($0)")
+            }
+        }
+    }
+
+    func testNoCandidatesReportsNotFound() {
+        let missing = tempBin.appendingPathComponent("absent")
+        XCTAssertThrowsError(try UvBootstrap.selectUv(bundled: [missing], fallbacks: [missing],
+                                                      expectedSha256: String(repeating: "a", count: 64))) {
+            guard case .uvNotFound? = $0 as? UvError else { return XCTFail("Expected uvNotFound, got \($0)") }
+        }
     }
 
     func testEnsureVenvCreatesAndSyncsWithDefaultPython() async throws {
@@ -167,6 +190,7 @@ final class UvBootstrapTests: XCTestCase {
         if [[ "$1" == "venv" ]]; then mkdir -p .venv; exit 0; fi
         exit 0
         """, to: tempBin.appendingPathComponent("uv"))
+        setenv(UvBootstrap.testUvEnvironmentKey, tempBin.appendingPathComponent("uv").path, 1)
         do {
             _ = try await UvBootstrap.ensureVenv()
             XCTFail("expected pinned install failure")
@@ -219,20 +243,6 @@ final class UvBootstrapTests: XCTestCase {
         XCTAssertEqual(invocations.filter { $0.contains(":: sync") }.count, 3)
     }
 
-    private func whichUVPath() -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = ["uv"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        try? process.run()
-        process.waitUntilExit()
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
-        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-
     @discardableResult
     private func writeUvStub(version: String, logFile: URL? = nil) throws -> URL {
         let uvURL = tempBin.appendingPathComponent("uv")
@@ -260,7 +270,12 @@ final class UvBootstrapTests: XCTestCase {
         lines.append("exit 1")
 
         try writeExecutable(lines.joined(separator: "\n") + "\n", to: uvURL)
+        setenv(UvBootstrap.testUvEnvironmentKey, uvURL.path, 1)
         return uvURL
+    }
+
+    private func sha256(_ url: URL) throws -> String {
+        SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
     }
 
     private func writeExecutable(_ contents: String, to url: URL) throws {
