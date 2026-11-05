@@ -181,12 +181,14 @@ final class RebuildDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         session.cancel()
         holdMonitor?.stop()
-        Task {
-            await session.meetings.shutdown()
-            await session.waitForHistoryWrites()
-            await MLDaemonManager.shared.shutdown()
-            NSApp.reply(toApplicationShouldTerminate: true)
-        }
+        let session = session
+        RebuildTermination.run(
+            work: {
+                await session.meetings.shutdown()
+                await session.waitForHistoryWrites()
+                await MLDaemonManager.shared.shutdown()
+            },
+            reply: { NSApp.reply(toApplicationShouldTerminate: true) })
         return .terminateLater
     }
 }

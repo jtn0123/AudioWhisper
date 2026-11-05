@@ -286,7 +286,13 @@ internal extension MLDaemonManager {
                 try? await Task.sleep(for: .milliseconds(10))
             }
             if dead.isRunning { kill(dead.processIdentifier, SIGKILL) }
-            while dead.isRunning { try? await Task.sleep(for: .milliseconds(10)) }
+            // SIGKILL can't be refused, but a process stuck in an
+            // uninterruptible wait still won't be reaped; don't wait forever.
+            let killDeadline = ContinuousClock.now + .seconds(2)
+            while dead.isRunning, ContinuousClock.now < killDeadline {
+                try? await Task.sleep(for: .milliseconds(10))
+            }
+            if dead.isRunning { logger.error("ml_daemon did not exit after SIGKILL; abandoning it") }
         }
         closePipes()
     }
