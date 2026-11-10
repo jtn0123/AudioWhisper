@@ -4,7 +4,7 @@ This is the local-only fork at `jtn0123/AudioWhisper`. Target this repository ex
 
 ## Tooling
 
-Use a full Xcode 26+ installation with Swift 6.2+ tooling, Git and Python 3.11+ for development utilities. KeyboardShortcuts 3.x requires that toolchain even though this package retains Swift 5 language mode. Native app testing targets macOS 26/27; older-OS acceptance is outside the current scope.
+Use a full Xcode 26+ installation with Swift 6.2+ tooling, Git, [rustup](https://rustup.rs) and Python 3.11+ for development utilities. The transcript rules are Rust (`Vendor/AudioWhisper-Core`, a git submodule; clone with `--recurse-submodules` or run `git submodule update --init`), and the core pins its own toolchain. KeyboardShortcuts 3.x requires that toolchain even though this package retains Swift 5 language mode. Native app testing targets macOS 26/27; older-OS acceptance is outside the current scope.
 
 The shell build/test scripts source `scripts/lib/xcode-env.sh` to recover from Command Line Tools being selected. For direct Swift or SwiftLint commands:
 
@@ -16,7 +16,7 @@ ensure_xcode_toolchain
 ## Build and launch
 
 ```sh
-git clone https://github.com/jtn0123/AudioWhisper.git
+git clone --recurse-submodules https://github.com/jtn0123/AudioWhisper.git
 cd AudioWhisper
 make run
 ```
@@ -26,7 +26,8 @@ make run
 ```sh
 make build-dev              # signed host debug package only
 make build                  # universal release package
-swift build                 # compilation check after toolchain setup
+scripts/build-core.sh       # the Rust core (Vendor/AudioWhisper-Core); make runs it for you
+swift build                 # compilation check after toolchain setup and build-core
 make test
 make typecheck
 ```

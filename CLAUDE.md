@@ -24,6 +24,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --parallel
 > ```
 
+> **Rust core:** the transcript rules (spoken punctuation, fillers, custom
+> vocabulary, cursor context) are Rust, in the `Vendor/AudioWhisper-Core`
+> submodule, linked as `.build/awcore/libawcore.a`. The `make` targets and
+> `scripts/*.sh` build it first (`scripts/build-core.sh`, a no-op when it is up
+> to date). A bare `swift build` / `swift test` on a fresh checkout fails with
+> `library 'awcore' not found` until you run `scripts/build-core.sh` once; after
+> changing the core, run it again.
+
 ```bash
 # Build release app bundle
 make build
@@ -120,6 +128,16 @@ keeps it on screen to explain a failed dictation or a manual paste. The
 waveform styles it draws live in `Sources/Views/Components/Waveform/`. See
 `docs/rebuild.md`.
 
+### Transcript rules (`Sources/Services/Formatting/`, Rust)
+`TranscriptFormatter`, `CustomVocabulary` and `CursorContextFormatter` are thin
+Swift wrappers over the Rust crate in `Vendor/AudioWhisper-Core`
+(`jtn0123/AudioWhisper-Core`, shared with the Android keyboard), called through
+its C interface (`Vendor/CAWCore` module map, `TranscriptCore.swift`). Change
+the rules in the core, not here. `Tests/Reference/` keeps the original Swift,
+and `TranscriptCoreDifferentialTests` holds the Rust to it on random text,
+scalar for scalar. A difference is the Rust's to fix: never edit the reference
+to make it pass. See ADR 0007.
+
 ### Transcription Services (`Sources/Services/`)
 - `SpeechToTextService.swift` - Main transcription orchestrator, routes to appropriate provider
 - `LocalWhisperService.swift` - WhisperKit CoreML transcription (offline)
@@ -174,7 +192,7 @@ Python reader, and nothing else — the test tells you if you missed one.
 ## Key Dependencies
 
 Only two direct SwiftPM dependencies — see `Package.swift`. Everything else is
-an Apple framework or the embedded Python runtime.
+an Apple framework, the embedded Python runtime or the Rust core.
 
 **SwiftPM:**
 - **KeyboardShortcuts** (sindresorhus, 3.x) - Global hotkeys and the recorder UI
@@ -186,6 +204,11 @@ an Apple framework or the embedded Python runtime.
 - **Accelerate (vDSP)** - FFT and level metering for the waveform
 - **SwiftData** - Transcription history persistence
 - **CryptoKit** - SHA-256 for model and `uv` binary integrity checks
+
+**Rust core** (`Vendor/AudioWhisper-Core` submodule, ADR 0007): the
+transcript rules, a static library. Its crates pin their dependencies
+(`fancy-regex`, `unicode-normalization`, `unicode-segmentation`) in its own
+`Cargo.lock`.
 
 **Embedded Python** (uv-managed, see ADR 0002): `parakeet-mlx` for Parakeet
 transcription and `mlx-lm` for semantic correction.
