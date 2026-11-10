@@ -25,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > ```
 
 > **Rust core:** the transcript rules (spoken punctuation, fillers, custom
-> vocabulary, cursor context) are Rust, in the `Vendor/AudioWhisper-Core`
+> vocabulary, cursor context) and the correction safety gate are Rust, in the `Vendor/AudioWhisper-Core`
 > submodule, linked as `.build/awcore/libawcore.a`. The `make` targets and
 > `scripts/*.sh` build it first (`scripts/build-core.sh`, a no-op when it is up
 > to date). A bare `swift build` / `swift test` on a fresh checkout fails with
@@ -138,6 +138,16 @@ and `TranscriptCoreDifferentialTests` holds the Rust to it on random text,
 scalar for scalar. A difference is the Rust's to fix: never edit the reference
 to make it pass. See ADR 0007.
 
+### Correction safety gate (Rust)
+What decides whether a model's cleanup or rewrite may replace the dictation —
+`CorrectionIntegrity.allows`, `CorrectionContentComparison.ratio`,
+`SemanticCorrectionService.safeMerge` / `normalizedEditDistance` and
+`DictationWriting.accepted` — runs in the core's `crates/correction`, on its
+own copy of ICU's regex semantics (`apple-text`'s `icu`). The prompt text, the
+constants and the model plumbing stay in Swift. `CorrectionGateDifferentialTests`
+holds the Rust to the Swift in `Tests/Reference/`, texts scalar for scalar and
+ratios bit for bit; the same rule applies: never edit the reference.
+
 ### Transcription Services (`Sources/Services/`)
 - `SpeechToTextService.swift` - Main transcription orchestrator, routes to appropriate provider
 - `LocalWhisperService.swift` - WhisperKit CoreML transcription (offline)
@@ -206,7 +216,7 @@ an Apple framework, the embedded Python runtime or the Rust core.
 - **CryptoKit** - SHA-256 for model and `uv` binary integrity checks
 
 **Rust core** (`Vendor/AudioWhisper-Core` submodule, ADR 0007): the
-transcript rules, a static library. Its crates pin their dependencies
+transcript rules and the correction gate, a static library. Its crates pin their dependencies
 (`fancy-regex`, `unicode-normalization`, `unicode-segmentation`) in its own
 `Cargo.lock`.
 
