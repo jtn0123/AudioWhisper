@@ -11,8 +11,18 @@ import subprocess
 
 def fingerprint(root, context):
     root = root.resolve()
-    tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=root)
-    paths = {Path(os.fsdecode(name)) for name in tracked.split(b'\0') if name}
+    tracked = subprocess.check_output(['git', 'ls-files', '-s', '-z'], cwd=root)
+    paths = set()
+    # A submodule (Vendor/AudioWhisper-Core) is a directory; what the build sees of it is the
+    # commit it is pinned at, so that stands in for its content.
+    submodules = {}
+    for entry in filter(None, tracked.split(b'\0')):
+        info, name = entry.split(b'\t', 1)
+        mode, commit = info.split(b' ')[:2]
+        path = Path(os.fsdecode(name))
+        paths.add(path)
+        if mode == b'160000':
+            submodules[path] = commit
     # Include generated and untracked inputs too, especially VersionInfo.swift.
     for directory in ('Sources', 'Tests'):
         paths.update(path.relative_to(root) for path in (root / directory).rglob('*') if path.is_file())
@@ -26,7 +36,10 @@ def fingerprint(root, context):
             continue
         path = root / relative
         digest.update(os.fsencode(relative.as_posix()) + b'\0')
-        digest.update(hashlib.sha256(path.read_bytes()).digest() if path.exists() else b'missing\0')
+        if relative in submodules:
+            digest.update(b'submodule\0' + submodules[relative] + b'\0')
+        else:
+            digest.update(hashlib.sha256(path.read_bytes()).digest() if path.exists() else b'missing\0')
     return digest.hexdigest()
 
 
