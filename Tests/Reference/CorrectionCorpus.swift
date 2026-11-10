@@ -24,7 +24,7 @@ struct CorrectionCorpus {
 
     static let polarity = [
         "negative", "Negative", "minus", "MINUS", "positive", "plus", "Plus", "unless", "without", "WITHOUT",
-        "withoutt", "pluses", "ﬁve"
+        "withoutt", "pluses", "ﬁve", "pluß", "MINUß", "unlesß"
     ]
 
     static let numbers = [
@@ -54,7 +54,7 @@ struct CorrectionCorpus {
         "Hi", "hi", "Hello", "Hey", "HEY", "Dear", "dear", "Best", "Best regards", "best regards", "Kind regards",
         "Regards", "Sincerely", "Cheers", "[Your Name]", "[your name]", "[Sender]", "[Recipient's name]", "[NAME]",
         "[Your", "[yours truly]", "Subject:", "subject :", "SUBJECT:", "ſubject:", "Subject", "Hi\u{301}", "Hiya",
-        "Bestregards", "[name\u{301}]", "[nameſ]"
+        "Bestregards", "[name\u{301}]", "[nameſ]", "Hİ", "cheerß"
     ]
 
     static let plain = [
@@ -116,24 +116,35 @@ struct CorrectionCorpus {
         case 4: result = result.replacingOccurrences(of: "'", with: "’")
         case 5: result = result.decomposedStringWithCanonicalMapping
         case 6: result = result.precomposedStringWithCanonicalMapping
+        case 7: result = padded(result, toward: original)
         default: break
         }
         return result
     }
 
+    /// `text`, trimmed and filled out to just under, at or just over a rewrite's length
+    /// limit, `max(256, 4 × original.count)` characters.
+    private mutating func padded(_ text: String, toward original: String) -> String {
+        let limit = max(256, original.count * 4)
+        let target = limit + below(3) - 1
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines) + " "
+        return trimmed + String(repeating: pick(["x", "é", "👍"]), count: max(0, target - trimmed.count))
+    }
+
     private mutating func edit(_ tokens: inout [String]) {
         guard !tokens.isEmpty else { tokens.append(token()); return }
         let index = below(tokens.count)
-        switch below(10) {
+        switch below(11) {
         case 0: tokens.remove(at: index)
         case 1: tokens.insert(token(), at: index)
         case 2: tokens[index] = token()
         case 3: tokens[index] = tokens[index].capitalized
         case 4: tokens[index] = tokens[index].lowercased()
-        case 5: tokens[index] += pick([",", ".", "?", "!", ":"])
+        case 5: tokens[index] += pick([",", ".", "?", "!", ":", ")", "]", "}"])
         case 6: tokens[index] = String(tokens[index].map { $0.isNumber ? Character(String(below(10))) : $0 })
         case 7: tokens.insert(pick(["not", "no", "never", "don't", "without", "minus"]), at: index)
         case 8: tokens[index] = tokens[index].replacingOccurrences(of: "n't", with: "")
+        case 9: tokens[index] = tokens[index].replacingOccurrences(of: "%", with: pick(["", " percent", " %"]))
         default: break
         }
     }
@@ -149,13 +160,58 @@ struct CorrectionCorpus {
         let target = pick([3_900, 3_990, 4_000, 4_001, 4_100, 6_000, 12_000])
         while original.count < target { original += pick(sentences) }
         var corrected = original
-        switch below(5) {
+        switch below(7) {
         case 0: corrected = text(maxTokens: 12) + " " + original
         case 1: corrected = String(original.prefix(original.count / 2 + below(original.count / 2 + 1)))
         case 2: corrected = String((0..<(original.count / 6)).map { _ in pick(["alpha ", "bravo ", "charlie "]) }.joined())
         case 3: corrected = original.replacingOccurrences(of: " the ", with: " a ")
+        case 4: corrected = pick([original.uppercased(), original.capitalized])
+        // Equal to the original as Swift compares, so the ratio is exactly 0.
+        case 5: corrected = original.decomposedStringWithCanonicalMapping
         default: corrected = original + text(maxTokens: 6)
         }
         return chance(3) ? (corrected, original) : (original, corrected)
+    }
+
+    /// A pair on one of the bounded comparison's edges.
+    mutating func edge() -> (original: String, corrected: String) {
+        chance(2) ? budgeted() : doubled()
+    }
+
+    /// A long text whose changed span is just under, at or just over the 1,000,000-cell
+    /// comparison budget, where the comparison switches from characters to tokens.
+    private mutating func budgeted() -> (original: String, corrected: String) {
+        let width = pick([800, 1_000, 1_250, 2_000])
+        let height = 1_000_000 / width + below(3) - 1
+        let prefix = plain(maxTokens: 300), suffix = plain(maxTokens: 300)
+        let left = "<" + filler(height - 2) + ">", right = "[" + filler(width - 2) + "]"
+        return (prefix + " " + left + " " + suffix, prefix + " " + right + " " + suffix)
+    }
+
+    /// Two unrelated texts of about 2,100 characters of two scalars each: over the 4,000 cap
+    /// counted in scalars, under it in characters, which is how Swift counts.
+    private mutating func doubled() -> (original: String, corrected: String) {
+        let make = { (corpus: inout CorrectionCorpus) in
+            (0..<(2_050 + corpus.below(100))).map { _ in corpus.pick(["e\u{301}", "o\u{308}", "👍🏽", " "]) }.joined()
+        }
+        return (make(&self), make(&self))
+    }
+
+    private mutating func filler(_ count: Int) -> String {
+        String((0..<count).map { _ in pick(Array("abc de")) })
+    }
+
+    /// A text either side of the 250,000 UTF-16 unit limit on comparing at all, in short words
+    /// (a long run of letters is quadratic for the literal patterns, in the Swift as in the
+    /// Rust) and emoji that take two units each, and that text with one character changed.
+    mutating func huge() -> (original: String, corrected: String) {
+        let unit = pick(["ab ", "😀 ", "é😀 "])
+        let target = 249_999 + below(3)
+        var original = String(repeating: unit, count: target / unit.utf16.count - 1)
+        while original.utf16.count < target { original += "a" }
+        let index = original.index(original.startIndex, offsetBy: below(original.count))
+        var corrected = original
+        corrected.replaceSubrange(index...index, with: pick(["b", "😀a", ""]))
+        return chance(2) ? (corrected, original) : (original, corrected)
     }
 }

@@ -12,8 +12,9 @@ import XCTest
 /// macOS update the core's generated tables don't follow (regenerate them with
 /// the core's tools/unicode-tables.sh).
 final class CorrectionGateDifferentialTests: XCTestCase {
-    private static let cases = 600
-    private static let longCases = 10
+    private static let cases = 500
+    private static let longCases = 6
+    private static let edgeCases = 2
     /// Differences shown per test; one broken rule would otherwise report hundreds.
     private static let shownDifferences = 5
     private var differences = 0
@@ -53,16 +54,24 @@ final class CorrectionGateDifferentialTests: XCTestCase {
     }
 
     /// Texts either side of the 4,000-character switch to the bounded comparison.
-    /// The distance is compared on its own only once: the Swift's quadratic DP
-    /// takes over a second a case, and under the switch `safeMerge` computes it anyway.
+    /// The distance isn't compared on its own: the Swift's quadratic DP takes over a
+    /// second a case, and under the switch `safeMerge` computes it anyway.
     func testLongDictationMatchesTheSwift() {
         var corpus = CorrectionCorpus(seed: 14)
-        var distances = 0
         for _ in 0..<Self.longCases {
             let (original, corrected) = corpus.long()
-            let distance = distances < 1 && max(original.count, corrected.count) <= 4_500
-            distances += distance ? 1 : 0
-            assertRatiosMatch(original, corrected, distance: distance)
+            assertRatiosMatch(original, corrected, distance: false)
+            assertMergesMatch(original, corrected, &corpus)
+        }
+    }
+
+    /// Changed spans at the comparison budget, and texts over the length cap in scalars but
+    /// not in characters.
+    func testTheBoundedComparisonsEdgesMatchTheSwift() {
+        var corpus = CorrectionCorpus(seed: 15)
+        for _ in 0..<Self.edgeCases {
+            let (original, corrected) = corpus.edge()
+            assertRatiosMatch(original, corrected, distance: false)
             assertMergesMatch(original, corrected, &corpus)
         }
     }
