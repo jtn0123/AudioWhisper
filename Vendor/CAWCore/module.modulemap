@@ -1,0 +1,7 @@
+// The Rust transcript rules' C interface (Vendor/AudioWhisper-Core), as a
+// Swift module. scripts/build-core.sh builds the library this links.
+module CAWCore [system] {
+    header "../AudioWhisper-Core/crates/awcore/include/awcore.h"
+    link "awcore"
+    export *
+}

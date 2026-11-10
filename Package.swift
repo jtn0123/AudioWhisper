@@ -28,7 +28,8 @@ let package = Package(
             dependencies: [
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
-                .product(name: "SpeakerKit", package: "argmax-oss-swift")
+                .product(name: "SpeakerKit", package: "argmax-oss-swift"),
+                "CAWCore"
             ],
             path: "Sources",
             exclude: ["VersionInfo.swift.template"],
@@ -41,8 +42,17 @@ let package = Package(
                 .copy("ml"),
                 // Bundle additional resources like uv binary and lock files
                 .copy("Resources")
+            ],
+            linkerSettings: [
+                // libawcore.a, built by scripts/build-core.sh (which `make
+                // build` and `make test` run first). A bare `swift build` on a
+                // fresh checkout fails here with "library 'awcore' not found".
+                .unsafeFlags(["-L\(Context.packageDirectory)/.build/awcore"])
             ]
         ),
+        // The transcript rules in Rust (Vendor/AudioWhisper-Core, a git
+        // submodule), through their C interface.
+        .systemLibrary(name: "CAWCore", path: "Vendor/CAWCore"),
         .testTarget(
             name: "AudioWhisperTests",
             dependencies: [

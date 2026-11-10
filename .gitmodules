@@ -1,0 +1,3 @@
+[submodule "Vendor/AudioWhisper-Core"]
+	path = Vendor/AudioWhisper-Core
+	url = https://github.com/jtn0123/AudioWhisper-Core.git

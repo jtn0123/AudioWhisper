@@ -64,6 +64,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Select Xcode
         env:
@@ -81,6 +83,11 @@ jobs:
           sudo xcode-select -s "$selected/Contents/Developer"
           xcodebuild -version
           swift --version
+
+      - name: Build the Rust transcript core
+        # Package.swift links Vendor/AudioWhisper-Core's libawcore.a. rustup is on
+        # the runner; the core's rust-toolchain.toml picks the pinned toolchain.
+        run: scripts/build-core.sh
 
       - name: Cache Swift packages
         uses: actions/cache@v4

@@ -193,6 +193,11 @@ struct VersionInfo {
 EOF
 fi
 
+# The transcript rules are Rust (Vendor/AudioWhisper-Core); Package.swift
+# links the universal libawcore.a this builds, for both release slices.
+echo "🦀 Building the Rust transcript core..."
+scripts/build-core.sh || exit 1
+
 if [ "$DEBUG_BUILD" = true ]; then
   echo "📦 Building incremental debug bundle for the host..."
   swift build -c debug --product AudioWhisper || exit 1
