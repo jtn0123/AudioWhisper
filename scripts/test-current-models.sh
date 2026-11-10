@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 . scripts/lib/xcode-env.sh
 ensure_xcode_toolchain
+scripts/build-core.sh
 test "$(uname -m)" = arm64 || { echo "Apple Silicon required" >&2; exit 1; }
 test "$(sysctl -n hw.memsize)" -ge 34359738368 || { echo "32 GB unified memory required" >&2; exit 1; }
 echo "Exact source: $(git rev-parse HEAD)"

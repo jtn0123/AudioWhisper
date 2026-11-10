@@ -36,10 +36,12 @@ The preview uses `com.audiowhisper.rebuild` and a separate Application Support d
 
 ## Installation 🛠️
 
-This fork publishes **no releases and no Homebrew tap**. Build it from source:
+This fork publishes **no releases and no Homebrew tap**. Build it from source. You need Xcode and
+[Rust](https://rustup.rs) (the transcript rules are a Rust library, `Vendor/AudioWhisper-Core`, a
+git submodule; it pins its own toolchain, which rustup installs on first use):
 
 ```bash
-git clone https://github.com/jtn0123/AudioWhisper.git
+git clone --recurse-submodules https://github.com/jtn0123/AudioWhisper.git
 cd AudioWhisper
 
 make build                        # produces the preview at AudioWhisper.app
@@ -154,6 +156,7 @@ library write cannot delay pasting; pending writes finish before the app quits n
 ## Building from Source 👨‍💻
 
 ```bash
+scripts/build-core.sh      # the Rust transcript core; bare `swift` commands need it first
 swift build                # debug build
 make run                   # package, safely install and launch the signed rebuild
 swift build -c release     # release binary

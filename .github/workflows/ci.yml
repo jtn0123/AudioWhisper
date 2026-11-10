@@ -76,6 +76,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: List available Xcode versions
         run: ls /Applications | grep Xcode || true
@@ -121,6 +123,11 @@ jobs:
               -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
               Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
           echo "Generated Sources/Utilities/VersionInfo.swift"
+
+      - name: Build the Rust transcript core
+        # Package.swift links Vendor/AudioWhisper-Core's libawcore.a. rustup is on
+        # the runner; the core's rust-toolchain.toml picks the pinned toolchain.
+        run: scripts/build-core.sh
 
       - name: Build
         run: swift build
@@ -390,6 +397,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Select Xcode
         run: |
@@ -503,6 +512,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Select Xcode
         run: |
@@ -574,6 +585,12 @@ jobs:
           else
             echo "valid=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Build the Rust transcript core
+        if: steps.analyzer-cache.outputs.valid != 'true'
+        # Package.swift links Vendor/AudioWhisper-Core's libawcore.a. rustup is on
+        # the runner; the core's rust-toolchain.toml picks the pinned toolchain.
+        run: scripts/build-core.sh
 
       - name: Build with xcodebuild (analyzer needs a compiler log)
         if: steps.analyzer-cache.outputs.valid != 'true'

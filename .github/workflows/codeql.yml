@@ -36,6 +36,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        submodules: true
 
     - name: Select Xcode
       if: matrix.language == 'swift'
@@ -59,6 +61,12 @@ jobs:
             -e "s/VERSION_PLACEHOLDER/$VERSION/g" \
             -e "s/GIT_HASH_PLACEHOLDER/$GIT_HASH/g" \
             Sources/VersionInfo.swift.template > Sources/Utilities/VersionInfo.swift
+
+    - name: Build the Rust transcript core
+      # Package.swift links Vendor/AudioWhisper-Core's libawcore.a. rustup is on
+      # the runner; the core's rust-toolchain.toml picks the pinned toolchain.
+      if: matrix.language == 'swift'
+      run: scripts/build-core.sh
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3

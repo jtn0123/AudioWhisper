@@ -205,6 +205,17 @@ class AnalyzerFingerprintTests(unittest.TestCase):
         (self.root / 'Sources/App.swift').unlink()
         self.assertNotEqual(CACHE.fingerprint(self.root, {'toolchain': 'one'}), self.original)
 
+    def test_a_submodule_counts_by_the_commit_it_is_pinned_at(self):
+        (self.root / 'Vendor/Core').mkdir(parents=True)
+        def pin(commit):
+            subprocess.run(['git', 'update-index', '--add', '--cacheinfo', f'160000,{commit},Vendor/Core'],
+                           cwd=self.root, check=True)
+            return CACHE.fingerprint(self.root, {'toolchain': 'one'})
+        first = pin('1' * 40)
+        self.assertNotEqual(first, self.original)
+        self.assertNotEqual(pin('2' * 40), first)
+        self.assertEqual(pin('1' * 40), first)
+
     def test_documentation_only_changes_reuse_the_complete_graph_result(self):
         for name in ('README.md', 'docs/guide.md', '.Codex/evidence.txt'):
             (self.root / name).write_text('updated documentation')

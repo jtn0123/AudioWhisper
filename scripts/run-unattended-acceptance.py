@@ -55,7 +55,7 @@ def run_stage(name: str, test_filter: str, directory: Path, timeout: int,
     # Fixed shell code uses the project's toolchain discovery; filter is passed
     # as an argument, never interpolated into shell source.
     command = ["bash", "-c", '. scripts/lib/xcode-env.sh; ensure_xcode_toolchain || exit 1; '
-               'exec swift test --no-parallel -Xswiftc -DTESTING --filter "$1"', "acceptance", test_filter]
+               'scripts/build-core.sh || exit 1; exec swift test --no-parallel -Xswiftc -DTESTING --filter "$1"', "acceptance", test_filter]
     start = time.monotonic()
     timed_out = False
     with log_path.open("w") as stream:

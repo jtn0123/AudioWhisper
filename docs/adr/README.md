@@ -10,5 +10,6 @@ This directory records the rationale behind significant architectural choices in
 | 0004 | [Migrating `@AppStorage` Views to `AppDefaults`](0004-app-storage-migration.md) | Proposed |
 | 0005 | [Local-Only Transcription](0005-local-only-transcription.md) | Accepted |
 | 0006 | [Model Integrity](0006-model-integrity.md) | Accepted |
+| 0007 | [Shared Rust Transcript Core](0007-rust-transcript-core.md) | Accepted |
 
 To add a new ADR, copy an existing file, bump the number, fill in Context / Decision / Consequences, and update the table above.

@@ -1,4 +1,4 @@
-import Foundation
+import CAWCore
 
 /// The user's words: spellings to enforce and phrases to rewrite.
 ///
@@ -13,6 +13,9 @@ import Foundation
 /// ("audio whisper" → "AudioWhisper"). Terms also bias WhisperKit through its
 /// decoder prompt. A `heard -> written` (or `=>`) line is a *replacement*.
 /// Blank lines and lines starting with `#` are ignored.
+///
+/// The rules run in Rust (`transcript::vocabulary`, through `TranscriptCore`);
+/// this type is the plain value the app stores and compares.
 struct CustomVocabulary: Equatable, Sendable {
     struct Replacement: Equatable, Sendable {
         let heard: String
@@ -20,7 +23,8 @@ struct CustomVocabulary: Equatable, Sendable {
     }
 
     /// Whisper's prompt window is 224 tokens and is shared with the decoder
-    /// context, so the prompt stays well under it.
+    /// context, so the prompt stays well under it. Rust's
+    /// `MAX_PROMPT_CHARACTERS` is what applies; this states it for callers.
     static let maxPromptCharacters = 400
 
     private(set) var terms: [String] = []
@@ -36,77 +40,28 @@ struct CustomVocabulary: Equatable, Sendable {
     }
 
     init(parsing text: String) {
-        for rawLine in text.components(separatedBy: .newlines) {
-            let line = rawLine.trimmingCharacters(in: .whitespaces)
-            guard !line.isEmpty, !line.hasPrefix("#") else { continue }
-            if let arrow = line.range(of: "->") ?? line.range(of: "=>") {
-                let heard = line[..<arrow.lowerBound].trimmingCharacters(in: .whitespaces)
-                let written = line[arrow.upperBound...].trimmingCharacters(in: .whitespaces)
-                guard !heard.isEmpty else { continue }
-                replacements.append(Replacement(heard: heard, written: written))
-            } else if !terms.contains(line) {
-                terms.append(line)
-            }
-        }
+        let handle = TranscriptCore.withBytes(text) { aw_vocabulary_parse($0, $1) }
+        defer { aw_vocabulary_free(handle) }
+        self = TranscriptCore.vocabulary(of: handle)
     }
 
     /// Spellings WhisperKit should lean toward, as a natural comma list. Only
     /// the leading entries that fit `maxPromptCharacters` are used.
     var promptText: String? {
-        let spellings = terms + replacements.map(\.written).filter { !$0.isEmpty }
-        var prompt = ""
-        var seen: Set<String> = []
-        for spelling in spellings where seen.insert(spelling).inserted {
-            let next = prompt.isEmpty ? spelling : prompt + ", " + spelling
-            guard next.count <= Self.maxPromptCharacters else { break }
-            prompt = next
-        }
-        return prompt.isEmpty ? nil : prompt
+        TranscriptCore.withVocabulary(self) { TranscriptCore.take(aw_vocabulary_prompt_text($0)) }
     }
 
     /// Replacements first, so a rewrite can produce a term's spelling; terms
     /// then normalise case and spoken CamelCase splits.
     func apply(to text: String) -> String {
-        var result = text
-        for replacement in replacements {
-            result = Self.replaceWholePhrase(replacement.heard, with: replacement.written, in: result)
+        TranscriptCore.withVocabulary(self) { handle in
+            TranscriptCore.transform(text) { aw_vocabulary_apply(handle, $0, $1) }
         }
-        for term in terms {
-            result = Self.replaceWholePhrase(term, with: term, in: result, matchingSplitCamelCase: true)
-        }
-        return result
-    }
-
-    static func replaceWholePhrase(
-        _ phrase: String, with replacement: String, in text: String, matchingSplitCamelCase: Bool = false
-    ) -> String {
-        let words = matchingSplitCamelCase ? camelCaseParts(of: phrase) : [phrase]
-        let body = words.map { part in
-            part.split(whereSeparator: \.isWhitespace).map { NSRegularExpression.escapedPattern(for: String($0)) }
-                .joined(separator: "\\s+")
-        }.joined(separator: "[\\s-]?")
-        let pattern = "(?<![\\p{L}\\p{N}_])" + body + "(?![\\p{L}\\p{N}_])"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return text }
-        let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        return regex.stringByReplacingMatches(
-            in: text, range: range, withTemplate: NSRegularExpression.escapedTemplate(for: replacement))
     }
 
     /// "AudioWhisper" → ["Audio", "Whisper"]; "PostgreSQL" → ["Postgre", "SQL"].
     /// A lowercase→uppercase step starts a new part; acronym runs stay whole.
     static func camelCaseParts(of term: String) -> [String] {
-        var parts: [String] = []
-        var current = ""
-        var previous: Character?
-        for character in term {
-            if let previous, previous.isLowercase, character.isUppercase, !current.isEmpty {
-                parts.append(current)
-                current = ""
-            }
-            current.append(character)
-            previous = character
-        }
-        if !current.isEmpty { parts.append(current) }
-        return parts
+        TranscriptCore.strings(TranscriptCore.withBytes(term) { aw_camel_case_parts($0, $1) })
     }
 }
