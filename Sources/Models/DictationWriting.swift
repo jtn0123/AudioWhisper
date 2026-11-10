@@ -1,3 +1,4 @@
+import CAWCore
 import Foundation
 
 enum DictationLanguage: String, Codable, CaseIterable, Sendable {
@@ -41,15 +42,13 @@ struct DictationWriting: Codable, Equatable, Sendable {
         return task + "\n\nUser style instructions (subject to the preservation rules above):\n" + instructions
     }
 
+    /// What the writing model's `output` may replace `original` with, decided in
+    /// Rust (`crates/correction`): a cleanup goes through `safeMerge`, a rewrite
+    /// must keep what `CorrectionIntegrity` protects and stay in proportion.
     func accepted(original: String, output: String) -> String {
-        if operation == .cleanup {
-            return SemanticCorrectionService.safeMerge(original: original, corrected: output,
-                                                       maxChangeRatio: SemanticCorrectionService.maxChangeRatio)
-        }
-        let result = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !result.isEmpty, result.count <= max(256, original.count * 4),
-              CorrectionIntegrity.allows(original: original, corrected: result, allowFraming: true) else { return original }
-        return result
+        TranscriptCore.text(TranscriptCore.withBytes(original, output) {
+            aw_correction_accepted($0, $1, $2, $3, operation == .rewrite)
+        })
     }
 }
 

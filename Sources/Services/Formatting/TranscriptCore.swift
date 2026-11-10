@@ -1,6 +1,6 @@
 import CAWCore
 
-/// The bridge to the transcript rules in Rust (`Vendor/AudioWhisper-Core`,
+/// The bridge to the transcript rules and the correction gate in Rust (`Vendor/AudioWhisper-Core`,
 /// linked as `libawcore.a`; see `scripts/build-core.sh`).
 ///
 /// Text crosses as UTF-8 with a length. Every string and handle Rust returns is
@@ -11,6 +11,16 @@ enum TranscriptCore {
     static func withBytes<R>(_ text: String, _ body: (UnsafePointer<UInt8>?, Int) -> R) -> R {
         var text = text
         return text.withUTF8 { body($0.baseAddress, $0.count) }
+    }
+
+    /// Calls `body` with the UTF-8 bytes of two strings.
+    static func withBytes<R>(
+        _ first: String, _ second: String,
+        _ body: (UnsafePointer<UInt8>?, Int, UnsafePointer<UInt8>?, Int) -> R
+    ) -> R {
+        withBytes(first) { firstBytes, firstLength in
+            withBytes(second) { body(firstBytes, firstLength, $0, $1) }
+        }
     }
 
     /// The string Rust returned, freed; `nil` for Rust's "no string".
