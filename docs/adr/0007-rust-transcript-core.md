@@ -38,9 +38,15 @@ generated from macOS itself.
 * While porting, a standalone harness ran 100,000+ such cases with no
   difference, and a mutation check broke the Rust 14 ways: 12 were caught, and
   the other 2 were shown to change nothing.
-* Both sides run on the host's ICU and Foundation, so a macOS update that
-  changes them fails the differential test until the core's tables are
-  regenerated.
+* The reference Swift runs on the host's ICU and Foundation, so a macOS
+  update that changes them fails the differential test until the core's
+  tables are regenerated.
+* The core's tables are Unicode 17 (macOS 26 and later). On an older macOS
+  the old Swift saw characters added since its Unicode version as unassigned,
+  where the core classifies them as Unicode 17 does: a recent letter can
+  start a sentence or end a word. That is the difference CI found on macOS 15,
+  so the corpus draws only characters the running system has assigned,
+  and CI (macOS 15, Unicode 15.1) checks everything else.
 
 ## Consequences
 

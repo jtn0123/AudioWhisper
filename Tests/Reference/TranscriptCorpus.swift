@@ -3,6 +3,8 @@
 // spacing, ligatures, combining marks, characters whose case folding expands),
 // mixed with every kind of whitespace and line break and random scalars.
 
+import Foundation
+
 /// SplitMix64: seeded, so a failure reproduces.
 struct TranscriptCorpus {
     private var state: UInt64
@@ -59,10 +61,27 @@ struct TranscriptCorpus {
         0x1E9E...0x1E9E, 0x10D40...0x10D8F
     ]
 
+    /// A random scalar this macOS has assigned. The core's tables are Unicode
+    /// 17, but the reference Swift runs on whatever ICU and Swift the machine
+    /// has (macOS 15 has Unicode 15.1), so a character added later is a
+    /// letter to the core and unknown to an older system. That difference is
+    /// the core being newer, not a port mistake (ADR 0007), so such a
+    /// character is drawn again.
     mutating func scalar() -> String {
-        let range = pick(Self.scalarRanges)
-        let value = range.lowerBound + UInt32(below(Int(range.upperBound - range.lowerBound + 1)))
-        return Unicode.Scalar(value).map { String(Character($0)) } ?? "?"
+        while true {
+            let range = pick(Self.scalarRanges)
+            let value = range.lowerBound + UInt32(below(Int(range.upperBound - range.lowerBound + 1)))
+            guard let scalar = Unicode.Scalar(value) else { return "?" }
+            let text = String(Character(scalar))
+            if Self.isAssigned(scalar, text) { return text }
+        }
+    }
+
+    /// Whether both the Swift standard library and ICU on this machine know
+    /// `scalar`. Private-use characters count as assigned.
+    private static func isAssigned(_ scalar: Unicode.Scalar, _ text: String) -> Bool {
+        scalar.properties.generalCategory != .unassigned
+            && text.range(of: "\\p{Cn}", options: .regularExpression) == nil
     }
 
     mutating func text(maxTokens: Int = 14) -> String {
