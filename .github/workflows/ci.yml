@@ -256,35 +256,7 @@ jobs:
         run: swiftlint --strict --reporter github-actions-logging
 
       - name: No print() outside #if DEBUG
-        run: |
-          set -e
-          violations=$(grep -rn --include='*.swift' -E '^\s*print\(' Sources/ | grep -v '//.*print' || true)
-          # Filter out lines that appear inside a #if DEBUG block by checking surrounding lines.
-          #
-          # NOTE: the loop reads from a process substitution rather than a pipe.
-          # `echo "$violations" | while ...` runs the loop body in a SUBSHELL, so
-          # an `exit 1` inside it only terminates that subshell — the step then
-          # falls through to the success echo and exits 0. This gate silently
-          # passed on every run until that was fixed.
-          failed=0
-          if [ -n "$violations" ]; then
-            while IFS=: read -r file line _rest; do
-              [ -n "$file" ] || continue
-              # Search 50 lines back for #if DEBUG, then check if a #endif came between
-              ctx=$(sed -n "1,${line}p" "$file" | tail -n 50)
-              last_debug=$(echo "$ctx" | grep -n '#if DEBUG' | tail -n 1 | cut -d: -f1 || true)
-              last_endif=$(echo "$ctx" | grep -n '#endif' | tail -n 1 | cut -d: -f1 || true)
-              if [ -z "$last_debug" ] || { [ -n "$last_endif" ] && [ "$last_endif" -gt "$last_debug" ]; }; then
-                echo "::error file=$file,line=$line::print() outside #if DEBUG"
-                failed=1
-              fi
-            done < <(echo "$violations")
-          fi
-          if [ "$failed" -ne 0 ]; then
-            echo "Production print() found — wrap in #if DEBUG or use Logger."
-            exit 1
-          fi
-          echo "No production print() found"
+        run: scripts/ci/no-print.sh
 
       - name: Python lockfile is in sync with pyproject.toml
         run: |
@@ -426,61 +398,8 @@ jobs:
       - name: Build .app bundle via make build
         run: make build
 
-      - name: Verify bundle structure
-        run: |
-          set -e
-          APP="AudioWhisper.app"
-          test -d "$APP" || { echo "::error::Missing $APP"; exit 1; }
-          test -x "$APP/Contents/MacOS/AudioWhisper" || { echo "::error::Missing executable"; exit 1; }
-          test -f "$APP/Contents/Info.plist" || { echo "::error::Missing Info.plist"; exit 1; }
-          plutil -lint "$APP/Contents/Info.plist"
-          # A linker-only signature leaves the bundle unidentified to TCC.
-          # Local previews also need a complete, verified bundle signature.
-          codesign --verify --strict --verbose "$APP"
-          codesign -d -r- "$APP" 2>&1 | grep -q 'designated =>'
-          codesign -dv "$APP" 2>&1 | grep -q '^Identifier=com.audiowhisper.rebuild$'
-          # Confirm Python bootstrap binary made it into the bundle
-          test -f "$APP/Contents/Resources/bin/uv" -o -f "$APP/Contents/Resources/uv" \
-            || echo "::warning::uv binary not found in bundled Resources (may be missing for dev builds)"
-          # The Python entry points the app launches, and the package they all
-          # import. A missing one is not a build error — it surfaces at runtime
-          # as a model that can never be downloaded, verified, or loaded.
-          for py in ml_daemon.py download_model.py verify_parakeet.py verify_mlx.py ml/hub.py ml/rpc.py; do
-            test -f "$APP/Contents/Resources/$py" || { echo "::error::Missing bundled Resources/$py"; exit 1; }
-          done
-          # Opening Preferences creates the shortcut recorder, which resolves
-          # its localized text through Bundle.module. Missing resources trap at
-          # runtime even when the executable and headless tests pass.
-          for bundle in AudioWhisper_AudioWhisper KeyboardShortcuts_KeyboardShortcuts; do
-            test -d "$APP/Contents/Resources/$bundle.bundle" \
-              || { echo "::error::Missing SwiftPM resource bundle $bundle"; exit 1; }
-          done
-          # SwiftPM versions package macOS resources in either a flat bundle
-          # or Contents/Resources. Validate runtime resolution through Foundation.
-          xcrun swift -e 'import Foundation; let path = "AudioWhisper.app/Contents/Resources/KeyboardShortcuts_KeyboardShortcuts.bundle"; guard let bundle = Bundle(path: path), let url = bundle.url(forResource: "Localizable", withExtension: "strings", subdirectory: nil, localization: "en"), FileManager.default.fileExists(atPath: url.path) else { fatalError("Missing shortcut editor localization") }'
-          # Confirm version was stamped (not left as a placeholder)
-          if grep -q "VERSION_PLACEHOLDER\|BUILD_PLACEHOLDER" "$APP/Contents/MacOS/AudioWhisper" 2>/dev/null; then
-            echo "::warning::Version placeholders found unsubstituted in binary"
-          fi
-          echo "App bundle smoke test passed."
-
-      - name: Run read-only recording diagnostics from the packaged app
-        run: |
-          python3 - <<'PY'
-          import json, os, subprocess
-          result = subprocess.run(
-              ["AudioWhisper.app/Contents/MacOS/AudioWhisper", "--diagnose-recording"],
-              capture_output=True, text=True, timeout=30, check=True,
-          )
-          report = json.loads(result.stdout)
-          assert report["bundleIdentifier"] == "com.audiowhisper.rebuild", report
-          assert report["build"] == os.environ["GITHUB_SHA"], report
-          assert report["launchContext"] == "commandLine", report
-          assert report["nextStep"], report
-          if report["microphonePermission"] != "granted":
-              assert not report["readyToRecord"], report
-          print("Packaged recording diagnostics exited cleanly and reported valid setup state")
-          PY
+      - name: Verify bundle structure and run its recording diagnostics
+        run: scripts/ci/smoke-bundle.sh "$GITHUB_SHA"
 
       - name: Show bundle size
         run: |
