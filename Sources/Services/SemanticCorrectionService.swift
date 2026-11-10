@@ -1,3 +1,4 @@
+import CAWCore
 import Foundation
 
 import os.log
@@ -129,57 +130,17 @@ internal final class SemanticCorrectionService {
     /// transcript uses a bounded changed-span/token comparison instead.
     static let safeMergeLengthCap = 4000
 
+    /// The merge and the distance run in Rust (`Vendor/AudioWhisper-Core`,
+    /// `crates/correction`); `Tests/Reference/ReferenceSemanticCorrection.swift`
+    /// is the Swift they were written in.
     static func safeMerge(original: String, corrected: String, maxChangeRatio: Double) -> String {
-        guard !corrected.isEmpty, CorrectionIntegrity.allows(original: original, corrected: corrected) else { return original }
-        if max(original.count, corrected.count) > safeMergeLengthCap {
-            guard let ratio = CorrectionContentComparison.ratio(original: original, corrected: corrected),
-                ratio <= maxChangeRatio else { return original }
-            return corrected.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        let ratio = normalizedEditDistance(a: original, b: corrected)
-        if ratio > maxChangeRatio { return original }
-        return corrected.trimmingCharacters(in: .whitespacesAndNewlines)
+        TranscriptCore.text(TranscriptCore.withBytes(original, corrected) {
+            aw_correction_safe_merge($0, $1, $2, $3, maxChangeRatio)
+        })
     }
 
-    /// Computes normalized edit distance using space-efficient 2-row DP.
-    /// Memory: O(min(m,n)) instead of O(m*n) for full matrix.
+    /// The edit distance between two texts' characters, over the longer one's count.
     static func normalizedEditDistance(a lhs: String, b rhs: String) -> Double {
-        if lhs == rhs { return 0 }
-        let lhsChars = Array(lhs)
-        let rhsChars = Array(rhs)
-        let lhsCount = lhsChars.count
-        let rhsCount = rhsChars.count
-        if lhsCount == 0 || rhsCount == 0 { return 1 }
-
-        // Optimize: ensure we iterate over shorter string in inner loop
-        let (shorter, longer): ([Character], [Character])
-        if lhsCount > rhsCount {
-            shorter = rhsChars
-            longer = lhsChars
-        } else {
-            shorter = lhsChars
-            longer = rhsChars
-        }
-
-        // Two-row DP: only keep current and previous rows
-        var previousRow = Array(0...shorter.count)
-        var currentRow = Array(repeating: 0, count: shorter.count + 1)
-
-        for longerIndex in 1...longer.count {
-            currentRow[0] = longerIndex
-            for shorterIndex in 1...shorter.count {
-                let cost = longer[longerIndex - 1] == shorter[shorterIndex - 1] ? 0 : 1
-                currentRow[shorterIndex] = min(
-                    previousRow[shorterIndex] + 1,      // deletion
-                    currentRow[shorterIndex - 1] + 1,   // insertion
-                    previousRow[shorterIndex - 1] + cost // substitution
-                )
-            }
-            swap(&previousRow, &currentRow)
-        }
-
-        let dist = previousRow[shorter.count]
-        let denom = max(lhsChars.count, rhsChars.count)
-        return Double(dist) / Double(denom)
+        TranscriptCore.withBytes(lhs, rhs) { aw_correction_edit_distance($0, $1, $2, $3) }
     }
 }
