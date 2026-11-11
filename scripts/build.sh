@@ -231,10 +231,15 @@ UNIVERSAL_DIR=".build/universal"
 rm -rf "$UNIVERSAL_DIR"
 mkdir -p "$UNIVERSAL_DIR"
 
+# AUDIOWHISPER_BUILD_JOBS caps parallel compiles (scripts/ci-local.sh sets it so
+# a local CI run leaves the machine usable); unset, SwiftPM uses every core.
+JOBS_FLAG=()
+if [ -n "${AUDIOWHISPER_BUILD_JOBS:-}" ]; then JOBS_FLAG=(-j "$AUDIOWHISPER_BUILD_JOBS"); fi
+
 SLICES=()
 for triple in arm64-apple-macosx x86_64-apple-macosx; do
   echo "   • $triple"
-  swift build -c release --triple "$triple" --product AudioWhisper
+  swift build -c release --triple "$triple" --product AudioWhisper "${JOBS_FLAG[@]}"
   # Ask SwiftPM where it put the binary rather than guessing: the layout has
   # already moved once (.build/apple -> .build/out) and broke this script.
   slice_dir="$(swift build -c release --triple "$triple" --show-bin-path)"

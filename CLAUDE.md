@@ -72,7 +72,18 @@ make typecheck
 
 # Clean build artifacts
 make clean
+
+# CI's macOS jobs on this Mac, for when GitHub has no macOS runner to give
+# (jobs cancelled with "not acquired by Runner"). Tests a commit in its own
+# worktree under ~/Library/Caches/AudioWhisper-ci, never your checkout; one job
+# at a time, niced, 4 cores, and it waits for 25% free memory before each job.
+# --post reports each job to the PR as a "local-ci/<job>" commit status.
+scripts/ci-local.sh [--post] [--jobs lint,test,bundle,analyze] [commit-ish]
 ```
+
+The two gates CI and `ci-local.sh` share are scripts, so they cannot drift:
+`scripts/ci/no-print.sh` and `scripts/ci/smoke-bundle.sh`. Change a gate there,
+not in `ci.yml`.
 
 ## Snapshot tests
 
